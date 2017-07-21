@@ -1,8 +1,6 @@
 This implements building of libphobos library in GCC.
 ---
 
-diff --git a/Makefile.def b/Makefile.def
-index cd99dd4..4f851eb 100644
 --- a/Makefile.def
 +++ b/Makefile.def
 @@ -135,6 +135,7 @@ target_modules = { module= libquadmath; };
@@ -21,7 +19,7 @@ index cd99dd4..4f851eb 100644
  flags_to_pass = { flag= LD_FOR_TARGET ; };
  flags_to_pass = { flag= LIPO_FOR_TARGET ; };
  flags_to_pass = { flag= LDFLAGS_FOR_TARGET ; };
-@@ -516,6 +518,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
+@@ -517,6 +519,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
  dependencies = { module=all-target-libgo; on=all-target-libbacktrace; };
  dependencies = { module=all-target-libgo; on=all-target-libffi; };
  dependencies = { module=all-target-libgo; on=all-target-libatomic; };
@@ -30,7 +28,7 @@ index cd99dd4..4f851eb 100644
  dependencies = { module=configure-target-libjava; on=configure-target-zlib; };
  dependencies = { module=configure-target-libjava; on=configure-target-boehm-gc; };
  dependencies = { module=configure-target-libjava; on=configure-target-libffi; };
-@@ -575,6 +579,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
+@@ -576,6 +580,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
  languages = { language=obj-c++;	gcc-check-target=check-obj-c++; };
  languages = { language=go;	gcc-check-target=check-go;
  				lib-check-target=check-target-libgo; };
@@ -39,8 +37,6 @@ index cd99dd4..4f851eb 100644
  
  // Toplevel bootstrap
  bootstrap_stage = { id=1 ; };
-diff --git a/Makefile.in b/Makefile.in
-index 6dd5802..b5604c1 100644
 --- a/Makefile.in
 +++ b/Makefile.in
 @@ -157,6 +157,7 @@ BUILD_EXPORTS = \
@@ -772,8 +768,6 @@ index 6dd5802..b5604c1 100644
  configure-target-libtermcap: maybe-all-target-newlib maybe-all-target-libgloss
  
  configure-target-winsup: maybe-all-target-newlib maybe-all-target-libgloss
-diff --git a/Makefile.tpl b/Makefile.tpl
-index 54a8dc3..4bfa7f9 100644
 --- a/Makefile.tpl
 +++ b/Makefile.tpl
 @@ -160,6 +160,7 @@ BUILD_EXPORTS = \
@@ -832,8 +826,6 @@ index 54a8dc3..4bfa7f9 100644
  	'LD=$(COMPILER_LD_FOR_TARGET)' \
  	'LDFLAGS=$$(LDFLAGS_FOR_TARGET)' \
  	'LIBCFLAGS=$$(LIBCFLAGS_FOR_TARGET)' \
-diff --git a/config-ml.in b/config-ml.in
-index 1198346..9c02692 100644
 --- a/config-ml.in
 +++ b/config-ml.in
 @@ -505,6 +505,7 @@ multi-do:
@@ -880,8 +872,6 @@ index 1198346..9c02692 100644
  	if test "x${LD_LIBRARY_PATH+set}" = xset; then
  	  LD_LIBRARY_PATH_=
  	  for arg in `echo "$LD_LIBRARY_PATH" | tr ':' ' '`; do
-diff --git a/config/multi.m4 b/config/multi.m4
-index 5b62ecc..5303b98 100644
 --- a/config/multi.m4
 +++ b/config/multi.m4
 @@ -65,4 +65,5 @@ CONFIG_SHELL=${CONFIG_SHELL-/bin/sh}
@@ -891,8 +881,6 @@ index 5b62ecc..5303b98 100644
 -GCJ="$GCJ"])])dnl
 +GCJ="$GCJ"
 +GDC="$GDC"])])dnl
-diff --git a/configure b/configure
-index d9304d9..3e9fb97 100755
 --- a/configure
 +++ b/configure
 @@ -580,6 +580,7 @@ LD_FOR_TARGET
@@ -954,7 +942,7 @@ index d9304d9..3e9fb97 100755
    DLLTOOL_FOR_BUILD="\$(DLLTOOL)"
    LD_FOR_BUILD="\$(LD)"
    NM_FOR_BUILD="\$(NM)"
-@@ -7788,6 +7796,7 @@ done
+@@ -7837,6 +7845,7 @@ done
  
  
  
@@ -962,7 +950,7 @@ index d9304d9..3e9fb97 100755
  # Generate default definitions for YACC, M4, LEX and other programs that run
  # on the build machine.  These are used if the Makefile can't locate these
  # programs in objdir.
-@@ -11003,6 +11012,167 @@ fi
+@@ -11052,6 +11061,167 @@ fi
  
  
  
@@ -1130,7 +1118,7 @@ index d9304d9..3e9fb97 100755
  cat > conftest.c << \EOF
  #ifdef __GNUC__
    gcc_yay;
-@@ -14214,6 +14384,51 @@ $as_echo "pre-installed" >&6; }
+@@ -14263,6 +14433,51 @@ $as_echo "pre-installed" >&6; }
    fi
  fi
  
@@ -1182,8 +1170,6 @@ index d9304d9..3e9fb97 100755
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking where to find the target ld" >&5
  $as_echo_n "checking where to find the target ld... " >&6; }
  if test "x${build}" != "x${host}" ; then
-diff --git a/configure.ac b/configure.ac
-index 41a30dd..f9c3f45 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -169,7 +169,8 @@ target_libraries="target-libgcc \
@@ -1212,7 +1198,7 @@ index 41a30dd..f9c3f45 100644
    DLLTOOL_FOR_BUILD="\$(DLLTOOL)"
    LD_FOR_BUILD="\$(LD)"
    NM_FOR_BUILD="\$(NM)"
-@@ -3107,6 +3110,7 @@ AC_SUBST(DLLTOOL_FOR_BUILD)
+@@ -3110,6 +3113,7 @@ AC_SUBST(DLLTOOL_FOR_BUILD)
  AC_SUBST(GCJ_FOR_BUILD)
  AC_SUBST(GFORTRAN_FOR_BUILD)
  AC_SUBST(GOC_FOR_BUILD)
@@ -1220,7 +1206,7 @@ index 41a30dd..f9c3f45 100644
  AC_SUBST(LDFLAGS_FOR_BUILD)
  AC_SUBST(LD_FOR_BUILD)
  AC_SUBST(NM_FOR_BUILD)
-@@ -3217,6 +3221,7 @@ NCN_STRICT_CHECK_TARGET_TOOLS(GCC_FOR_TARGET, gcc, ${CC_FOR_TARGET})
+@@ -3220,6 +3224,7 @@ NCN_STRICT_CHECK_TARGET_TOOLS(GCC_FOR_TARGET, gcc, ${CC_FOR_TARGET})
  NCN_STRICT_CHECK_TARGET_TOOLS(GCJ_FOR_TARGET, gcj)
  NCN_STRICT_CHECK_TARGET_TOOLS(GFORTRAN_FOR_TARGET, gfortran)
  NCN_STRICT_CHECK_TARGET_TOOLS(GOC_FOR_TARGET, gccgo)
@@ -1228,7 +1214,7 @@ index 41a30dd..f9c3f45 100644
  
  ACX_CHECK_INSTALLED_TARGET_TOOL(AR_FOR_TARGET, ar)
  ACX_CHECK_INSTALLED_TARGET_TOOL(AS_FOR_TARGET, as)
-@@ -3251,6 +3256,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_TARGET, GFORTRAN,
+@@ -3254,6 +3259,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_TARGET, GFORTRAN,
  		[gcc/gfortran -B$$r/$(HOST_SUBDIR)/gcc/], fortran)
  GCC_TARGET_TOOL(gccgo, GOC_FOR_TARGET, GOC,
  		[gcc/gccgo -B$$r/$(HOST_SUBDIR)/gcc/], go)
