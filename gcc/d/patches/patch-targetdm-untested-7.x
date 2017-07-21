@@ -13,15 +13,6 @@ The following CPU versions are implemented:
 * HPPA64
 * RISCV32
 * RISCV64
-* S390
-* S390X (deprecated)
-* SystemZ
-* SH
-* SPARC
-* SPARC64
-* SPARC_V8Plus
-** SPARC_HardFloat
-** SPARC_SoftFloat
 
 The following OS versions are implemented:
 * Windows
