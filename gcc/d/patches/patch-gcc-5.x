@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -25518,7 +25518,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -25738,7 +25738,8 @@ rs6000_output_function_epilogue (FILE *file,
        if (lang_GNU_C ()
  	  || ! strcmp (language_string, "GNU GIMPLE")
  	  || ! strcmp (language_string, "GNU Go")
@@ -13,7 +13,7 @@ relevant documentation about the GDC front end.
 +	  || ! strcmp (language_string, "GNU D"))
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
- 	       || ! strcmp (language_string, "GNU Fortran"))
+ 	       || lang_GNU_Fortran ())
 --- a/gcc/doc/frontends.texi
 +++ b/gcc/doc/frontends.texi
 @@ -9,6 +9,7 @@
@@ -52,7 +52,7 @@ relevant documentation about the GDC front end.
  Specify that a particular subset of compilers and their runtime
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -1246,6 +1246,15 @@ called @dfn{specs}.
+@@ -1259,6 +1259,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
  
@@ -68,7 +68,7 @@ relevant documentation about the GDC front end.
  @c GCC also knows about some suffixes for languages not yet included:
  @c Pascal:
  @c @var{file}.p
-@@ -1281,6 +1290,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1294,6 +1303,7 @@ objective-c  objective-c-header  objective-c-cpp-output
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -109,7 +109,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
-@@ -4749,6 +4749,15 @@ is_ada (void)
+@@ -4756,6 +4756,15 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -125,7 +125,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  */
  
  static void
-@@ -19789,6 +19798,8 @@ gen_compile_unit_die (const char *filename)
+@@ -19844,6 +19853,8 @@ gen_compile_unit_die (const char *filename)
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)
  	language = DW_LANG_ObjC_plus_plus;
@@ -134,7 +134,7 @@ relevant documentation about the GDC front end.
        else if (dwarf_version >= 5 || !dwarf_strict)
  	{
  	  if (strcmp (language_string, "GNU Go") == 0)
-@@ -20733,7 +20744,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+@@ -20813,7 +20824,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
  
    if (ns_context != context_die)
      {
@@ -143,7 +143,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, ns_context);
-@@ -20756,7 +20767,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -20836,7 +20847,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -152,7 +152,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -20819,7 +20830,7 @@ gen_decl_die (tree decl, tree origin, dw_die_ref context_die)
+@@ -20899,7 +20910,7 @@ gen_decl_die (tree decl, tree origin, dw_die_ref context_die)
        break;
  
      case CONST_DECL:
@@ -161,7 +161,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -21290,7 +21301,7 @@ dwarf2out_decl (tree decl)
+@@ -21370,7 +21381,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -172,7 +172,7 @@ relevant documentation about the GDC front end.
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
-@@ -1097,6 +1097,7 @@ static const struct compiler default_compilers[] =
+@@ -1102,6 +1102,7 @@ static const struct compiler default_compilers[] =
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},

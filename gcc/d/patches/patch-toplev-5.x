@@ -19,7 +19,7 @@ This implements building of libphobos library in GCC.
  flags_to_pass = { flag= LD_FOR_TARGET ; };
  flags_to_pass = { flag= LIPO_FOR_TARGET ; };
  flags_to_pass = { flag= LDFLAGS_FOR_TARGET ; };
-@@ -540,6 +542,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
+@@ -541,6 +543,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
  dependencies = { module=all-target-libgo; on=all-target-libbacktrace; };
  dependencies = { module=all-target-libgo; on=all-target-libffi; };
  dependencies = { module=all-target-libgo; on=all-target-libatomic; };
@@ -28,7 +28,7 @@ This implements building of libphobos library in GCC.
  dependencies = { module=configure-target-libjava; on=configure-target-zlib; };
  dependencies = { module=configure-target-libjava; on=configure-target-boehm-gc; };
  dependencies = { module=configure-target-libjava; on=configure-target-libffi; };
-@@ -603,6 +607,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
+@@ -604,6 +608,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
  languages = { language=obj-c++;	gcc-check-target=check-obj-c++; };
  languages = { language=go;	gcc-check-target=check-go;
  				lib-check-target=check-target-libgo; };
@@ -37,8 +37,6 @@ This implements building of libphobos library in GCC.
  
  // Toplevel bootstrap
  bootstrap_stage = { id=1 ; };
-diff --git a/Makefile.in b/Makefile.in
-index 36b4008..2269027 100644
 --- a/Makefile.in
 +++ b/Makefile.in
 @@ -157,6 +157,7 @@ BUILD_EXPORTS = \
@@ -771,8 +769,6 @@ index 36b4008..2269027 100644
  configure-target-libtermcap: maybe-all-target-newlib maybe-all-target-libgloss
  
  configure-target-winsup: maybe-all-target-newlib maybe-all-target-libgloss
-diff --git a/Makefile.tpl b/Makefile.tpl
-index 1ea1954..ab86766 100644
 --- a/Makefile.tpl
 +++ b/Makefile.tpl
 @@ -160,6 +160,7 @@ BUILD_EXPORTS = \
@@ -831,8 +827,6 @@ index 1ea1954..ab86766 100644
  	'LD=$(COMPILER_LD_FOR_TARGET)' \
  	'LDFLAGS=$$(LDFLAGS_FOR_TARGET)' \
  	'LIBCFLAGS=$$(LIBCFLAGS_FOR_TARGET)' \
-diff --git a/config-ml.in b/config-ml.in
-index 927bad6..05cdcb3 100644
 --- a/config-ml.in
 +++ b/config-ml.in
 @@ -513,6 +513,7 @@ multi-do:
@@ -879,8 +873,6 @@ index 927bad6..05cdcb3 100644
  	if test "x${LD_LIBRARY_PATH+set}" = xset; then
  	  LD_LIBRARY_PATH_=
  	  for arg in `echo "$LD_LIBRARY_PATH" | tr ':' ' '`; do
-diff --git a/config/multi.m4 b/config/multi.m4
-index 5b62ecc..07a40e2 100644
 --- a/config/multi.m4
 +++ b/config/multi.m4
 @@ -65,4 +65,6 @@ CONFIG_SHELL=${CONFIG_SHELL-/bin/sh}
@@ -891,8 +883,6 @@ index 5b62ecc..07a40e2 100644
 +GCJ="$GCJ"
 +GDC="$GDC"])])dnl
 +
-diff --git a/configure b/configure
-index a3f66ba..e7c8890 100755
 --- a/configure
 +++ b/configure
 @@ -581,6 +581,7 @@ LD_FOR_TARGET
@@ -1174,8 +1164,6 @@ index a3f66ba..e7c8890 100755
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking where to find the target ld" >&5
  $as_echo_n "checking where to find the target ld... " >&6; }
  if test "x${build}" != "x${host}" ; then
-diff --git a/configure.ac b/configure.ac
-index 987dfab..0590e47 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -170,7 +170,8 @@ target_libraries="target-libgcc \
