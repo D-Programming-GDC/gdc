@@ -2,23 +2,6 @@ This implements D language support in the GCC back end, and adds
 relevant documentation about the GDC front end.
 ---
 
---- a/gcc/config/powerpcspe/powerpcspe.c
-+++ b/gcc/config/powerpcspe/powerpcspe.c
-@@ -31921,11 +31921,12 @@ rs6000_output_function_epilogue (FILE *file,
- 	 use language_string.
- 	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
- 	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
--	 a number, so for now use 9.  LTO, Go and JIT aren't assigned numbers
--	 either, so for now use 0.  */
-+	 a number, so for now use 9.  LTO, Go, D and JIT aren't assigned
-+	 numbers either, so for now use 0.  */
-       if (lang_GNU_C ()
- 	  || ! strcmp (language_string, "GNU GIMPLE")
- 	  || ! strcmp (language_string, "GNU Go")
-+	  || ! strcmp (language_string, "GNU D")
- 	  || ! strcmp (language_string, "libgccjit"))
- 	i = 0;
-       else if (! strcmp (language_string, "GNU F77")
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -25254,7 +25254,8 @@ rs6000_output_function_epilogue (FILE *file,
