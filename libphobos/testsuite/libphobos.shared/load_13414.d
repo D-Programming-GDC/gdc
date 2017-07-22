@@ -20,8 +20,8 @@ void runTest(string name)
 void main(string[] args)
 {
     auto name = args[0];
-    assert(name[$-"load_13414".length-1 .. $] == "/load_13414");
-    name = name[0 .. $-"load_13414".length] ~ "lib_13414.so";
+    assert(name[$-"load_13414.exe".length-1 .. $] == "/load_13414.exe");
+    name = name[0 .. $-"load_13414.exe".length] ~ "lib_13414.so";
 
     runTest(name);
 }

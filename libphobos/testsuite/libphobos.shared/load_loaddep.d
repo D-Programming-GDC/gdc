@@ -4,7 +4,7 @@ extern(C) alias RunDepTests = int function(const char*);
 
 void main(string[] args)
 {
-    auto root = args[0][0..$-"load_loaddep".length];
+    auto root = args[0][0..$-"load_loaddep.exe".length];
     auto libloaddep = root ~ "libloaddep.so";
     auto h = Runtime.loadLibrary(libloaddep);
     auto runDepTests = cast(RunDepTests)dlsym(h, "runDepTests");

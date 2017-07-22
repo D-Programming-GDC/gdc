@@ -9,20 +9,17 @@ ModuleInfo* getModuleInfo(string name)
 }
 
 // Call this program for every compiled in module
-bool testAll()
+bool printAll()
 {
-    import core.stdc.stdlib, core.stdc.inttypes, core.stdc.string;
-    bool success = true;
-    uint num;
     foreach (m; ModuleInfo)
     {
-        num++;
-        string command = Runtime.args[0] ~ " " ~ m.name ~ "\0";
-        if (system(command.ptr) != EXIT_SUCCESS)
-            success = false;
+        if (m.unitTest)
+        {
+            string name = m.name;
+            printf("%.*s\n", cast(uint)name.length, cast(uint)name.ptr);
+        }
     }
-    printf(("%" ~ PRIu32[0 .. strlen(PRIu32)] ~ " modules tested\n\0").ptr, num);
-    return success;
+    return true;
 }
 
 bool tester()
@@ -68,7 +65,7 @@ bool tester()
 shared static this()
 {
     if (Runtime.args.length == 1)
-        Runtime.moduleUnitTester = &testAll;
+        Runtime.moduleUnitTester = &printAll;
     else
         Runtime.moduleUnitTester = &tester;
 }

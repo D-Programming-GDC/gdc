@@ -95,6 +95,7 @@ am__aclocal_m4_deps = $(top_srcdir)/../config/lead-dot.m4 \
 	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/gdc.m4 \
 	$(top_srcdir)/m4/druntime.m4 \
 	$(top_srcdir)/m4/druntime/libbacktrace.m4 \
+	$(top_srcdir)/m4/druntime/cpu.m4 \
 	$(top_srcdir)/m4/druntime/os.m4 \
 	$(top_srcdir)/m4/druntime/libraries.m4 \
 	$(top_srcdir)/configure.ac
@@ -256,7 +257,7 @@ libgphobos_t_la_OBJECTS = $(am_libgphobos_t_la_OBJECTS)
 @ENABLE_SHARED_TRUE@am_libgphobos_t_la_rpath =
 @ENABLE_SHARED_TRUE@am__EXEEXT_1 = unittest$(EXEEXT)
 @ENABLE_STATIC_TRUE@am__EXEEXT_2 = unittest_static$(EXEEXT)
-am_unittest_OBJECTS = ../libdruntime/test_runner.$(OBJEXT)
+am_unittest_OBJECTS = ../testsuite/test_runner.$(OBJEXT)
 unittest_OBJECTS = $(am_unittest_OBJECTS)
 unittest_DEPENDENCIES = libgphobos_t.la ../libdruntime/libgdruntime.la
 am__objects_17 = adler32.$(OBJEXT) compress.$(OBJEXT) crc32.$(OBJEXT) \
@@ -265,7 +266,7 @@ am__objects_17 = adler32.$(OBJEXT) compress.$(OBJEXT) crc32.$(OBJEXT) \
 	inffast.$(OBJEXT) inflate.$(OBJEXT) inftrees.$(OBJEXT) \
 	trees.$(OBJEXT) uncompr.$(OBJEXT) zutil.$(OBJEXT)
 @DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_18 = $(am__objects_17)
-am_unittest_static_OBJECTS = ../libdruntime/test_runner.$(OBJEXT) \
+am_unittest_static_OBJECTS = ../testsuite/test_runner.$(OBJEXT) \
 	$(am__objects_18)
 unittest_static_OBJECTS = $(am_unittest_static_OBJECTS)
 unittest_static_DEPENDENCIES = $(PHOBOS_TEST_OBJECTS) \
@@ -311,6 +312,8 @@ CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DCFG_ARM_EABI_UNWINDER = @DCFG_ARM_EABI_UNWINDER@
+DCFG_HAVE_64BIT_ATOMICS = @DCFG_HAVE_64BIT_ATOMICS@
+DCFG_HAVE_ATOMIC_BUILTINS = @DCFG_HAVE_ATOMIC_BUILTINS@
 DCFG_HAVE_LIBATOMIC = @DCFG_HAVE_LIBATOMIC@
 DCFG_MINFO_BRACKETING = @DCFG_MINFO_BRACKETING@
 DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
@@ -517,7 +520,7 @@ libgphobos_la_LIBADD = ../libdruntime/libgdruntime.la
 libgphobos_la_DEPENDENCIES = libgphobos.spec
 
 # For static unittest, link objects directly
-unittest_static_SOURCES = ../libdruntime/test_runner.d $(ZLIB_SRC)
+unittest_static_SOURCES = ../testsuite/test_runner.d $(ZLIB_SRC)
 unittest_static_LIBTOOLFLAGS = 
 unittest_static_LDFLAGS = -Xcompiler -nophoboslib -static-libtool-libs
 unittest_static_LDADD = $(PHOBOS_TEST_OBJECTS) \
@@ -535,7 +538,7 @@ libgphobos_t_la_LIBADD = $(PHOBOS_TEST_LOBJECTS) \
 EXTRA_libgphobos_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS)
 
 # For unittest
-unittest_SOURCES = ../libdruntime/test_runner.d
+unittest_SOURCES = ../testsuite/test_runner.d
 unittest_LIBTOOLFLAGS = 
 unittest_LDFLAGS = -Xcompiler -nophoboslib -shared
 unittest_LDADD = libgphobos_t.la ../libdruntime/libgdruntime.la
@@ -996,10 +999,10 @@ clean-checkPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
-../libdruntime/$(am__dirstamp):
-	@$(MKDIR_P) ../libdruntime
-	@: > ../libdruntime/$(am__dirstamp)
-../libdruntime/test_runner.$(OBJEXT): ../libdruntime/$(am__dirstamp)
+../testsuite/$(am__dirstamp):
+	@$(MKDIR_P) ../testsuite
+	@: > ../testsuite/$(am__dirstamp)
+../testsuite/test_runner.$(OBJEXT): ../testsuite/$(am__dirstamp)
 unittest$(EXEEXT): $(unittest_OBJECTS) $(unittest_DEPENDENCIES) $(EXTRA_unittest_DEPENDENCIES) 
 	@rm -f unittest$(EXEEXT)
 	$(unittest_LINK) $(unittest_OBJECTS) $(unittest_LDADD) $(LIBS)
@@ -1009,7 +1012,7 @@ unittest_static$(EXEEXT): $(unittest_static_OBJECTS) $(unittest_static_DEPENDENC
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f ../libdruntime/test_runner.$(OBJEXT)
+	-rm -f ../testsuite/test_runner.$(OBJEXT)
 	-rm -f etc/c/curl.$(OBJEXT)
 	-rm -f etc/c/curl.lo
 	-rm -f etc/c/sqlite3.$(OBJEXT)
@@ -1635,7 +1638,6 @@ distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_LTLIBRARIES) $(check_PROGRAMS)
-	$(MAKE) $(AM_MAKEFLAGS) check-local
 check: check-am
 all-am: Makefile $(LTLIBRARIES) $(DATA)
 installdirs:
@@ -1668,7 +1670,7 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f ../libdruntime/$(am__dirstamp)
+	-rm -f ../testsuite/$(am__dirstamp)
 	-rm -f etc/c/$(am__dirstamp)
 	-rm -f std/$(am__dirstamp)
 	-rm -f std/algorithm/$(am__dirstamp)
@@ -1771,7 +1773,7 @@ uninstall-am: uninstall-toolexeclibDATA \
 
 .MAKE: check-am install-am install-strip
 
-.PHONY: CTAGS GTAGS all all-am check check-am check-local clean \
+.PHONY: CTAGS GTAGS all all-am check check-am clean \
 	clean-checkLTLIBRARIES clean-checkPROGRAMS clean-generic \
 	clean-libtool clean-local clean-toolexeclibLTLIBRARIES ctags \
 	distclean distclean-compile distclean-generic \
@@ -1814,10 +1816,6 @@ uninstall-am: uninstall-toolexeclibDATA \
 clean-local:
 	rm -f $(PHOBOS_TEST_LOBJECTS)
 	rm -f $(PHOBOS_TEST_OBJECTS)
-
-check-local:
-@ENABLE_STATIC_TRUE@	./unittest_static$(EXEEXT)
-@ENABLE_SHARED_TRUE@	./unittest$(EXEEXT)
 
 # Handles generated files as well
 install-data-local:
