@@ -127,8 +127,8 @@ void runTests(string libName)
 void main(string[] args)
 {
     auto name = args[0];
-    assert(name[$-5 .. $] == "/load");
-    name = name[0 .. $-4] ~ "lib.so";
+    assert(name[$-9 .. $] == "/load.exe");
+    name = name[0 .. $-8] ~ "lib.so";
 
     runTests(name);
 
