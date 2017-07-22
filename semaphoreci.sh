@@ -9,7 +9,7 @@
 GCC_VERSION=$(cat gcc.version)
 
 if [ "${GCC_VERSION:0:5}" = "gcc-8" ]; then
-    GCC_TARBALL="snapshots/${GCC_VERSION:4}/${GCC_VERSION}.tar.bz2"
+    GCC_TARBALL="snapshots/${GCC_VERSION:4}/${GCC_VERSION}.tar.xz"
     GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.16.1.tar.bz2"
     PATCH_VERSION="8"
     HOST_PACKAGE="5"
@@ -62,7 +62,7 @@ setup() {
             --create-dirs -o ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} || exit 1
     fi
 
-    tar --strip-components=1 -jxf ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL}
+    tar --strip-components=1 -xf ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL}
 
     ## Apply GDC patches to GCC.
     for PATCH in toplev gcc targetdm; do
