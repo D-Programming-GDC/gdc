@@ -615,6 +615,7 @@ public:
 				 build_ctype (Type::tsize_t),
 				 get_identifier ("ptr"),
 				 build_pointer_type (build_ctype (t->next)));
+    TYPE_DYNAMIC_ARRAY (t->ctype) = 1;
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
     d_keep (t->ctype);
   }
@@ -667,6 +668,7 @@ public:
        consist of a pointer to an opaque, implementation defined type.  */
     t->ctype = make_struct_type (t->toChars (), 1,
 				 get_identifier ("ptr"), ptr_type_node);
+    TYPE_ASSOCIATIVE_ARRAY (t->ctype) = 1;
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
     d_keep (t->ctype);
   }
@@ -768,6 +770,7 @@ public:
 				 build_ctype (Type::tvoidptr),
 				 get_identifier ("funcptr"),
 				 build_pointer_type (dgtype));
+    TYPE_DELEGATE (t->ctype) = 1;
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
     d_keep (t->ctype);
   }

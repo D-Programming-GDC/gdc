@@ -620,6 +620,8 @@ HAVE_DLADDR
 DRUNTIME_ZLIB_SYSTEM_FALSE
 DRUNTIME_ZLIB_SYSTEM_TRUE
 DCFG_HAVE_LIBATOMIC
+DCFG_HAVE_64BIT_ATOMICS
+DCFG_HAVE_ATOMIC_BUILTINS
 DCFG_MINFO_BRACKETING
 DRUNTIME_OS_ARM_EABI_UNWINDER_FALSE
 DRUNTIME_OS_ARM_EABI_UNWINDER_TRUE
@@ -11247,7 +11249,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11250 "configure"
+#line 11252 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11353,7 +11355,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11356 "configure"
+#line 11358 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14317,6 +14319,164 @@ if test "$ac_res" != no; then :
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
 fi
+
+
+  # This checks to see if the host supports the compiler-generated builtins
+  # for atomic operations for various integral sizes. Note, this is intended
+  # to be an all-or-nothing switch, so all the atomic operations that are
+  # used should be checked.
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for atomic builtins for byte" >&5
+$as_echo_n "checking for atomic builtins for byte... " >&6; }
+  if test "${druntime_cv_atomic_byte+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    cat > conftest.$ac_ext <<_ACEOF
+module mod;
+import gcc.builtins;
+
+extern(C) int main() {
+
+      shared(byte) c1;
+       byte c2, c3;
+       __atomic_compare_exchange_1(&c1, &c2, c3, false, 5, 5);
+       __atomic_load_1(&c1, 5);
+       __atomic_store_1(&c1, c2, 5);
+       return 0;
+
+}
+_ACEOF
+if ac_fn_d_try_link "$LINENO"; then :
+  druntime_cv_atomic_byte=yes
+else
+  druntime_cv_atomic_byte=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $druntime_cv_atomic_byte" >&5
+$as_echo "$druntime_cv_atomic_byte" >&6; }
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for atomic builtins for short" >&5
+$as_echo_n "checking for atomic builtins for short... " >&6; }
+  if test "${druntime_cv_atomic_short+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    cat > conftest.$ac_ext <<_ACEOF
+module mod;
+import gcc.builtins;
+
+extern(C) int main() {
+
+      shared(short) c1;
+       short c2, c3;
+       __atomic_compare_exchange_2(&c1, &c2, c3, false, 5, 5);
+       __atomic_load_2(&c1, 5);
+       __atomic_store_2(&c1, c2, 5);
+       return 0;
+
+}
+_ACEOF
+if ac_fn_d_try_link "$LINENO"; then :
+  druntime_cv_atomic_short=yes
+else
+  druntime_cv_atomic_short=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $druntime_cv_atomic_short" >&5
+$as_echo "$druntime_cv_atomic_short" >&6; }
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for atomic builtins for int" >&5
+$as_echo_n "checking for atomic builtins for int... " >&6; }
+  if test "${druntime_cv_atomic_int+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    cat > conftest.$ac_ext <<_ACEOF
+module mod;
+import gcc.builtins;
+
+extern(C) int main() {
+
+      shared(int) c1;
+       int c2, c3;
+       __atomic_compare_exchange_4(&c1, &c2, c3, false, 5, 5);
+       __atomic_load_4(&c1, 5);
+       __atomic_store_4(&c1, c2, 5);
+       return 0;
+
+}
+_ACEOF
+if ac_fn_d_try_link "$LINENO"; then :
+  druntime_cv_atomic_int=yes
+else
+  druntime_cv_atomic_int=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $druntime_cv_atomic_int" >&5
+$as_echo "$druntime_cv_atomic_int" >&6; }
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for atomic builtins for long" >&5
+$as_echo_n "checking for atomic builtins for long... " >&6; }
+  if test "${druntime_cv_atomic_long+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    cat > conftest.$ac_ext <<_ACEOF
+module mod;
+import gcc.builtins;
+
+extern(C) int main() {
+
+       shared(long) c1;
+       long c2, c3;
+       __atomic_compare_exchange_8(&c1, &c2, c3, false, 5, 5);
+       __atomic_load_8(&c1, 5);
+       __atomic_store_8(&c1, c2, 5);
+       return 0;
+
+}
+_ACEOF
+if ac_fn_d_try_link "$LINENO"; then :
+  druntime_cv_atomic_long=yes
+else
+  druntime_cv_atomic_long=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $druntime_cv_atomic_long" >&5
+$as_echo "$druntime_cv_atomic_long" >&6; }
+
+  # Have atomic builtin support if all but the long test above passes.
+  DCFG_HAVE_ATOMIC_BUILTINS=false
+  if test "$druntime_cv_atomic_byte" = yes \
+     && test "$druntime_cv_atomic_short" = yes \
+     && test "$druntime_cv_atomic_int" = yes; then \
+    DCFG_HAVE_ATOMIC_BUILTINS=true
+  fi
+
+  # Have 64-bit atomic support if the long test above passes.
+  DCFG_HAVE_64BIT_ATOMICS=false
+  if test "$druntime_cv_atomic_long" = yes; then
+    DCFG_HAVE_64BIT_ATOMICS=true
+  fi
+
+
+
 
 
 
