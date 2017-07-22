@@ -334,6 +334,7 @@ proc gdc-do-test { } {
         if { [lsearch "d" $ext] == -1 } {
             continue
         }
+
         # Convert to DG test.
         set imports [format "-I%s/%s" $base $dir]
         set filename [dmd2dg $base $dir/$name.$ext]
@@ -355,6 +356,7 @@ proc gdc-do-test { } {
             compilable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
+                    #set dg-do-what-default "compile"
                     set dg-do-what-default "assemble"
                     gdc-dg-runtest $filename "$imports"
                 }
@@ -364,7 +366,6 @@ proc gdc-do-test { } {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
                     set dg-do-what-default "assemble"
-                    #set dg-do-what-default "compile"
                     gdc-dg-runtest $filename $imports
                 }
             }

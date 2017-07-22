@@ -5,8 +5,8 @@ extern(C) alias RunDepTests = int function();
 void main(string[] args)
 {
     auto name = args[0];
-    assert(name[$-13 .. $] == "/load_linkdep");
-    name = name[0 .. $-12] ~ "liblinkdep.so";
+    assert(name[$-17 .. $] == "/load_linkdep.exe");
+    name = name[0 .. $-16] ~ "liblinkdep.so";
 
     auto h = Runtime.loadLibrary(name);
     assert(h);

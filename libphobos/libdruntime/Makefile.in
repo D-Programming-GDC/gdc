@@ -100,6 +100,7 @@ am__aclocal_m4_deps = $(top_srcdir)/../config/lead-dot.m4 \
 	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/gdc.m4 \
 	$(top_srcdir)/m4/druntime.m4 \
 	$(top_srcdir)/m4/druntime/libbacktrace.m4 \
+	$(top_srcdir)/m4/druntime/cpu.m4 \
 	$(top_srcdir)/m4/druntime/os.m4 \
 	$(top_srcdir)/m4/druntime/libraries.m4 \
 	$(top_srcdir)/configure.ac
@@ -366,13 +367,13 @@ libgdruntime_t_la_OBJECTS = $(am_libgdruntime_t_la_OBJECTS)
 @ENABLE_SHARED_TRUE@am_libgdruntime_t_la_rpath =
 @ENABLE_SHARED_TRUE@am__EXEEXT_1 = unittest$(EXEEXT)
 @ENABLE_STATIC_TRUE@am__EXEEXT_2 = unittest_static$(EXEEXT)
-am_unittest_OBJECTS = test_runner.$(OBJEXT)
+am_unittest_OBJECTS = ../testsuite/test_runner.$(OBJEXT)
 unittest_OBJECTS = $(am_unittest_OBJECTS)
 unittest_DEPENDENCIES = libgdruntime_t.la
 am__objects_27 = errno_.$(OBJEXT) bss_section.$(OBJEXT)
 am__objects_28 = threadasm.$(OBJEXT)
-am_unittest_static_OBJECTS = test_runner.$(OBJEXT) $(am__objects_27) \
-	$(am__objects_28)
+am_unittest_static_OBJECTS = ../testsuite/test_runner.$(OBJEXT) \
+	$(am__objects_27) $(am__objects_28)
 unittest_static_OBJECTS = $(am_unittest_static_OBJECTS)
 unittest_static_DEPENDENCIES = $(DRUNTIME_TEST_OBJECTS) \
 	$(BACKTRACE_LIB)
@@ -421,6 +422,8 @@ CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DCFG_ARM_EABI_UNWINDER = @DCFG_ARM_EABI_UNWINDER@
+DCFG_HAVE_64BIT_ATOMICS = @DCFG_HAVE_64BIT_ATOMICS@
+DCFG_HAVE_ATOMIC_BUILTINS = @DCFG_HAVE_ATOMIC_BUILTINS@
 DCFG_HAVE_LIBATOMIC = @DCFG_HAVE_LIBATOMIC@
 DCFG_MINFO_BRACKETING = @DCFG_MINFO_BRACKETING@
 DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
@@ -628,7 +631,7 @@ libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(DRUNTIME_SOVER
 libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
 
 # For static unittest, link objects directly
-unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
+unittest_static_SOURCES = ../testsuite/test_runner.d $(DRUNTIME_CSOURCES) \
     $(DRUNTIME_SSOURCES)
 
 unittest_static_LIBTOOLFLAGS = 
@@ -646,7 +649,7 @@ libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
 EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
 # For unittest
-unittest_SOURCES = test_runner.d
+unittest_SOURCES = ../testsuite/test_runner.d
 unittest_LIBTOOLFLAGS = 
 unittest_LDFLAGS = -Xcompiler -nophoboslib
 unittest_LDADD = libgdruntime_t.la
@@ -1451,6 +1454,10 @@ clean-checkPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+../testsuite/$(am__dirstamp):
+	@$(MKDIR_P) ../testsuite
+	@: > ../testsuite/$(am__dirstamp)
+../testsuite/test_runner.$(OBJEXT): ../testsuite/$(am__dirstamp)
 unittest$(EXEEXT): $(unittest_OBJECTS) $(unittest_DEPENDENCIES) $(EXTRA_unittest_DEPENDENCIES) 
 	@rm -f unittest$(EXEEXT)
 	$(unittest_LINK) $(unittest_OBJECTS) $(unittest_LDADD) $(LIBS)
@@ -1460,6 +1467,7 @@ unittest_static$(EXEEXT): $(unittest_static_OBJECTS) $(unittest_static_DEPENDENC
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f ../testsuite/test_runner.$(OBJEXT)
 	-rm -f core/atomic.$(OBJEXT)
 	-rm -f core/atomic.lo
 	-rm -f core/attribute.$(OBJEXT)
@@ -2435,7 +2443,6 @@ distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_LTLIBRARIES) $(check_PROGRAMS)
-	$(MAKE) $(AM_MAKEFLAGS) check-local
 check: check-am
 all-am: Makefile $(LTLIBRARIES)
 installdirs:
@@ -2468,6 +2475,7 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f ../testsuite/$(am__dirstamp)
 	-rm -f core/$(am__dirstamp)
 	-rm -f core/internal/$(am__dirstamp)
 	-rm -f core/stdc/$(am__dirstamp)
@@ -2574,7 +2582,7 @@ uninstall-am: uninstall-toolexeclibLTLIBRARIES
 
 .MAKE: check-am install-am install-strip
 
-.PHONY: CTAGS GTAGS all all-am check check-am check-local clean \
+.PHONY: CTAGS GTAGS all all-am check check-am clean \
 	clean-checkLTLIBRARIES clean-checkPROGRAMS clean-generic \
 	clean-libtool clean-local clean-toolexeclibLTLIBRARIES ctags \
 	distclean distclean-compile distclean-generic \
@@ -2616,10 +2624,6 @@ uninstall-am: uninstall-toolexeclibLTLIBRARIES
 clean-local:
 	rm -f $(DRUNTIME_TEST_LOBJECTS)
 	rm -f $(DRUNTIME_TEST_OBJECTS)
-
-check-local:
-@ENABLE_STATIC_TRUE@	./unittest_static$(EXEEXT)
-@ENABLE_SHARED_TRUE@	./unittest$(EXEEXT)
 
 # Handles generated files as well
 install-data-local:
