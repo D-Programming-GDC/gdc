@@ -405,6 +405,7 @@ build_delegate_cst (tree method, tree object, Type *type)
       ctype = make_struct_type ("delegate()", 2,
 				get_identifier ("object"), TREE_TYPE (object),
 				get_identifier ("func"), TREE_TYPE (method));
+      TYPE_DELEGATE (ctype) = 1;
     }
 
   vec<constructor_elt, va_gc> *ce = NULL;

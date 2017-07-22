@@ -30,6 +30,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-frontend.h"
+#include "d-target.h"
 #include "id.h"
 
 
@@ -187,16 +188,14 @@ make_frontend_typeinfo (Module *mod, Identifier *ident,
   if (!base)
     base = Type::dtypeinfo;
 
-  gcc_assert (mod->md != NULL);
-
   /* Create object module in order to complete the semantic.  */
   if (!mod->_scope)
     mod->importAll (NULL);
 
   /* Assignment of global typeinfo variables is managed by the ClassDeclaration
      constructor, so only need to new the declaration here.  */
-  ClassDeclaration *tinfo = new ClassDeclaration (mod->md->loc, ident,
-						  NULL, true);
+  Loc loc = (mod->md) ? mod->md->loc : mod->loc;
+  ClassDeclaration *tinfo = new ClassDeclaration (loc, ident, NULL, true);
   tinfo->parent = mod;
   tinfo->semantic (mod->_scope);
   tinfo->baseClass = base;
@@ -1318,7 +1317,7 @@ layout_cpp_typeinfo (ClassDeclaration *cd)
 
   /* Let C++ do the RTTI generation, and just reference the symbol as
      extern, the knowing the underlying type is not required.  */
-  const char *ident = cppTypeInfoMangle (cd);
+  const char *ident = Target::cppTypeInfoMangle (cd);
   tree typeinfo = declare_extern_var (get_identifier (ident),
 				      unknown_type_node);
   TREE_READONLY (typeinfo) = 1;

@@ -98,7 +98,7 @@ libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(DRUNTIME_SOVER
 libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
 
 # For static unittest, link objects directly
-unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
+unittest_static_SOURCES = ../testsuite/test_runner.d $(DRUNTIME_CSOURCES) \
     $(DRUNTIME_SSOURCES)
 unittest_static_LIBTOOLFLAGS =
 unittest_static_LDFLAGS = -Xcompiler -nophoboslib
@@ -115,7 +115,7 @@ libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
 EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
 # For unittest
-unittest_SOURCES = test_runner.d
+unittest_SOURCES = ../testsuite/test_runner.d
 unittest_LIBTOOLFLAGS =
 unittest_LDFLAGS = -Xcompiler -nophoboslib
 unittest_LDADD = libgdruntime_t.la
@@ -126,14 +126,6 @@ unittest_LDADD = libgdruntime_t.la
 clean-local:
 	rm -f $(DRUNTIME_TEST_LOBJECTS)
 	rm -f $(DRUNTIME_TEST_OBJECTS)
-
-check-local:
-if ENABLE_STATIC
-	./unittest_static$(EXEEXT)
-endif
-if ENABLE_SHARED
-	./unittest$(EXEEXT)
-endif
 
 # Handles generated files as well
 install-data-local:
