@@ -828,13 +828,6 @@ d_finish_compilation (tree *vec, int len)
     {
       tree decl = vec[i];
       wrapup_global_declarations (&decl, 1);
-
-      /* We want the static symbol to be written.  */
-      if (TREE_PUBLIC (decl) && VAR_OR_FUNCTION_DECL_P (decl))
-	{
-	  if ((VAR_P (decl) && TREE_STATIC (decl)) || !DECL_ARTIFICIAL (decl))
-	    mark_needed (decl);
-	}
     }
 
   /* If the target does not directly support static constructors,

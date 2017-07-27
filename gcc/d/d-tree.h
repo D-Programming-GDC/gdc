@@ -57,8 +57,7 @@ typedef Array<Expression *> Expressions;
    5: TYPE_ASSOCIATIVE_ARRAY (in RECORD_TYPE).
 
    Usage of DECL_LANG_FLAG_?:
-   0: D_DECL_ONE_ONLY
-   1: LABEL_VARIABLE_CASE (in LABEL_DECL).  */
+   0: LABEL_VARIABLE_CASE (in LABEL_DECL).  */
 
 /* The kinds of scopes we recognise.  */
 
@@ -342,14 +341,9 @@ lang_tree_node
 #define TYPE_ASSOCIATIVE_ARRAY(NODE) \
   (TYPE_LANG_FLAG_5 (RECORD_TYPE_CHECK (NODE)))
 
-/* True if the symbol should be made "link one only".  This is used to
-   defer calling make_decl_one_only() before the decl has been prepared.  */
-#define D_DECL_ONE_ONLY(NODE) \
-  (DECL_LANG_FLAG_0 (NODE))
-
 /* True if the decl is a variable case label decl.  */
 #define LABEL_VARIABLE_CASE(NODE) \
-  (DECL_LANG_FLAG_1 (LABEL_DECL_CHECK (NODE)))
+  (DECL_LANG_FLAG_0 (LABEL_DECL_CHECK (NODE)))
 
 enum d_tree_index
 {
