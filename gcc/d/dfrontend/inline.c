@@ -1185,7 +1185,7 @@ public:
          */
         if ((*exp)->op == TOKcall)
         {
-            visitCallExp((CallExp *)exp, NULL, true);
+            visitCallExp((CallExp *)(*exp), NULL, true);
             if (eresult)
                 *exp = eresult;
             Statement *s = sresult;
@@ -1199,7 +1199,7 @@ public:
          */
         if ((*exp)->op == TOKquestion)
         {
-            CondExp *e = (CondExp *)exp;
+            CondExp *e = (CondExp *)(*exp);
             inlineScan(&e->econd);
             Statement *s1 = inlineScanExpAsStatement(&e->e1);
             Statement *s2 = inlineScanExpAsStatement(&e->e2);
@@ -1211,7 +1211,7 @@ public:
         }
         if ((*exp)->op == TOKcomma)
         {
-            CommaExp *e = (CommaExp *)exp;
+            CommaExp *e = (CommaExp *)(*exp);
             Statement *s1 = inlineScanExpAsStatement(&e->e1);
             Statement *s2 = inlineScanExpAsStatement(&e->e2);
             if (!s1 && !s2)
@@ -1524,7 +1524,7 @@ public:
         if (e->e1->op == TOKvar)
         {
             VarExp *ve = (VarExp *)e->e1;
-            FuncDeclaration *fd = ve->var->isFuncDeclaration();
+            fd = ve->var->isFuncDeclaration();
             if (fd && fd != parent && canInline(fd, 0, 0, asStatements))
             {
                 expandInline(e->loc, fd, parent, eret, NULL, e->arguments, asStatements, &eresult, &sresult, &again);
@@ -1533,7 +1533,7 @@ public:
         else if (e->e1->op == TOKdotvar)
         {
             DotVarExp *dve = (DotVarExp *)e->e1;
-            FuncDeclaration *fd = dve->var->isFuncDeclaration();
+            fd = dve->var->isFuncDeclaration();
 
             if (fd && fd != parent && canInline(fd, 1, 0, asStatements))
             {
@@ -2045,7 +2045,7 @@ static void expandInline(Loc callLoc, FuncDeclaration *fd, FuncDeclaration *pare
             }
 
             ExpInitializer *ei = new ExpInitializer(fd->loc, ethis);
-            VarDeclaration *vthis = new VarDeclaration(fd->loc, ethis->type, Id::This, ei);
+            vthis = new VarDeclaration(fd->loc, ethis->type, Id::This, ei);
             if (ethis->type->ty != Tclass)
                 vthis->storage_class = STCref;
             else
@@ -2056,7 +2056,7 @@ static void expandInline(Loc callLoc, FuncDeclaration *fd, FuncDeclaration *pare
             ei->exp = new ConstructExp(fd->loc, vthis, ethis);
             ei->exp->type = vthis->type;
 
-            Expression *de = new DeclarationExp(fd->loc, ids.vthis);
+            Expression *de = new DeclarationExp(fd->loc, vthis);
             de->type = Type::tvoid;
             e0 = Expression::combine(e0, de);
         }
