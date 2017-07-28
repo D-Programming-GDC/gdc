@@ -49,7 +49,6 @@ class StringExp;
 class ArrayExp;
 class SliceExp;
 struct UnionExp;
-
 #ifdef IN_GCC
 typedef union tree_node Symbol;
 #else

@@ -794,7 +794,6 @@ void AnonDeclaration::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset
                 offset = 0;
         }
 
-#if IN_GCC
         /* Bugzilla 13613: If the fields in this->members had been already
          * added in ad->fields, just update *poffset for the subsequent
          * field offset calculation.
@@ -811,22 +810,6 @@ void AnonDeclaration::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset
         anonalignsize  = ad->alignsize;
         ad->structsize = savestructsize;
         ad->alignsize  = savealignsize;
-#else
-        anonstructsize = ad->structsize;
-        anonalignsize  = ad->alignsize;
-        ad->structsize = savestructsize;
-        ad->alignsize  = savealignsize;
-
-        if (fieldstart == ad->fields.dim)
-        {
-            /* Bugzilla 13613: If the fields in this->members had been already
-             * added in ad->fields, just update *poffset for the subsequent
-             * field offset calculation.
-             */
-            *poffset = ad->structsize;
-            return;
-        }
-#endif
 
         // 0 sized structs are set to 1 byte
         // TODO: is this corect hebavior?
