@@ -539,8 +539,9 @@ void EnumMember::semantic(Scope *sc)
         assert(value());          // "type id;" is not a valid enum member declaration
     }
 
-    if (Expression *e = value())
+    if (value())
     {
+        Expression *e = value();
         assert(e->dyncast() == DYNCAST_EXPRESSION);
         e = e->semantic(sc);
         e = resolveProperties(sc, e);

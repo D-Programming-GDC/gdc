@@ -4073,6 +4073,7 @@ size_t StringExp::numberOfCodeUnits(int tynto) const
     int encSize;
     switch (tynto)
     {
+        case 0:      return len;
         case Tchar:  encSize = 1; break;
         case Twchar: encSize = 2; break;
         case Tdchar: encSize = 4; break;
