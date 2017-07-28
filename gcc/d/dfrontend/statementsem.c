@@ -1009,7 +1009,7 @@ public:
                         goto Lapply;
 
                     /* Generate a temporary __r and initialize it with the aggregate.
-                    */
+                     */
                     VarDeclaration *r;
                     Statement *init;
                     if (vinit && fs->aggr->op == TOKvar && ((VarExp *)fs->aggr)->var == vinit)
@@ -3469,7 +3469,7 @@ void semantic(Catch *c, Scope *sc)
     if (sc->os && sc->os->tok != TOKon_scope_failure)
     {
         // If enclosing is scope(success) or scope(exit), this will be placed in finally block.
-        c->error(c->loc, "cannot put catch statement inside %s", Token::toChars(sc->os->tok));
+        error(c->loc, "cannot put catch statement inside %s", Token::toChars(sc->os->tok));
         c->errors = true;
     }
     if (sc->tf)
@@ -3480,7 +3480,7 @@ void semantic(Catch *c, Scope *sc)
          * To fix, have the compiler automatically convert the finally
          * body into a nested function.
          */
-        c->error(c->loc, "cannot put catch statement inside finally block");
+        error(c->loc, "cannot put catch statement inside finally block");
         c->errors = true;
     }
 #endif

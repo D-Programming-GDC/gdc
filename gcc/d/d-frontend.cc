@@ -493,15 +493,24 @@ genCmain (Scope *sc)
   if (initialized)
     return;
 
-  /* The D code to be generated is provided by __entrypoint.di.  */
+  /* The D code to be generated is provided by __entrypoint.di, try to load it,
+     but don't fail if unfound.  */
+  unsigned errors = global.startGagging ();
   Module *m = Module::load (Loc (), NULL, Id::entrypoint);
-  m->importedFrom = m;
-  m->importAll (NULL);
-  m->semantic (NULL);
-  m->semantic2 (NULL);
-  m->semantic3 (NULL);
 
-  d_add_entrypoint_module (m, sc->_module);
+  if (global.endGagging (errors))
+    m = NULL;
+
+  if (m != NULL)
+    {
+      m->importedFrom = m;
+      m->importAll (NULL);
+      m->semantic (NULL);
+      m->semantic2 (NULL);
+      m->semantic3 (NULL);
+      d_add_entrypoint_module (m, sc->_module);
+    }
+
   initialized = true;
 }
 
