@@ -4,12 +4,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
@@ -21,7 +21,7 @@ load_lib gcc-dg.exp
 proc gdc-dg-test { prog do_what extra_tool_flags } {
     set result \
         [gcc-dg-test-1 gdc_target_compile $prog $do_what $extra_tool_flags]
-    
+
     set comp_output [lindex $result 0]
     set output_file [lindex $result 1]
 
@@ -79,7 +79,7 @@ if { [info procs gdc_load] != [list] \
         global EXECUTE_ARGS
         set args [concat "{$EXECUTE_ARGS}"]
         #print "Running: $program [lindex $args 0]"
-        set result [eval [list prev_gdc_load $program] $args ] 
+        set result [eval [list prev_gdc_load $program] $args ]
         return $result
     }
 }

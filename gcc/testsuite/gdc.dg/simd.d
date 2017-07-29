@@ -1,5 +1,3 @@
-// REQUIRED_ARGS:
-
 import core.simd;
 import core.stdc.string;
 import std.stdio;
