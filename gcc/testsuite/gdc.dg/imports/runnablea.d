@@ -1,6 +1,6 @@
-module imports.gdca;
+module imports.runnablea;
 
-private import gdc;
+private import runnable;
 
 /******************************************/
 

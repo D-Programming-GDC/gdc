@@ -1,5 +1,4 @@
-// REQUIRED_ARGS:
-
+// { dg-do run }
 import core.simd;
 import core.stdc.string;
 import std.stdio;
