@@ -1252,10 +1252,15 @@ get_symbol_decl (Declaration *decl)
 tree
 declare_extern_var (tree ident, tree type)
 {
+  /* If the VAR_DECL has already been declared, return it.  */
+  if (IDENTIFIER_DECL_TREE (ident))
+    return IDENTIFIER_DECL_TREE (ident);
+
   tree name = IDENTIFIER_PRETTY_NAME (ident)
     ? IDENTIFIER_PRETTY_NAME (ident) : ident;
   tree decl = build_decl (input_location, VAR_DECL, name, type);
 
+  IDENTIFIER_DECL_TREE (ident) = decl;
   d_keep (decl);
 
   SET_DECL_ASSEMBLER_NAME (decl, ident);

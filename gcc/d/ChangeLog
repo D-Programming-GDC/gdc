@@ -1,5 +1,14 @@
 2017-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (build_lang_decl): Handle compiler generated typeinfo that
+	also appear in code.
+	* d-tree.h (lang_identifier): Add decl_tree.
+	(IDENTIFIER_DECL_TREE): New macro.
+	* decl.cc (declare_extern_var): Re-use already generated decl if
+	called with the same identifier twice.
+
+2017-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* decl.cc (d_finish_decl): Replace ENABLE_TREE_CHECKING macro with
 	flag_checking.
 

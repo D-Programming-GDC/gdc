@@ -184,6 +184,9 @@ struct GTY(()) lang_identifier
   /* The identifier as the user sees it.  */
   tree pretty_ident;
 
+  /* The backend tree associated with this identifier.  */
+  tree decl_tree;
+
   /* The frontend Declaration associated with this identifier.  */
   Declaration * GTY((skip)) dsymbol;
 };
@@ -193,6 +196,9 @@ struct GTY(()) lang_identifier
 
 #define IDENTIFIER_PRETTY_NAME(NODE) \
   (IDENTIFIER_LANG_SPECIFIC (NODE)->pretty_ident)
+
+#define IDENTIFIER_DECL_TREE(NODE) \
+  (IDENTIFIER_LANG_SPECIFIC (NODE)->decl_tree)
 
 #define IDENTIFIER_DSYMBOL(NODE) \
   (IDENTIFIER_LANG_SPECIFIC (NODE)->dsymbol)
