@@ -298,8 +298,6 @@ proc gdc-permute-options { options } {
 
 
 proc gdc-do-test { } {
-    global TORTURE_OPTIONS
-    global SHARED_OPTION
     global srcdir subdir
     global dg-do-what-default
     global verbose
@@ -313,6 +311,9 @@ proc gdc-do-test { } {
 
     # These are special options to use on testcase, and override DEFAULT_DFLAGS
     global PERMUTE_ARGS
+
+    # Set if an extra option should be passed to link to shared druntime.
+    global SHARED_OPTION
 
     # Additional arguments for gdc_load
     global EXECUTE_ARGS
@@ -350,26 +351,26 @@ proc gdc-do-test { } {
         switch $dir {
             runnable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
-                    set TORTURE_OPTIONS [lindex $options $i]
+                    set flags [lindex $options $i]
                     set dg-do-what-default "run"
-                    gdc-dg-runtest $filename $imports
+                    gdc-dg-runtest $filename $flags $imports
                 }
             }
 
             compilable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
-                    set TORTURE_OPTIONS [lindex $options $i]
+                    set flags [lindex $options $i]
                     #set dg-do-what-default "compile"
                     set dg-do-what-default "assemble"
-                    gdc-dg-runtest $filename "$imports"
+                    gdc-dg-runtest $filename $flags $imports
                 }
             }
 
             fail_compilation {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
-                    set TORTURE_OPTIONS [lindex $options $i]
+                    set flags [lindex $options $i]
                     set dg-do-what-default "assemble"
-                    gdc-dg-runtest $filename $imports
+                    gdc-dg-runtest $filename $flags $imports
                 }
             }
         }

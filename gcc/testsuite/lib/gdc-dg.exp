@@ -39,9 +39,8 @@ proc gdc-dg-prune { system text } {
 # as c-torture does.
 #
 
-proc gdc-dg-runtest { testcases default-extra-flags } {
+proc gdc-dg-runtest { testcases flags default-extra-flags } {
     global runtests
-    global TORTURE_OPTIONS
 
     foreach test $testcases {
         # If we're only testing specific files and this isn't one of
@@ -50,18 +49,20 @@ proc gdc-dg-runtest { testcases default-extra-flags } {
             continue
         }
 
-        if [expr [search_for $test "dg-do run"]] {
-            set flags ""
+        # Use TORTURE_OPTIONS to cycle through an option list.
+        if [torture-options-exist] then {
+            global torture_with_loops
+            set option_list $torture_with_loops
         } else {
-            set flags $TORTURE_OPTIONS
+            set option_list { "" }
         }
 
-        # Use dg-options if specified
-        #dg-options
-
         set nshort [file tail [file dirname $test]]/[file tail $test]
-        verbose "Testing $nshort, $TORTURE_OPTIONS" 1
-        dg-test $test $TORTURE_OPTIONS ${default-extra-flags}
+
+        foreach flags_t $option_list {
+            verbose "Testing $nshort, $flags $flags_t" 1
+            dg-test $test "$flags $flags_t" ${default-extra-flags}
+        }
     }
 }
 
