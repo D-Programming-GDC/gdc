@@ -167,10 +167,10 @@ proc gdc-copy-extra { base extra } {
 proc dmd2dg { base test } {
     global DEFAULT_DFLAGS
     global PERMUTE_ARGS
-    global EXECUTE_ARGS
+    global GDC_EXECUTE_ARGS
 
     set PERMUTE_ARGS $DEFAULT_DFLAGS
-    set EXECUTE_ARGS ""
+    set GDC_EXECUTE_ARGS ""
 
     # Split base, folder/file.
     set type [file dirname $test]
@@ -207,7 +207,7 @@ proc dmd2dg { base test } {
         } elseif [regexp -- {EXECUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
             # EXECUTE_ARGS is handled by gdc_load.
             foreach arg $args {
-                lappend EXECUTE_ARGS $arg
+                lappend GDC_EXECUTE_ARGS $arg
             }
             regsub -- {EXECUTE_ARGS.*$} $copy_line "" out_line
 
@@ -316,7 +316,7 @@ proc gdc-do-test { } {
     global SHARED_OPTION
 
     # Additional arguments for gdc_load
-    global EXECUTE_ARGS
+    global GDC_EXECUTE_ARGS
 
     # Initialize `dg'.
     dg-init

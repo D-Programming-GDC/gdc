@@ -1,4 +1,5 @@
 // { dg-additional-sources "imports/runnablea.d" }
+// { dg-do run }
 
 module runnable;
 

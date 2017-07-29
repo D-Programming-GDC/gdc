@@ -76,8 +76,10 @@ if { [info procs gdc_load] != [list] \
     rename gdc_load prev_gdc_load
 
     proc gdc_load { program args } {
-        global EXECUTE_ARGS
-        set args [concat "{$EXECUTE_ARGS}"]
+        global GDC_EXECUTE_ARGS
+        if [info exists GDC_EXECUTE_ARGS] then {
+            set args [concat "{$GDC_EXECUTE_ARGS}"]
+        }
         #print "Running: $program [lindex $args 0]"
         set result [eval [list prev_gdc_load $program] $args ]
         return $result
