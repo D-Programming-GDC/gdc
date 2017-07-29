@@ -1404,8 +1404,7 @@ d_finish_decl (tree decl)
   DECL_EXTERNAL (decl) = 0;
   relayout_decl (decl);
 
-#ifdef ENABLE_TREE_CHECKING
-  if (DECL_INITIAL (decl) != NULL_TREE)
+  if (flag_checking && DECL_INITIAL (decl))
     {
       /* Initialiser must never be bigger than symbol size.  */
       dinteger_t tsize = int_size_in_bytes (TREE_TYPE (decl));
@@ -1422,7 +1421,6 @@ d_finish_decl (tree decl)
 			  tsize, dtsize);
 	}
     }
-#endif
 
   /* Add this decl to the current binding level.  */
   d_pushdecl (decl);
