@@ -1279,11 +1279,6 @@ get_classinfo_decl (ClassDeclaration *decl)
   /* ClassInfo cannot be const data, because we use the monitor on it.  */
   TREE_READONLY (decl->csym) = 0;
 
-  /* Could move setting comdat linkage to the caller, who knows whether
-     this classinfo is being emitted in this compilation.  */
-  if (decl->isInstantiated ())
-    d_comdat_linkage (decl->csym);
-
   return decl->csym;
 }
 
