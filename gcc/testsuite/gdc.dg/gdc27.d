@@ -1,4 +1,4 @@
-// EXTRA_SOURCES: imports/gdc27a.d
+// { dg-additional-sources "imports/gdc27a.d" }
 module gdc27;
 
 import imports.gdc27a;

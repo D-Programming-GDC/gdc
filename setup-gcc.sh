@@ -67,6 +67,7 @@ fi
 
 d_test=$d_gccsrc/gcc/testsuite
 # remove testsuite sources
+test -d "$d_test/gdc.dg" && rm -r "$d_test/gdc.dg"
 test -d "$d_test/gdc.test" && rm -r "$d_test/gdc.test"
 test -e "$d_test/lib/gdc.exp" && rm "$d_test/lib/gdc.exp"
 test -e "$d_test/lib/gdc-dg.exp" && rm "$d_test/lib/gdc-dg.exp"

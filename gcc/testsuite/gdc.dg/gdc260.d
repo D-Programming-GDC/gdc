@@ -1,5 +1,4 @@
-// REQUIRED_ARGS: -w
-
+// { dg-options "-Wall -Werror" }
 import gcc.builtins;
 
 char *bug260(char *buffer)

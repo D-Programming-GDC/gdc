@@ -1,5 +1,3 @@
-// PERMUTE_ARGS:
-
 struct S242a
 {
     enum M = S242a();
