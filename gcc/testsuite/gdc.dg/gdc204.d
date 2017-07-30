@@ -1,5 +1,3 @@
-// PERMUTE_ARGS:
-
 interface I204
 {
       void f();
