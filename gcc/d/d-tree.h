@@ -63,8 +63,7 @@ typedef Array<TREE_H_Expression_Ptr> Expressions;
    5: TYPE_ASSOCIATIVE_ARRAY (in RECORD_TYPE).
 
    Usage of DECL_LANG_FLAG_?:
-   0: D_DECL_ONE_ONLY
-   1: LABEL_VARIABLE_CASE (in LABEL_DECL).  */
+   0: LABEL_VARIABLE_CASE (in LABEL_DECL).  */
 
 /* The kinds of scopes we recognise.  */
 
@@ -191,6 +190,9 @@ struct GTY(()) lang_identifier
   /* The identifier as the user sees it.  */
   tree pretty_ident;
 
+  /* The backend tree associated with this identifier.  */
+  tree decl_tree;
+
   /* The frontend Declaration associated with this identifier.  */
   Declaration * GTY((skip)) dsymbol;
 };
@@ -200,6 +202,9 @@ struct GTY(()) lang_identifier
 
 #define IDENTIFIER_PRETTY_NAME(NODE) \
   (IDENTIFIER_LANG_SPECIFIC (NODE)->pretty_ident)
+
+#define IDENTIFIER_DECL_TREE(NODE) \
+  (IDENTIFIER_LANG_SPECIFIC (NODE)->decl_tree)
 
 #define IDENTIFIER_DSYMBOL(NODE) \
   (IDENTIFIER_LANG_SPECIFIC (NODE)->dsymbol)
@@ -348,14 +353,9 @@ lang_tree_node
 #define TYPE_ASSOCIATIVE_ARRAY(NODE) \
   (TYPE_LANG_FLAG_5 (RECORD_TYPE_CHECK (NODE)))
 
-/* True if the symbol should be made "link one only".  This is used to
-   defer calling make_decl_one_only() before the decl has been prepared.  */
-#define D_DECL_ONE_ONLY(NODE) \
-  (DECL_LANG_FLAG_0 (NODE))
-
 /* True if the decl is a variable case label decl.  */
 #define LABEL_VARIABLE_CASE(NODE) \
-  (DECL_LANG_FLAG_1 (LABEL_DECL_CHECK (NODE)))
+  (DECL_LANG_FLAG_0 (LABEL_DECL_CHECK (NODE)))
 
 enum d_tree_index
 {

@@ -1,7 +1,33 @@
 2017-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (build_lang_decl): Handle compiler generated typeinfo that
+	also appear in code.
+	* d-tree.h (lang_identifier): Add decl_tree.
+	(IDENTIFIER_DECL_TREE): New macro.
+	* decl.cc (declare_extern_var): Re-use already generated decl if
+	called with the same identifier twice.
+
+2017-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* decl.cc (d_finish_decl): Replace ENABLE_TREE_CHECKING macro with
 	flag_checking.
+
+2017-07-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (D_DECL_ONE_ONLY): Remove macro accessor.
+	* decl.cc (DeclVisitor::visit(StructDeclaration)): Move call to
+	d_comdat_linkage here.
+	(DeclVisitor::visit(ClassDeclaration)): Likewise.
+	(DeclVisitor::visit(InterfaceDeclaration)): Likewise.
+	(DeclVisitor::visit(EnumDeclaration)): Likewise.
+	(get_symbol_decl): Move call to mark_needed here.
+	(declare_extern_var): Mark compiler generated symbols as needed.
+	(make_thunk): Remove copy of D_DECL_ONE_ONLY.
+	(get_vtable_decl): Don't call d_comdat_linkage.
+	(aggregate_initializer_decl): Likewise.
+	(enum_initializer_decl): Likewise.
+	* modules.cc (d_finish_compilation): Don't call mark_needed.
+	* typeinfo.cc (get_classinfo_decl): Don't call d_comdat_linkage.
 
 2017-07-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
