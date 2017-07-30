@@ -36,12 +36,12 @@ set gdc_compile_options ""
 
 proc gdc_version { } {
     global GDC_UNDER_TEST
-    
+
     gdc_init
 
     # ignore any arguments after the command
     set compiler [lindex $GDC_UNDER_TEST 0]
-    
+
     # verify that the compiler exists
     if { [is_remote host] || [which $compiler] != 0 } then {
         set tmp [remote_exec host "$compiler -v"]
