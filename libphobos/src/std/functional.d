@@ -1289,7 +1289,7 @@ unittest {
 
     uint myNum = 0;
     auto incMyNumDel = toDelegate(&inc);
-    static assert(is(typeof(incMyNumDel) == int delegate(ref uint)));
+    int delegate(ref uint) dg = incMyNumDel;
     auto returnVal = incMyNumDel(myNum);
     assert(myNum == 1);
 
@@ -1341,14 +1341,6 @@ unittest {
         auto dg_pure_nothrow_safe = toDelegate(&func_pure_nothrow_safe);
 
         //static assert(is(typeof(dg_ref) == ref int delegate())); // [BUG@DMD]
-        static assert(is(typeof(dg_pure) == int delegate() pure));
-        static assert(is(typeof(dg_nothrow) == int delegate() nothrow));
-        static assert(is(typeof(dg_property) == int delegate() @property));
-        //static assert(is(typeof(dg_safe) == int delegate() @safe));
-        static assert(is(typeof(dg_trusted) == int delegate() @trusted));
-        static assert(is(typeof(dg_system) == int delegate() @system));
-        static assert(is(typeof(dg_pure_nothrow) == int delegate() pure nothrow));
-        //static assert(is(typeof(dg_pure_nothrow_safe) == int delegate() @safe pure nothrow));
 
         assert(dg_ref() == refvar);
         assert(dg_pure() == 1);
