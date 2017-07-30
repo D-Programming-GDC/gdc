@@ -4,12 +4,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
@@ -21,7 +21,7 @@ load_lib gcc-dg.exp
 proc gdc-dg-test { prog do_what extra_tool_flags } {
     set result \
         [gcc-dg-test-1 gdc_target_compile $prog $do_what $extra_tool_flags]
-    
+
     set comp_output [lindex $result 0]
     set output_file [lindex $result 1]
 
@@ -39,9 +39,8 @@ proc gdc-dg-prune { system text } {
 # as c-torture does.
 #
 
-proc gdc-dg-runtest { testcases default-extra-flags } {
+proc gdc-dg-runtest { testcases flags default-extra-flags } {
     global runtests
-    global TORTURE_OPTIONS
 
     foreach test $testcases {
         # If we're only testing specific files and this isn't one of
@@ -50,18 +49,20 @@ proc gdc-dg-runtest { testcases default-extra-flags } {
             continue
         }
 
-        if [expr [search_for $test "dg-do run"]] {
-            set flags ""
+        # Use TORTURE_OPTIONS to cycle through an option list.
+        if [torture-options-exist] then {
+            global torture_with_loops
+            set option_list $torture_with_loops
         } else {
-            set flags $TORTURE_OPTIONS
+            set option_list { "" }
         }
 
-        # Use dg-options if specified
-        #dg-options
-
         set nshort [file tail [file dirname $test]]/[file tail $test]
-        verbose "Testing $nshort, $TORTURE_OPTIONS" 1
-        dg-test $test $TORTURE_OPTIONS ${default-extra-flags}
+
+        foreach flags_t $option_list {
+            verbose "Testing $nshort, $flags $flags_t" 1
+            dg-test $test "$flags $flags_t" ${default-extra-flags}
+        }
     }
 }
 
@@ -75,10 +76,12 @@ if { [info procs gdc_load] != [list] \
     rename gdc_load prev_gdc_load
 
     proc gdc_load { program args } {
-        global EXECUTE_ARGS
-        set args [concat "{$EXECUTE_ARGS}"]
+        global GDC_EXECUTE_ARGS
+        if [info exists GDC_EXECUTE_ARGS] then {
+            set args [concat "{$GDC_EXECUTE_ARGS}"]
+        }
         #print "Running: $program [lindex $args 0]"
-        set result [eval [list prev_gdc_load $program] $args ] 
+        set result [eval [list prev_gdc_load $program] $args ]
         return $result
     }
 }

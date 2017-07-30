@@ -1,9 +1,10 @@
-// EXTRA_SOURCES: imports/gdcltoa.d
+// { dg-additional-sources "imports/ltoa.d" }
 // { dg-additional-options "-flto" }
+// { dg-do run }
 
-module gdclto;
+module lto;
 
-import imports.gdcltoa;
+import imports.ltoa;
 import core.stdc.stdio;
 
 

@@ -1,5 +1,3 @@
-// PERMUTE_ARGS:
-
 void test261()
 {
     class C1

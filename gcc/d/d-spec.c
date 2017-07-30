@@ -105,6 +105,13 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* Whether the -o option was used.  */
   bool saw_opt_o = false;
 
+  /* Whether the -c option was used.  Also used for -E, -fsyntax-only,
+     in general anything which implies only compilation and not linking.  */
+  bool saw_opt_c = false;
+
+  /* Whether the -S option was used.  */
+  bool saw_opt_S = false;
+
   /* The first input file with an extension of .d.  */
   const char *first_d_file = NULL;
 
@@ -203,13 +210,18 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_c:
-	case OPT_S:
 	case OPT_E:
 	case OPT_M:
 	case OPT_MM:
 	case OPT_fsyntax_only:
 	  /* Don't specify libaries if we won't link, since that would
 	     cause a warning.  */
+	  saw_opt_c = true;
+	  library = -1;
+	  break;
+
+	case OPT_S:
+	  saw_opt_S = true;
 	  library = -1;
 	  break;
 
@@ -340,24 +352,43 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 				  &new_decoded_options[j++]);
     }
 
-  /* If we are not linking, add a -o option.  This is because we need
+  /* If we didn't see a -o option, add one.  This is because we need
      the driver to pass all .d files to cc1d.  Without a -o option the
      driver will invoke cc1d separately for each input file.  */
-  if (library < 0 && first_d_file != NULL && !saw_opt_o)
+  if (first_d_file != NULL && !saw_opt_o)
     {
-      const char *base = lbasename (first_d_file);
-      int baselen = strlen (base) - 2;
-      int alen = baselen + 3;
-      char *out = XNEWVEC (char, alen);
+      if (saw_opt_c || saw_opt_S)
+	{
+	  const char *base = lbasename (first_d_file);
+	  int baselen = strlen (base) - 2;
+	  char *out = XNEWVEC (char, baselen + 3);
 
-      memcpy (out, base, baselen);
+	  memcpy (out, base, baselen);
+	  /* The driver will convert .o to some other suffix if appropriate.  */
+	  out[baselen] = '.';
+	  if (saw_opt_S)
+	    out[baselen + 1] = 's';
+	  else
+	    out[baselen + 1] = 'o';
+	  out[baselen + 2] = '\0';
+	  generate_option (OPT_o, out, 1, CL_DRIVER,
+			   &new_decoded_options[j]);
+	}
+      else
+	{
+	  /* Wouldn't be necessary if the driver converted .out also.  */
+	  const char *out = NULL;
 
-      /* The driver will convert .o to some other suffix if appropriate.  */
-      out[baselen] = '.';
-      out[baselen + 1] = 'o';
-      out[baselen + 2] = '\0';
-      generate_option (OPT_o, out, 1, CL_DRIVER,
-		       &new_decoded_options[j]);
+#ifdef TARGET_EXECUTABLE_SUFFIX
+	  if (TARGET_EXECUTABLE_SUFFIX[0] != 0)
+	    out = "a" TARGET_EXECUTABLE_SUFFIX;
+#endif
+	  if (out == NULL)
+	    out = "a.out";
+
+	  generate_option (OPT_o, out, 1, CL_DRIVER,
+			   &new_decoded_options[j]);
+	}
       j++;
     }
 

@@ -1,3 +1,4 @@
+// { dg-options "-I $srcdir/gdc.dg" }
 import imports.gdc170a;
 
 void main()
