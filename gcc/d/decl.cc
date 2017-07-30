@@ -320,6 +320,9 @@ public:
     d->sinit = aggregate_initializer_decl (d);
     DECL_INITIAL (d->sinit) = layout_struct_initializer (d);
 
+    if (d->isInstantiated ())
+      d_comdat_linkage (d->sinit);
+
     d_finish_decl (d->sinit);
 
     /* Put out the members.  */
@@ -370,11 +373,13 @@ public:
 
     /* Generate static initialiser.  */
     DECL_INITIAL (d->sinit) = layout_class_initializer (d);
+    d_comdat_linkage (d->sinit);
     d_finish_decl (d->sinit);
 
     /* Put out the TypeInfo.  */
     create_typeinfo (d->type, NULL);
     DECL_INITIAL (d->csym) = layout_classinfo (d);
+    d_comdat_linkage (d->csym);
     d_finish_decl (d->csym);
 
     /* Put out the vtbl[].  */
@@ -437,6 +442,7 @@ public:
 
     DECL_INITIAL (d->vtblsym)
       = build_constructor (TREE_TYPE (d->vtblsym), elms);
+    d_comdat_linkage (d->vtblsym);
     d_finish_decl (d->vtblsym);
 
     /* Add this decl to the current binding level.  */
@@ -472,7 +478,9 @@ public:
     /* Put out the TypeInfo.  */
     create_typeinfo (d->type, NULL);
     d->type->vtinfo->accept (this);
+
     DECL_INITIAL (d->csym) = layout_classinfo (d);
+    d_comdat_linkage (d->csym);
     d_finish_decl (d->csym);
 
     /* Add this decl to the current binding level.  */
@@ -507,6 +515,10 @@ public:
 	/* Generate static initialiser.  */
 	d->sinit = enum_initializer_decl (d);
 	DECL_INITIAL (d->sinit) = build_expr (tc->sym->defaultval, true);
+
+	if (d->isInstantiated ())
+	  d_comdat_linkage (d->sinit);
+
 	d_finish_decl (d->sinit);
 
 	/* Add this decl to the current binding level.  */
@@ -563,11 +575,11 @@ public:
       }
     else if (d->isDataseg () && !(d->storage_class & STCextern))
       {
-	tree s = get_symbol_decl (d);
+	tree t = get_symbol_decl (d);
 
 	/* Duplicated VarDeclarations map to the same symbol. Check if this
 	   is the one declaration which will be emitted.  */
-	tree ident = DECL_ASSEMBLER_NAME (s);
+	tree ident = DECL_ASSEMBLER_NAME (t);
 	if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != d)
 	  return;
 
@@ -583,19 +595,19 @@ public:
 	if (d->_init && !d->_init->isVoidInitializer ())
 	  {
 	    Expression *e = d->_init->toExpression (d->type);
-	    DECL_INITIAL (s) = build_expr (e, true);
+	    DECL_INITIAL (t) = build_expr (e, true);
 	  }
 	else
 	  {
 	    if (d->type->ty == Tstruct)
 	      {
 		StructDeclaration *sd = ((TypeStruct *) d->type)->sym;
-		DECL_INITIAL (s) = layout_struct_initializer (sd);
+		DECL_INITIAL (t) = layout_struct_initializer (sd);
 	      }
 	    else
 	      {
 		Expression *e = d->type->defaultInitLiteral (d->loc);
-		DECL_INITIAL (s) = build_expr (e, true);
+		DECL_INITIAL (t) = build_expr (e, true);
 	      }
 	  }
 
@@ -603,7 +615,7 @@ public:
 	gcc_assert (!integer_zerop (size)
 		    || d->type->toBasetype ()->ty == Tsarray);
 
-	d_finish_decl (s);
+	d_finish_decl (t);
 
 	/* Maybe record the var against the current module.  */
 	register_module_decl (d);
@@ -642,9 +654,9 @@ public:
     if (speculative_type_p (d->tinfo))
       return;
 
-    tree s = get_typeinfo_decl (d);
-    DECL_INITIAL (s) = layout_typeinfo (d);
-    d_finish_decl (s);
+    tree t = get_typeinfo_decl (d);
+    DECL_INITIAL (t) = layout_typeinfo (d);
+    d_finish_decl (t);
   }
 
   /* Finish up a function declaration and compile it all the way
@@ -1109,8 +1121,9 @@ get_symbol_decl (Declaration *decl)
       /* Vector array operations are always compiler generated.  */
       if (fd->isArrayOp)
 	{
+	  TREE_PUBLIC (decl->csym) = 1;
 	  DECL_ARTIFICIAL (decl->csym) = 1;
-	  D_DECL_ONE_ONLY (decl->csym) = 1;
+	  d_comdat_linkage (decl->csym);
 	}
 
       /* And so are ensure and require contracts.  */
@@ -1162,13 +1175,15 @@ get_symbol_decl (Declaration *decl)
 
   if (decl->isDataseg () || decl->isCodeseg () || decl->isThreadlocal ())
     {
+      /* Set TREE_PUBLIC by default, but allow private template to override.  */
+      if (!fd || !fd->isNested ())
+	TREE_PUBLIC (decl->csym) = 1;
+
       /* Check if the declaration is a template, and whether it will be emitted
 	 in the current compilation or not.  */
       TemplateInstance *ti = decl->isInstantiated ();
       if (ti)
 	{
-	  D_DECL_ONE_ONLY (decl->csym) = 1;
-
 	  if (!DECL_EXTERNAL (decl->csym) && ti->needsCodegen ())
 	    {
 	      /* Warn about templates instantiated in this compilation.  */
@@ -1182,6 +1197,14 @@ get_symbol_decl (Declaration *decl)
 	    }
 	  else
 	    DECL_EXTERNAL (decl->csym) = 1;
+
+	  d_comdat_linkage (decl->csym);
+
+	  /* Normally the backend only emits COMDAT things when they are needed.
+	     If this decl is meant to be externally visible, then make sure that
+	     to mark it so that it is indeed needed.  */
+	  if (TREE_PUBLIC (decl->csym))
+	    mark_needed (decl->csym);
 	}
       else
 	{
@@ -1191,13 +1214,6 @@ get_symbol_decl (Declaration *decl)
 	  else
 	    DECL_EXTERNAL (decl->csym) = 1;
 	}
-
-      /* Set TREE_PUBLIC by default, but allow private template to override.  */
-      if (!fd || !fd->isNested ())
-	TREE_PUBLIC (decl->csym) = 1;
-
-      if (D_DECL_ONE_ONLY (decl->csym))
-	d_comdat_linkage (decl->csym);
     }
 
   /* Symbol is going in thread local storage.  */
@@ -1237,16 +1253,24 @@ get_symbol_decl (Declaration *decl)
 tree
 declare_extern_var (tree ident, tree type)
 {
+  /* If the VAR_DECL has already been declared, return it.  */
+  if (IDENTIFIER_DECL_TREE (ident))
+    return IDENTIFIER_DECL_TREE (ident);
+
   tree name = IDENTIFIER_PRETTY_NAME (ident)
     ? IDENTIFIER_PRETTY_NAME (ident) : ident;
   tree decl = build_decl (input_location, VAR_DECL, name, type);
 
+  IDENTIFIER_DECL_TREE (ident) = decl;
   d_keep (decl);
 
   SET_DECL_ASSEMBLER_NAME (decl, ident);
   DECL_ARTIFICIAL (decl) = 1;
   TREE_STATIC (decl) = 1;
   TREE_PUBLIC (decl) = 1;
+
+  /* Mark it needed so we don't forget to emit it.  */
+  mark_needed (decl);
 
   /* The decl has not been defined -- yet.  */
   DECL_EXTERNAL (decl) = 1;
@@ -1660,8 +1684,6 @@ make_thunk (FuncDeclaration *decl, int offset)
   DECL_DECLARED_INLINE_P (thunk) = 0;
 
   DECL_VISIBILITY (thunk) = DECL_VISIBILITY (function);
-  /* Needed on some targets to avoid "causes a section type conflict".  */
-  D_DECL_ONE_ONLY (thunk) = D_DECL_ONE_ONLY (function);
   DECL_COMDAT (thunk) = DECL_COMDAT (function);
   DECL_WEAK (thunk) = DECL_WEAK (function);
 
@@ -1921,11 +1943,6 @@ get_vtable_decl (ClassDeclaration *decl)
   SET_DECL_ALIGN (decl->vtblsym, TARGET_VTABLE_ENTRY_ALIGN);
   DECL_USER_ALIGN (decl->vtblsym) = true;
 
-  /* Could move setting comdat linkage to the caller, who knows whether
-     this vtable is being emitted in this compilation.  */
-  if (decl->isInstantiated ())
-    d_comdat_linkage (decl->vtblsym);
-
   return decl->vtblsym;
 }
 
@@ -1991,11 +2008,6 @@ aggregate_initializer_decl (AggregateDeclaration *decl)
       DECL_USER_ALIGN (decl->sinit) = true;
     }
 
-  /* Could move setting comdat linkage to the caller, who knows whether
-     this initializer is being emitted in this compilation.  */
-  if (decl->isInstantiated ())
-    d_comdat_linkage (decl->sinit);
-
   return decl->sinit;
 }
 
@@ -2049,11 +2061,6 @@ enum_initializer_decl (EnumDeclaration *decl)
 
   DECL_CONTEXT (decl->sinit) = d_decl_context (decl);
   TREE_READONLY (decl->sinit) = 1;
-
-  /* Could move setting comdat linkage to the caller, who knows whether
-     this initializer is being emitted in this compilation.  */
-  if (decl->isInstantiated ())
-    d_comdat_linkage (decl->sinit);
 
   return decl->sinit;
 }

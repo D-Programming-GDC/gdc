@@ -39,7 +39,8 @@ proc shared_library { source destfile options } {
     global DEFAULT_DFLAGS
     global all_libraries
 
-    lappend options "additional_flags=$DEFAULT_DFLAGS -fpic -shared -shared-libphobos"
+    # Compiling with -fno-gnu-unique as tests call dlopen/dlclose multiple times on the same library.
+    lappend options "additional_flags=$DEFAULT_DFLAGS -fno-gnu-unique -fpic -shared -shared-libphobos"
 
     set comp_output [gdc_target_compile "$source" "$destfile" "executable" $options]
     if ![ string match "" $comp_output ] {
