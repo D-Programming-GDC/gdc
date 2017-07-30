@@ -1602,8 +1602,19 @@ struct lang_decl *
 build_lang_decl (Declaration *d)
 {
   unsigned sz = sizeof (struct lang_decl);
-  struct lang_decl *ld = ggc_alloc_cleared_lang_decl (sz);
-  ld->decl = d;
+  /* For compiler generated runtime typeinfo, a lang_decl is allocated even if
+     there's no associated frontend symbol to refer to (yet).  If the symbol
+     appears later in the compilation, then the slot will be re-used.  */
+  if (d == NULL)
+    return ggc_alloc_cleared_lang_decl (sz);
+
+  struct lang_decl *ld = (d->csym) ? DECL_LANG_SPECIFIC (d->csym) : NULL;
+  if (ld == NULL)
+    ld = ggc_alloc_cleared_lang_decl (sz);
+
+  if (ld->decl == NULL)
+    ld->decl = d;
+
   return ld;
 }
 
