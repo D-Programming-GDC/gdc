@@ -167,10 +167,10 @@ proc gdc-copy-extra { base extra } {
 proc dmd2dg { base test } {
     global DEFAULT_DFLAGS
     global PERMUTE_ARGS
-    global EXECUTE_ARGS
+    global GDC_EXECUTE_ARGS
 
     set PERMUTE_ARGS $DEFAULT_DFLAGS
-    set EXECUTE_ARGS ""
+    set GDC_EXECUTE_ARGS ""
 
     # Split base, folder/file.
     set type [file dirname $test]
@@ -207,7 +207,7 @@ proc dmd2dg { base test } {
         } elseif [regexp -- {EXECUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
             # EXECUTE_ARGS is handled by gdc_load.
             foreach arg $args {
-                lappend EXECUTE_ARGS $arg
+                lappend GDC_EXECUTE_ARGS $arg
             }
             regsub -- {EXECUTE_ARGS.*$} $copy_line "" out_line
 
@@ -298,8 +298,6 @@ proc gdc-permute-options { options } {
 
 
 proc gdc-do-test { } {
-    global TORTURE_OPTIONS
-    global SHARED_OPTION
     global srcdir subdir
     global dg-do-what-default
     global verbose
@@ -314,8 +312,11 @@ proc gdc-do-test { } {
     # These are special options to use on testcase, and override DEFAULT_DFLAGS
     global PERMUTE_ARGS
 
+    # Set if an extra option should be passed to link to shared druntime.
+    global SHARED_OPTION
+
     # Additional arguments for gdc_load
-    global EXECUTE_ARGS
+    global GDC_EXECUTE_ARGS
 
     # Initialize `dg'.
     dg-init
@@ -350,26 +351,26 @@ proc gdc-do-test { } {
         switch $dir {
             runnable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
-                    set TORTURE_OPTIONS [lindex $options $i]
+                    set flags [lindex $options $i]
                     set dg-do-what-default "run"
-                    gdc-dg-runtest $filename $imports
+                    gdc-dg-runtest $filename $flags $imports
                 }
             }
 
             compilable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
-                    set TORTURE_OPTIONS [lindex $options $i]
+                    set flags [lindex $options $i]
                     #set dg-do-what-default "compile"
                     set dg-do-what-default "assemble"
-                    gdc-dg-runtest $filename "$imports"
+                    gdc-dg-runtest $filename $flags $imports
                 }
             }
 
             fail_compilation {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
-                    set TORTURE_OPTIONS [lindex $options $i]
+                    set flags [lindex $options $i]
                     set dg-do-what-default "assemble"
-                    gdc-dg-runtest $filename $imports
+                    gdc-dg-runtest $filename $flags $imports
                 }
             }
         }

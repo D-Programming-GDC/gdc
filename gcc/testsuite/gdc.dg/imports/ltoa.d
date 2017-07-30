@@ -1,7 +1,6 @@
-module imports.gdcltoa;
+module imports.ltoa;
 
 /******************************************/
-
 // Bug 88
 
 int test88a()
