@@ -740,4 +740,13 @@ void test15455b(X8 s)
     assert(s.b.d == 5);
 }
 
-/******************************************/
+
+/****************************************/
+// 16536 - mangling mismatch on OSX
+
+#if defined(__APPLE__)
+__UINTMAX_TYPE__ pass16536(__UINTMAX_TYPE__ a)
+{
+    return a;
+}
+#endif
