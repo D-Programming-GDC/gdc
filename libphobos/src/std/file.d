@@ -53,7 +53,8 @@ else version (Posix)
 else
     static assert(0);
 
-package @property string deleteme() @safe
+// Purposefully not documented. Use at your own risk
+@property string deleteme() @safe
 {
     import std.conv : to;
     import std.path : buildPath;
@@ -284,7 +285,7 @@ version (Posix) private void[] readImpl(const(char)[] name, const(FSChar)* namez
         ? min(statbuf.st_size + 1, maxInitialAlloc)
         : minInitialAlloc));
     void[] result = uninitializedArray!(ubyte[])(initialAlloc);
-    scope(failure) delete result;
+    scope(failure) GC.free(result.ptr);
     size_t size = 0;
 
     for (;;)
@@ -310,6 +311,7 @@ version (Windows) private void[] readImpl(const(char)[] name, const(FSChar)* nam
 {
     import std.algorithm.comparison : min;
     import std.array : uninitializedArray;
+    import core.memory : GC;
     static trustedCreateFileW(const(wchar)* namez, DWORD dwDesiredAccess, DWORD dwShareMode,
                               SECURITY_ATTRIBUTES *lpSecurityAttributes, DWORD dwCreationDisposition,
                               DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) @trusted
@@ -364,7 +366,7 @@ version (Windows) private void[] readImpl(const(char)[] name, const(FSChar)* nam
 
     scope(failure)
     {
-        () @trusted { delete buf; } ();
+        () @trusted { GC.free(buf.ptr); } ();
     }
 
     if (size)
@@ -1480,6 +1482,11 @@ private bool existsImpl(const(FSChar)* namez) @trusted nothrow @nogc
     assert(exists(deleteme));
 }
 
+@safe unittest // Bugzilla 16573
+{
+    enum S : string { foo = "foo" }
+    assert(__traits(compiles, S.foo.exists));
+}
 
 /++
  Returns the attributes of the given file.
