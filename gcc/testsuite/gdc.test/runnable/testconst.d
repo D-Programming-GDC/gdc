@@ -2160,7 +2160,7 @@ void test5473()
         static void g(){};
     }
 
-    void dummy(){}
+    void dummy();
     alias typeof(dummy) VoidFunc;
 
     const C c = new C;
@@ -3408,7 +3408,7 @@ inout(int)* function(inout(int)*) fptr10761(inout(int)*)
 {
     static inout(int)* screwUp(inout(int)* x) { return x; }
     auto fp = &screwUp;
-    static assert(is(typeof(fp) == inout(int)* function(inout(int)*)));
+    static assert(is(typeof(fp) == inout(int)* function(inout(int)*) pure nothrow @nogc @safe));
     return fp;
 }
 
@@ -3416,7 +3416,7 @@ inout(int)* delegate(inout(int)*) nest10761(inout(int)* x)
 {
     inout(int)* screwUp(inout(int)* _) { return x; }
     auto dg = &screwUp;
-    static assert(is(typeof(dg) == inout(int)* delegate(inout(int)*)));
+    static assert(is(typeof(dg) == inout(int)* delegate(inout(int)*) pure nothrow @nogc @safe));
     return dg;
 }
 
