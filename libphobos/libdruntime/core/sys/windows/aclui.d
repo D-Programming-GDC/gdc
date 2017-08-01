@@ -9,7 +9,8 @@
  */
 module core.sys.windows.aclui;
 version (Windows):
-pragma(lib, "aclui");
+version (GNU) {}
+else pragma(lib, "aclui");
 
 private import core.sys.windows.w32api;
 /*

@@ -10,7 +10,8 @@ module core.sys.windows.winspool;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "winspool");
+version (GNU) {}
+else pragma(lib, "winspool");
 
 private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.wingdi;
 private import core.sys.windows.winbase; // for SYSTEMTIME
@@ -638,10 +639,11 @@ struct PRINTER_NOTIFY_INFO_DATA {
     DWORD Id;
     union _NotifyData {
         DWORD[2] adwData;
-        struct Data {
+        struct _Data {
             DWORD cbBuf;
             PVOID pBuf;
         }
+        _Data Data;
     }
     _NotifyData NotifyData;
 }
