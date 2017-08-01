@@ -11,7 +11,8 @@ module core.sys.windows.winnetwk;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "mpr");
+version (GNU) {}
+else pragma(lib, "mpr");
 
 private import core.sys.windows.winbase, core.sys.windows.winerror, core.sys.windows.winnt;
 
@@ -288,7 +289,7 @@ struct NETINFOSTRUCT {
     DWORD dwProviderVersion;
     DWORD dwStatus;
     DWORD dwCharacteristics;
-    DWORD dwHandle;
+    ULONG_PTR dwHandle;
     WORD  wNetType;
     DWORD dwPrinters;
     DWORD dwDrives;

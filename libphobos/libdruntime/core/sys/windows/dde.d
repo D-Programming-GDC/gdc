@@ -9,7 +9,8 @@
  */
 module core.sys.windows.dde;
 version (Windows):
-pragma(lib, "user32");
+version (GNU) {}
+else pragma(lib, "user32");
 
 private import core.sys.windows.windef;
 

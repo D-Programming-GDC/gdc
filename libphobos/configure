@@ -633,8 +633,10 @@ DRUNTIME_OS_MINGW_FALSE
 DRUNTIME_OS_MINGW_TRUE
 DRUNTIME_OS_LINUX_FALSE
 DRUNTIME_OS_LINUX_TRUE
-DRUNTIME_OS_BSD_FALSE
-DRUNTIME_OS_BSD_TRUE
+DRUNTIME_OS_OPENBSD_FALSE
+DRUNTIME_OS_OPENBSD_TRUE
+DRUNTIME_OS_FREEBSD_FALSE
+DRUNTIME_OS_FREEBSD_TRUE
 DRUNTIME_OS_DARWIN_FALSE
 DRUNTIME_OS_DARWIN_TRUE
 DRUNTIME_OS_ANDROID_FALSE
@@ -11249,7 +11251,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11252 "configure"
+#line 11254 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11355,7 +11357,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11358 "configure"
+#line 11360 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13876,7 +13878,10 @@ fi
       darwin*) druntime_target_os_parsed="darwin"
                ;;
       freebsd*|k*bsd*-gnu)
-               druntime_target_os_parsed="bsd"
+               druntime_target_os_parsed="freebsd"
+               ;;
+      openbsd*)
+               druntime_target_os_parsed="openbsd"
                ;;
       linux*)  druntime_target_os_parsed="linux"
                ;;
@@ -13908,12 +13913,20 @@ else
   DRUNTIME_OS_DARWIN_FALSE=
 fi
 
-   if test "$druntime_target_os_parsed" = "bsd"; then
-  DRUNTIME_OS_BSD_TRUE=
-  DRUNTIME_OS_BSD_FALSE='#'
+   if test "$druntime_target_os_parsed" = "freebsd"; then
+  DRUNTIME_OS_FREEBSD_TRUE=
+  DRUNTIME_OS_FREEBSD_FALSE='#'
 else
-  DRUNTIME_OS_BSD_TRUE='#'
-  DRUNTIME_OS_BSD_FALSE=
+  DRUNTIME_OS_FREEBSD_TRUE='#'
+  DRUNTIME_OS_FREEBSD_FALSE=
+fi
+
+   if test "$druntime_target_os_parsed" = "openbsd"; then
+  DRUNTIME_OS_OPENBSD_TRUE=
+  DRUNTIME_OS_OPENBSD_FALSE='#'
+else
+  DRUNTIME_OS_OPENBSD_TRUE='#'
+  DRUNTIME_OS_OPENBSD_FALSE=
 fi
 
    if test "$druntime_target_os_parsed" = "linux"; then
@@ -14842,8 +14855,8 @@ SPEC_PHOBOS_DEPS="$LIBS"
 
 
 # Libdruntime / phobos soname version
-DRUNTIME_SOVERSION="71:2:0"
-PHOBOS_SOVERSION="71:2:0"
+DRUNTIME_SOVERSION="72:2:0"
+PHOBOS_SOVERSION="72:2:0"
 
 
 
@@ -15030,8 +15043,12 @@ if test -z "${DRUNTIME_OS_DARWIN_TRUE}" && test -z "${DRUNTIME_OS_DARWIN_FALSE}"
   as_fn_error "conditional \"DRUNTIME_OS_DARWIN\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${DRUNTIME_OS_BSD_TRUE}" && test -z "${DRUNTIME_OS_BSD_FALSE}"; then
-  as_fn_error "conditional \"DRUNTIME_OS_BSD\" was never defined.
+if test -z "${DRUNTIME_OS_FREEBSD_TRUE}" && test -z "${DRUNTIME_OS_FREEBSD_FALSE}"; then
+  as_fn_error "conditional \"DRUNTIME_OS_FREEBSD\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${DRUNTIME_OS_OPENBSD_TRUE}" && test -z "${DRUNTIME_OS_OPENBSD_FALSE}"; then
+  as_fn_error "conditional \"DRUNTIME_OS_OPENBSD\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${DRUNTIME_OS_LINUX_TRUE}" && test -z "${DRUNTIME_OS_LINUX_FALSE}"; then

@@ -20,9 +20,9 @@ unittest
 {
     version(Posix)
     {
-        import core.stdc.stdlib: free;
-        import core.sys.posix.stdlib: setenv;
-        import std.exception: enforce;
+        import core.stdc.stdlib : free;
+        import core.sys.posix.stdlib : setenv;
+        import std.exception : enforce;
 
         void setEnvironment(in char[] name, in char[] value)
         { enforce(setenv(name.tempCString(), value.tempCString(), 1) != -1); }
@@ -30,8 +30,8 @@ unittest
 
     version(Windows)
     {
-        import core.sys.windows.windows: SetEnvironmentVariableW;
-        import std.exception: enforce;
+        import core.sys.windows.windows : SetEnvironmentVariableW;
+        import std.exception : enforce;
 
         void setEnvironment(in char[] name, in char[] value)
         { enforce(SetEnvironmentVariableW(name.tempCStringW(), value.tempCStringW())); }
@@ -43,12 +43,12 @@ import std.range;
 
 version(unittest)
 @property inout(C)[] asArray(C)(inout C* cstr) pure nothrow @nogc @trusted
-if(isSomeChar!C)
+if (isSomeChar!C)
 in { assert(cstr); }
 body
 {
     size_t length = 0;
-    while(cstr[length])
+    while (cstr[length])
         ++length;
     return cstr[0 .. length];
 }
@@ -65,6 +65,8 @@ Returns:
 The value returned is implicitly convertible to $(D const To*) and
 has two properties: $(D ptr) to access $(I C string) as $(D const To*)
 and $(D buffPtr) to access it as $(D To*).
+
+The value returned can be indexed by [] to access it as an array.
 
 The temporary $(I C string) is valid unless returned object is destroyed.
 Thus if returned object is assigned to a variable the temporary is
@@ -112,6 +114,11 @@ auto tempCString(To = char, From)(From str)
             return buffPtr;
         }
 
+        const(To)[] opIndex() const pure
+        {
+            return buffPtr[0 .. _length];
+        }
+
         ~this()
         {
             if (_ptr != useStack)
@@ -123,6 +130,7 @@ auto tempCString(To = char, From)(From str)
 
     private:
         To* _ptr;
+        size_t _length;        // length of the string
         version (unittest)
         {
             enum buffLength = 16 / To.sizeof;   // smaller size to trigger reallocations
@@ -150,7 +158,7 @@ auto tempCString(To = char, From)(From str)
     {
         pragma(inline, false);  // because it's rarely called
 
-        import core.exception   : onOutOfMemoryError;
+        import core.exception : onOutOfMemoryError;
         import core.stdc.string : memcpy;
         import core.stdc.stdlib : malloc, realloc;
 
@@ -206,6 +214,7 @@ auto tempCString(To = char, From)(From str)
         q[i++] = c;
     }
     q[i] = 0;
+    res._length = i;
     res._ptr = p_is_onstack ? useStack : &p[0];
     return res;
 }
@@ -242,6 +251,7 @@ nothrow @nogc unittest
     char[300] abc = 'a';
     assert(tempCString(abc[].byChar).buffPtr.asArray == abc);
     assert(tempCString(abc[].byWchar).buffPtr.asArray == abc);
+    assert(tempCString(abc[].byChar)[] == abc);
 }
 
 // Bugzilla 14980

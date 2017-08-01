@@ -9,7 +9,7 @@ module rt.util.container.array;
 
 static import common = rt.util.container.common;
 
-import core.exception : onOutOfMemoryError;
+import core.exception : onOutOfMemoryErrorNoGC;
 
 struct Array(T)
 {
@@ -39,15 +39,15 @@ nothrow:
         size_t reqsize = mulu(T.sizeof, nlength, overflow);
         if (!overflow)
         {
-            if (nlength < length)
-                foreach (ref val; _ptr[nlength .. length]) common.destroy(val);
+            if (nlength < _length)
+                foreach (ref val; _ptr[nlength .. _length]) common.destroy(val);
             _ptr = cast(T*)common.xrealloc(_ptr, reqsize);
-            if (nlength > length)
-                foreach (ref val; _ptr[length .. nlength]) common.initialize(val);
+            if (nlength > _length)
+                foreach (ref val; _ptr[_length .. nlength]) common.initialize(val);
             _length = nlength;
         }
         else
-            onOutOfMemoryError();
+            onOutOfMemoryErrorNoGC();
 
     }
 
@@ -103,7 +103,7 @@ nothrow:
             back = val;
         }
         else
-            onOutOfMemoryError();
+            onOutOfMemoryErrorNoGC();
     }
 
     void popBack()
@@ -128,6 +128,11 @@ nothrow:
         immutable len = _length;
         _length = other._length;
         other._length = len;
+    }
+
+    invariant
+    {
+        assert(!_ptr == !_length);
     }
 
 private:
@@ -209,7 +214,7 @@ unittest
     try
     {
         // Overflow ary.length.
-        auto ary = Array!size_t(null, -1);
+        auto ary = Array!size_t(cast(size_t*)0xdeadbeef, -1);
         ary.insertBack(0);
     }
     catch(OutOfMemoryError)
@@ -218,7 +223,7 @@ unittest
     try
     {
         // Overflow requested memory size for common.xrealloc().
-        auto ary = Array!size_t(null, -2);
+        auto ary = Array!size_t(cast(size_t*)0xdeadbeef, -2);
         ary.insertBack(0);
     }
     catch(OutOfMemoryError)

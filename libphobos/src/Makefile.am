@@ -37,7 +37,7 @@ ALL_PHOBOS_COMPILE_DSOURCES = $(PHOBOS_DSOURCES) $(PHOBOS_DSOURCES_STDC)
 if DRUNTIME_OS_DARWIN
     ALL_PHOBOS_COMPILE_DSOURCES += $(PHOBOS_DSOURCES_OSX)
 endif
-if DRUNTIME_OS_BSD
+if DRUNTIME_OS_FREEBSD
     ALL_PHOBOS_COMPILE_DSOURCES += $(PHOBOS_DSOURCES_FREEBSD)
 endif
 if DRUNTIME_OS_LINUX
@@ -142,10 +142,10 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/concurrency.d std/concurrencybase.d std/container/array.d \
 	std/container/binaryheap.d std/container/dlist.d \
 	std/container/package.d std/container/rbtree.d std/container/slist.d \
-	std/container/util.d std/conv.d std/cstream.d std/csv.d std/datetime.d \
+	std/container/util.d std/conv.d std/csv.d std/datetime.d \
 	std/demangle.d std/digest/crc.d std/digest/digest.d std/digest/hmac.d \
-	std/digest/md.d std/digest/ripemd.d std/digest/sha.d std/encoding.d \
-	std/exception.d \
+	std/digest/md.d std/digest/murmurhash.d std/digest/ripemd.d \
+	std/digest/sha.d std/encoding.d std/exception.d \
 	std/experimental/allocator/building_blocks/affix_allocator.d \
 	std/experimental/allocator/building_blocks/allocator_list.d \
 	std/experimental/allocator/building_blocks/bitmapped_block.d \
@@ -171,34 +171,29 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/experimental/logger/filelogger.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
-	std/experimental/ndslice/internal.d \
-	std/experimental/ndslice/iteration.d \
-	std/experimental/ndslice/package.d \
-	std/experimental/ndslice/selection.d std/experimental/ndslice/slice.d \
-	std/file.d std/format.d std/functional.d std/getopt.d \
-	std/internal/cstring.d std/internal/digest/sha_SSSE3.d \
-	std/internal/math/biguintcore.d std/internal/math/biguintnoasm.d \
-	std/internal/math/biguintx86.d std/internal/math/errorfunction.d \
-	std/internal/math/gammafunction.d std/internal/processinit.d \
-	std/internal/scopebuffer.d std/internal/test/dummyrange.d \
-	std/internal/test/uda.d std/internal/unicode_comp.d \
-	std/internal/unicode_decomp.d std/internal/unicode_grapheme.d \
-	std/internal/unicode_norm.d std/internal/unicode_tables.d \
-	std/internal/windows/advapi32.d std/json.d std/math.d \
-	std/mathspecial.d std/meta.d std/mmfile.d std/net/curl.d \
-	std/net/isemail.d std/numeric.d std/outbuffer.d std/parallelism.d \
-	std/path.d std/process.d std/random.d std/range/interfaces.d \
-	std/range/package.d std/range/primitives.d \
+	std/experimental/typecons.d std/file.d std/format.d std/functional.d \
+	std/getopt.d std/internal/cstring.d std/internal/digest/sha_SSSE3.d \
+	std/internal/encodinginit.d std/internal/math/biguintcore.d \
+	std/internal/math/biguintnoasm.d std/internal/math/biguintx86.d \
+	std/internal/math/errorfunction.d std/internal/math/gammafunction.d \
+	std/internal/processinit.d std/internal/scopebuffer.d \
+	std/internal/test/dummyrange.d std/internal/test/uda.d \
+	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
+	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
+	std/internal/unicode_tables.d std/internal/windows/advapi32.d \
+	std/json.d std/math.d std/mathspecial.d std/meta.d std/mmfile.d \
+	std/net/curl.d std/net/isemail.d std/numeric.d std/outbuffer.d \
+	std/parallelism.d std/path.d std/process.d std/random.d \
+	std/range/interfaces.d std/range/package.d std/range/primitives.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
 	std/regex/internal/thompson.d std/regex/package.d std/signals.d \
-	std/socket.d std/socketstream.d std/stdint.d std/stdio.d \
-	std/stdiobase.d std/stream.d std/string.d std/system.d std/traits.d \
-	std/typecons.d std/typetuple.d std/uni.d std/uri.d std/utf.d \
-	std/uuid.d std/variant.d std/windows/charset.d std/windows/iunknown.d \
-	std/windows/registry.d std/windows/syserror.d std/xml.d std/zip.d \
-	std/zlib.d
+	std/socket.d std/stdint.d std/stdio.d std/stdiobase.d std/string.d \
+	std/system.d std/traits.d std/typecons.d std/typetuple.d std/uni.d \
+	std/uri.d std/utf.d std/uuid.d std/variant.d std/windows/charset.d \
+	std/windows/iunknown.d std/windows/registry.d std/windows/syserror.d \
+	std/xml.d std/zip.d std/zlib.d
 
 PHOBOS_DSOURCES_FREEBSD = std/c/freebsd/socket.d
 

@@ -78,8 +78,8 @@ AC_DEFUN([DRUNTIME_OS_UNIX],
 # DRUNTIME_OS_SOURCES
 # -------------------
 # Detect target OS and add DRUNTIME_OS_AIX DRUNTIME_OS_DARWIN
-# DRUNTIME_OS_BSD DRUNTIME_OS_LINUX DRUNTIME_OS_MINGW DRUNTIME_OS_SOLARIS
-# conditionals.
+# DRUNTIME_OS_FREEBSD DRUNTIME_OS_LINUX DRUNTIME_OS_MINGW
+# DRUNTIME_OS_SOLARIS DRUNTIME_OS_OPENBSD conditionals.
 AC_DEFUN([DRUNTIME_OS_SOURCES],
 [
   AC_REQUIRE([DRUNTIME_OS_DETECT])
@@ -94,7 +94,10 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
       darwin*) druntime_target_os_parsed="darwin"
                ;;
       freebsd*|k*bsd*-gnu)
-               druntime_target_os_parsed="bsd"
+               druntime_target_os_parsed="freebsd"
+               ;;
+      openbsd*)
+               druntime_target_os_parsed="openbsd"
                ;;
       linux*)  druntime_target_os_parsed="linux"
                ;;
@@ -105,7 +108,8 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
   AM_CONDITIONAL([DRUNTIME_OS_AIX], [test "$druntime_target_os_parsed" = "aix"])
   AM_CONDITIONAL([DRUNTIME_OS_ANDROID], [test "$druntime_target_os_parsed" = "android"])
   AM_CONDITIONAL([DRUNTIME_OS_DARWIN], [test "$druntime_target_os_parsed" = "darwin"])
-  AM_CONDITIONAL([DRUNTIME_OS_BSD], [test "$druntime_target_os_parsed" = "bsd"])
+  AM_CONDITIONAL([DRUNTIME_OS_FREEBSD], [test "$druntime_target_os_parsed" = "freebsd"])
+  AM_CONDITIONAL([DRUNTIME_OS_OPENBSD], [test "$druntime_target_os_parsed" = "openbsd"])
   AM_CONDITIONAL([DRUNTIME_OS_LINUX], [test "$druntime_target_os_parsed" = "linux"])
   AM_CONDITIONAL([DRUNTIME_OS_MINGW], [test "$druntime_target_os_parsed" = "mingw"])
   AM_CONDITIONAL([DRUNTIME_OS_SOLARIS], [test "$druntime_target_os_parsed" = "solaris"])
