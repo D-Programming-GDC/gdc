@@ -11,7 +11,8 @@ module core.sys.windows.winnls;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "kernel32");
+version (GNU) {}
+else pragma(lib, "kernel32");
 
 private import core.sys.windows.basetsd, core.sys.windows.w32api, core.sys.windows.winbase, core.sys.windows.windef;
 

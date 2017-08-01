@@ -8,7 +8,8 @@
  */
 module core.sys.windows.lmuse;
 version (Windows):
-pragma(lib, "netapi32");
+version (GNU) {}
+else pragma(lib, "netapi32");
 
 import core.sys.windows.lmuseflg;
 private import core.sys.windows.lmcons, core.sys.windows.windef;
