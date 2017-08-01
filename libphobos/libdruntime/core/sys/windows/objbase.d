@@ -8,7 +8,8 @@
  */
 module core.sys.windows.objbase;
 version (Windows):
-pragma(lib, "ole32");
+version (GNU) {}
+else pragma(lib, "ole32");
 
 import core.sys.windows.cguid, core.sys.windows.objidl, core.sys.windows.unknwn, core.sys.windows.wtypes;
 private import core.sys.windows.basetyps, core.sys.windows.objfwd, core.sys.windows.rpcdce, core.sys.windows.winbase,
@@ -159,8 +160,8 @@ extern(Windows) {
     HRESULT CoTreatAsClass(REFCLSID, REFCLSID);
     HRESULT DllGetClassObject(REFCLSID, REFIID, PVOID*);
     HRESULT DllCanUnloadNow();
-    PVOID CoTaskMemAlloc(ULONG);
-    PVOID CoTaskMemRealloc(PVOID, ULONG);
+    PVOID CoTaskMemAlloc(SIZE_T);
+    PVOID CoTaskMemRealloc(PVOID, SIZE_T);
     void CoTaskMemFree(PVOID);
     HRESULT CreateDataAdviseHolder(LPDATAADVISEHOLDER*);
     HRESULT CreateDataCache(LPUNKNOWN, REFCLSID, REFIID, PVOID*);

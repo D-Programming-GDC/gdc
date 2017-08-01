@@ -1,4 +1,4 @@
-// { dg-do run }
+// { dg-do run { target aarch64*-*-* arm*-*-* i?86-*-* x86_64-*-* } }
 import core.simd;
 import core.stdc.string;
 import std.stdio;
