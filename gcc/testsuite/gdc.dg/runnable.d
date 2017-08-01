@@ -1,5 +1,5 @@
 // { dg-additional-sources "imports/runnablea.d" }
-// { dg-do run }
+// { dg-do run { target aarch64*-*-* arm*-*-* i?86-*-* x86_64-*-* } }
 
 module runnable;
 
