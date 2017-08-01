@@ -11,7 +11,8 @@ module core.sys.windows.vfw;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "vfw32");
+version (GNU) {}
+else pragma(lib, "vfw32");
 
 private import
     core.sys.windows.commdlg,
@@ -237,7 +238,7 @@ struct ICCOMPRESSFRAMES {
     DWORD               dwRate;
     DWORD               dwScale;    DWORD       dwOverheadPerFrame;
     DWORD               dwReserved2;
-
+extern (Windows):
     LONG function(LPARAM lInput, LONG lFrame, LPVOID lpBits, LONG len) GetData;
     LONG function(LPARAM lOutput, LONG lFrame, LPVOID lpBits, LONG len) PutData;
 }
@@ -253,6 +254,7 @@ enum {
 struct ICSETSTATUSPROC {
     DWORD   dwFlags;
     LPARAM  lParam;
+extern (Windows)
     LONG function(LPARAM lParam, UINT message, LONG l) Status;
 }
 
@@ -611,6 +613,7 @@ LRESULT ICDrawRenderBuffer(HIC hic) {
     return ICSendMessage(hic, ICM_DRAW_RENDERBUFFER, 0, 0);
 }
 
+extern (Windows)
 LRESULT ICSetStatusProc(HIC hic, DWORD dwFlags, LRESULT lParam, LONG function(LPARAM, UINT, LONG) fpfnStatus) {
     ICSETSTATUSPROC ic;
 

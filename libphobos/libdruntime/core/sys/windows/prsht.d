@@ -11,7 +11,8 @@ module core.sys.windows.prsht;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "comctl32");
+version (GNU) {}
+else pragma(lib, "comctl32");
 
 private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.winuser;
 
@@ -189,9 +190,11 @@ enum {
     PSM_SETFINISHTEXTW // = WM_USER + 121,
 }
 
-alias UINT function(HWND, UINT, LPPROPSHEETPAGEA) LPFNPSPCALLBACKA;
-alias UINT function(HWND, UINT, LPPROPSHEETPAGEW) LPFNPSPCALLBACKW;
-alias int function(HWND, UINT, LPARAM) PFNPROPSHEETCALLBACK;
+extern (Windows) {
+    alias UINT function(HWND, UINT, LPPROPSHEETPAGEA) LPFNPSPCALLBACKA;
+    alias UINT function(HWND, UINT, LPPROPSHEETPAGEW) LPFNPSPCALLBACKW;
+    alias int function(HWND, UINT, LPARAM) PFNPROPSHEETCALLBACK;
+}
 
 align(4):
 
@@ -317,9 +320,11 @@ struct PROPSHEETHEADERW {
 alias PROPSHEETHEADERW*        LPPROPSHEETHEADERW;
 alias const(PROPSHEETHEADERW)* LPCPROPSHEETHEADERW;
 
-alias BOOL function(HPROPSHEETPAGE, LPARAM) LPFNADDPROPSHEETPAGE;
-alias BOOL function(LPVOID, LPFNADDPROPSHEETPAGE, LPARAM)
-  LPFNADDPROPSHEETPAGES;
+extern (Windows) {
+    alias BOOL function(HPROPSHEETPAGE, LPARAM) LPFNADDPROPSHEETPAGE;
+    alias BOOL function(LPVOID, LPFNADDPROPSHEETPAGE, LPARAM)
+      LPFNADDPROPSHEETPAGES;
+}
 
 struct PSHNOTIFY {
     NMHDR  hdr;
@@ -331,8 +336,8 @@ extern (Windows) {
     HPROPSHEETPAGE CreatePropertySheetPageA(LPCPROPSHEETPAGEA);
     HPROPSHEETPAGE CreatePropertySheetPageW(LPCPROPSHEETPAGEW);
     BOOL DestroyPropertySheetPage(HPROPSHEETPAGE);
-    int PropertySheetA(LPCPROPSHEETHEADERA);
-    int PropertySheetW(LPCPROPSHEETHEADERW);
+    INT_PTR PropertySheetA(LPCPROPSHEETHEADERA);
+    INT_PTR PropertySheetW(LPCPROPSHEETHEADERW);
 }
 
 version (Unicode) {

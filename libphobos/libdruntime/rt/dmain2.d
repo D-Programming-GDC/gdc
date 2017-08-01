@@ -211,7 +211,6 @@ extern (C) int rt_term()
         thread_joinAll();
         rt_moduleDtor();
         gc_term();
-        finiSections();
         return 1;
     }
     catch (Throwable t)
@@ -220,6 +219,7 @@ extern (C) int rt_term()
     }
     finally
     {
+        finiSections();
         _d_critical_term();
         _d_monitor_staticdtor();
     }
