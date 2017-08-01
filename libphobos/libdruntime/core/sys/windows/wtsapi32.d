@@ -10,7 +10,8 @@ module core.sys.windows.wtsapi32;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "wtsapi32");
+version (GNU) {}
+else pragma(lib, "wtsapi32");
 private import core.sys.windows.w32api;
 import core.sys.windows.windef;
 
@@ -331,6 +332,8 @@ static if (_WIN32_WINNT >= 0x600) {
         DWORD                        SessionId;
         DWORD                        IncomingBytes;
         DWORD                        OutgoingBytes;
+        DWORD                        IncomingFrames;
+        DWORD                        OutgoingFrames;
         DWORD                        IncomingCompressedBytes;
         DWORD                        OutgoingCompressedBytes;
         WCHAR[WINSTATIONNAME_LENGTH] WinStationName;
@@ -349,6 +352,8 @@ static if (_WIN32_WINNT >= 0x600) {
         DWORD                       SessionId;
         DWORD                       IncomingBytes;
         DWORD                       OutgoingBytes;
+        DWORD                       IncomingFrames;
+        DWORD                       OutgoingFrames;
         DWORD                       IncomingCompressedBytes;
         DWORD                       OutgoingCompressedBytes;
         CHAR[WINSTATIONNAME_LENGTH] WinStationName;

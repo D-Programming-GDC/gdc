@@ -32,7 +32,6 @@ extern (C) alias SetFinalizeCounter = void function(shared(size_t*));
 
 void main(string[] args)
 {
-    printf("STARTING finalize\n");
     auto name = args[0] ~ '\0';
     const pathlen = strrchr(name.ptr, '/') - name.ptr + 1;
     name = name[0 .. pathlen] ~ "lib.so";
@@ -61,5 +60,4 @@ void main(string[] args)
         assert(0);
     if (nf2._finalizeCounter)
         assert(0);
-    printf("PASS finalize\n");
 }

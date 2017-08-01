@@ -11,7 +11,8 @@ module core.sys.windows.winreg;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "advapi32");
+version (GNU) {}
+else pragma(lib, "advapi32");
 
 private import core.sys.windows.w32api, core.sys.windows.winbase, core.sys.windows.windef;
 
@@ -65,7 +66,7 @@ alias ACCESS_MASK REGSAM;
 struct VALENTA {
     LPSTR ve_valuename;
     DWORD ve_valuelen;
-    DWORD ve_valueptr;
+    DWORD_PTR ve_valueptr;
     DWORD ve_type;
 }
 alias VALENTA* PVALENTA;
@@ -73,7 +74,7 @@ alias VALENTA* PVALENTA;
 struct VALENTW {
     LPWSTR ve_valuename;
     DWORD  ve_valuelen;
-    DWORD  ve_valueptr;
+    DWORD_PTR ve_valueptr;
     DWORD  ve_type;
 }
 alias VALENTW* PVALENTW;
