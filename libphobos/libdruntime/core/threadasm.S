@@ -16,7 +16,7 @@
 /* NOTE: This file has been patched from the original DMD distribution to
  * work with the GDC compiler.
  */
-#if (defined(__linux__) || defined(__FreeBSD__)) && defined(__ELF__)
+#if (defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)) && defined(__ELF__)
 /*
  * Mark the resulting object file as not requiring execution permissions on
  * stack memory. The absence of this section would mark the whole resulting

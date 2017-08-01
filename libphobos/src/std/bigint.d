@@ -64,11 +64,12 @@ public:
     this(Range)(Range s) if (
         isBidirectionalRange!Range &&
         isSomeChar!(ElementType!Range) &&
-        !isInfinite!Range)
+        !isInfinite!Range &&
+        !isSomeString!Range)
     {
         import std.algorithm.iteration : filterBidirectional;
         import std.algorithm.searching : startsWith;
-        import std.utf : byCodeUnit, byChar;
+        import std.utf : byChar;
         import std.exception : enforce;
         import std.conv : ConvException;
 
@@ -79,37 +80,31 @@ public:
 
         data = 0UL;
 
-        // auto decoding special case
-        static if (isNarrowString!Range)
-            auto codeUnits = s.byCodeUnit();
-        else
-            alias codeUnits = s;
-
         // check for signs and if the string is a hex value
-        if (codeUnits.front == '+')
+        if (s.front == '+')
         {
-            codeUnits.popFront(); // skip '+'
+            s.popFront(); // skip '+'
         }
-        else if (codeUnits.front == '-')
+        else if (s.front == '-')
         {
             neg = true;
-            codeUnits.popFront();
+            s.popFront();
         }
 
-        if (codeUnits.save.startsWith("0x".byChar) ||
-            codeUnits.save.startsWith("0X".byChar))
+        if (s.save.startsWith("0x".byChar) ||
+            s.save.startsWith("0X".byChar))
         {
-            codeUnits.popFront;
-            codeUnits.popFront;
+            s.popFront;
+            s.popFront;
 
-            if (!codeUnits.empty)
-                ok = data.fromHexString(codeUnits.filterBidirectional!(a => a != '_'));
+            if (!s.empty)
+                ok = data.fromHexString(s.filterBidirectional!(a => a != '_'));
             else
                 ok = false;
         }
         else
         {
-            ok = data.fromDecimalString(codeUnits.filterBidirectional!(a => a != '_'));
+            ok = data.fromDecimalString(s.filterBidirectional!(a => a != '_'));
         }
 
         enforce!ConvException(ok, "Not a valid numerical string");
@@ -118,6 +113,13 @@ public:
             neg = false;
 
         sign = neg;
+    }
+
+    /// ditto
+    this(Range)(Range s) pure if (isSomeString!Range)
+    {
+        import std.utf : byCodeUnit;
+        this(s.byCodeUnit);
     }
 
     @system unittest
@@ -175,7 +177,7 @@ public:
     /// Assignment from built-in integer types.
     BigInt opAssign(T)(T x) pure nothrow if (isIntegral!T)
     {
-        data = cast(ulong)absUnsign(x);
+        data = cast(ulong) absUnsign(x);
         sign = (x < 0);
         return this;
     }
@@ -238,10 +240,10 @@ public:
         }
         else static if (op=="/")
         {
-            assert(y!=0, "Division by zero");
+            assert(y != 0, "Division by zero");
             static if (T.sizeof <= uint.sizeof)
             {
-                data = BigUint.divInt(data, cast(uint)u);
+                data = BigUint.divInt(data, cast(uint) u);
             }
             else
             {
@@ -251,14 +253,14 @@ public:
         }
         else static if (op=="%")
         {
-            assert(y!=0, "Division by zero");
+            assert(y != 0, "Division by zero");
             static if (is(immutable(T) == immutable(long)) || is( immutable(T) == immutable(ulong) ))
             {
                 this %= BigInt(y);
             }
             else
             {
-                data = cast(ulong)BigUint.modInt(data, cast(uint)u);
+                data = cast(ulong) BigUint.modInt(data, cast(uint) u);
                 if (data.isZero())
                     sign = false;
             }
@@ -424,7 +426,7 @@ public:
     auto opBinary(string op, T)(T y) pure nothrow const
         if (op == "%" && isIntegral!T)
     {
-        assert(y!=0);
+        assert(y != 0);
 
         // BigInt % long => long
         // BigInt % ulong => BigInt
@@ -596,7 +598,7 @@ public:
     {
         if (sign != (y<0))
             return 0;
-        return data.opEquals(cast(ulong)absUnsign(y));
+        return data.opEquals(cast(ulong) absUnsign(y));
     }
 
     ///
@@ -653,12 +655,12 @@ public:
             if (isUnsigned!T || !sign)
             {
                 if (l <= T.max)
-                    return cast(T)l;
+                    return cast(T) l;
             }
             else
             {
                 if (l <= ulong(T.max)+1)
-                    return cast(T)-long(l); // -long.min==long.min
+                    return cast(T)-long(l); // -long.min == long.min
             }
         }
 
@@ -755,13 +757,13 @@ public:
     {
         if (sign != (y<0) )
             return sign ? -1 : 1;
-        int cmp = data.opCmp(cast(ulong)absUnsign(y));
+        int cmp = data.opCmp(cast(ulong) absUnsign(y));
         return sign? -cmp: cmp;
     }
     /// ditto
     int opCmp(T:BigInt)(const T y) pure nothrow @nogc const
     {
-        if (sign!=y.sign)
+        if (sign != y.sign)
             return sign ? -1 : 1;
         immutable cmp = data.opCmp(y.data);
         return sign? -cmp: cmp;
@@ -914,7 +916,7 @@ public:
                 sink(" ");
 
         if (signChar)
-            sink((&signChar)[0..1]);
+            sink((&signChar)[0 .. 1]);
 
         if (!f.flDash && f.flZero)
             foreach (i; 0 .. difw)
@@ -1086,7 +1088,8 @@ Returns:
     The absolute value of x.
 
 */
-Unsigned!T absUnsign(T)(T x) if (isIntegral!T)
+Unsigned!T absUnsign(T)(T x)
+if (isIntegral!T)
 {
     static if (isSigned!T)
     {
@@ -1101,6 +1104,14 @@ Unsigned!T absUnsign(T)(T x) if (isIntegral!T)
     {
         return x;
     }
+}
+
+///
+nothrow pure @system
+unittest
+{
+    assert((-1).absUnsign == 1);
+    assert(1.absUnsign == 1);
 }
 
 nothrow pure @system
@@ -1503,7 +1514,7 @@ unittest
             T2 t2 = t1;
 
             T2 t2_1 = to!T2(t1);
-            T2 t2_2 = cast(T2)t1;
+            T2 t2_2 = cast(T2) t1;
 
             assert(t2 == t1);
             assert(t2 == 2);
@@ -1647,7 +1658,7 @@ unittest
     assert(x.isZero());
 
     x = BigInt(-3);
-    x %= cast(ushort)3;
+    x %= cast(ushort) 3;
     assert(!x.isNegative());
     assert(x.isZero());
 
@@ -1672,7 +1683,7 @@ unittest
 }
 
 // Issue 6447
-unittest
+@system unittest
 {
     import std.algorithm.comparison : equal;
     import std.range : iota;
@@ -1687,3 +1698,8 @@ unittest
     ]));
 }
 
+// Issue 17330
+@system unittest
+{
+    auto b = immutable BigInt("123");
+}
