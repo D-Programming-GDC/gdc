@@ -168,14 +168,14 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
 	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
 	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
-	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
-	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
-	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
-	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
-	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d \
-	rt/backtrace/elf.d rt/cast_.d rt/config.d rt/critical_.d rt/deh.d \
-	rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d \
-	rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
+	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d gcc/builtins.d \
+	gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d gcc/unwind/c6x.d \
+	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
+	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
+	rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d rt/backtrace/elf.d \
+	rt/cast_.d rt/config.d rt/critical_.d rt/deh.d rt/dmain2.d \
+	rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d rt/monitor_.d \
+	rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
 	rt/sections_elf_shared.d rt/sections_osx.d rt/sections_solaris.d \
 	rt/sections_win32.d rt/sections_win64.d rt/switch_.d rt/tlsgc.d \
 	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
@@ -188,11 +188,11 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
 	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
 	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
-	rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d rt/typeinfo/ti_real.d \
-	rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d rt/typeinfo/ti_ucent.d \
-	rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d rt/typeinfo/ti_ushort.d \
-	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
-	rt/util/container/array.d rt/util/container/common.d \
+	rt/typeinfo/ti_long.d rt/typeinfo/ti_n.d rt/typeinfo/ti_ptr.d \
+	rt/typeinfo/ti_real.d rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d \
+	rt/typeinfo/ti_ucent.d rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d \
+	rt/typeinfo/ti_ushort.d rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d \
+	rt/util/array.d rt/util/container/array.d rt/util/container/common.d \
 	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
 	rt/util/random.d rt/util/typeinfo.d rt/util/utf.d
 

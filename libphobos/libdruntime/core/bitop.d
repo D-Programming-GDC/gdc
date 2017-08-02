@@ -470,7 +470,7 @@ struct BitRange
 
 @system unittest
 {
-    void testIt(size_t numBits, size_t[] bitsToTest...) nothrow @nogc
+    void testIt(size_t numBits, size_t[] bitsToTest...)
     {
         import core.stdc.stdlib : malloc, free;
         import core.stdc.string : memset;
