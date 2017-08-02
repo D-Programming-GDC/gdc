@@ -1627,13 +1627,20 @@ public:
 	      return;
 
 	    this->result_ |= true;
-	    return;
 	  }
       }
   }
 
-  void visit (TypeClass *)
+  void visit (TypeClass *t)
   {
+    ClassDeclaration *cd = t->sym;
+    if (TemplateInstance *ti = cd->isInstantiated ())
+      {
+	if (!ti->needsCodegen () && !ti->minst)
+	  {
+	    this->result_ |= true;
+	  }
+      }
   }
 
   void visit (TypeTuple *t)
