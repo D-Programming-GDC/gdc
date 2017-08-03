@@ -7707,6 +7707,38 @@ void test16233()
 
 /***************************************************/
 
+// https://issues.dlang.org/show_bug.cgi?id=16408
+
+char[1] SDL_GetKeyName_buffer;
+
+const(char)[] SDL_GetKeyName(char k)
+{
+    pragma(inline, false);
+    SDL_GetKeyName_buffer[0] = k;
+    return SDL_GetKeyName_buffer[];
+}
+
+void formattedWrite(const(char)[] strW, const(char)[] strA, const(char)[] strC)
+{
+    pragma(inline, false);
+
+    assert(strW == "W");
+    assert(strA == "A");
+    assert(strC == "C");
+}
+
+void test16408()
+{
+    pragma(inline, false);
+    formattedWrite(
+        SDL_GetKeyName('W').idup,
+        SDL_GetKeyName('A').idup,
+        SDL_GetKeyName('C').idup
+    );
+}
+
+/***************************************************/
+
 int main()
 {
     test1();
@@ -8018,6 +8050,7 @@ int main()
     test14211();
     test15369();
     test16233();
+    test16408();
 
     printf("Success\n");
     return 0;
