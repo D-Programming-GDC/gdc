@@ -462,6 +462,8 @@ extern (C) bool runModuleUnitTests()
         import core.sys.darwin.execinfo;
     else version( FreeBSD )
         import core.sys.freebsd.execinfo;
+    else version( NetBSD )
+        import core.sys.netbsd.execinfo;
     else version( Windows )
         import core.sys.windows.stacktrace;
     else version( Solaris )
@@ -484,7 +486,7 @@ extern (C) bool runModuleUnitTests()
             void* alignedAddress = cast(byte*)((cast(size_t)(bt_store.ptr + alignment - 1))
                 & ~(alignment - 1));
 
-            (alignedAddress[0 .. classSize]) = typeid(LibBacktrace).init[];
+            (alignedAddress[0 .. classSize]) = typeid(LibBacktrace).initializer[];
             auto bt = cast(LibBacktrace)(alignedAddress);
             // First frame is LibBacktrace ctor. Second is signal handler, but include that for now
             bt.__ctor(1);
@@ -588,6 +590,8 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         import core.sys.darwin.execinfo;
     else version( FreeBSD )
         import core.sys.freebsd.execinfo;
+    else version( NetBSD )
+        import core.sys.netbsd.execinfo;
     else version( Windows )
         import core.sys.windows.stacktrace;
     else version( Solaris )
@@ -790,6 +794,18 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                     }
                 }
                 else version( FreeBSD )
+                {
+                    // format is: 0x00000000 <_D6module4funcAFZv+0x78> at module
+                    auto bptr = cast(char*) memchr( buf.ptr, '<', buf.length );
+                    auto eptr = cast(char*) memchr( buf.ptr, '+', buf.length );
+
+                    if( bptr++ && eptr )
+                    {
+                        symBeg = bptr - buf.ptr;
+                        symEnd = eptr - buf.ptr;
+                    }
+                }
+                else version( NetBSD )
                 {
                     // format is: 0x00000000 <_D6module4funcAFZv+0x78> at module
                     auto bptr = cast(char*) memchr( buf.ptr, '<', buf.length );
