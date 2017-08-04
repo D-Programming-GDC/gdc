@@ -578,6 +578,10 @@ void FuncDeclaration::semantic(Scope *sc)
                 sc->stc |= STCref;
         }
 
+        // 'return' on a non-static class member function implies 'scope' as well
+        if (ad && ad->isClassDeclaration() && (tf->isreturn || sc->stc & STCreturn) && !(sc->stc & STCstatic))
+            sc->stc |= STCscope;
+
         sc->linkage = linkage;
 
         if (!tf->isNaked() && !(isThis() || isNested()))
@@ -670,6 +674,7 @@ void FuncDeclaration::semantic(Scope *sc)
         TypeFunction *tfx = (TypeFunction *)type;
         tfo->mod        = tfx->mod;
         tfo->isscope    = tfx->isscope;
+        tfo->isscopeinferred = tfx->isscopeinferred;
         tfo->isref      = tfx->isref;
         tfo->isnothrow  = tfx->isnothrow;
         tfo->isnogc     = tfx->isnogc;
@@ -946,11 +951,19 @@ void FuncDeclaration::semantic(Scope *sc)
                 if (fdv->isFinalFunc())
                     error("cannot override final function %s", fdv->toPrettyChars());
 
-                doesoverride = true;
                 if (!isOverride())
-                    ::deprecation(loc, "implicitly overriding base class method %s with %s deprecated; add 'override' attribute",
-                        fdv->toPrettyChars(), toPrettyChars());
+                {
+                    int vi2 = findVtblIndex(&cd->baseClass->vtbl, (int)cd->baseClass->vtbl.dim, false);
+                    if (vi2 < 0)
+                        // https://issues.dlang.org/show_bug.cgi?id=17349
+                        ::deprecation(loc, "cannot implicitly override base class method `%s` with `%s`; add `override` attribute",
+                            fdv->toPrettyChars(), toPrettyChars());
+                    else
+                        ::deprecation(loc, "implicitly overriding base class method %s with %s deprecated; add 'override' attribute",
+                            fdv->toPrettyChars(), toPrettyChars());
+                }
 
+                doesoverride = true;
                 if (fdc->toParent() == parent)
                 {
                     // If both are mixins, or both are not, then error.
@@ -1765,7 +1778,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                     Statement *s = new ReturnStatement(loc, NULL);
                     s = ::semantic(s, sc2);
                     fbody = new CompoundStatement(loc, fbody, s);
-                    hasReturnExp |= 1;
+                    hasReturnExp |= (hasReturnExp & 1 ? 16 : 1);
                 }
             }
             else if (fes)
@@ -1776,7 +1789,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                     Expression *e = new IntegerExp(0);
                     Statement *s = new ReturnStatement(Loc(), e);
                     fbody = new CompoundStatement(Loc(), fbody, s);
-                    hasReturnExp |= 1;
+                    hasReturnExp |= (hasReturnExp & 1 ? 16 : 1);
                 }
                 assert(!returnLabel);
             }
@@ -2197,11 +2210,19 @@ void FuncDeclaration::semantic3(Scope *sc)
                 //printf("Inferring scope for %s\n", v->toChars());
                 Parameter *p = Parameter::getNth(f->parameters, u);
                 v->storage_class &= ~STCmaybescope;
-                v->storage_class |= STCscope;
-                p->storageClass |= STCscope;
+                v->storage_class |= STCscope | STCscopeinferred;
+                p->storageClass |= STCscope | STCscopeinferred;
                 assert(!(p->storageClass & STCmaybescope));
             }
         }
+    }
+
+    if (vthis && vthis->storage_class & STCmaybescope)
+    {
+        vthis->storage_class &= ~STCmaybescope;
+        vthis->storage_class |= STCscope | STCscopeinferred;
+        f->isscope = true;
+        f->isscopeinferred = true;
     }
 
     // reset deco to apply inference result to mangled name
@@ -2347,6 +2368,7 @@ VarDeclaration *FuncDeclaration::declareThis(Scope *sc, AggregateDeclaration *ad
     {
         VarDeclaration *v;
         {
+            //printf("declareThis() %s\n", toChars());
             Type *thandle = ad->handleType();
             assert(thandle);
             thandle = thandle->addMod(type->mod);
@@ -2369,6 +2391,8 @@ VarDeclaration *FuncDeclaration::declareThis(Scope *sc, AggregateDeclaration *ad
                 if (tf->isscope)
                     v->storage_class |= STCscope;
             }
+            if (flags & FUNCFLAGinferScope)
+                v->storage_class |= STCmaybescope;
 
             v->semantic(sc);
             if (!sc->insert(v))
@@ -2649,13 +2673,16 @@ int FuncDeclaration::overrides(FuncDeclaration *fd)
  * Find index of function in vtbl[0..dim] that
  * this function overrides.
  * Prefer an exact match to a covariant one.
+ * Params:
+ *      fix17349 = enable fix https://issues.dlang.org/show_bug.cgi?id=17349
  * Returns:
  *      -1      didn't find one
  *      -2      can't determine because of forward references
  */
 
-int FuncDeclaration::findVtblIndex(Dsymbols *vtbl, int dim)
+int FuncDeclaration::findVtblIndex(Dsymbols *vtbl, int dim, bool fix17349)
 {
+    //printf("findVtblIndex() %s\n", toChars());
     FuncDeclaration *mismatch = NULL;
     StorageClass mismatchstc = 0;
     int mismatchvi = -1;
@@ -2683,7 +2710,7 @@ int FuncDeclaration::findVtblIndex(Dsymbols *vtbl, int dim)
             }
 
             StorageClass stc = 0;
-            int cov = type->covariant(fdv->type, &stc);
+            int cov = type->covariant(fdv->type, &stc, fix17349);
             //printf("\tbaseclass cov = %d\n", cov);
             switch (cov)
             {

@@ -7630,6 +7630,25 @@ template isCustomSerializable15126(T)
 alias bug15126 = isCustomSerializable15126!Json15126;
 
 /***************************************************/
+// 15366
+
+enum E15366 : bool { A, B };
+
+struct S15366
+{
+    void func1(E15366 e) {}
+
+    void func2(E15366 a, E15366 b)
+    {
+        func1(cast(E15366)(a && b));
+        func1(cast(E15366)(a || b));
+
+        auto x1 = cast(E15366)(a && b);
+        auto x2 = cast(E15366)(a || b);
+    }
+}
+
+/***************************************************/
 // 15369
 
 struct MsgTable15369
@@ -7735,6 +7754,27 @@ void test16408()
         SDL_GetKeyName('A').idup,
         SDL_GetKeyName('C').idup
     );
+}
+
+/***************************************************/
+// https://issues.dlang.org/show_bug.cgi?id=17349
+
+void test17349()
+{
+    static struct S
+    {
+        int bar(void delegate(ref int*)) { return 1; }
+        int bar(void delegate(ref const int*)) const { return 2; }
+    }
+
+    void dg1(ref int*) { }
+    void dg2(ref const int*) { }
+    S s;
+    int i;
+    i = s.bar(&dg1);
+    assert(i == 1);
+    i = s.bar(&dg2);
+    assert(i == 2);
 }
 
 /***************************************************/
@@ -8051,6 +8091,7 @@ int main()
     test15369();
     test16233();
     test16408();
+    test17349();
 
     printf("Success\n");
     return 0;
