@@ -450,3 +450,25 @@ fail_compilation/retscope.d(1311): Error: scope variable u2 assigned to ek with 
   ek = U13.sget(u1); // ok
 }
 
+/************************************************/
+
+// https://issues.dlang.org/show_bug.cgi?id=17117
+
+ref int foo21(return ref int s)
+{
+        return s;
+}
+
+int fail21()
+{
+        int s;
+        return foo21(s); // Error: escaping reference to local variable s
+}
+
+int test21()
+{
+        int s;
+        s = foo21(s);
+        return s;
+}
+
