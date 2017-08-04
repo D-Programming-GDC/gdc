@@ -178,7 +178,7 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
 	rt/sections_elf_shared.d rt/sections_osx.d rt/sections_solaris.d \
 	rt/sections_win32.d rt/sections_win64.d rt/switch_.d rt/tlsgc.d \
-	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
+	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
 	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
 	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
 	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
@@ -230,13 +230,14 @@ DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/errno.d core/sys/linux/execinfo.d \
 	core/sys/linux/fcntl.d core/sys/linux/ifaddrs.d core/sys/linux/link.d \
 	core/sys/linux/sched.d core/sys/linux/stdio.d \
-	core/sys/linux/sys/auxv.d core/sys/linux/sys/inotify.d \
-	core/sys/linux/sys/mman.d core/sys/linux/sys/netinet/tcp.d \
-	core/sys/linux/sys/prctl.d core/sys/linux/sys/signalfd.d \
-	core/sys/linux/sys/socket.d core/sys/linux/sys/sysinfo.d \
-	core/sys/linux/sys/time.d core/sys/linux/sys/xattr.d \
-	core/sys/linux/termios.d core/sys/linux/time.d \
-	core/sys/linux/timerfd.d core/sys/linux/tipc.d core/sys/linux/unistd.d
+	core/sys/linux/sys/auxv.d core/sys/linux/sys/file.d \
+	core/sys/linux/sys/inotify.d core/sys/linux/sys/mman.d \
+	core/sys/linux/sys/netinet/tcp.d core/sys/linux/sys/prctl.d \
+	core/sys/linux/sys/signalfd.d core/sys/linux/sys/socket.d \
+	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/time.d \
+	core/sys/linux/sys/xattr.d core/sys/linux/termios.d \
+	core/sys/linux/time.d core/sys/linux/timerfd.d core/sys/linux/tipc.d \
+	core/sys/linux/unistd.d
 
 DRUNTIME_DSOURCES_OPENBSD = core/sys/openbsd/dlfcn.d
 

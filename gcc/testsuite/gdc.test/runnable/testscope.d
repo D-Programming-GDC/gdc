@@ -269,6 +269,20 @@ void test16747() @safe
 
 /********************************************/
 
+byte typify13(T)(byte val) { return val; }
+alias INT8_C13  = typify13!byte;
+
+/********************************************/
+
+template test14(T)
+{
+    alias test14 = int;
+}
+
+test14!(char[] function(return char[])) x14;
+
+/********************************************/
+
 void main()
 {
     test1();
