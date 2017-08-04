@@ -12,6 +12,8 @@ License: Distributed under the Boost Software License, Version 1.0.
 boost.org/LICENSE_1_0.txt)).
 
 Authors: $(HTTP erdani.com, Andrei Alexandrescu)
+
+$(SCRIPT inhibitQuickIndex = 1;)
 */
 module std.container.util;
 
@@ -50,7 +52,7 @@ if (is(T == struct) || is(T == class))
 
 
 ///
-unittest
+@system unittest
 {
     import std.container;
     import std.algorithm.comparison : equal;
@@ -66,7 +68,7 @@ unittest
     assert(equal(slist[], [1, 2, 3]));
 }
 
-unittest
+@system unittest
 {
     import std.container;
     import std.algorithm.comparison : equal;
@@ -83,7 +85,7 @@ unittest
 }
 
 // Issue 8895
-unittest
+@safe unittest
 {
     import std.container;
     import std.algorithm.comparison : equal;
@@ -101,26 +103,37 @@ unittest
  * Convenience function for constructing a generic container.
  */
 template make(alias Container, Args...)
-    if (!is(Container))
+if (!is(Container))
 {
-    import std.range : isInputRange;
+    import std.range : isInputRange, isInfinite;
     import std.traits : isDynamicArray;
 
     auto make(Range)(Range range)
-        if (!isDynamicArray!Range && isInputRange!Range)
+        if (!isDynamicArray!Range && isInputRange!Range && !isInfinite!Range)
     {
         import std.range : ElementType;
         return .make!(Container!(ElementType!Range, Args))(range);
     }
 
     auto make(T)(T[] items...)
+        if (!isInfinite!T)
     {
         return .make!(Container!(T, Args))(items);
     }
 }
 
+/// forbid construction from infinite range
+@safe unittest
+{
+    import std.container.array : Array;
+    import std.range : only, repeat;
+    import std.range.primitives : isInfinite;
+    static assert(__traits(compiles, { auto arr = make!Array(only(5)); }));
+    static assert(!__traits(compiles, { auto arr = make!Array(repeat(5)); }));
+}
+
 ///
-unittest
+@system unittest
 {
     import std.container.array, std.container.rbtree, std.container.slist;
     import std.range : iota;
@@ -140,7 +153,7 @@ unittest
     assert(equal(list[], [1, 7, 42]));
 }
 
-unittest
+@safe unittest
 {
     import std.container.rbtree;
     import std.algorithm.comparison : equal;
@@ -150,7 +163,7 @@ unittest
 }
 
 // Issue 13872
-unittest
+@system unittest
 {
     import std.container;
 

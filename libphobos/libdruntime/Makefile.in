@@ -174,20 +174,20 @@ am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	rt/sections_android.lo rt/sections_elf_shared.lo \
 	rt/sections_osx.lo rt/sections_solaris.lo rt/sections_win32.lo \
 	rt/sections_win64.lo rt/switch_.lo rt/tlsgc.lo \
-	rt/typeinfo/ti_AC.lo rt/typeinfo/ti_Acdouble.lo \
-	rt/typeinfo/ti_Acfloat.lo rt/typeinfo/ti_Acreal.lo \
-	rt/typeinfo/ti_Adouble.lo rt/typeinfo/ti_Afloat.lo \
-	rt/typeinfo/ti_Ag.lo rt/typeinfo/ti_Aint.lo \
-	rt/typeinfo/ti_Along.lo rt/typeinfo/ti_Areal.lo \
-	rt/typeinfo/ti_Ashort.lo rt/typeinfo/ti_C.lo \
-	rt/typeinfo/ti_byte.lo rt/typeinfo/ti_cdouble.lo \
-	rt/typeinfo/ti_cent.lo rt/typeinfo/ti_cfloat.lo \
-	rt/typeinfo/ti_char.lo rt/typeinfo/ti_creal.lo \
-	rt/typeinfo/ti_dchar.lo rt/typeinfo/ti_delegate.lo \
-	rt/typeinfo/ti_double.lo rt/typeinfo/ti_float.lo \
-	rt/typeinfo/ti_idouble.lo rt/typeinfo/ti_ifloat.lo \
-	rt/typeinfo/ti_int.lo rt/typeinfo/ti_ireal.lo \
-	rt/typeinfo/ti_long.lo rt/typeinfo/ti_ptr.lo \
+	rt/typeinfo/ti_Acdouble.lo rt/typeinfo/ti_Acfloat.lo \
+	rt/typeinfo/ti_Acreal.lo rt/typeinfo/ti_Adouble.lo \
+	rt/typeinfo/ti_Afloat.lo rt/typeinfo/ti_Ag.lo \
+	rt/typeinfo/ti_Aint.lo rt/typeinfo/ti_Along.lo \
+	rt/typeinfo/ti_Areal.lo rt/typeinfo/ti_Ashort.lo \
+	rt/typeinfo/ti_C.lo rt/typeinfo/ti_byte.lo \
+	rt/typeinfo/ti_cdouble.lo rt/typeinfo/ti_cent.lo \
+	rt/typeinfo/ti_cfloat.lo rt/typeinfo/ti_char.lo \
+	rt/typeinfo/ti_creal.lo rt/typeinfo/ti_dchar.lo \
+	rt/typeinfo/ti_delegate.lo rt/typeinfo/ti_double.lo \
+	rt/typeinfo/ti_float.lo rt/typeinfo/ti_idouble.lo \
+	rt/typeinfo/ti_ifloat.lo rt/typeinfo/ti_int.lo \
+	rt/typeinfo/ti_ireal.lo rt/typeinfo/ti_long.lo \
+	rt/typeinfo/ti_n.lo rt/typeinfo/ti_ptr.lo \
 	rt/typeinfo/ti_real.lo rt/typeinfo/ti_short.lo \
 	rt/typeinfo/ti_ubyte.lo rt/typeinfo/ti_ucent.lo \
 	rt/typeinfo/ti_uint.lo rt/typeinfo/ti_ulong.lo \
@@ -264,13 +264,14 @@ am__objects_17 = core/sys/linux/config.lo core/sys/linux/dlfcn.lo \
 	core/sys/linux/fcntl.lo core/sys/linux/ifaddrs.lo \
 	core/sys/linux/link.lo core/sys/linux/sched.lo \
 	core/sys/linux/stdio.lo core/sys/linux/sys/auxv.lo \
-	core/sys/linux/sys/inotify.lo core/sys/linux/sys/mman.lo \
-	core/sys/linux/sys/netinet/tcp.lo core/sys/linux/sys/prctl.lo \
-	core/sys/linux/sys/signalfd.lo core/sys/linux/sys/socket.lo \
-	core/sys/linux/sys/sysinfo.lo core/sys/linux/sys/time.lo \
-	core/sys/linux/sys/xattr.lo core/sys/linux/termios.lo \
-	core/sys/linux/time.lo core/sys/linux/timerfd.lo \
-	core/sys/linux/tipc.lo core/sys/linux/unistd.lo
+	core/sys/linux/sys/file.lo core/sys/linux/sys/inotify.lo \
+	core/sys/linux/sys/mman.lo core/sys/linux/sys/netinet/tcp.lo \
+	core/sys/linux/sys/prctl.lo core/sys/linux/sys/signalfd.lo \
+	core/sys/linux/sys/socket.lo core/sys/linux/sys/sysinfo.lo \
+	core/sys/linux/sys/time.lo core/sys/linux/sys/xattr.lo \
+	core/sys/linux/termios.lo core/sys/linux/time.lo \
+	core/sys/linux/timerfd.lo core/sys/linux/tipc.lo \
+	core/sys/linux/unistd.lo
 @DRUNTIME_OS_LINUX_TRUE@am__objects_18 = $(am__objects_17)
 am__objects_19 = core/sys/windows/accctrl.lo \
 	core/sys/windows/aclapi.lo core/sys/windows/aclui.lo \
@@ -699,17 +700,17 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
 	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
 	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
-	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
-	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
-	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
-	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
-	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d \
-	rt/backtrace/elf.d rt/cast_.d rt/config.d rt/critical_.d rt/deh.d \
-	rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d \
-	rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
+	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d gcc/builtins.d \
+	gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d gcc/unwind/c6x.d \
+	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
+	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
+	rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d rt/backtrace/elf.d \
+	rt/cast_.d rt/config.d rt/critical_.d rt/deh.d rt/dmain2.d \
+	rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d rt/monitor_.d \
+	rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
 	rt/sections_elf_shared.d rt/sections_osx.d rt/sections_solaris.d \
 	rt/sections_win32.d rt/sections_win64.d rt/switch_.d rt/tlsgc.d \
-	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
+	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
 	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
 	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
 	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
@@ -719,11 +720,11 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
 	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
 	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
-	rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d rt/typeinfo/ti_real.d \
-	rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d rt/typeinfo/ti_ucent.d \
-	rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d rt/typeinfo/ti_ushort.d \
-	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
-	rt/util/container/array.d rt/util/container/common.d \
+	rt/typeinfo/ti_long.d rt/typeinfo/ti_n.d rt/typeinfo/ti_ptr.d \
+	rt/typeinfo/ti_real.d rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d \
+	rt/typeinfo/ti_ucent.d rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d \
+	rt/typeinfo/ti_ushort.d rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d \
+	rt/util/array.d rt/util/container/array.d rt/util/container/common.d \
 	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
 	rt/util/random.d rt/util/typeinfo.d rt/util/utf.d
 
@@ -760,13 +761,14 @@ DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/errno.d core/sys/linux/execinfo.d \
 	core/sys/linux/fcntl.d core/sys/linux/ifaddrs.d core/sys/linux/link.d \
 	core/sys/linux/sched.d core/sys/linux/stdio.d \
-	core/sys/linux/sys/auxv.d core/sys/linux/sys/inotify.d \
-	core/sys/linux/sys/mman.d core/sys/linux/sys/netinet/tcp.d \
-	core/sys/linux/sys/prctl.d core/sys/linux/sys/signalfd.d \
-	core/sys/linux/sys/socket.d core/sys/linux/sys/sysinfo.d \
-	core/sys/linux/sys/time.d core/sys/linux/sys/xattr.d \
-	core/sys/linux/termios.d core/sys/linux/time.d \
-	core/sys/linux/timerfd.d core/sys/linux/tipc.d core/sys/linux/unistd.d
+	core/sys/linux/sys/auxv.d core/sys/linux/sys/file.d \
+	core/sys/linux/sys/inotify.d core/sys/linux/sys/mman.d \
+	core/sys/linux/sys/netinet/tcp.d core/sys/linux/sys/prctl.d \
+	core/sys/linux/sys/signalfd.d core/sys/linux/sys/socket.d \
+	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/time.d \
+	core/sys/linux/sys/xattr.d core/sys/linux/termios.d \
+	core/sys/linux/time.d core/sys/linux/timerfd.d core/sys/linux/tipc.d \
+	core/sys/linux/unistd.d
 
 DRUNTIME_DSOURCES_OPENBSD = core/sys/openbsd/dlfcn.d
 DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
@@ -1091,7 +1093,6 @@ rt/tlsgc.lo: rt/$(am__dirstamp)
 rt/typeinfo/$(am__dirstamp):
 	@$(MKDIR_P) rt/typeinfo
 	@: > rt/typeinfo/$(am__dirstamp)
-rt/typeinfo/ti_AC.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_Acdouble.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_Acfloat.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_Acreal.lo: rt/typeinfo/$(am__dirstamp)
@@ -1118,6 +1119,7 @@ rt/typeinfo/ti_ifloat.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_int.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_ireal.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_long.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_n.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_ptr.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_real.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_short.lo: rt/typeinfo/$(am__dirstamp)
@@ -1322,6 +1324,7 @@ core/sys/linux/sys/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/linux/sys
 	@: > core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/sys/auxv.lo: core/sys/linux/sys/$(am__dirstamp)
+core/sys/linux/sys/file.lo: core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/sys/inotify.lo: core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/sys/mman.lo: core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/sys/netinet/$(am__dirstamp):
@@ -1736,6 +1739,8 @@ mostlyclean-compile:
 	-rm -f core/sys/linux/stdio.lo
 	-rm -f core/sys/linux/sys/auxv.$(OBJEXT)
 	-rm -f core/sys/linux/sys/auxv.lo
+	-rm -f core/sys/linux/sys/file.$(OBJEXT)
+	-rm -f core/sys/linux/sys/file.lo
 	-rm -f core/sys/linux/sys/inotify.$(OBJEXT)
 	-rm -f core/sys/linux/sys/inotify.lo
 	-rm -f core/sys/linux/sys/mman.$(OBJEXT)
@@ -2358,8 +2363,6 @@ mostlyclean-compile:
 	-rm -f rt/switch_.lo
 	-rm -f rt/tlsgc.$(OBJEXT)
 	-rm -f rt/tlsgc.lo
-	-rm -f rt/typeinfo/ti_AC.$(OBJEXT)
-	-rm -f rt/typeinfo/ti_AC.lo
 	-rm -f rt/typeinfo/ti_Acdouble.$(OBJEXT)
 	-rm -f rt/typeinfo/ti_Acdouble.lo
 	-rm -f rt/typeinfo/ti_Acfloat.$(OBJEXT)
@@ -2412,6 +2415,8 @@ mostlyclean-compile:
 	-rm -f rt/typeinfo/ti_ireal.lo
 	-rm -f rt/typeinfo/ti_long.$(OBJEXT)
 	-rm -f rt/typeinfo/ti_long.lo
+	-rm -f rt/typeinfo/ti_n.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_n.lo
 	-rm -f rt/typeinfo/ti_ptr.$(OBJEXT)
 	-rm -f rt/typeinfo/ti_ptr.lo
 	-rm -f rt/typeinfo/ti_real.$(OBJEXT)

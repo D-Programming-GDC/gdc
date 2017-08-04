@@ -167,8 +167,8 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/experimental/allocator/mmap_allocator.d \
 	std/experimental/allocator/package.d \
 	std/experimental/allocator/showcase.d \
-	std/experimental/allocator/typed.d std/experimental/logger/core.d \
-	std/experimental/logger/filelogger.d \
+	std/experimental/allocator/typed.d std/experimental/checkedint.d \
+	std/experimental/logger/core.d std/experimental/logger/filelogger.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
 	std/experimental/typecons.d std/file.d std/format.d std/functional.d \

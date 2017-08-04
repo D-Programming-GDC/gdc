@@ -519,27 +519,7 @@ public:
     }
 
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time). Use $(D MonoTime.currTime)
-              instead. currSystemTick will be removed in January 2017.)
-
-        The current system tick. The number of ticks per second varies from
-        system to system. currSystemTick uses a monotonic clock, so it's
-        intended for precision timing by comparing relative time values, not
-        for getting the current system time.
-
-        Warning:
-            On some systems, the monotonic clock may stop counting when
-            the computer goes to sleep or hibernates. So, the monotonic
-            clock could be off if that occurs. This is known to happen
-            on Mac OS X. It has not been tested whether it occurs on
-            either Windows or Linux.
-
-        Throws:
-            $(LREF DateTimeException) if it fails to get the time.
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use core.time.MonoTime.currTime instead")
     static @property TickDuration currSystemTick() @safe nothrow
     {
@@ -551,42 +531,7 @@ public:
         assert(Clock.currSystemTick.length > 0);
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time). To duplicate the behavior
-              of currAppTick with $(D MonoTime), store the value of
-              $(D MonoTime.currTime) when the program starts, and then subtract
-              it from the current value of $(D MonoTime.currTime) in order to
-              determine how long the program has been running. currAppTick will
-              be removed in January 2017.)
-
-        --------------------
-        immutable MonoTime startupTime;
-        shared static this()
-        {
-            startupTime = MonoTime.currTime;
-        }
-        Duration timeSinceProgramStarted()
-        {
-            return MonoTime.currTime - startupTime;
-        }
-        --------------------
-
-        The current number of system ticks since the application started.
-        The number of ticks per second varies from system to system.
-        This uses a monotonic clock.
-
-        Warning:
-            On some systems, the monotonic clock may stop counting when
-            the computer goes to sleep or hibernates. So, the monotonic
-            clock could be off if that occurs. This is known to happen
-            on Mac OS X. It has not been tested whether it occurs on
-            either Windows or on Linux.
-
-        Throws:
-            $(LREF DateTimeException) if it fails to get the time.
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use core.time.MonoTime instead. See currAppTick's documentation for details.")
     static @property TickDuration currAppTick() @safe
     {
@@ -902,7 +847,7 @@ public:
         Params:
             rhs = The $(LREF SysTime) to assign to this one.
       +/
-    ref SysTime opAssign(SysTime rhs) return @safe pure nothrow
+    ref SysTime opAssign(SysTime rhs) scope return @safe pure nothrow
     {
         _stdTime = rhs._stdTime;
         _timezone = rhs._timezone;
@@ -1123,7 +1068,7 @@ public:
      +/
     @property short year() @safe const nothrow
     {
-        return (cast(Date)this).year;
+        return (cast(Date) this).year;
     }
 
     @safe unittest
@@ -1185,7 +1130,7 @@ public:
             --days;
         }
 
-        auto date = Date(cast(int)days);
+        auto date = Date(cast(int) days);
         date.year = year;
 
         immutable newDaysHNSecs = convert!("days", "hnsecs")(date.dayOfGregorianCal - 1);
@@ -1211,7 +1156,7 @@ public:
 
         foreach (st; chain(testSysTimesBC, testSysTimesAD))
         {
-            auto dt = cast(DateTime)st;
+            auto dt = cast(DateTime) st;
 
             foreach (year; chain(testYearsBC, testYearsAD))
             {
@@ -1256,7 +1201,7 @@ public:
      +/
     @property ushort yearBC() @safe const
     {
-        return (cast(Date)this).yearBC;
+        return (cast(Date) this).yearBC;
     }
 
     ///
@@ -1311,7 +1256,7 @@ public:
             --days;
         }
 
-        auto date = Date(cast(int)days);
+        auto date = Date(cast(int) days);
         date.yearBC = year;
 
         immutable newDaysHNSecs = convert!("days", "hnsecs")(date.dayOfGregorianCal - 1);
@@ -1340,7 +1285,7 @@ public:
 
         foreach (st; chain(testSysTimesBC, testSysTimesAD))
         {
-            auto dt = cast(DateTime)st;
+            auto dt = cast(DateTime) st;
 
             foreach (year; testYearsBC)
             {
@@ -1392,7 +1337,7 @@ public:
      +/
     @property Month month() @safe const nothrow
     {
-        return (cast(Date)this).month;
+        return (cast(Date) this).month;
     }
 
     ///
@@ -1461,7 +1406,7 @@ public:
             --days;
         }
 
-        auto date = Date(cast(int)days);
+        auto date = Date(cast(int) days);
         date.month = month;
 
         immutable newDaysHNSecs = convert!("days", "hnsecs")(date.dayOfGregorianCal - 1);
@@ -1475,13 +1420,13 @@ public:
 
         static void test(SysTime st, Month month, in SysTime expected)
         {
-            st.month = cast(Month)month;
+            st.month = cast(Month) month;
             assert(st == expected);
         }
 
         foreach (st; chain(testSysTimesBC, testSysTimesAD))
         {
-            auto dt = cast(DateTime)st;
+            auto dt = cast(DateTime) st;
 
             foreach (md; testMonthDays)
             {
@@ -1553,7 +1498,7 @@ public:
      +/
     @property ubyte day() @safe const nothrow
     {
-        return (cast(Date)this).day;
+        return (cast(Date) this).day;
     }
 
     ///
@@ -1624,7 +1569,7 @@ public:
             --days;
         }
 
-        auto date = Date(cast(int)days);
+        auto date = Date(cast(int) days);
         date.day = day;
 
         immutable newDaysHNSecs = convert!("days", "hnsecs")(date.dayOfGregorianCal - 1);
@@ -1641,7 +1586,7 @@ public:
         {
             foreach (st; chain(testSysTimesBC, testSysTimesAD))
             {
-                auto dt = cast(DateTime)st;
+                auto dt = cast(DateTime) st;
 
                 if (day > maxDay(dt.year, dt.month))
                     continue;
@@ -1718,7 +1663,7 @@ public:
             --days;
         }
 
-        return cast(ubyte)getUnitsFromHNSecs!"hours"(hnsecs);
+        return cast(ubyte) getUnitsFromHNSecs!"hours"(hnsecs);
     }
 
     @safe unittest
@@ -1807,7 +1752,7 @@ public:
         {
             foreach (st; chain(testSysTimesBC, testSysTimesAD))
             {
-                auto dt = cast(DateTime)st;
+                auto dt = cast(DateTime) st;
                 auto expected = SysTime(DateTime(dt.year, dt.month, dt.day, hour, dt.minute, dt.second),
                                         st.fracSecs,
                                         st.timezone);
@@ -1843,7 +1788,7 @@ public:
 
         hnsecs = removeUnitsFromHNSecs!"hours"(hnsecs);
 
-        return cast(ubyte)getUnitsFromHNSecs!"minutes"(hnsecs);
+        return cast(ubyte) getUnitsFromHNSecs!"minutes"(hnsecs);
     }
 
     @safe unittest
@@ -1935,7 +1880,7 @@ public:
         {
             foreach (st; chain(testSysTimesBC, testSysTimesAD))
             {
-                auto dt = cast(DateTime)st;
+                auto dt = cast(DateTime) st;
                 auto expected = SysTime(DateTime(dt.year, dt.month, dt.day, dt.hour, minute, dt.second),
                                         st.fracSecs,
                                         st.timezone);
@@ -1972,7 +1917,7 @@ public:
         hnsecs = removeUnitsFromHNSecs!"hours"(hnsecs);
         hnsecs = removeUnitsFromHNSecs!"minutes"(hnsecs);
 
-        return cast(ubyte)getUnitsFromHNSecs!"seconds"(hnsecs);
+        return cast(ubyte) getUnitsFromHNSecs!"seconds"(hnsecs);
     }
 
     @safe unittest
@@ -2066,7 +2011,7 @@ public:
         {
             foreach (st; chain(testSysTimesBC, testSysTimesAD))
             {
-                auto dt = cast(DateTime)st;
+                auto dt = cast(DateTime) st;
                 auto expected = SysTime(DateTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, second),
                                         st.fracSecs,
                                         st.timezone);
@@ -2212,7 +2157,7 @@ public:
         {
             foreach (st; chain(testSysTimesBC, testSysTimesAD))
             {
-                auto dt = cast(DateTime)st;
+                auto dt = cast(DateTime) st;
                 auto expected = SysTime(dt, fracSec, st.timezone);
                 st.fracSecs = fracSec;
                 assert(st == expected, format("[%s] [%s]", st, expected));
@@ -2244,7 +2189,7 @@ public:
 
             hnsecs = removeUnitsFromHNSecs!"seconds"(hnsecs);
 
-            return FracSec.from!"hnsecs"(cast(int)hnsecs);
+            return FracSec.from!"hnsecs"(cast(int) hnsecs);
         }
         catch (Exception e)
             assert(0, "FracSec.from!\"hnsecs\"() threw.");
@@ -2336,7 +2281,7 @@ public:
         {
             foreach (st; chain(testSysTimesBC, testSysTimesAD))
             {
-                auto dt = cast(DateTime)st;
+                auto dt = cast(DateTime) st;
                 auto expected = SysTime(dt, fracSec, st.timezone);
                 st.fracSec = FracSec.from!"hnsecs"(fracSec.total!"hnsecs");
                 assert(st == expected, format("[%s] [%s]", st, expected));
@@ -2648,7 +2593,7 @@ public:
         assert(SysTime.fromUnixTime(-1) == SysTime(DateTime(1969, 12, 31, 23, 59, 59), UTC()));
 
         auto st = SysTime.fromUnixTime(0);
-        auto dt = cast(DateTime)st;
+        auto dt = cast(DateTime) st;
         assert(dt <= DateTime(1970, 2, 1) && dt >= DateTime(1969, 12, 31));
         assert(st.timezone is LocalTime());
 
@@ -2762,7 +2707,7 @@ public:
       +/
     tm toTM() @safe const nothrow
     {
-        auto dateTime = cast(DateTime)this;
+        auto dateTime = cast(DateTime) this;
         tm timeInfo;
 
         timeInfo.tm_sec = dateTime.second;
@@ -2778,7 +2723,7 @@ public:
         version(Posix)
         {
             import std.utf : toUTFz;
-            timeInfo.tm_gmtoff = cast(int)convert!("hnsecs", "seconds")(adjTime - _stdTime);
+            timeInfo.tm_gmtoff = cast(int) convert!("hnsecs", "seconds")(adjTime - _stdTime);
             auto zone = (timeInfo.tm_isdst ? _timezone.dstName : _timezone.stdName);
             timeInfo.tm_zone = zone.toUTFz!(char*)();
         }
@@ -2877,7 +2822,7 @@ public:
             --days;
         }
 
-        auto date = Date(cast(int)days);
+        auto date = Date(cast(int) days);
         date.add!units(value, allowOverflow);
         days = date.dayOfGregorianCal - 1;
 
@@ -4036,6 +3981,8 @@ public:
     ///
     @safe unittest
     {
+        import std.typecons : No;
+
         auto st1 = SysTime(DateTime(2010, 1, 1, 12, 33, 33));
         st1.roll!"months"(1);
         assert(st1 == SysTime(DateTime(2010, 2, 1, 12, 33, 33)));
@@ -4085,7 +4032,7 @@ public:
             --days;
         }
 
-        auto date = Date(cast(int)days);
+        auto date = Date(cast(int) days);
         date.roll!"months"(value, allowOverflow);
         days = date.dayOfGregorianCal - 1;
 
@@ -4884,7 +4831,7 @@ public:
             --gdays;
         }
 
-        auto date = Date(cast(int)gdays);
+        auto date = Date(cast(int) gdays);
         date.roll!"days"(value);
         gdays = date.dayOfGregorianCal - 1;
 
@@ -5248,7 +5195,8 @@ public:
             immutable minute = splitUnitsFromHNSecs!"minutes"(hnsecs);
             immutable second = splitUnitsFromHNSecs!"seconds"(hnsecs);
 
-            auto dateTime = DateTime(Date(cast(int)days), TimeOfDay(cast(int)hour, cast(int)minute, cast(int)second));
+            auto dateTime = DateTime(Date(cast(int) days), TimeOfDay(cast(int) hour,
+                                          cast(int) minute, cast(int) second));
             dateTime.roll!units(value);
             --days;
 
@@ -6509,15 +6457,7 @@ public:
         //assert(ist - duration == SysTime(DateTime(1999, 7, 6, 12, 30, 21)));
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time) and $(REF Duration, core,time).
-              Use $(D Duration) instead. This overload will be removed in
-              January 2017.)
-
-        Defines + and - with $(REF TickDuration, core,time).
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use Duration instead of TickDuration.")
     SysTime opBinary(string op)(TickDuration td) @safe const pure nothrow
         if (op == "+" || op == "-")
@@ -6749,15 +6689,7 @@ public:
         //static assert(!__traits(compiles, ist -= duration));
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time) and $(REF Duration, core,time).
-              Use $(D Duration) instead. This overload will be removed in
-              January 2017.)
-
-        Defines += and -= with $(REF TickDuration, core,time).
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use Duration instead of TickDuration.")
     ref SysTime opOpAssign(string op)(TickDuration td) @safe pure nothrow
         if (op == "+" || op == "-")
@@ -6920,7 +6852,7 @@ public:
       +/
     int diffMonths(in SysTime rhs) @safe const nothrow
     {
-        return (cast(Date)this).diffMonths(cast(Date)rhs);
+        return (cast(Date) this).diffMonths(cast(Date) rhs);
     }
 
     ///
@@ -6963,7 +6895,7 @@ public:
      +/
     @property bool isLeapYear() @safe const nothrow
     {
-        return (cast(Date)this).isLeapYear;
+        return (cast(Date) this).isLeapYear;
     }
 
     @safe unittest
@@ -7001,7 +6933,7 @@ public:
       +/
     @property ushort dayOfYear() @safe const nothrow
     {
-        return (cast(Date)this).dayOfYear;
+        return (cast(Date) this).dayOfYear;
     }
 
     ///
@@ -7036,7 +6968,7 @@ public:
         immutable days = convert!("hnsecs", "days")(hnsecs);
         immutable theRest = hnsecs - convert!("days", "hnsecs")(days);
 
-        auto date = Date(cast(int)days);
+        auto date = Date(cast(int) days);
         date.dayOfYear = day;
 
         immutable newDaysHNSecs = convert!("days", "hnsecs")(date.dayOfGregorianCal - 1);
@@ -7067,10 +6999,10 @@ public:
         //which would be the 1st day of the Gregorian Calendar, not the 0th. So,
         //simply casting to days is one day off.
         if (adjustedTime > 0)
-            return cast(int)getUnitsFromHNSecs!"days"(adjustedTime) + 1;
+            return cast(int) getUnitsFromHNSecs!"days"(adjustedTime) + 1;
 
         long hnsecs = adjustedTime;
-        immutable days = cast(int)splitUnitsFromHNSecs!"days"(hnsecs);
+        immutable days = cast(int) splitUnitsFromHNSecs!"days"(hnsecs);
 
         return hnsecs == 0 ? days + 1 : days;
     }
@@ -7690,7 +7622,7 @@ public:
       +/
     @property ubyte isoWeek() @safe const nothrow
     {
-        return (cast(Date)this).isoWeek;
+        return (cast(Date) this).isoWeek;
     }
 
     @safe unittest
@@ -7713,7 +7645,7 @@ public:
         immutable hnsecs = adjTime;
         immutable days = getUnitsFromHNSecs!"days"(hnsecs);
 
-        auto date = Date(cast(int)days + 1).endOfMonth;
+        auto date = Date(cast(int) days + 1).endOfMonth;
         auto newDays = date.dayOfGregorianCal - 1;
         long theTimeHNSecs;
 
@@ -7969,26 +7901,26 @@ public:
 
     @safe unittest
     {
-        assert(cast(Date)SysTime(Date(1999, 7, 6)) == Date(1999, 7, 6));
-        assert(cast(Date)SysTime(Date(2000, 12, 31)) == Date(2000, 12, 31));
-        assert(cast(Date)SysTime(Date(2001, 1, 1)) == Date(2001, 1, 1));
+        assert(cast(Date) SysTime(Date(1999, 7, 6)) == Date(1999, 7, 6));
+        assert(cast(Date) SysTime(Date(2000, 12, 31)) == Date(2000, 12, 31));
+        assert(cast(Date) SysTime(Date(2001, 1, 1)) == Date(2001, 1, 1));
 
-        assert(cast(Date)SysTime(DateTime(1999, 7, 6, 12, 10, 9)) == Date(1999, 7, 6));
-        assert(cast(Date)SysTime(DateTime(2000, 12, 31, 13, 11, 10)) == Date(2000, 12, 31));
-        assert(cast(Date)SysTime(DateTime(2001, 1, 1, 14, 12, 11)) == Date(2001, 1, 1));
+        assert(cast(Date) SysTime(DateTime(1999, 7, 6, 12, 10, 9)) == Date(1999, 7, 6));
+        assert(cast(Date) SysTime(DateTime(2000, 12, 31, 13, 11, 10)) == Date(2000, 12, 31));
+        assert(cast(Date) SysTime(DateTime(2001, 1, 1, 14, 12, 11)) == Date(2001, 1, 1));
 
-        assert(cast(Date)SysTime(Date(-1999, 7, 6)) == Date(-1999, 7, 6));
-        assert(cast(Date)SysTime(Date(-2000, 12, 31)) == Date(-2000, 12, 31));
-        assert(cast(Date)SysTime(Date(-2001, 1, 1)) == Date(-2001, 1, 1));
+        assert(cast(Date) SysTime(Date(-1999, 7, 6)) == Date(-1999, 7, 6));
+        assert(cast(Date) SysTime(Date(-2000, 12, 31)) == Date(-2000, 12, 31));
+        assert(cast(Date) SysTime(Date(-2001, 1, 1)) == Date(-2001, 1, 1));
 
-        assert(cast(Date)SysTime(DateTime(-1999, 7, 6, 12, 10, 9)) == Date(-1999, 7, 6));
-        assert(cast(Date)SysTime(DateTime(-2000, 12, 31, 13, 11, 10)) == Date(-2000, 12, 31));
-        assert(cast(Date)SysTime(DateTime(-2001, 1, 1, 14, 12, 11)) == Date(-2001, 1, 1));
+        assert(cast(Date) SysTime(DateTime(-1999, 7, 6, 12, 10, 9)) == Date(-1999, 7, 6));
+        assert(cast(Date) SysTime(DateTime(-2000, 12, 31, 13, 11, 10)) == Date(-2000, 12, 31));
+        assert(cast(Date) SysTime(DateTime(-2001, 1, 1, 14, 12, 11)) == Date(-2001, 1, 1));
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        assert(cast(Date)cst != Date.init);
-        //assert(cast(Date)ist != Date.init);
+        assert(cast(Date) cst != Date.init);
+        //assert(cast(Date) ist != Date.init);
     }
 
 
@@ -8013,7 +7945,7 @@ public:
             immutable minute = splitUnitsFromHNSecs!"minutes"(hnsecs);
             immutable second = getUnitsFromHNSecs!"seconds"(hnsecs);
 
-            return DateTime(Date(cast(int)days), TimeOfDay(cast(int)hour, cast(int)minute, cast(int)second));
+            return DateTime(Date(cast(int) days), TimeOfDay(cast(int) hour, cast(int) minute, cast(int) second));
         }
         catch (Exception e)
             assert(0, "Either DateTime's constructor or TimeOfDay's constructor threw.");
@@ -8021,33 +7953,33 @@ public:
 
     @safe unittest
     {
-        assert(cast(DateTime)SysTime(DateTime(1, 1, 6, 7, 12, 22)) == DateTime(1, 1, 6, 7, 12, 22));
-        assert(cast(DateTime)SysTime(DateTime(1, 1, 6, 7, 12, 22), msecs(22)) == DateTime(1, 1, 6, 7, 12, 22));
-        assert(cast(DateTime)SysTime(Date(1999, 7, 6)) == DateTime(1999, 7, 6, 0, 0, 0));
-        assert(cast(DateTime)SysTime(Date(2000, 12, 31)) == DateTime(2000, 12, 31, 0, 0, 0));
-        assert(cast(DateTime)SysTime(Date(2001, 1, 1)) == DateTime(2001, 1, 1, 0, 0, 0));
+        assert(cast(DateTime) SysTime(DateTime(1, 1, 6, 7, 12, 22)) == DateTime(1, 1, 6, 7, 12, 22));
+        assert(cast(DateTime) SysTime(DateTime(1, 1, 6, 7, 12, 22), msecs(22)) == DateTime(1, 1, 6, 7, 12, 22));
+        assert(cast(DateTime) SysTime(Date(1999, 7, 6)) == DateTime(1999, 7, 6, 0, 0, 0));
+        assert(cast(DateTime) SysTime(Date(2000, 12, 31)) == DateTime(2000, 12, 31, 0, 0, 0));
+        assert(cast(DateTime) SysTime(Date(2001, 1, 1)) == DateTime(2001, 1, 1, 0, 0, 0));
 
-        assert(cast(DateTime)SysTime(DateTime(1999, 7, 6, 12, 10, 9)) == DateTime(1999, 7, 6, 12, 10, 9));
-        assert(cast(DateTime)SysTime(DateTime(2000, 12, 31, 13, 11, 10)) == DateTime(2000, 12, 31, 13, 11, 10));
-        assert(cast(DateTime)SysTime(DateTime(2001, 1, 1, 14, 12, 11)) == DateTime(2001, 1, 1, 14, 12, 11));
+        assert(cast(DateTime) SysTime(DateTime(1999, 7, 6, 12, 10, 9)) == DateTime(1999, 7, 6, 12, 10, 9));
+        assert(cast(DateTime) SysTime(DateTime(2000, 12, 31, 13, 11, 10)) == DateTime(2000, 12, 31, 13, 11, 10));
+        assert(cast(DateTime) SysTime(DateTime(2001, 1, 1, 14, 12, 11)) == DateTime(2001, 1, 1, 14, 12, 11));
 
-        assert(cast(DateTime)SysTime(DateTime(-1, 1, 6, 7, 12, 22)) == DateTime(-1, 1, 6, 7, 12, 22));
-        assert(cast(DateTime)SysTime(DateTime(-1, 1, 6, 7, 12, 22), msecs(22)) == DateTime(-1, 1, 6, 7, 12, 22));
-        assert(cast(DateTime)SysTime(Date(-1999, 7, 6)) == DateTime(-1999, 7, 6, 0, 0, 0));
-        assert(cast(DateTime)SysTime(Date(-2000, 12, 31)) == DateTime(-2000, 12, 31, 0, 0, 0));
-        assert(cast(DateTime)SysTime(Date(-2001, 1, 1)) == DateTime(-2001, 1, 1, 0, 0, 0));
+        assert(cast(DateTime) SysTime(DateTime(-1, 1, 6, 7, 12, 22)) == DateTime(-1, 1, 6, 7, 12, 22));
+        assert(cast(DateTime) SysTime(DateTime(-1, 1, 6, 7, 12, 22), msecs(22)) == DateTime(-1, 1, 6, 7, 12, 22));
+        assert(cast(DateTime) SysTime(Date(-1999, 7, 6)) == DateTime(-1999, 7, 6, 0, 0, 0));
+        assert(cast(DateTime) SysTime(Date(-2000, 12, 31)) == DateTime(-2000, 12, 31, 0, 0, 0));
+        assert(cast(DateTime) SysTime(Date(-2001, 1, 1)) == DateTime(-2001, 1, 1, 0, 0, 0));
 
-        assert(cast(DateTime)SysTime(DateTime(-1999, 7, 6, 12, 10, 9)) == DateTime(-1999, 7, 6, 12, 10, 9));
-        assert(cast(DateTime)SysTime(DateTime(-2000, 12, 31, 13, 11, 10)) == DateTime(-2000, 12, 31, 13, 11, 10));
-        assert(cast(DateTime)SysTime(DateTime(-2001, 1, 1, 14, 12, 11)) == DateTime(-2001, 1, 1, 14, 12, 11));
+        assert(cast(DateTime) SysTime(DateTime(-1999, 7, 6, 12, 10, 9)) == DateTime(-1999, 7, 6, 12, 10, 9));
+        assert(cast(DateTime) SysTime(DateTime(-2000, 12, 31, 13, 11, 10)) == DateTime(-2000, 12, 31, 13, 11, 10));
+        assert(cast(DateTime) SysTime(DateTime(-2001, 1, 1, 14, 12, 11)) == DateTime(-2001, 1, 1, 14, 12, 11));
 
-        assert(cast(DateTime)SysTime(DateTime(2011, 1, 13, 8, 17, 2), msecs(296), LocalTime()) ==
+        assert(cast(DateTime) SysTime(DateTime(2011, 1, 13, 8, 17, 2), msecs(296), LocalTime()) ==
                DateTime(2011, 1, 13, 8, 17, 2));
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        assert(cast(DateTime)cst != DateTime.init);
-        //assert(cast(DateTime)ist != DateTime.init);
+        assert(cast(DateTime) cst != DateTime.init);
+        //assert(cast(DateTime) ist != DateTime.init);
     }
 
 
@@ -8069,7 +8001,7 @@ public:
             immutable minute = splitUnitsFromHNSecs!"minutes"(hnsecs);
             immutable second = getUnitsFromHNSecs!"seconds"(hnsecs);
 
-            return TimeOfDay(cast(int)hour, cast(int)minute, cast(int)second);
+            return TimeOfDay(cast(int) hour, cast(int) minute, cast(int) second);
         }
         catch (Exception e)
             assert(0, "TimeOfDay's constructor threw.");
@@ -8077,26 +8009,26 @@ public:
 
     @safe unittest
     {
-        assert(cast(TimeOfDay)SysTime(Date(1999, 7, 6)) == TimeOfDay(0, 0, 0));
-        assert(cast(TimeOfDay)SysTime(Date(2000, 12, 31)) == TimeOfDay(0, 0, 0));
-        assert(cast(TimeOfDay)SysTime(Date(2001, 1, 1)) == TimeOfDay(0, 0, 0));
+        assert(cast(TimeOfDay) SysTime(Date(1999, 7, 6)) == TimeOfDay(0, 0, 0));
+        assert(cast(TimeOfDay) SysTime(Date(2000, 12, 31)) == TimeOfDay(0, 0, 0));
+        assert(cast(TimeOfDay) SysTime(Date(2001, 1, 1)) == TimeOfDay(0, 0, 0));
 
-        assert(cast(TimeOfDay)SysTime(DateTime(1999, 7, 6, 12, 10, 9)) == TimeOfDay(12, 10, 9));
-        assert(cast(TimeOfDay)SysTime(DateTime(2000, 12, 31, 13, 11, 10)) == TimeOfDay(13, 11, 10));
-        assert(cast(TimeOfDay)SysTime(DateTime(2001, 1, 1, 14, 12, 11)) == TimeOfDay(14, 12, 11));
+        assert(cast(TimeOfDay) SysTime(DateTime(1999, 7, 6, 12, 10, 9)) == TimeOfDay(12, 10, 9));
+        assert(cast(TimeOfDay) SysTime(DateTime(2000, 12, 31, 13, 11, 10)) == TimeOfDay(13, 11, 10));
+        assert(cast(TimeOfDay) SysTime(DateTime(2001, 1, 1, 14, 12, 11)) == TimeOfDay(14, 12, 11));
 
-        assert(cast(TimeOfDay)SysTime(Date(-1999, 7, 6)) == TimeOfDay(0, 0, 0));
-        assert(cast(TimeOfDay)SysTime(Date(-2000, 12, 31)) == TimeOfDay(0, 0, 0));
-        assert(cast(TimeOfDay)SysTime(Date(-2001, 1, 1)) == TimeOfDay(0, 0, 0));
+        assert(cast(TimeOfDay) SysTime(Date(-1999, 7, 6)) == TimeOfDay(0, 0, 0));
+        assert(cast(TimeOfDay) SysTime(Date(-2000, 12, 31)) == TimeOfDay(0, 0, 0));
+        assert(cast(TimeOfDay) SysTime(Date(-2001, 1, 1)) == TimeOfDay(0, 0, 0));
 
-        assert(cast(TimeOfDay)SysTime(DateTime(-1999, 7, 6, 12, 10, 9)) == TimeOfDay(12, 10, 9));
-        assert(cast(TimeOfDay)SysTime(DateTime(-2000, 12, 31, 13, 11, 10)) == TimeOfDay(13, 11, 10));
-        assert(cast(TimeOfDay)SysTime(DateTime(-2001, 1, 1, 14, 12, 11)) == TimeOfDay(14, 12, 11));
+        assert(cast(TimeOfDay) SysTime(DateTime(-1999, 7, 6, 12, 10, 9)) == TimeOfDay(12, 10, 9));
+        assert(cast(TimeOfDay) SysTime(DateTime(-2000, 12, 31, 13, 11, 10)) == TimeOfDay(13, 11, 10));
+        assert(cast(TimeOfDay) SysTime(DateTime(-2001, 1, 1, 14, 12, 11)) == TimeOfDay(14, 12, 11));
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        assert(cast(TimeOfDay)cst != TimeOfDay.init);
-        //assert(cast(TimeOfDay)ist != TimeOfDay.init);
+        assert(cast(TimeOfDay) cst != TimeOfDay.init);
+        //assert(cast(TimeOfDay) ist != TimeOfDay.init);
     }
 
 
@@ -8160,8 +8092,9 @@ public:
             auto minute = splitUnitsFromHNSecs!"minutes"(hnsecs);
             auto second = splitUnitsFromHNSecs!"seconds"(hnsecs);
 
-            auto dateTime = DateTime(Date(cast(int)days), TimeOfDay(cast(int)hour, cast(int)minute, cast(int)second));
-            auto fracSecStr = fracSecsToISOString(cast(int)hnsecs);
+            auto dateTime = DateTime(Date(cast(int) days), TimeOfDay(cast(int) hour,
+                                          cast(int) minute, cast(int) second));
+            auto fracSecStr = fracSecsToISOString(cast(int) hnsecs);
 
             if (_timezone is LocalTime())
                 return dateTime.toISOString() ~ fracSecStr;
@@ -8246,8 +8179,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        assert(cast(TimeOfDay)cst != TimeOfDay.init);
-        //assert(cast(TimeOfDay)ist != TimeOfDay.init);
+        assert(cast(TimeOfDay) cst != TimeOfDay.init);
+        //assert(cast(TimeOfDay) ist != TimeOfDay.init);
     }
 
 
@@ -8290,8 +8223,9 @@ public:
             auto minute = splitUnitsFromHNSecs!"minutes"(hnsecs);
             auto second = splitUnitsFromHNSecs!"seconds"(hnsecs);
 
-            auto dateTime = DateTime(Date(cast(int)days), TimeOfDay(cast(int)hour, cast(int)minute, cast(int)second));
-            auto fracSecStr = fracSecsToISOString(cast(int)hnsecs);
+            auto dateTime = DateTime(Date(cast(int) days), TimeOfDay(cast(int) hour,
+                                          cast(int) minute, cast(int) second));
+            auto fracSecStr = fracSecsToISOString(cast(int) hnsecs);
 
             if (_timezone is LocalTime())
                 return dateTime.toISOExtString() ~ fracSecStr;
@@ -8382,8 +8316,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        assert(cast(TimeOfDay)cst != TimeOfDay.init);
-        //assert(cast(TimeOfDay)ist != TimeOfDay.init);
+        assert(cast(TimeOfDay) cst != TimeOfDay.init);
+        //assert(cast(TimeOfDay) ist != TimeOfDay.init);
     }
 
     /++
@@ -8424,8 +8358,9 @@ public:
             auto minute = splitUnitsFromHNSecs!"minutes"(hnsecs);
             auto second = splitUnitsFromHNSecs!"seconds"(hnsecs);
 
-            auto dateTime = DateTime(Date(cast(int)days), TimeOfDay(cast(int)hour, cast(int)minute, cast(int)second));
-            auto fracSecStr = fracSecsToISOString(cast(int)hnsecs);
+            auto dateTime = DateTime(Date(cast(int) days), TimeOfDay(cast(int) hour,
+                                          cast(int) minute, cast(int) second));
+            auto fracSecStr = fracSecsToISOString(cast(int) hnsecs);
 
             if (_timezone is LocalTime())
                 return dateTime.toSimpleString() ~ fracSecStr;
@@ -8517,8 +8452,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        assert(cast(TimeOfDay)cst != TimeOfDay.init);
-        //assert(cast(TimeOfDay)ist != TimeOfDay.init);
+        assert(cast(TimeOfDay) cst != TimeOfDay.init);
+        //assert(cast(TimeOfDay) ist != TimeOfDay.init);
     }
 
 
@@ -9323,12 +9258,12 @@ public:
      +/
     this(int year, int month, int day) @safe pure
     {
-        enforceValid!"months"(cast(Month)month);
-        enforceValid!"days"(year, cast(Month)month, day);
+        enforceValid!"months"(cast(Month) month);
+        enforceValid!"days"(year, cast(Month) month, day);
 
-        _year  = cast(short)year;
-        _month = cast(Month)month;
-        _day   = cast(ubyte)day;
+        _year  = cast(short) year;
+        _month = cast(Month) month;
+        _day   = cast(ubyte) day;
     }
 
     @safe unittest
@@ -9445,7 +9380,7 @@ public:
             }
             else
             {
-                _year = cast(short)years;
+                _year = cast(short) years;
 
                 try
                     dayOfYear = day;
@@ -9509,7 +9444,7 @@ public:
             }
             else
             {
-                _year = cast(short)years;
+                _year = cast(short) years;
                 immutable newDoY = (yearIsLeapYear(_year) ? daysInLeapYear : daysInYear) + day + 1;
 
                 try
@@ -9687,7 +9622,7 @@ public:
     @property void year(int year) @safe pure
     {
         enforceValid!"days"(year, _month, _day);
-        _year = cast(short)year;
+        _year = cast(short) year;
     }
 
     ///
@@ -9844,7 +9779,7 @@ public:
     {
         enforceValid!"months"(month);
         enforceValid!"days"(_year, month, _day);
-        _month = cast(Month)month;
+        _month = cast(Month) month;
     }
 
     @safe unittest
@@ -9856,13 +9791,13 @@ public:
             assert(date == expected);
         }
 
-        assertThrown!DateTimeException(testDate(Date(1, 1, 1), cast(Month)0));
-        assertThrown!DateTimeException(testDate(Date(1, 1, 1), cast(Month)13));
-        assertThrown!DateTimeException(testDate(Date(1, 1, 29), cast(Month)2));
-        assertThrown!DateTimeException(testDate(Date(0, 1, 30), cast(Month)2));
+        assertThrown!DateTimeException(testDate(Date(1, 1, 1), cast(Month) 0));
+        assertThrown!DateTimeException(testDate(Date(1, 1, 1), cast(Month) 13));
+        assertThrown!DateTimeException(testDate(Date(1, 1, 29), cast(Month) 2));
+        assertThrown!DateTimeException(testDate(Date(0, 1, 30), cast(Month) 2));
 
-        testDate(Date(1, 1, 1), cast(Month)7, Date(1, 7, 1));
-        testDate(Date(-1, 1, 1), cast(Month)7, Date(-1, 7, 1));
+        testDate(Date(1, 1, 1), cast(Month) 7, Date(1, 7, 1));
+        testDate(Date(-1, 1, 1), cast(Month) 7, Date(-1, 7, 1));
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
@@ -9923,7 +9858,7 @@ public:
     @property void day(int day) @safe pure
     {
         enforceValid!"days"(_year, _month, day);
-        _day = cast(ubyte)day;
+        _day = cast(ubyte) day;
     }
 
     @safe unittest
@@ -10054,6 +9989,8 @@ public:
     ///
     @safe unittest
     {
+        import std.typecons : No;
+
         auto d1 = Date(2010, 1, 1);
         d1.add!"months"(11);
         assert(d1 == Date(2010, 12, 1));
@@ -10294,7 +10231,7 @@ public:
         }
 
         _year += years;
-        _month = cast(Month)newMonth;
+        _month = cast(Month) newMonth;
 
         immutable currMaxDay = maxDay(_year, _month);
         immutable overflow = _day - currMaxDay;
@@ -10304,10 +10241,10 @@ public:
             if (allowOverflow == Yes.allowDayOverflow)
             {
                 ++_month;
-                _day = cast(ubyte)overflow;
+                _day = cast(ubyte) overflow;
             }
             else
-                _day = cast(ubyte)currMaxDay;
+                _day = cast(ubyte) currMaxDay;
         }
 
         return this;
@@ -10821,6 +10758,8 @@ public:
     ///
     @safe unittest
     {
+        import std.typecons : No;
+
         auto d1 = Date(2010, 1, 1);
         d1.roll!"months"(1);
         assert(d1 == Date(2010, 2, 1));
@@ -10873,7 +10812,7 @@ public:
                 newMonth -= 12;
         }
 
-        _month = cast(Month)newMonth;
+        _month = cast(Month) newMonth;
 
         immutable currMaxDay = maxDay(_year, _month);
         immutable overflow = _day - currMaxDay;
@@ -10883,10 +10822,10 @@ public:
             if (allowOverflow == Yes.allowDayOverflow)
             {
                 ++_month;
-                _day = cast(ubyte)overflow;
+                _day = cast(ubyte) overflow;
             }
             else
-                _day = cast(ubyte)currMaxDay;
+                _day = cast(ubyte) currMaxDay;
         }
 
         return this;
@@ -11465,7 +11404,7 @@ public:
         else if (newDay > limit)
             newDay -= limit;
 
-        _day = cast(ubyte)newDay;
+        _day = cast(ubyte) newDay;
         return this;
     }
 
@@ -11757,15 +11696,7 @@ public:
         assert(idate - duration == Date(1999, 6, 24));
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time) and $(REF Duration, core,time).
-              Use $(D Duration) instead. This overload will be removed in
-              January 2017.)
-
-        Defines + and - with $(REF TickDuration, core,time).
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use Duration instead of TickDuration.")
     Date opBinary(string op)(TickDuration td) @safe const pure nothrow
         if (op == "+" || op == "-")
@@ -11871,15 +11802,7 @@ public:
         static assert(!__traits(compiles, idate -= duration));
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time) and $(REF Duration, core,time).
-              Use $(D Duration) instead. This overload will be removed in
-              January 2017.)
-
-        Defines += and -= with $(REF TickDuration, core,time).
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use Duration instead of TickDuration.")
     ref Date opOpAssign(string op)(TickDuration td) @safe pure nothrow
         if (op == "+" || op == "-")
@@ -12329,11 +12252,11 @@ public:
         if (day <= 0 || day > (isLeapYear ? daysInLeapYear : daysInYear) )
             throw new DateTimeException("Invalid day of the year.");
 
-        foreach (i; 1..lastDay.length)
+        foreach (i; 1 .. lastDay.length)
         {
             if (day <= lastDay[i])
             {
-                _month = cast(Month)(cast(int)Month.jan + i - 1);
+                _month = cast(Month)(cast(int) Month.jan + i - 1);
                 _day = cast(ubyte)(day - lastDay[i - 1]);
                 return;
             }
@@ -12539,7 +12462,7 @@ public:
                 }
             }
             else if (week > 0)
-                return cast(ubyte)week;
+                return cast(ubyte) week;
             else
                 return Date(_year - 1, 12, 31).isoWeek;
         }
@@ -13646,9 +13569,9 @@ public:
         enforceValid!"minutes"(minute);
         enforceValid!"seconds"(second);
 
-        _hour   = cast(ubyte)hour;
-        _minute = cast(ubyte)minute;
-        _second = cast(ubyte)second;
+        _hour   = cast(ubyte) hour;
+        _minute = cast(ubyte) minute;
+        _second = cast(ubyte) second;
     }
 
     @safe unittest
@@ -13782,7 +13705,7 @@ public:
     @property void hour(int hour) @safe pure
     {
         enforceValid!"hours"(hour);
-        _hour = cast(ubyte)hour;
+        _hour = cast(ubyte) hour;
     }
 
     @safe unittest
@@ -13833,7 +13756,7 @@ public:
     @property void minute(int minute) @safe pure
     {
         enforceValid!"minutes"(minute);
-        _minute = cast(ubyte)minute;
+        _minute = cast(ubyte) minute;
     }
 
     @safe unittest
@@ -13884,7 +13807,7 @@ public:
     @property void second(int second) @safe pure
     {
         enforceValid!"seconds"(second);
-        _second = cast(ubyte)second;
+        _second = cast(ubyte) second;
     }
 
     @safe unittest
@@ -13984,7 +13907,7 @@ public:
         else if (newVal >= 60)
             newVal -= 60;
 
-        mixin(format("_%s = cast(ubyte)newVal;", memberVarStr));
+        mixin(format("_%s = cast(ubyte) newVal;", memberVarStr));
         return this;
     }
 
@@ -14228,15 +14151,7 @@ public:
         assert(itod - duration == TimeOfDay(1, 30, 33));
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time) and $(REF Duration, core,time).
-              Use $(D Duration) instead. This overload will be removed in
-              January 2017.)
-
-        Defines + and - with $(REF TickDuration, core,time).
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use Duration instead of TickDuration.")
     TimeOfDay opBinary(string op)(TickDuration td) @safe const pure nothrow
         if (op == "+" || op == "-")
@@ -14331,15 +14246,7 @@ public:
         static assert(!__traits(compiles, itod -= duration));
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time) and $(REF Duration, core,time).
-              Use $(D Duration) instead. This overload will be removed in
-              January 2017.)
-
-        Defines += and -= with $(REF TickDuration, core,time).
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use Duration instead of TickDuration.")
     ref TimeOfDay opOpAssign(string op)(TickDuration td) @safe pure nothrow
         if (op == "+" || op == "-")
@@ -14798,9 +14705,9 @@ private:
         immutable newMinutes = splitUnitsFromHNSecs!"minutes"(hnsecs);
         immutable newSeconds = splitUnitsFromHNSecs!"seconds"(hnsecs);
 
-        _hour = cast(ubyte)newHours;
-        _minute = cast(ubyte)newMinutes;
-        _second = cast(ubyte)newSeconds;
+        _hour = cast(ubyte) newHours;
+        _minute = cast(ubyte) newMinutes;
+        _second = cast(ubyte) newSeconds;
 
         return this;
     }
@@ -15507,17 +15414,17 @@ public:
             assert(dt == expected);
         }
 
-        assertThrown!DateTimeException(testDT(DateTime(Date(1, 1, 1), TimeOfDay(12, 30, 33)), cast(Month)0));
-        assertThrown!DateTimeException(testDT(DateTime(Date(1, 1, 1), TimeOfDay(12, 30, 33)), cast(Month)13));
+        assertThrown!DateTimeException(testDT(DateTime(Date(1, 1, 1), TimeOfDay(12, 30, 33)), cast(Month) 0));
+        assertThrown!DateTimeException(testDT(DateTime(Date(1, 1, 1), TimeOfDay(12, 30, 33)), cast(Month) 13));
 
         testDT(
             DateTime(Date(1, 1, 1), TimeOfDay(12, 30, 33)),
-            cast(Month)7,
+            cast(Month) 7,
             DateTime(Date(1, 7, 1), TimeOfDay(12, 30, 33))
         );
         testDT(
             DateTime(Date(-1, 1, 1), TimeOfDay(12, 30, 33)),
-            cast(Month)7,
+            cast(Month) 7,
             DateTime(Date(-1, 7, 1), TimeOfDay(12, 30, 33))
         );
 
@@ -15851,6 +15758,8 @@ public:
     ///
     @safe unittest
     {
+        import std.typecons : No;
+
         auto dt1 = DateTime(2010, 1, 1, 12, 30, 33);
         dt1.add!"months"(11);
         assert(dt1 == DateTime(2010, 12, 1, 12, 30, 33));
@@ -15914,6 +15823,8 @@ public:
     ///
     @safe unittest
     {
+        import std.typecons : No;
+
         auto dt1 = DateTime(2010, 1, 1, 12, 33, 33);
         dt1.roll!"months"(1);
         assert(dt1 == DateTime(2010, 2, 1, 12, 33, 33));
@@ -16970,15 +16881,7 @@ public:
         assert(idt - duration == DateTime(1999, 7, 6, 12, 30, 21));
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time) and $(REF Duration, core,time).
-              Use $(D Duration) instead. This overload will be removed in
-              January 2017.)
-
-        Defines + and - with $(REF TickDuration, core,time).
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use Duration instead of TickDuration.")
     DateTime opBinary(string op)(in TickDuration td) @safe const pure nothrow
         if (op == "+" || op == "-")
@@ -17120,15 +17023,7 @@ public:
         static assert(!__traits(compiles, idt -= duration));
     }
 
-    // @@@DEPRECATED_2017-01@@@
-    /++
-        $(RED Deprecated. $(REF TickDuration, core,time) is going to be deprecated
-              in favor of $(REF MonoTime, core,time) and $(REF Duration, core,time).
-              Use $(D Duration) instead. This overload will be removed in
-              January 2017.)
-
-        Defines += and -= with $(REF TickDuration, core,time).
-      +/
+    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
     deprecated("Use Duration instead of TickDuration.")
     ref DateTime opOpAssign(string op)(TickDuration td) @safe pure nothrow
         if (op == "+" || op == "-")
@@ -17906,7 +17801,7 @@ public:
 
         enforce(t != -1, new DateTimeException(format("Invalid ISO String: %s", isoString)));
 
-        immutable date = Date.fromISOString(dstr[0..t]);
+        immutable date = Date.fromISOString(dstr[0 .. t]);
         immutable tod = TimeOfDay.fromISOString(dstr[t+1 .. $]);
 
         return DateTime(date, tod);
@@ -17994,7 +17889,7 @@ public:
 
         enforce(t != -1, new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
 
-        immutable date = Date.fromISOExtString(dstr[0..t]);
+        immutable date = Date.fromISOExtString(dstr[0 .. t]);
         immutable tod = TimeOfDay.fromISOExtString(dstr[t+1 .. $]);
 
         return DateTime(date, tod);
@@ -18080,7 +17975,7 @@ public:
 
         enforce(t != -1, new DateTimeException(format("Invalid string format: %s", simpleString)));
 
-        immutable date = Date.fromSimpleString(dstr[0..t]);
+        immutable date = Date.fromSimpleString(dstr[0 .. t]);
         immutable tod = TimeOfDay.fromISOExtString(dstr[t+1 .. $]);
 
         return DateTime(date, tod);
@@ -18246,9 +18141,9 @@ private:
         immutable newMinutes = splitUnitsFromHNSecs!"minutes"(hnsecs);
         immutable newSeconds = splitUnitsFromHNSecs!"seconds"(hnsecs);
 
-        _tod._hour = cast(ubyte)newHours;
-        _tod._minute = cast(ubyte)newMinutes;
-        _tod._second = cast(ubyte)newSeconds;
+        _tod._hour = cast(ubyte) newHours;
+        _tod._minute = cast(ubyte) newMinutes;
+        _tod._second = cast(ubyte) newSeconds;
 
         return this;
     }
@@ -18474,8 +18369,8 @@ Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
         if (!_valid(begin, end))
             throw new DateTimeException("Arguments would result in an invalid Interval.");
 
-        _begin = cast(TP)begin;
-        _end = cast(TP)end;
+        _begin = cast(TP) begin;
+        _end = cast(TP) end;
     }
 
 
@@ -18497,7 +18392,7 @@ assert(Interval!Date(Date(1996, 1, 2), dur!"days"(3)) ==
     this(D)(in TP begin, in D duration) pure
         if (__traits(compiles, begin + duration))
     {
-        _begin = cast(TP)begin;
+        _begin = cast(TP) begin;
         _end = begin + duration;
 
         if (!_valid(_begin, _end))
@@ -18511,8 +18406,8 @@ assert(Interval!Date(Date(1996, 1, 2), dur!"days"(3)) ==
       +/
     ref Interval opAssign(const ref Interval rhs) pure nothrow
     {
-        _begin = cast(TP)rhs._begin;
-        _end = cast(TP)rhs._end;
+        _begin = cast(TP) rhs._begin;
+        _end = cast(TP) rhs._end;
         return this;
     }
 
@@ -18523,8 +18418,8 @@ assert(Interval!Date(Date(1996, 1, 2), dur!"days"(3)) ==
       +/
     ref Interval opAssign(Interval rhs) pure nothrow
     {
-        _begin = cast(TP)rhs._begin;
-        _end = cast(TP)rhs._end;
+        _begin = cast(TP) rhs._begin;
+        _end = cast(TP) rhs._end;
         return this;
     }
 
@@ -21489,7 +21384,7 @@ private:
             Date(2010, 9, 12),
             Date(2010, 10, 1)
         ).fwdRange(
-                everyDayOfWeek!Date(DayOfWeek.fri), Yes.popFirst).front ==Date(2010, 9, 17));
+                everyDayOfWeek!Date(DayOfWeek.fri), Yes.popFirst).front == Date(2010, 9, 17));
     }
 
     //Verify Examples.
@@ -21630,7 +21525,7 @@ auto interval = PosInfInterval!Date(Date(1996, 1, 2));
       +/
     this(in TP begin) pure nothrow
     {
-        _begin = cast(TP)begin;
+        _begin = cast(TP) begin;
     }
 
 
@@ -21640,7 +21535,7 @@ auto interval = PosInfInterval!Date(Date(1996, 1, 2));
       +/
     ref PosInfInterval opAssign(const ref PosInfInterval rhs) pure nothrow
     {
-        _begin = cast(TP)rhs._begin;
+        _begin = cast(TP) rhs._begin;
         return this;
     }
 
@@ -21651,7 +21546,7 @@ auto interval = PosInfInterval!Date(Date(1996, 1, 2));
       +/
     ref PosInfInterval opAssign(PosInfInterval rhs) pure nothrow
     {
-        _begin = cast(TP)rhs._begin;
+        _begin = cast(TP) rhs._begin;
         return this;
     }
 
@@ -23846,7 +23741,7 @@ auto interval = PosInfInterval!Date(Date(1996, 1, 2));
       +/
     this(in TP end) pure nothrow
     {
-        _end = cast(TP)end;
+        _end = cast(TP) end;
     }
 
 
@@ -23856,7 +23751,7 @@ auto interval = PosInfInterval!Date(Date(1996, 1, 2));
       +/
     ref NegInfInterval opAssign(const ref NegInfInterval rhs) pure nothrow
     {
-        _end = cast(TP)rhs._end;
+        _end = cast(TP) rhs._end;
         return this;
     }
 
@@ -23867,7 +23762,7 @@ auto interval = PosInfInterval!Date(Date(1996, 1, 2));
       +/
     ref NegInfInterval opAssign(NegInfInterval rhs) pure nothrow
     {
-        _end = cast(TP)rhs._end;
+        _end = cast(TP) rhs._end;
         return this;
     }
 
@@ -26078,15 +25973,15 @@ private:
         dayOfWeek = The week that each time point in the range will be.
   +/
 static TP delegate(in TP) everyDayOfWeek(TP, Direction dir = Direction.fwd)(DayOfWeek dayOfWeek) nothrow
-    if (isTimePoint!TP &&
-       (dir == Direction.fwd || dir == Direction.bwd) &&
-       __traits(hasMember, TP, "dayOfWeek") &&
-       !__traits(isStaticFunction, TP.dayOfWeek) &&
-       is(typeof(TP.dayOfWeek) == DayOfWeek))
+if (isTimePoint!TP &&
+    (dir == Direction.fwd || dir == Direction.bwd) &&
+    __traits(hasMember, TP, "dayOfWeek") &&
+    !__traits(isStaticFunction, TP.dayOfWeek) &&
+    is(typeof(TP.dayOfWeek) == DayOfWeek))
 {
     TP func(in TP tp)
     {
-        TP retval = cast(TP)tp;
+        TP retval = cast(TP) tp;
         immutable days = daysToDayOfWeek(retval.dayOfWeek, dayOfWeek);
 
         static if (dir == Direction.fwd)
@@ -26182,17 +26077,17 @@ static TP delegate(in TP) everyDayOfWeek(TP, Direction dir = Direction.fwd)(DayO
         month = The month that each time point in the range will be in.
   +/
 static TP delegate(in TP) everyMonth(TP, Direction dir = Direction.fwd)(int month)
-    if (isTimePoint!TP &&
-       (dir == Direction.fwd || dir == Direction.bwd) &&
-       __traits(hasMember, TP, "month") &&
-       !__traits(isStaticFunction, TP.month) &&
-       is(typeof(TP.month) == Month))
+if (isTimePoint!TP &&
+    (dir == Direction.fwd || dir == Direction.bwd) &&
+    __traits(hasMember, TP, "month") &&
+    !__traits(isStaticFunction, TP.month) &&
+    is(typeof(TP.month) == Month))
 {
     enforceValid!"months"(month);
 
     TP func(in TP tp)
     {
-        TP retval = cast(TP)tp;
+        TP retval = cast(TP) tp;
         immutable months = monthsToMonth(retval.month, month);
 
         static if (dir == Direction.fwd)
@@ -26306,9 +26201,9 @@ static TP delegate(in TP) everyMonth(TP, Direction dir = Direction.fwd)(int mont
   +/
 static TP delegate(in TP) everyDuration(TP, Direction dir = Direction.fwd, D)
                                        (D duration) nothrow
-    if (isTimePoint!TP &&
-       __traits(compiles, TP.init + duration) &&
-       (dir == Direction.fwd || dir == Direction.bwd))
+if (isTimePoint!TP &&
+    __traits(compiles, TP.init + duration) &&
+    (dir == Direction.fwd || dir == Direction.bwd))
 {
     TP func(in TP tp)
     {
@@ -26409,17 +26304,17 @@ static TP delegate(in TP) everyDuration(TP, Direction dir = Direction.fwd, D)
                                         int months = 0,
                                         AllowDayOverflow allowOverflow = Yes.allowDayOverflow,
                                         D duration = dur!"days"(0)) nothrow
-    if (isTimePoint!TP &&
-       __traits(compiles, TP.init + duration) &&
-       __traits(compiles, TP.init.add!"years"(years)) &&
-       __traits(compiles, TP.init.add!"months"(months)) &&
-       (dir == Direction.fwd || dir == Direction.bwd))
+if (isTimePoint!TP &&
+    __traits(compiles, TP.init + duration) &&
+    __traits(compiles, TP.init.add!"years"(years)) &&
+    __traits(compiles, TP.init.add!"months"(months)) &&
+    (dir == Direction.fwd || dir == Direction.bwd))
 {
     TP func(in TP tp)
     {
         static if (dir == Direction.fwd)
         {
-            TP retval = cast(TP)tp;
+            TP retval = cast(TP) tp;
 
             retval.add!"years"(years, allowOverflow);
             retval.add!"months"(months, allowOverflow);
@@ -26443,6 +26338,8 @@ static TP delegate(in TP) everyDuration(TP, Direction dir = Direction.fwd, D)
 ///
 @system unittest
 {
+    import std.typecons : Yes;
+
     auto interval = Interval!Date(Date(2010, 9, 2), Date(2025, 9, 27));
     auto func = everyDuration!Date(4, 1, Yes.allowDayOverflow, dur!"days"(2));
     auto range = interval.fwdRange(func);
@@ -26562,7 +26459,7 @@ static TP delegate(in TP) everyDuration(TP, Direction dir = Direction.fwd, D)
     excluded will treat $(D begin) as included and $(D end) as excluded.
   +/
 struct IntervalRange(TP, Direction dir)
-    if (isTimePoint!TP && dir != Direction.both)
+if (isTimePoint!TP && dir != Direction.both)
 {
 public:
 
@@ -26816,7 +26713,7 @@ private:
     {
         SysTime stFunc(in SysTime st)
         {
-            return cast(SysTime)st;
+            return cast(SysTime) st;
         }
 
         auto interval = Interval!SysTime(
@@ -27105,7 +27002,7 @@ private:
     a $(LREF DateTimeException) will be thrown.
   +/
 struct PosInfIntervalRange(TP)
-    if (isTimePoint!TP)
+if (isTimePoint!TP)
 {
 public:
 
@@ -27289,7 +27186,7 @@ private:
     {
         SysTime stFunc(in SysTime st)
         {
-            return cast(SysTime)st;
+            return cast(SysTime) st;
         }
 
         auto posInfInterval = PosInfInterval!SysTime(SysTime(DateTime(2010, 7, 4, 12, 1, 7)));
@@ -27395,7 +27292,7 @@ private:
     whether $(D end) is included or excluded will treat $(D end) as excluded.
   +/
 struct NegInfIntervalRange(TP)
-    if (isTimePoint!TP)
+if (isTimePoint!TP)
 {
 public:
 
@@ -27907,8 +27804,8 @@ public:
             assert(tz.utcOffsetAt(std.stdTime) == utcOffset);
             assert(tz.utcOffsetAt(dst.stdTime) == utcOffset + dstOffset);
 
-            assert(cast(DateTime)std == stdDate);
-            assert(cast(DateTime)dst == dstDate);
+            assert(cast(DateTime) std == stdDate);
+            assert(cast(DateTime) dst == dstDate);
             assert(std == stdUTC);
 
             version(Posix)
@@ -28463,10 +28360,10 @@ public:
             {
                 try
                 {
-                    auto currYear = (cast(Date)Clock.currTime()).year;
-                    auto janOffset = SysTime(Date(currYear, 1, 4), cast(immutable)this).stdTime -
+                    auto currYear = (cast(Date) Clock.currTime()).year;
+                    auto janOffset = SysTime(Date(currYear, 1, 4), cast(immutable) this).stdTime -
                                      SysTime(Date(currYear, 1, 4), UTC()).stdTime;
-                    auto julyOffset = SysTime(Date(currYear, 7, 4), cast(immutable)this).stdTime -
+                    auto julyOffset = SysTime(Date(currYear, 7, 4), cast(immutable) this).stdTime -
                                       SysTime(Date(currYear, 7, 4), UTC()).stdTime;
 
                     return janOffset != julyOffset;
@@ -28563,7 +28460,11 @@ public:
       +/
     override long utcToTZ(long stdTime) @trusted const nothrow
     {
-        version(Posix)
+        version(Solaris)
+        {
+            return stdTime + convert!("seconds", "hnsecs")(tm_gmtoff(stdTime));
+        }
+        else version(Posix)
         {
             import core.stdc.time : localtime, tm;
             time_t unixTime = stdTimeToUnixTime(stdTime);
@@ -28605,11 +28506,11 @@ public:
             import core.stdc.time : localtime, tm;
             time_t unixTime = stdTimeToUnixTime(adjTime);
 
-            immutable past = unixTime - cast(time_t)convert!("days", "seconds")(1);
+            immutable past = unixTime - cast(time_t) convert!("days", "seconds")(1);
             tm* timeInfo = localtime(past < unixTime ? &past : &unixTime);
             immutable pastOffset = timeInfo.tm_gmtoff;
 
-            immutable future = unixTime + cast(time_t)convert!("days", "seconds")(1);
+            immutable future = unixTime + cast(time_t) convert!("days", "seconds")(1);
             timeInfo = localtime(future > unixTime ? &future : &unixTime);
             immutable futureOffset = timeInfo.tm_gmtoff;
 
@@ -28617,7 +28518,7 @@ public:
                 return adjTime - convert!("seconds", "hnsecs")(pastOffset);
 
             if (pastOffset < futureOffset)
-                unixTime -= cast(time_t)convert!("hours", "seconds")(1);
+                unixTime -= cast(time_t) convert!("hours", "seconds")(1);
 
             unixTime -= pastOffset;
             timeInfo = localtime(&unixTime);
@@ -28795,6 +28696,26 @@ private:
         static shared bool guard;
         initOnce!guard({tzset(); return true;}());
         return instance;
+    }
+
+
+    // The Solaris version of struct tm has no tm_gmtoff field, so do it here
+    version(Solaris)
+    {
+        long tm_gmtoff(long stdTime) @trusted const nothrow
+        {
+            import core.stdc.time : localtime, gmtime, tm;
+
+            time_t unixTime = stdTimeToUnixTime(stdTime);
+            tm* buf = localtime(&unixTime);
+            tm timeInfo = *buf;
+            buf = gmtime(&unixTime);
+            tm timeInfoGmt = *buf;
+
+            return  (timeInfo.tm_sec - timeInfoGmt.tm_sec) +
+                    convert!("minutes", "seconds")(timeInfo.tm_min - timeInfoGmt.tm_min) +
+                    convert!("hours", "seconds")(timeInfo.tm_hour - timeInfoGmt.tm_hour);
+        }
     }
 }
 
@@ -30229,7 +30150,7 @@ private:
         _enforceValidTZFile(!tzFile.eof);
         tzFile.rawRead(buff);
 
-        return bigEndianToNative!T(cast(ubyte[T.sizeof])buff);
+        return bigEndianToNative!T(cast(ubyte[T.sizeof]) buff);
     }
 
     /+
@@ -30592,7 +30513,7 @@ else version(Windows)
                 scope tziVal = tzKey.getValue("TZI");
                 auto binVal = tziVal.value_BINARY;
                 assert(binVal.length == REG_TZI_FORMAT.sizeof);
-                auto tziFmt = cast(REG_TZI_FORMAT*)binVal.ptr;
+                auto tziFmt = cast(REG_TZI_FORMAT*) binVal.ptr;
 
                 TIME_ZONE_INFORMATION tzInfo;
 
@@ -30658,7 +30579,7 @@ else version(Windows)
                 if (tzInfo.DaylightDate.wMonth == 0)
                     return false;
 
-                auto utcDateTime = cast(DateTime)SysTime(stdTime, UTC());
+                auto utcDateTime = cast(DateTime) SysTime(stdTime, UTC());
 
                 //The limits of what SystemTimeToTzSpecificLocalTime will accept.
                 if (utcDateTime.year < 1601)
@@ -30699,7 +30620,7 @@ else version(Windows)
                 utcTime.wSecond = utcDateTime.second;
                 utcTime.wMilliseconds = 0;
 
-                immutable result = SystemTimeToTzSpecificLocalTime(cast(TIME_ZONE_INFORMATION*)tzInfo,
+                immutable result = SystemTimeToTzSpecificLocalTime(cast(TIME_ZONE_INFORMATION*) tzInfo,
                                                                    &utcTime,
                                                                    &otherTime);
                 assert(result);
@@ -30790,7 +30711,7 @@ else version(Windows)
                         localTime.wSecond = localDateTime.second;
                         localTime.wMilliseconds = 0;
 
-                        immutable result = TzSpecificLocalTimeToSystemTime(cast(TIME_ZONE_INFORMATION*)tzInfo,
+                        immutable result = TzSpecificLocalTimeToSystemTime(cast(TIME_ZONE_INFORMATION*) tzInfo,
                                                                            &localTime,
                                                                            &utcTime);
                         assert(result);
@@ -30813,7 +30734,7 @@ else version(Windows)
                         return false;
                     }
 
-                    auto localDateTime = cast(DateTime)SysTime(adjTime, UTC());
+                    auto localDateTime = cast(DateTime) SysTime(adjTime, UTC());
                     auto localDateTimeBefore = localDateTime - dur!"hours"(1);
                     auto localDateTimeAfter = localDateTime + dur!"hours"(1);
 
@@ -32014,10 +31935,10 @@ private:
     enum n = 100;
     TickDuration[n] times;
     TickDuration last = TickDuration.from!"seconds"(0);
-    foreach (i; 0..n)
+    foreach (i; 0 .. n)
     {
        sw.start(); //start/resume mesuring.
-       foreach (unused; 0..1_000_000)
+       foreach (unused; 0 .. 1_000_000)
            bar();
        sw.stop();  //stop/pause measuring.
        //Return value of peek() after having stopped are the always same.
@@ -32426,7 +32347,7 @@ long unixTimeToStdTime(long unixTime) @safe pure nothrow
         SysTime.toUnixTime
   +/
 T stdTimeToUnixTime(T = time_t)(long stdTime) @safe pure nothrow
-    if (is(T == int) || is(T == long))
+if (is(T == int) || is(T == long))
 {
     immutable unixTime = convert!("hnsecs", "seconds")(stdTime - 621_355_968_000_000_000L);
 
@@ -32439,7 +32360,7 @@ T stdTimeToUnixTime(T = time_t)(long stdTime) @safe pure nothrow
     {
         if (unixTime > int.max)
             return int.max;
-        return unixTime < int.min ? int.min : cast(int)unixTime;
+        return unixTime < int.min ? int.min : cast(int) unixTime;
     }
     else static assert(0, "Bug in template constraint. Only int and long allowed.");
 }
@@ -32553,7 +32474,7 @@ version(StdDdoc)
             $(LREF DateTimeException) if the given $(D FILETIME) cannot be
             represented as the return value.
       +/
-    long FILETIMEToStdTime(const FILETIME* ft) @safe;
+    long FILETIMEToStdTime(scope const FILETIME* ft) @safe;
 
 
     /++
@@ -32570,7 +32491,7 @@ version(StdDdoc)
             $(LREF DateTimeException) if the given $(D FILETIME) will not fit in a
             $(LREF SysTime).
       +/
-    SysTime FILETIMEToSysTime(const FILETIME* ft, immutable TimeZone tz = LocalTime()) @safe;
+    SysTime FILETIMEToSysTime(scope const FILETIME* ft, immutable TimeZone tz = LocalTime()) @safe;
 
 
     /++
@@ -32668,7 +32589,7 @@ else version(Windows)
 
     SYSTEMTIME SysTimeToSYSTEMTIME(in SysTime sysTime) @safe
     {
-        immutable dt = cast(DateTime)sysTime;
+        immutable dt = cast(DateTime) sysTime;
 
         if (dt.year < 1601)
             throw new DateTimeException("SYSTEMTIME cannot hold dates prior to the year 1601.");
@@ -32682,7 +32603,7 @@ else version(Windows)
         st.wHour = dt.hour;
         st.wMinute = dt.minute;
         st.wSecond = dt.second;
-        st.wMilliseconds = cast(ushort)sysTime.fracSecs.total!"msecs";
+        st.wMilliseconds = cast(ushort) sysTime.fracSecs.total!"msecs";
 
         return st;
     }
@@ -32707,7 +32628,7 @@ else version(Windows)
 
     private enum hnsecsFrom1601 = 504_911_232_000_000_000L;
 
-    long FILETIMEToStdTime(const FILETIME* ft) @safe
+    long FILETIMEToStdTime(scope const FILETIME* ft) @safe
     {
         ULARGE_INTEGER ul;
         ul.HighPart = ft.dwHighDateTime;
@@ -32717,10 +32638,10 @@ else version(Windows)
         if (tempHNSecs > long.max - hnsecsFrom1601)
             throw new DateTimeException("The given FILETIME cannot be represented as a stdTime value.");
 
-        return cast(long)tempHNSecs + hnsecsFrom1601;
+        return cast(long) tempHNSecs + hnsecsFrom1601;
     }
 
-    SysTime FILETIMEToSysTime(const FILETIME* ft, immutable TimeZone tz = LocalTime()) @safe
+    SysTime FILETIMEToSysTime(scope const FILETIME* ft, immutable TimeZone tz = LocalTime()) @safe
     {
         auto sysTime = SysTime(FILETIMEToStdTime(ft), UTC());
         sysTime.timezone = tz;
@@ -32749,7 +32670,7 @@ else version(Windows)
             throw new DateTimeException("The given stdTime value cannot be represented as a FILETIME.");
 
         ULARGE_INTEGER ul;
-        ul.QuadPart = cast(ulong)stdTime - hnsecsFrom1601;
+        ul.QuadPart = cast(ulong) stdTime - hnsecsFrom1601;
 
         FILETIME ft;
         ft.dwHighDateTime = ul.HighPart;
@@ -32797,17 +32718,17 @@ alias DosFileTime = uint;
   +/
 SysTime DosFileTimeToSysTime(DosFileTime dft, immutable TimeZone tz = LocalTime()) @safe
 {
-    uint dt = cast(uint)dft;
+    uint dt = cast(uint) dft;
 
     if (dt == 0)
         throw new DateTimeException("Invalid DosFileTime.");
 
     int year = ((dt >> 25) & 0x7F) + 1980;
-    int month = ((dt >> 21) & 0x0F);       // 1..12
-    int dayOfMonth = ((dt >> 16) & 0x1F);  // 1..31
-    int hour = (dt >> 11) & 0x1F;          // 0..23
-    int minute = (dt >> 5) & 0x3F;         // 0..59
-    int second = (dt << 1) & 0x3E;         // 0..58 (in 2 second increments)
+    int month = ((dt >> 21) & 0x0F);       // 1 .. 12
+    int dayOfMonth = ((dt >> 16) & 0x1F);  // 1 .. 31
+    int hour = (dt >> 11) & 0x1F;          // 0 .. 23
+    int minute = (dt >> 5) & 0x3F;         // 0 .. 59
+    int second = (dt << 1) & 0x3E;         // 0 .. 58 (in 2 second increments)
 
     try
         return SysTime(DateTime(year, month, dayOfMonth, hour, minute, second), tz);
@@ -32840,7 +32761,7 @@ SysTime DosFileTimeToSysTime(DosFileTime dft, immutable TimeZone tz = LocalTime(
   +/
 DosFileTime SysTimeToDosFileTime(SysTime sysTime) @safe
 {
-    auto dateTime = cast(DateTime)sysTime;
+    auto dateTime = cast(DateTime) sysTime;
 
     if (dateTime.year < 1980)
         throw new DateTimeException("DOS File Times cannot hold dates prior to 1980.");
@@ -32856,7 +32777,7 @@ DosFileTime SysTimeToDosFileTime(SysTime sysTime) @safe
     retval |= (dateTime.minute & 0x3F) << 5;
     retval |= (dateTime.second >> 1) & 0x1F;
 
-    return cast(DosFileTime)retval;
+    return cast(DosFileTime) retval;
 }
 
 @safe unittest
@@ -32914,8 +32835,8 @@ SysTime parseRFC822DateTime()(in char[] value) @safe
 
 /++ Ditto +/
 SysTime parseRFC822DateTime(R)(R value) @safe
-    if (isRandomAccessRange!R && hasSlicing!R && hasLength!R &&
-       (is(Unqual!(ElementType!R) == char) || is(Unqual!(ElementType!R) == ubyte)))
+if (isRandomAccessRange!R && hasSlicing!R && hasLength!R &&
+    (is(Unqual!(ElementType!R) == char) || is(Unqual!(ElementType!R) == ubyte)))
 {
     import std.algorithm.searching : find, all;
     import std.ascii : isDigit, isAlpha, isPrintable;
@@ -32938,7 +32859,7 @@ SysTime parseRFC822DateTime(R)(R value) @safe
     {
         static string sliceAsString(R str) @trusted
         {
-            return cast(string)str;
+            return cast(string) str;
         }
     }
     else
@@ -32948,7 +32869,7 @@ SysTime parseRFC822DateTime(R)(R value) @safe
         {
             size_t i = 0;
             foreach (c; str)
-                temp[i++] = cast(char)c;
+                temp[i++] = cast(char) c;
             return temp[0 .. str.length];
         }
     }
@@ -33120,6 +33041,8 @@ afterMon: stripAndCheckLen(value[3 .. value.length], "1200:00A".length);
 ///
 @safe unittest
 {
+    import std.exception : assertThrown;
+
     auto tz = new immutable SimpleTimeZone(hours(-8));
     assert(parseRFC822DateTime("Sat, 6 Jan 1990 12:14:19 -0800") ==
            SysTime(DateTime(1990, 1, 6, 12, 14, 19), tz));
@@ -33151,7 +33074,8 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
 
 @system unittest
 {
-    import std.algorithm.iteration : map;
+    import std.algorithm.iteration : filter, map;
+    import std.algorithm.searching : canFind;
     import std.array : array;
     import std.ascii : letters;
     import std.format : format;
@@ -33174,10 +33098,10 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
         static auto start() { Rand3Letters retval; retval.popFront(); return retval; }
     }
 
-    foreach (cr; AliasSeq!(function(string a){return cast(char[])a;},
-                          function(string a){return cast(ubyte[])a;},
+    foreach (cr; AliasSeq!(function(string a){return cast(char[]) a;},
+                          function(string a){return cast(ubyte[]) a;},
                           function(string a){return a;},
-                          function(string a){return map!(b => cast(char)b)(a.representation);}))
+                          function(string a){return map!(b => cast(char) b)(a.representation);}))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         scope(failure) writeln(typeof(cr).stringof);
         alias test = testParse822!cr;
@@ -33284,7 +33208,7 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
                            ["Jam", "Jen", "Fec", "Fdb", "Mas", "Mbr", "Aps", "Aqr", "Mai", "Miy",
                             "Jum", "Jbn", "Jup", "Jal", "Aur", "Apg", "Sem", "Sap", "Ocm", "Odt",
                             "Nom", "Nav", "Dem", "Dac"],
-                           Rand3Letters.start().take(20)))
+                           Rand3Letters.start().filter!(a => !_monthNames[].canFind(a)).take(20)))
         {
             scope(failure) writefln("Month: %s", mon);
             testBad(format("17 %s 2012 00:05:02 +0000", mon));
@@ -33313,7 +33237,7 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
                            daysOfWeekNames[].map!(a => toUpper(a))(),
                            ["Sum", "Spn", "Mom", "Man", "Tuf", "Tae", "Wem", "Wdd", "The", "Tur",
                             "Fro", "Fai", "San", "Sut"],
-                           Rand3Letters.start().take(20)))
+                           Rand3Letters.start().filter!(a => !daysOfWeekNames[].canFind(a)).take(20)))
         {
             scope(failure) writefln("Day of Week: %s", dow);
             testBad(format("%s, 11 Nov 2012 09:42:00 +0000", dow));
@@ -33363,9 +33287,9 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
             foreach (c; chain(iota(0, 33), ['('], iota(127, ubyte.max + 1)))
             {
                 scope(failure) writefln("c: %d", c);
-                test(format("21 Dec 2012 13:14:15 +0000%c", cast(char)c), SysTime(std1, UTC()));
-                test(format("21 Dec 2012 13:14:15 +0000%c  ", cast(char)c), SysTime(std1, UTC()));
-                test(format("21 Dec 2012 13:14:15 +0000%chello", cast(char)c), SysTime(std1, UTC()));
+                test(format("21 Dec 2012 13:14:15 +0000%c", cast(char) c), SysTime(std1, UTC()));
+                test(format("21 Dec 2012 13:14:15 +0000%c  ", cast(char) c), SysTime(std1, UTC()));
+                test(format("21 Dec 2012 13:14:15 +0000%chello", cast(char) c), SysTime(std1, UTC()));
             }
         }
 
@@ -33374,9 +33298,9 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
             foreach (c; chain(iota(33, '('), iota('(' + 1, 127)))
             {
                 scope(failure) writefln("c: %d", c);
-                testBad(format("21 Dec 2012 13:14:15 +0000%c", cast(char)c));
-                testBad(format("21 Dec 2012 13:14:15 +0000%c   ", cast(char)c));
-                testBad(format("21 Dec 2012 13:14:15 +0000%chello", cast(char)c));
+                testBad(format("21 Dec 2012 13:14:15 +0000%c", cast(char) c));
+                testBad(format("21 Dec 2012 13:14:15 +0000%c   ", cast(char) c));
+                testBad(format("21 Dec 2012 13:14:15 +0000%chello", cast(char) c));
             }
         }
 
@@ -33407,14 +33331,14 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
             auto currStr = str.dup;
             currStr[i] = 'x';
             scope(failure) writefln("failed: %s", currStr);
-            testBad(cast(string)currStr);
+            testBad(cast(string) currStr);
         }
         foreach (i; 2 .. str.length)
         {
             auto currStr = str[0 .. $ - i];
             scope(failure) writefln("failed: %s", currStr);
-            testBad(cast(string)currStr);
-            testBad((cast(string)currStr) ~ "                                    ");
+            testBad(cast(string) currStr);
+            testBad((cast(string) currStr) ~ "                                    ");
         }
     }();
 }
@@ -33440,10 +33364,10 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
     auto tooLate1 = SysTime(Date(10_000, 1, 1), UTC());
     auto tooLate2 = SysTime(DateTime(12_007, 12, 31, 12, 22, 19), UTC());
 
-    foreach (cr; AliasSeq!(function(string a){return cast(char[])a;},
-                          function(string a){return cast(ubyte[])a;},
+    foreach (cr; AliasSeq!(function(string a){return cast(char[]) a;},
+                          function(string a){return cast(ubyte[]) a;},
                           function(string a){return a;},
-                          function(string a){return map!(b => cast(char)b)(a.representation);}))
+                          function(string a){return map!(b => cast(char) b)(a.representation);}))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         scope(failure) writeln(typeof(cr).stringof);
         alias test = testParse822!cr;
@@ -33592,9 +33516,9 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
                 foreach (c; chain(iota(0, 33), ['('], iota(127, ubyte.max + 1)))
                 {
                     scope(failure) writefln("c: %d", c);
-                    test(format("21Dec1213:14:15+0000%c", cast(char)c), std1);
-                    test(format("21Dec1213:14:15+0000%c  ", cast(char)c), std1);
-                    test(format("21Dec1213:14:15+0000%chello", cast(char)c), std1);
+                    test(format("21Dec1213:14:15+0000%c", cast(char) c), std1);
+                    test(format("21Dec1213:14:15+0000%c  ", cast(char) c), std1);
+                    test(format("21Dec1213:14:15+0000%chello", cast(char) c), std1);
                 }
             }
 
@@ -33604,11 +33528,11 @@ version(unittest) void testBadParse822(alias cr)(string str, size_t line = __LIN
                 {
                     scope(failure) writefln("c: %d", c);
                     assertThrown!DateTimeException(
-                        parseRFC822DateTime(cr(format("21Dec1213:14:15+0000%c", cast(char)c))));
+                        parseRFC822DateTime(cr(format("21Dec1213:14:15+0000%c", cast(char) c))));
                     assertThrown!DateTimeException(
-                        parseRFC822DateTime(cr(format("21Dec1213:14:15+0000%c  ", cast(char)c))));
+                        parseRFC822DateTime(cr(format("21Dec1213:14:15+0000%c  ", cast(char) c))));
                     assertThrown!DateTimeException(
-                        parseRFC822DateTime(cr(format("21Dec1213:14:15+0000%chello", cast(char)c))));
+                        parseRFC822DateTime(cr(format("21Dec1213:14:15+0000%chello", cast(char) c))));
                 }
             }
         }
@@ -33729,7 +33653,7 @@ int cmpTimeUnits(string lhs, string rhs) @safe pure
         )
  +/
 template CmpTimeUnits(string lhs, string rhs)
-    if (validTimeUnits(lhs, rhs))
+if (validTimeUnits(lhs, rhs))
 {
     enum CmpTimeUnits = cmpTimeUnitsCTFE(lhs, rhs);
 }
@@ -33789,10 +33713,10 @@ private int cmpTimeUnitsCTFE(string lhs, string rhs) @safe pure nothrow
         value = The number to validate.
   +/
 bool valid(string units)(int value) @safe pure nothrow
-    if (units == "months" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds")
+if (units == "months" ||
+    units == "hours" ||
+    units == "minutes" ||
+    units == "seconds")
 {
     static if (units == "months")
         return value >= Month.jan && value <= Month.dec;
@@ -33824,7 +33748,7 @@ bool valid(string units)(int value) @safe pure nothrow
         day   = The day to validate.
   +/
 bool valid(string units)(int year, int month, int day) @safe pure nothrow
-    if (units == "days")
+if (units == "days")
 {
     return day > 0 && day <= maxDay(year, month);
 }
@@ -33842,10 +33766,10 @@ bool valid(string units)(int year, int month, int day) @safe pure nothrow
         $(LREF DateTimeException) if $(D valid!units(value)) is false.
   +/
 void enforceValid(string units)(int value, string file = __FILE__, size_t line = __LINE__) @safe pure
-    if (units == "months" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds")
+if (units == "months" ||
+    units == "hours" ||
+    units == "minutes" ||
+    units == "seconds")
 {
     import std.format : format;
 
@@ -33887,7 +33811,7 @@ void enforceValid(string units)(int value, string file = __FILE__, size_t line =
   +/
 void enforceValid(string units)
                  (int year, Month month, int day, string file = __FILE__, size_t line = __LINE__) @safe pure
-    if (units == "days")
+if (units == "days")
 {
     import std.format : format;
     if (!valid!"days"(year, month, day))
@@ -34052,17 +33976,15 @@ static int daysToDayOfWeek(DayOfWeek currDoW, DayOfWeek dow) @safe pure nothrow
 }
 
 
-version(StdDdoc)
-{
-    /++
-        Function for starting to a stop watch time when the function is called
-        and stopping it when its return value goes out of scope and is destroyed.
+/++
+    Function for starting to a stop watch time when the function is called
+    and stopping it when its return value goes out of scope and is destroyed.
 
-        When the value that is returned by this function is destroyed,
-        $(D func) will run. $(D func) is a unary function that takes a
-        $(REF TickDuration, core,time).
+    When the value that is returned by this function is destroyed,
+    $(D func) will run. $(D func) is a unary function that takes a
+    $(REF TickDuration, core,time).
 
-        Example:
+    Example:
 --------------------
 {
     auto mt = measureTime!((TickDuration a)
@@ -34071,7 +33993,7 @@ version(StdDdoc)
 }
 --------------------
 
-        which is functionally equivalent to
+    which is functionally equivalent to
 
 --------------------
 {
@@ -34085,48 +34007,43 @@ version(StdDdoc)
 }
 --------------------
 
-        See_Also:
-            $(LREF benchmark)
-      +/
-    auto measureTime(alias func)();
-}
-else
+    See_Also:
+        $(LREF benchmark)
++/
+@safe auto measureTime(alias func)()
+if (isSafe!((){StopWatch sw; unaryFun!func(sw.peek());}))
 {
-    @safe auto measureTime(alias func)()
-        if (isSafe!((){StopWatch sw; unaryFun!func(sw.peek());}))
+    struct Result
     {
-        struct Result
+        private StopWatch _sw = void;
+        this(AutoStart as)
         {
-            private StopWatch _sw = void;
-            this(AutoStart as)
-            {
-                _sw = StopWatch(as);
-            }
-            ~this()
-            {
-                unaryFun!(func)(_sw.peek());
-            }
+            _sw = StopWatch(as);
         }
-        return Result(Yes.autoStart);
+        ~this()
+        {
+            unaryFun!(func)(_sw.peek());
+        }
     }
+    return Result(Yes.autoStart);
+}
 
-    auto measureTime(alias func)()
-        if (!isSafe!((){StopWatch sw; unaryFun!func(sw.peek());}))
+auto measureTime(alias func)()
+if (!isSafe!((){StopWatch sw; unaryFun!func(sw.peek());}))
+{
+    struct Result
     {
-        struct Result
+        private StopWatch _sw = void;
+        this(AutoStart as)
         {
-            private StopWatch _sw = void;
-            this(AutoStart as)
-            {
-                _sw = StopWatch(as);
-            }
-            ~this()
-            {
-                unaryFun!(func)(_sw.peek());
-            }
+            _sw = StopWatch(as);
         }
-        return Result(Yes.autoStart);
+        ~this()
+        {
+            unaryFun!(func)(_sw.peek());
+        }
     }
+    return Result(Yes.autoStart);
 }
 
 // Verify Example.
@@ -34250,7 +34167,7 @@ immutable string[12] _monthNames = ["Jan",
     Template to help with converting between time units.
  +/
 template hnsecsPer(string units)
-    if (CmpTimeUnits!(units, "months") < 0)
+if (CmpTimeUnits!(units, "months") < 0)
 {
     static if (units == "hnsecs")
         enum hnsecsPer = 1L;
@@ -34285,8 +34202,8 @@ template hnsecsPer(string units)
         The number of the given units from converting hnsecs to those units.
   +/
 long splitUnitsFromHNSecs(string units)(ref long hnsecs) @safe pure nothrow
-    if (validTimeUnits(units) &&
-       CmpTimeUnits!(units, "months") < 0)
+if (validTimeUnits(units) &&
+    CmpTimeUnits!(units, "months") < 0)
 {
     immutable value = convert!("hnsecs", units)(hnsecs);
     hnsecs -= convert!(units, "hnsecs")(value);
@@ -34322,8 +34239,8 @@ long splitUnitsFromHNSecs(string units)(ref long hnsecs) @safe pure nothrow
         The split out value.
   +/
 long getUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
-    if (validTimeUnits(units) &&
-       CmpTimeUnits!(units, "months") < 0)
+if (validTimeUnits(units) &&
+    CmpTimeUnits!(units, "months") < 0)
 {
     return convert!("hnsecs", units)(hnsecs);
 }
@@ -34352,8 +34269,8 @@ long getUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
         The remaining hnsecs.
   +/
 long removeUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
-    if (validTimeUnits(units) &&
-       CmpTimeUnits!(units, "months") < 0)
+if (validTimeUnits(units) &&
+    CmpTimeUnits!(units, "months") < 0)
 {
     immutable value = convert!("hnsecs", units)(hnsecs);
 
@@ -34609,8 +34526,8 @@ Month monthFromString(string monthStr) @safe pure
     The time units which are one step smaller than the given units.
   +/
 template nextSmallerTimeUnits(string units)
-    if (validTimeUnits(units) &&
-       timeStrings.front != units)
+if (validTimeUnits(units) &&
+    timeStrings.front != units)
 {
     import std.algorithm.searching : countUntil;
     enum nextSmallerTimeUnits = timeStrings[countUntil(timeStrings, units) - 1];
@@ -34635,8 +34552,8 @@ template nextSmallerTimeUnits(string units)
     The time units which are one step larger than the given units.
   +/
 template nextLargerTimeUnits(string units)
-    if (validTimeUnits(units) &&
-       timeStrings.back != units)
+if (validTimeUnits(units) &&
+    timeStrings.back != units)
 {
     import std.algorithm.searching : countUntil;
     enum nextLargerTimeUnits = timeStrings[countUntil(timeStrings, units) + 1];
@@ -34715,7 +34632,7 @@ static string fracSecsToISOString(int hnsecs) @safe pure nothrow
     fractional seconds.
   +/
 static Duration fracSecsFromISOString(S)(in S isoString) @trusted pure
-    if (isSomeString!S)
+if (isSomeString!S)
 {
     import std.algorithm.searching : all;
     import std.ascii : isDigit;
@@ -34821,8 +34738,8 @@ static Duration fracSecsFromISOString(S)(in S isoString) @trusted pure
     Rather, it pops off the CFWS from the range and returns it.
   +/
 R _stripCFWS(R)(R range)
-    if (isRandomAccessRange!R && hasSlicing!R && hasLength!R &&
-       (is(Unqual!(ElementType!R) == char) || is(Unqual!(ElementType!R) == ubyte)))
+if (isRandomAccessRange!R && hasSlicing!R && hasLength!R &&
+    (is(Unqual!(ElementType!R) == char) || is(Unqual!(ElementType!R) == ubyte)))
 {
     immutable e = range.length;
     outer: for (size_t i = 0; i < e; )
@@ -34890,8 +34807,8 @@ R _stripCFWS(R)(R range)
     import std.stdio : writeln;
     import std.string : representation;
 
-    foreach (cr; AliasSeq!(function(string a){return cast(ubyte[])a;},
-                          function(string a){return map!(b => cast(char)b)(a.representation);}))
+    foreach (cr; AliasSeq!(function(string a){return cast(ubyte[]) a;},
+                          function(string a){return map!(b => cast(char) b)(a.representation);}))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         scope(failure) writeln(typeof(cr).stringof);
 
@@ -34987,7 +34904,7 @@ R _stripCFWS(R)(R range)
 // doesn't have to worry about quite as many cases as std.conv.to, since it
 // doesn't have to worry about a sign on the value or about whether it fits.
 T _convDigits(T, R)(R str)
-    if (isIntegral!T && isSigned!T) // The constraints on R were already covered by parseRFC822DateTime.
+if (isIntegral!T && isSigned!T) // The constraints on R were already covered by parseRFC822DateTime.
 {
     import std.ascii : isDigit;
 
@@ -35040,7 +34957,7 @@ version(unittest)
 
         this(int m, short d)
         {
-            month = cast(Month)m;
+            month = cast(Month) m;
             day = d;
         }
     }
@@ -35325,7 +35242,7 @@ version(unittest)
         sort(diffs);
         testTZs = [diffAA[diffs[0]], diffAA[diffs[1]], diffAA[diffs[2]]];
 
-        testFracSecs = [Duration.zero, hnsecs(1), hnsecs(5007), hnsecs(9999999)];
+        testFracSecs = [Duration.zero, hnsecs(1), hnsecs(5007), hnsecs(9_999_999)];
 
         foreach (year; testYearsBC)
         {

@@ -43,12 +43,12 @@ enum
 
 struct ModuleGroup
 {
-    this(immutable(ModuleInfo*)[] modules)
+    this(immutable(ModuleInfo*)[] modules) nothrow @nogc
     {
         _modules = modules;
     }
 
-    @property immutable(ModuleInfo*)[] modules() const
+    @property immutable(ModuleInfo*)[] modules() const nothrow @nogc
     {
         return _modules;
     }
@@ -182,8 +182,7 @@ struct ModuleGroup
             ignore
         }
 
-        // Change default to .abort in 2.073
-        auto onCycle = OnCycle.deprecate;
+        auto onCycle = OnCycle.abort;
 
         switch(cycleHandling) with(OnCycle)
         {
@@ -517,7 +516,7 @@ struct ModuleGroup
             import core.stdc.stdio : fprintf, stderr;
             fprintf(stderr, "Deprecation 16211 warning:\n"
                 ~ "A cycle has been detected in your program that was undetected prior to DMD\n"
-                ~ "2.072. This program will continue, but will not operate when using DMD 2.073\n"
+                ~ "2.072. This program will continue, but will not operate when using DMD 2.074\n"
                 ~ "to compile. Use runtime option --DRT-oncycle=print to see the cycle details.\n");
 
         }

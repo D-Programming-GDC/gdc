@@ -7677,3 +7677,15 @@ auto baz15998()
 
 static assert(bar15998a == [["", ""]]);
 static assert(bar15998b == [["", ""]]);
+
+/**************************************************/
+// https://issues.dlang.org/show_bug.cgi?id=17407
+
+bool foo17407()
+{
+    void delegate ( ) longest_convert;
+    return __traits(compiles, longest_convert = &doesNotExists);
+}
+
+static assert(!foo17407);
+
