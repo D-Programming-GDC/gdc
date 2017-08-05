@@ -47,6 +47,8 @@ bool MODimplicitConv(MOD modfrom, MOD modto);
 MATCH MODmethodConv(MOD modfrom, MOD modto);
 void allocFieldinit(Scope *sc, size_t dim);
 void freeFieldinit(Scope *sc);
+Objc *objc();
+
 
 /* A visitor to walk entire statements and provides ability to replace any sub-statements.
  */
@@ -289,7 +291,6 @@ public:
 FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageClass storage_class, Type *type)
     : Declaration(id)
 {
-    objc = Objc_FuncDeclaration(this);
     //printf("FuncDeclaration(id = '%s', type = %p)\n", id->toChars(), type);
     //printf("storage_class = x%x\n", storage_class);
     this->storage_class = storage_class;
@@ -351,6 +352,7 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageCla
     flags = 0;
     returns = NULL;
     gotos = NULL;
+    selector = NULL;
 }
 
 Dsymbol *FuncDeclaration::syntaxCopy(Dsymbol *s)
@@ -1263,12 +1265,12 @@ void FuncDeclaration::semantic2(Scope *sc)
     assert(semanticRun <= PASSsemantic2);
     semanticRun = PASSsemantic2;
 
-    objc_FuncDeclaration_semantic_setSelector(this, sc);
-    objc_FuncDeclaration_semantic_validateSelector(this);
+    objc()->setSelector(this, sc);
+    objc()->validateSelector(this);
 
     if (ClassDeclaration *cd = parent->isClassDeclaration())
     {
-        objc_FuncDeclaration_semantic_checkLinkage(this);
+        objc()->checkLinkage(this);
     }
 }
 
