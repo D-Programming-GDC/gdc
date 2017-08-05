@@ -26,7 +26,6 @@
 
 #include "checkedint.h"
 #include "rmem.h"
-#include "target.h"
 
 #include "dsymbol.h"
 #include "mtype.h"
@@ -43,6 +42,7 @@
 #include "import.h"
 #include "aggregate.h"
 #include "hdrgen.h"
+#include "target.h"
 
 #define LOGDOTEXP       0       // log ::dotExp()
 #define LOGDEFAULTINIT  0       // log ::defaultInit()
@@ -3711,7 +3711,7 @@ Type *TypeVector::semantic(Loc loc, Scope *sc)
     }
     TypeSArray *t = (TypeSArray *)basetype;
     int sz = (int)t->size(loc);
-    switch (Target::checkVectorType(sz, t->nextOf()))
+    switch (Target::isVectorTypeSupported(sz, t->nextOf()))
     {
     case 0: // valid
         break;
@@ -3764,6 +3764,16 @@ Expression *TypeVector::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
 #if LOGDOTEXP
     printf("TypeVector::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
 #endif
+    if (ident == Id::ptr && e->op == TOKcall)
+    {
+        /* The trouble with TOKcall is the return ABI for float[4] is different from
+         * __vector(float[4]), and a type paint won't do.
+         */
+        e = new AddrExp(e->loc, e);
+        e = e->semantic(sc);
+        e = e->castTo(sc, basetype->nextOf()->pointerTo());
+        return e;
+    }
     if (ident == Id::array)
     {
         //e = e->castTo(sc, basetype);
@@ -3835,8 +3845,12 @@ MATCH TypeVector::implicitConvTo(Type *to)
     //printf("TypeVector::implicitConvTo(%s) from %s\n", to->toChars(), toChars());
     if (this == to)
         return MATCHexact;
-    if (ty == to->ty)
-        return MATCHconvert;
+    if (to->ty == Tvector)
+    {
+        // Test if the basetype is implicitly convertible.
+        TypeVector *tv = (TypeVector *)to;
+        return basetype->implicitConvTo(tv->basetype);
+    }
     return MATCHnomatch;
 }
 

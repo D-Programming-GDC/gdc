@@ -17,6 +17,17 @@
 	* types.cc (layout_aggregate_members): Likewise.
 	(layout_aggregate_type): Likewise.
 
+2017-08-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_boolop): Handle VECTOR_TYPE comparisons.
+	* d-target.cc (Target::checkVectorType): Rename to
+	Target::isVectorTypeSupported.
+	(Target::isVectorOpSupported): New function.
+	* expr.cc (ExprVisitor::visit(IdentityExp)): Don't memcmp floating
+	point vectors.
+	(ExprVisitor::visit(CmpExp)): Handle always true or always false
+	vector comparisons.
+
 2017-08-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* typeinfo.cc (SpeculativeTypeVisitor::visit(TypeClass)): Don't emit
