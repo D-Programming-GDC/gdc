@@ -108,6 +108,10 @@ DEF_D_BUILTIN (STD_SQRT, SQRT, "sqrt", "std.math", "FNaNbNiNfdZd")
 DEF_D_BUILTIN (STD_SQRTL, SQRTL, "sqrt", "std.math", "FNaNbNiNfeZe")
 
 DEF_CTFE_BUILTIN (TAN, TAN, "tan", "std.math", "FNaNbNiNeeZe")
+DEF_CTFE_BUILTIN (ISNAN, ISNAN, "isNaN", "std.math", "FNaNbNiNeI1XZb")
+DEF_CTFE_BUILTIN (ISINFINITY, ISINFINITY, "isInfinity", "std.math",
+		  "FNaNbNiNeI1XZb")
+DEF_CTFE_BUILTIN (ISFINITE, ISFINITE, "isFinite", "std.math", "FNaNbNiNeI1XZb")
 
 /* core.stdc.stdarg intrinsics.  */
 

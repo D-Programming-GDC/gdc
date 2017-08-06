@@ -707,6 +707,18 @@ maybe_expand_intrinsic (tree callexp)
       return call_builtin_fn (callexp, BUILT_IN_TANL, 1,
 			      CALL_EXPR_ARG (callexp, 0));
 
+    case INTRINSIC_ISNAN:
+      return call_builtin_fn (callexp, BUILT_IN_ISNAN, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_ISINFINITY:
+      return call_builtin_fn (callexp, BUILT_IN_ISINF, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_ISFINITE:
+      return call_builtin_fn (callexp, BUILT_IN_ISFINITE, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
     case INTRINSIC_VA_ARG:
     case INTRINSIC_C_VA_ARG:
       return expand_intrinsic_vaarg (callexp);
