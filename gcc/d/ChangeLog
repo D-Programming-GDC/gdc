@@ -1,3 +1,22 @@
+2017-08-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decl.cc (DeclVisitor::visit): Don't set input_location.
+	(build_decl_tree): Handle set and restore of input_location.
+	(declare_local_var): Don't set input_location.
+	* expr.cc (build_expr): Handle set and restore of input_location.
+	* imports.cc (build_import_decl): Likewise.
+	* modules.cc (get_dso_registry_fn): Use UNKNOWN_LOCATION for
+	declaration of _d_dso_registry.
+	* runtime.cc (build_libcall_decl): Use UNKNOWN_LOCATION for
+	declaration of library functions.
+	* toir.cc (IRVisitor::visit): Don't set input_location.
+	(IRVisitor::build_stmt): New function.
+	(IRVisitor::do_jump): Update signature.
+	(build_function_body): Use IRVisitor::build_stmt.
+	* typeinfo.cc (layout_classinfo_interfaces): Don't set input_location.
+	* types.cc (layout_aggregate_members): Likewise.
+	(layout_aggregate_type): Likewise.
+
 2017-08-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* typeinfo.cc (SpeculativeTypeVisitor::visit(TypeClass)): Don't emit
