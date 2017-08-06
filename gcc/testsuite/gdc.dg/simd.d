@@ -8,6 +8,15 @@ alias TypeTuple(T...) = T;
 /*****************************************/
 // https://issues.dlang.org/show_bug.cgi?id=16087
 
+static assert(void8.sizeof == 8);
+static assert(float2.sizeof == 8);
+static assert(byte8.sizeof == 8);
+static assert(ubyte8.sizeof == 8);
+static assert(short4.sizeof == 8);
+static assert(ushort4.sizeof == 8);
+static assert(int2.sizeof == 8);
+static assert(uint2.sizeof == 8);
+
 static assert(void16.alignof == 16);
 static assert(double2.alignof == 16);
 static assert(float4.alignof == 16);
@@ -122,29 +131,29 @@ void test1()
 
 void test2()
 {
-    byte16 v1,v2,v3;
+    byte16 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
-    static assert(!__traits(compiles, v1 * v2));
-    static assert(!__traits(compiles, v1 / v2));
-    static assert(!__traits(compiles, v1 % v2));
+    v1 = v2 * v3;
+    v1 = v2 / v3;
+    v1 = v2 % v3;
     v1 = v2 & v3;
     v1 = v2 | v3;
     v1 = v2 ^ v3;
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
-    static assert(!__traits(compiles, v1 << 1));
-    static assert(!__traits(compiles, v1 >> 1));
-    static assert(!__traits(compiles, v1 >>> 1));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
+    v1 = v2 << 1;
+    v1 = v2 >> 1;
+    v1 = v2 >>> 1;
     static assert(!__traits(compiles, v1 && v2));
     static assert(!__traits(compiles, v1 || v2));
     v1 = ~v2;
@@ -154,17 +163,17 @@ void test2()
 
     v1 += v2;
     v1 -= v2;
-    static assert(!__traits(compiles, v1 *= v2));
-    static assert(!__traits(compiles, v1 /= v2));
-    static assert(!__traits(compiles, v1 %= v2));
+    v1 *= v2;
+    v1 /= v2;
+    v1 %= v2;
     v1 &= v2;
     v1 |= v2;
     v1 ^= v2;
     static assert(!__traits(compiles, v1 ~= v2));
     static assert(!__traits(compiles, v1 ^^= v2));
-    static assert(!__traits(compiles, v1 <<= 1));
-    static assert(!__traits(compiles, v1 >>= 1));
-    static assert(!__traits(compiles, v1 >>>= 1));
+    v1 <<= 1;
+    v1 >>= 1;
+    v1 >>>= 1;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
     static assert(!__traits(compiles, cast(byte)v1));       // 1byte
@@ -182,29 +191,29 @@ void test2()
 
 void test2b()
 {
-    ubyte16 v1,v2,v3;
+    ubyte16 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
-    static assert(!__traits(compiles, v1 * v2));
-    static assert(!__traits(compiles, v1 / v2));
-    static assert(!__traits(compiles, v1 % v2));
+    v1 = v2 * v3;
+    v1 = v2 / v3;
+    v1 = v2 % v3;
     v1 = v2 & v3;
     v1 = v2 | v3;
     v1 = v2 ^ v3;
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
-    static assert(!__traits(compiles, v1 << 1));
-    static assert(!__traits(compiles, v1 >> 1));
-    static assert(!__traits(compiles, v1 >>> 1));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
+    v1 = v2 << 1;
+    v1 = v2 >> 1;
+    v1 = v2 >>> 1;
     static assert(!__traits(compiles, v1 && v2));
     static assert(!__traits(compiles, v1 || v2));
     v1 = ~v2;
@@ -214,17 +223,17 @@ void test2b()
 
     v1 += v2;
     v1 -= v2;
-    static assert(!__traits(compiles, v1 *= v2));
-    static assert(!__traits(compiles, v1 /= v2));
-    static assert(!__traits(compiles, v1 %= v2));
+    v1 *= v2;
+    v1 /= v2;
+    v1 %= v2;
     v1 &= v2;
     v1 |= v2;
     v1 ^= v2;
     static assert(!__traits(compiles, v1 ~= v2));
     static assert(!__traits(compiles, v1 ^^= v2));
-    static assert(!__traits(compiles, v1 <<= 1));
-    static assert(!__traits(compiles, v1 >>= 1));
-    static assert(!__traits(compiles, v1 >>>= 1));
+    v1 <<= 1;
+    v1 >>= 1;
+    v1 >>>= 1;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
     static assert(!__traits(compiles, cast(byte)v1));       // 1byte
@@ -242,29 +251,29 @@ void test2b()
 
 void test2c()
 {
-    short8 v1,v2,v3;
+    short8 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
     v1 = v2 * v3;
-    static assert(!__traits(compiles, v1 / v2));
-    static assert(!__traits(compiles, v1 % v2));
+    v1 = v2 / v3;
+    v1 = v2 % v3;
     v1 = v2 & v3;
     v1 = v2 | v3;
     v1 = v2 ^ v3;
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
-    static assert(!__traits(compiles, v1 << 1));
-    static assert(!__traits(compiles, v1 >> 1));
-    static assert(!__traits(compiles, v1 >>> 1));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
+    v1 = v2 << 1;
+    v1 = v2 >> 1;
+    v1 = v2 >>> 1;
     static assert(!__traits(compiles, v1 && v2));
     static assert(!__traits(compiles, v1 || v2));
     v1 = ~v2;
@@ -275,16 +284,16 @@ void test2c()
     v1 += v2;
     v1 -= v2;
     v1 *= v2;
-    static assert(!__traits(compiles, v1 /= v2));
-    static assert(!__traits(compiles, v1 %= v2));
+    v1 /= v2;
+    v1 %= v2;
     v1 &= v2;
     v1 |= v2;
     v1 ^= v2;
     static assert(!__traits(compiles, v1 ~= v2));
     static assert(!__traits(compiles, v1 ^^= v2));
-    static assert(!__traits(compiles, v1 <<= 1));
-    static assert(!__traits(compiles, v1 >>= 1));
-    static assert(!__traits(compiles, v1 >>>= 1));
+    v1 <<= 1;
+    v1 >>= 1;
+    v1 >>>= 1;
     v1 = v1 * 3;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
@@ -303,29 +312,29 @@ void test2c()
 
 void test2d()
 {
-    ushort8 v1,v2,v3;
+    ushort8 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
     v1 = v2 * v3;
-    static assert(!__traits(compiles, v1 / v2));
-    static assert(!__traits(compiles, v1 % v2));
+    v1 = v2 / v3;
+    v1 = v2 % v3;
     v1 = v2 & v3;
     v1 = v2 | v3;
     v1 = v2 ^ v3;
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
-    static assert(!__traits(compiles, v1 << 1));
-    static assert(!__traits(compiles, v1 >> 1));
-    static assert(!__traits(compiles, v1 >>> 1));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
+    v1 = v2 << 1;
+    v1 = v2 >> 1;
+    v1 = v2 >>> 1;
     static assert(!__traits(compiles, v1 && v2));
     static assert(!__traits(compiles, v1 || v2));
     v1 = ~v2;
@@ -336,16 +345,16 @@ void test2d()
     v1 += v2;
     v1 -= v2;
     v1 *= v2;
-    static assert(!__traits(compiles, v1 /= v2));
-    static assert(!__traits(compiles, v1 %= v2));
+    v1 /= v2;
+    v1 %= v2;
     v1 &= v2;
     v1 |= v2;
     v1 ^= v2;
     static assert(!__traits(compiles, v1 ~= v2));
     static assert(!__traits(compiles, v1 ^^= v2));
-    static assert(!__traits(compiles, v1 <<= 1));
-    static assert(!__traits(compiles, v1 >>= 1));
-    static assert(!__traits(compiles, v1 >>>= 1));
+    v1 <<= 1;
+    v1 >>= 1;
+    v1 >>>= 1;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
     static assert(!__traits(compiles, cast(byte)v1));       // 1byte
@@ -363,29 +372,29 @@ void test2d()
 
 void test2e()
 {
-    int4 v1,v2,v3;
+    int4 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
-    static assert(!__traits(compiles, v1 * v2));
-    static assert(!__traits(compiles, v1 / v2));
-    static assert(!__traits(compiles, v1 % v2));
+    v1 = v2 * v3;
+    v1 = v2 / v3;
+    v1 = v2 % v3;
     v1 = v2 & v3;
     v1 = v2 | v3;
     v1 = v2 ^ v3;
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
-    static assert(!__traits(compiles, v1 << 1));
-    static assert(!__traits(compiles, v1 >> 1));
-    static assert(!__traits(compiles, v1 >>> 1));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
+    v1 = v2 << 1;
+    v1 = v2 >> 1;
+    v1 = v2 >>> 1;
     static assert(!__traits(compiles, v1 && v2));
     static assert(!__traits(compiles, v1 || v2));
     v1 = ~v2;
@@ -395,17 +404,17 @@ void test2e()
 
     v1 += v2;
     v1 -= v2;
-    static assert(!__traits(compiles, v1 *= v2));
-    static assert(!__traits(compiles, v1 /= v2));
-    static assert(!__traits(compiles, v1 %= v2));
+    v1 *= v2;
+    v1 /= v2;
+    v1 %= v2;
     v1 &= v2;
     v1 |= v2;
     v1 ^= v2;
     static assert(!__traits(compiles, v1 ~= v2));
     static assert(!__traits(compiles, v1 ^^= v2));
-    static assert(!__traits(compiles, v1 <<= 1));
-    static assert(!__traits(compiles, v1 >>= 1));
-    static assert(!__traits(compiles, v1 >>>= 1));
+    v1 <<= 1;
+    v1 >>= 1;
+    v1 >>>= 1;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
     static assert(!__traits(compiles, cast(byte)v1));       // 1byte
@@ -423,29 +432,29 @@ void test2e()
 
 void test2f()
 {
-    uint4 v1,v2,v3;
+    uint4 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
-    static assert(!__traits(compiles, v1 * v2));
-    static assert(!__traits(compiles, v1 / v2));
-    static assert(!__traits(compiles, v1 % v2));
+    v1 = v2 * v3;
+    v1 = v2 / v3;
+    v1 = v2 % v3;
     v1 = v2 & v3;
     v1 = v2 | v3;
     v1 = v2 ^ v3;
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
-    static assert(!__traits(compiles, v1 << 1));
-    static assert(!__traits(compiles, v1 >> 1));
-    static assert(!__traits(compiles, v1 >>> 1));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
+    v1 = v2 << 1;
+    v1 = v2 >> 1;
+    v1 = v2 >>> 1;
     static assert(!__traits(compiles, v1 && v2));
     static assert(!__traits(compiles, v1 || v2));
     v1 = ~v2;
@@ -455,17 +464,17 @@ void test2f()
 
     v1 += v2;
     v1 -= v2;
-    static assert(!__traits(compiles, v1 *= v2));
-    static assert(!__traits(compiles, v1 /= v2));
-    static assert(!__traits(compiles, v1 %= v2));
+    v1 *= v2;
+    v1 /= v2;
+    v1 %= v2;
     v1 &= v2;
     v1 |= v2;
     v1 ^= v2;
     static assert(!__traits(compiles, v1 ~= v2));
     static assert(!__traits(compiles, v1 ^^= v2));
-    static assert(!__traits(compiles, v1 <<= 1));
-    static assert(!__traits(compiles, v1 >>= 1));
-    static assert(!__traits(compiles, v1 >>>= 1));
+    v1 <<= 1;
+    v1 >>= 1;
+    v1 >>>= 1;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
     static assert(!__traits(compiles, cast(byte)v1));       // 1byte
@@ -483,29 +492,29 @@ void test2f()
 
 void test2g()
 {
-    long2 v1,v2,v3;
+    long2 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
-    static assert(!__traits(compiles, v1 * v2));
-    static assert(!__traits(compiles, v1 / v2));
-    static assert(!__traits(compiles, v1 % v2));
+    v1 = v2 * v3;
+    v1 = v2 / v3;
+    v1 = v2 % v3;
     v1 = v2 & v3;
     v1 = v2 | v3;
     v1 = v2 ^ v3;
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
-    static assert(!__traits(compiles, v1 << 1));
-    static assert(!__traits(compiles, v1 >> 1));
-    static assert(!__traits(compiles, v1 >>> 1));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
+    v1 = v2 << 1;
+    v1 = v2 >> 1;
+    v1 = v2 >>> 1;
     static assert(!__traits(compiles, v1 && v2));
     static assert(!__traits(compiles, v1 || v2));
     v1 = ~v2;
@@ -515,17 +524,17 @@ void test2g()
 
     v1 += v2;
     v1 -= v2;
-    static assert(!__traits(compiles, v1 *= v2));
-    static assert(!__traits(compiles, v1 /= v2));
-    static assert(!__traits(compiles, v1 %= v2));
+    v1 *= v2;
+    v1 /= v2;
+    v1 %= v2;
     v1 &= v2;
     v1 |= v2;
     v1 ^= v2;
     static assert(!__traits(compiles, v1 ~= v2));
     static assert(!__traits(compiles, v1 ^^= v2));
-    static assert(!__traits(compiles, v1 <<= 1));
-    static assert(!__traits(compiles, v1 >>= 1));
-    static assert(!__traits(compiles, v1 >>>= 1));
+    v1 <<= 1;
+    v1 >>= 1;
+    v1 >>>= 1;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
     static assert(!__traits(compiles, cast(byte)v1));       // 1byte
@@ -543,29 +552,29 @@ void test2g()
 
 void test2h()
 {
-    ulong2 v1,v2,v3;
+    ulong2 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
-    static assert(!__traits(compiles, v1 * v2));
-    static assert(!__traits(compiles, v1 / v2));
-    static assert(!__traits(compiles, v1 % v2));
+    v1 = v2 * v3;
+    v1 = v2 / v3;
+    v1 = v2 % v3;
     v1 = v2 & v3;
     v1 = v2 | v3;
     v1 = v2 ^ v3;
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
-    static assert(!__traits(compiles, v1 << 1));
-    static assert(!__traits(compiles, v1 >> 1));
-    static assert(!__traits(compiles, v1 >>> 1));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
+    v1 = v2 << 1;
+    v1 = v2 >> 1;
+    v1 = v2 >>> 1;
     static assert(!__traits(compiles, v1 && v2));
     static assert(!__traits(compiles, v1 || v2));
     v1 = ~v2;
@@ -575,17 +584,17 @@ void test2h()
 
     v1 += v2;
     v1 -= v2;
-    static assert(!__traits(compiles, v1 *= v2));
-    static assert(!__traits(compiles, v1 /= v2));
-    static assert(!__traits(compiles, v1 %= v2));
+    v1 *= v2;
+    v1 /= v2;
+    v1 %= v2;
     v1 &= v2;
     v1 |= v2;
     v1 ^= v2;
     static assert(!__traits(compiles, v1 ~= v2));
     static assert(!__traits(compiles, v1 ^^= v2));
-    static assert(!__traits(compiles, v1 <<= 1));
-    static assert(!__traits(compiles, v1 >>= 1));
-    static assert(!__traits(compiles, v1 >>>= 1));
+    v1 <<= 1;
+    v1 >>= 1;
+    v1 >>>= 1;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
     static assert(!__traits(compiles, cast(byte)v1));       // 1byte
@@ -603,7 +612,7 @@ void test2h()
 
 void test2i()
 {
-    float4 v1,v2,v3;
+    float4 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
@@ -615,14 +624,14 @@ void test2i()
     static assert(!__traits(compiles, v1 ^ v2));
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
     static assert(!__traits(compiles, v1 << 1));
     static assert(!__traits(compiles, v1 >> 1));
     static assert(!__traits(compiles, v1 >>> 1));
@@ -663,7 +672,7 @@ void test2i()
 
 void test2j()
 {
-    double2 v1,v2,v3;
+    double2 v1, v2 = 1, v3 = 1;
     v1 = v2;
     v1 = v2 + v3;
     v1 = v2 - v3;
@@ -675,14 +684,14 @@ void test2j()
     static assert(!__traits(compiles, v1 ^ v2));
     static assert(!__traits(compiles, v1 ~ v2));
     static assert(!__traits(compiles, v1 ^^ v2));
-    static assert(!__traits(compiles, v1 is v2));
-    static assert(!__traits(compiles, v1 !is v2));
-    static assert(!__traits(compiles, v1 == v2));
-    static assert(!__traits(compiles, v1 != v2));
-    static assert(!__traits(compiles, v1 < v2));
-    static assert(!__traits(compiles, v1 > v2));
-    static assert(!__traits(compiles, v1 <= v2));
-    static assert(!__traits(compiles, v1 >= v2));
+    v1 = v2 is v3;
+    v1 = v2 !is v3;
+    v1 = v2 == v3;
+    v1 = v2 != v3;
+    v1 = v2 < v3;
+    v1 = v2 > v3;
+    v1 = v2 <= v3;
+    v1 = v2 >= v3;
     static assert(!__traits(compiles, v1 << 1));
     static assert(!__traits(compiles, v1 >> 1));
     static assert(!__traits(compiles, v1 >>> 1));
@@ -1511,6 +1520,18 @@ struct S17237
 static assert(S17237.a.offsetof == 0);
 static assert(S17237.b.offsetof == 32);
 static assert(S17237.c.offsetof == 64);
+
+/*****************************************/
+// https://issues.dlang.org/show_bug.cgi?id=16697
+
+static assert(!is(float == __vector));
+static assert(!is(float[1] == __vector));
+static assert(!is(float[4] == __vector));
+static assert( is(__vector(float[4]) == __vector));
+static assert(!is(__vector(float[3]) == __vector));
+static assert(!is(__vector(float[5]) == __vector));
+static assert( is(__vector(float[4]) X == __vector) && is(X == float[4]));
+static assert( is(__vector(byte[16]) X == __vector) && is(X == byte[16]));
 
 /*****************************************/
 

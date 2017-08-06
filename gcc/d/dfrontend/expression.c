@@ -17,7 +17,6 @@
 
 #include "rmem.h"
 #include "root.h"
-#include "target.h"
 
 #include "mtype.h"
 #include "init.h"
@@ -40,6 +39,7 @@
 #include "aav.h"
 #include "nspace.h"
 #include "ctfe.h"
+#include "target.h"
 
 bool typeMerge(Scope *sc, TOK op, Type **pt, Expression **pe1, Expression **pe2);
 bool isArrayOpValid(Expression *e);
@@ -1373,7 +1373,7 @@ bool preFunctionParameters(Loc loc, Scope *sc, Expressions *exps)
                 arg = new ErrorExp();
                 err = true;
             }
-            (*exps)[i] =  arg;
+            (*exps)[i] = arg;
         }
     }
     return err;
@@ -2149,6 +2149,30 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
     return (err || olderrors != global.errors);
 }
 
+/*********************
+ * Mark the operand as will never be dereferenced,
+ * which is useful info for @safe checks.
+ * Do before semantic() on operands rewrites them.
+ */
+static void setNoderefOperand(UnaExp *e)
+{
+    if (e->e1->op == TOKdotid)
+        ((DotIdExp *)e->e1)->noderef = true;
+}
+
+/*********************
+ * Mark the operands as will never be dereferenced,
+ * which is useful info for @safe checks.
+ * Do before semantic() on operands rewrites them.
+ */
+static void setNoderefOperands(BinExp *e)
+{
+    if (e->e1->op == TOKdotid)
+        ((DotIdExp *)e->e1)->noderef = true;
+    if (e->e2->op == TOKdotid)
+        ((DotIdExp *)e->e2)->noderef = true;
+}
+
 /******************************** Expression **************************/
 
 Expression::Expression(Loc loc, TOK op, int size)
@@ -2245,18 +2269,6 @@ const char *Expression::toChars()
     HdrGenState hgs;
     toCBuffer(this, &buf, &hgs);
     return buf.extractString();
-}
-
-/********************
- * Print AST data structure in a nice format.
- * Params:
- *  indent = indentation level
- */
-void Expression::printAST(int indent)
-{
-    for (int i = 0; i < indent; i++)
-        printf(" ");
-    printf("%s %s\n", Token::toChars(op), type ? type->toChars() : "");
 }
 
 void Expression::error(const char *format, ...) const
@@ -4431,7 +4443,7 @@ static void appendArrayLiteral(Expressions *elems, ArrayLiteralExp *ale)
  *      e2  = If it's not `null`, it will be pushed/appended to the new
  *            `Expressions` by the same way with `e1`.
  * Returns:
- *      Newly allocated `Expresions. Note that it points the original
+ *      Newly allocated `Expressions`. Note that it points to the original
  *      `Expression` values in e1 and e2.
  */
 Expressions* ArrayLiteralExp::copyElements(Expression *e1, Expression *e2)
@@ -6814,6 +6826,12 @@ Expression *IsExp::semantic(Scope *sc)
                     goto Lno;           // not valid for a parameter
                 break;
 
+            case TOKvector:
+                if (targ->ty != Tvector)
+                    goto Lno;
+                tded = ((TypeVector *)targ)->basetype;
+                break;
+
             default:
                 assert(0);
         }
@@ -6970,16 +6988,34 @@ Expression *UnaExp::unaSemantic(Scope *sc)
     return NULL;
 }
 
+/********************************
+ * The type for a unary expression is incompatible.
+ * Print error message.
+ * Returns:
+ *  ErrorExp
+ */
+Expression *UnaExp::incompatibleTypes()
+{
+    if (e1->type->toBasetype() == Type::terror)
+        return e1;
+
+    if (e1->op == TOKtype)
+    {
+        error("incompatible type for (%s(%s)): cannot use '%s' with types",
+	    Token::toChars(op), e1->toChars(), Token::toChars(op));
+    }
+    else
+    {
+        error("incompatible type for (%s(%s)): '%s'",
+	    Token::toChars(op), e1->toChars(), e1->type->toChars());
+    }
+    return new ErrorExp();
+}
+
 Expression *UnaExp::resolveLoc(Loc loc, Scope *sc)
 {
     e1 = e1->resolveLoc(loc, sc);
     return this;
-}
-
-void UnaExp::printAST(int indent)
-{
-    Expression::printAST(indent);
-    e1->printAST(indent + 2);
 }
 
 /************************************************************/
@@ -7176,28 +7212,33 @@ Expression *BinExp::checkOpAssignTypes(Scope *sc)
     return this;
 }
 
+/********************************
+ * The types for a binary expression are incompatible.
+ * Print error message.
+ * Returns:
+ *  ErrorExp
+ */
 Expression *BinExp::incompatibleTypes()
 {
-    if (e1->type->toBasetype() != Type::terror &&
-        e2->type->toBasetype() != Type::terror
-       )
+    if (e1->type->toBasetype() == Type::terror)
+        return e1;
+    if (e2->type->toBasetype() == Type::terror)
+        return e2;
+
+    // CondExp uses 'a ? b : c' but we're comparing 'b : c'
+    TOK thisOp = (op == TOKquestion) ? TOKcolon : op;
+    if (e1->op == TOKtype || e2->op == TOKtype)
     {
-        // CondExp uses 'a ? b : c' but we're comparing 'b : c'
-        TOK thisOp = (op == TOKquestion) ? TOKcolon : op;
-        if (e1->op == TOKtype || e2->op == TOKtype)
-        {
-            error("incompatible types for ((%s) %s (%s)): cannot use '%s' with types",
-                e1->toChars(), Token::toChars(thisOp), e2->toChars(), Token::toChars(op));
-        }
-        else
-        {
-            error("incompatible types for ((%s) %s (%s)): '%s' and '%s'",
-                e1->toChars(), Token::toChars(thisOp), e2->toChars(),
-                e1->type->toChars(), e2->type->toChars());
-        }
-        return new ErrorExp();
+        error("incompatible types for ((%s) %s (%s)): cannot use '%s' with types",
+            e1->toChars(), Token::toChars(thisOp), e2->toChars(), Token::toChars(op));
     }
-    return this;
+    else
+    {
+        error("incompatible types for ((%s) %s (%s)): '%s' and '%s'",
+            e1->toChars(), Token::toChars(thisOp), e2->toChars(),
+            e1->type->toChars(), e2->type->toChars());
+    }
+    return new ErrorExp();
 }
 
 bool BinExp::checkIntegralBin()
@@ -7214,14 +7255,12 @@ bool BinExp::checkArithmeticBin()
     return (r1 || r2);
 }
 
-void BinExp::printAST(int indent)
-{
-    Expression::printAST(indent);
-    e1->printAST(indent + 2);
-    e2->printAST(indent + 2);
-}
-
 /********************** BinAssignExp **************************************/
+
+BinAssignExp::BinAssignExp(Loc loc, TOK op, int size, Expression *e1, Expression *e2)
+        : BinExp(loc, op, size, e1, e2)
+{
+}
 
 Expression *BinAssignExp::semantic(Scope *sc)
 {
@@ -7287,24 +7326,11 @@ Expression *BinAssignExp::semantic(Scope *sc)
         return new ErrorExp();
     if (shift)
     {
-        e2 = e2->castTo(sc, Type::tshiftcnt);
+        if (e2->type->toBasetype()->ty != Tvector)
+            e2 = e2->castTo(sc, Type::tshiftcnt);
     }
 
-    // vectors
-    if (shift && (e1->type->toBasetype()->ty == Tvector ||
-                  e2->type->toBasetype()->ty == Tvector))
-        return incompatibleTypes();
-
-    int isvector = type->toBasetype()->ty == Tvector;
-
-    if (op == TOKmulass && isvector && !e2->type->isfloating() &&
-        ((TypeVector *)type->toBasetype())->elementType()->size(loc) != 2)
-        return incompatibleTypes(); // Only short[8] and ushort[8] work with multiply
-
-    if (op == TOKdivass && isvector && !e1->type->isfloating())
-        return incompatibleTypes();
-
-    if (op == TOKmodass && isvector)
+    if (!Target::isVectorOpSupported(type->toBasetype(), op, e2->type->toBasetype()))
         return incompatibleTypes();
 
     if (e1->op == TOKerror || e2->op == TOKerror)
@@ -7496,10 +7522,17 @@ Expression *AssertExp::semantic(Scope *sc)
         msg = msg->implicitCastTo(sc, Type::tchar->constOf()->arrayOf());
         msg = msg->optimize(WANTvalue);
     }
+
     if (e1->op == TOKerror)
         return e1;
     if (msg && msg->op == TOKerror)
         return msg;
+
+    bool f1 = checkNonAssignmentArrayOp(e1);
+    bool f2 = msg && checkNonAssignmentArrayOp(msg);
+    if (f1 || f2)
+      return new ErrorExp();
+
     if (e1->isBool(false))
     {
         FuncDeclaration *fd = sc->parent->isFuncDeclaration();
@@ -7529,6 +7562,7 @@ DotIdExp::DotIdExp(Loc loc, Expression *e, Identifier *ident)
         : UnaExp(loc, TOKdotid, sizeof(DotIdExp), e)
 {
     this->ident = ident;
+    this->wantsym = false;
 }
 
 DotIdExp *DotIdExp::create(Loc loc, Expression *e, Identifier *ident)
@@ -7617,7 +7651,7 @@ Expression *DotIdExp::semanticX(Scope *sc)
     if (e1->op == TOKvar && e1->type->toBasetype()->ty == Tsarray && ident == Id::length)
     {
         // bypass checkPurity
-        return e1->type->dotExp(sc, e1, ident, 0);
+        return e1->type->dotExp(sc, e1, ident, noderef ? 2 : 0);
     }
 
     if (e1->op == TOKdot)
@@ -7776,8 +7810,12 @@ Expression *DotIdExp::semanticY(Scope *sc, int flag)
                 if (v->type->ty == Terror)
                     return new ErrorExp();
 
-                if ((v->storage_class & STCmanifest) && v->_init)
+                if ((v->storage_class & STCmanifest) && v->_init && !wantsym)
                 {
+                    /* Normally, the replacement of a symbol with its initializer is supposed to be in semantic2().
+                     * Introduced by https://github.com/dlang/dmd/pull/5588 which should probably
+                     * be reverted. `wantsym` is the hack to work around the problem.
+                     */
                     if (v->inuse)
                     {
                         ::error(loc, "circular initialization of %s '%s'", v->kind(), v->toPrettyChars());
@@ -7938,13 +7976,13 @@ Expression *DotIdExp::semanticY(Scope *sc, int flag)
             return NULL;
         e = new PtrExp(loc, e1);
         e = e->semantic(sc);
-        return e->type->dotExp(sc, e, ident, flag);
+        return e->type->dotExp(sc, e, ident, flag | (noderef ? 2 : 0));
     }
     else
     {
         if (e1->op == TOKtype || e1->op == TOKtemplate)
             flag = 0;
-        e = e1->type->dotExp(sc, e1, ident, flag);
+        e = e1->type->dotExp(sc, e1, ident, flag | (noderef ? 2 : 0));
         if (!flag || e)
             e = e->semantic(sc);
         return e;
@@ -9108,7 +9146,7 @@ Lagain:
                 return ue->e1;
             ethis = ue->e1;
             tthis = ue->e1->type;
-            if (!f->type->isscope())
+            if (!(f->type->ty == Tfunction && ((TypeFunction *)f->type)->isscope))
             {
                 if (global.params.vsafe && checkParamArgumentEscape(sc, f, Id::This, ethis, false))
                     return new ErrorExp();
@@ -9743,6 +9781,9 @@ Expression *AddrExp::semantic(Scope *sc)
     e1 = e1->toLvalue(sc, NULL);
     if (e1->op == TOKerror)
         return e1;
+    if (checkNonAssignmentArrayOp(e1))
+      return new ErrorExp();
+
     if (!e1->type)
     {
         error("cannot take address of %s", e1->toChars());
@@ -9854,15 +9895,26 @@ Expression *AddrExp::semantic(Scope *sc)
                 e = e->semantic(sc);
                 return e;
             }
-            if (f->needThis() && hasThis(sc))
+            if (f->needThis())
             {
-                /* Should probably supply 'this' after overload resolution,
-                 * not before.
-                 */
-                Expression *ethis = new ThisExp(loc);
-                Expression *e = new DelegateExp(loc, ethis, f, ve->hasOverloads);
-                e = e->semantic(sc);
-                return e;
+                if (hasThis(sc))
+                {
+                    /* Should probably supply 'this' after overload resolution,
+                     * not before.
+                     */
+                    Expression *ethis = new ThisExp(loc);
+                    Expression *e = new DelegateExp(loc, ethis, f, ve->hasOverloads);
+                    e = e->semantic(sc);
+                    return e;
+                }
+                if (sc->func && !sc->intypeof)
+                {
+                    if (sc->func->setUnsafe())
+                    {
+                        error("'this' reference necessary to take address of member %s in @safe function %s",
+                            f->toChars(), sc->func->toChars());
+                    }
+                }
             }
         }
     }
@@ -10046,6 +10098,8 @@ Expression *NegExp::semantic(Scope *sc)
         return this;
     }
 
+    if (!Target::isVectorOpSupported(tb, op))
+        return incompatibleTypes();
     if (e1->checkNoBool())
         return new ErrorExp();
     if (e1->checkArithmetic())
@@ -10072,6 +10126,8 @@ Expression *UAddExp::semantic(Scope *sc)
     if (e)
         return e;
 
+    if (!Target::isVectorOpSupported(e1->type->toBasetype(), op))
+        return incompatibleTypes();
     if (e1->checkNoBool())
         return new ErrorExp();
     if (e1->checkArithmetic())
@@ -10108,6 +10164,8 @@ Expression *ComExp::semantic(Scope *sc)
         return this;
     }
 
+    if (!Target::isVectorOpSupported(tb, op))
+        return incompatibleTypes();
     if (e1->checkNoBool())
         return new ErrorExp();
     if (e1->checkIntegral())
@@ -10128,6 +10186,8 @@ Expression *NotExp::semantic(Scope *sc)
     if (type)
         return this;
 
+    setNoderefOperand(this);
+
     // Note there is no operator overload
     if (Expression *ex = unaSemantic(sc))
         return ex;
@@ -10136,6 +10196,8 @@ Expression *NotExp::semantic(Scope *sc)
     if (e1->type == Type::terror)
         return e1;
 
+    if (!Target::isVectorOpSupported(e1->type->toBasetype(), op))
+        return incompatibleTypes();
     // Bugzilla 13910: Today NotExp can take an array as its operand.
     if (checkNonAssignmentArrayOp(e1))
         return new ErrorExp();
@@ -10327,6 +10389,9 @@ Expression *CastExp::semantic(Scope *sc)
         if (to == Type::terror)
             return new ErrorExp();
 
+        if (!to->hasPointers())
+            setNoderefOperand(this);
+
         // When e1 is a template lambda, this cast may instantiate it with
         // the type 'to'.
         e1 = inferType(e1, to);
@@ -10449,23 +10514,44 @@ Expression *CastExp::semantic(Scope *sc)
 
         if (tob->ty == Tarray && t1b->ty == Tsarray)    // Bugzilla 12502
             t1b = t1b->nextOf()->arrayOf();
-        if (tob->ty == Tarray && t1b->ty == Tarray)
+
+        if (tob->ty == Tarray   && t1b->ty == Tarray ||
+            tob->ty == Tpointer && t1b->ty == Tpointer)
         {
             Type* tobn = tob->nextOf()->toBasetype();
             Type* t1bn = t1b->nextOf()->toBasetype();
-            if (!tobn->hasPointers() && MODimplicitConv(t1bn->mod, tobn->mod))
-                goto Lsafe;
-        }
-        if (tob->ty == Tpointer && t1b->ty == Tpointer)
-        {
-            Type* tobn = tob->nextOf()->toBasetype();
-            Type* t1bn = t1b->nextOf()->toBasetype();
+
+            /* From void[] to anything mutable is unsafe because:
+             *  int*[] api;
+             *  void[] av = api;
+             *  int[] ai = cast(int[]) av;
+             *  ai[0] = 7;
+             *  *api[0] crash!
+             */
+            if (t1bn->ty == Tvoid && tobn->isMutable())
+            {
+                if (tob->ty == Tarray && ex->op == TOKarrayliteral)
+                    goto Lsafe;
+                goto Lunsafe;
+            }
+
             // If the struct is opaque we don't know about the struct members and the cast becomes unsafe
-            bool sfwrd = tobn->ty == Tstruct && !((StructDeclaration *)((TypeStruct *)tobn)->sym)->members ||
-                    t1bn->ty == Tstruct && !((StructDeclaration *)((TypeStruct *)t1bn)->sym)->members;
-            if (!sfwrd && !tobn->hasPointers() &&
+            if (tobn->ty == Tstruct && !((TypeStruct *)tobn)->sym->members ||
+                t1bn->ty == Tstruct && !((TypeStruct *)t1bn)->sym->members)
+                goto Lunsafe;
+
+            bool t1pointers = t1bn->hasPointers();
+            bool topointers = tobn->hasPointers();
+
+            if (t1pointers && !topointers && tobn->isMutable())
+                goto Lunsafe;
+
+            if (!t1pointers && topointers)
+                goto Lunsafe;
+
+            if (!topointers &&
                 tobn->ty != Tfunction && t1bn->ty != Tfunction &&
-                tobn->size() <= t1bn->size() &&
+                (tob->ty == Tarray || tobn->size() <= t1bn->size()) &&
                 MODimplicitConv(t1bn->mod, tobn->mod))
             {
                 goto Lsafe;
@@ -11189,6 +11275,9 @@ Expression *CommaExp::semantic(Scope *sc)
         return ex;
     e1 = e1->addDtorHook(sc);
 
+    if (checkNonAssignmentArrayOp(e1))
+      return new ErrorExp();
+
     type = e2->type;
     if (type != Type::tvoid && !allowCommaExp && !isGenerated)
         deprecation("Using the result of a comma expression is deprecated");
@@ -11317,6 +11406,9 @@ Expression *IndexExp::semantic(Scope *sc)
         sc = sc->pop();
     if (e2->type == Type::terror)
         return new ErrorExp();
+
+    if (checkNonAssignmentArrayOp(e1))
+      return new ErrorExp();
 
     switch (t1b->ty)
     {
@@ -11831,6 +11923,8 @@ Expression *AssignExp::semantic(Scope *sc)
         e2x = e2x->semantic(sc);
         e2x = resolveProperties(sc, e2x);
 
+        if (e2x->op == TOKtype)
+            e2x = resolveAliasThis(sc, e2x); //https://issues.dlang.org/show_bug.cgi?id=17684
         if (e2x->op == TOKerror)
             return e2x;
         if (e2x->checkValue())
@@ -12870,8 +12964,6 @@ Expression *PowAssignExp::semantic(Scope *sc)
         }
         e = Expression::combine(e0, e);
         e = e->semantic(sc);
-        if (e->type->toBasetype()->ty == Tvector)
-            return incompatibleTypes();
         return e;
     }
     return incompatibleTypes();
@@ -12941,10 +13033,8 @@ Expression *AddExp::semantic(Scope *sc)
     }
 
     tb1 = e1->type->toBasetype();
-    if (tb1->ty == Tvector && !tb1->isscalar())
-    {
+    if (!Target::isVectorOpSupported(tb1, op, tb2))
         return incompatibleTypes();
-    }
     if ((tb1->isreal() && e2->type->isimaginary()) ||
         (tb1->isimaginary() && e2->type->isreal()))
     {
@@ -13066,10 +13156,8 @@ Expression *MinExp::semantic(Scope *sc)
 
     t1 = e1->type->toBasetype();
     t2 = e2->type->toBasetype();
-    if (t1->ty == Tvector && !t1->isscalar())
-    {
+    if (!Target::isVectorOpSupported(t1, op, t2))
         return incompatibleTypes();
-    }
     if ((t1->isreal() && t2->isimaginary()) ||
         (t1->isimaginary() && t2->isreal()))
     {
@@ -13118,6 +13206,11 @@ Expression *CatExp::semantic(Scope *sc)
 
     Type *tb1 = e1->type->toBasetype();
     Type *tb2 = e2->type->toBasetype();
+
+    bool f1 = checkNonAssignmentArrayOp(e1);
+    bool f2 = checkNonAssignmentArrayOp(e2);
+    if (f1 || f2)
+      return new ErrorExp();
 
     /* BUG: Should handle things like:
      *      char c;
@@ -13356,11 +13449,8 @@ Expression *MulExp::semantic(Scope *sc)
             type = t1;  // t1 is complex
         }
     }
-    else if (tb->ty == Tvector && ((TypeVector *)tb)->elementType()->size(loc) != 2)
-    {
-        // Only short[8] and ushort[8] work with multiply
+    else if (!Target::isVectorOpSupported(tb, op, e2->type->toBasetype()))
         return incompatibleTypes();
-    }
     return this;
 }
 
@@ -13440,10 +13530,8 @@ Expression *DivExp::semantic(Scope *sc)
             type = t1;  // t1 is complex
         }
     }
-    else if (tb->ty == Tvector)
-    {
+    else if (!Target::isVectorOpSupported(tb, op, e2->type->toBasetype()))
         return incompatibleTypes();
-    }
     return this;
 }
 
@@ -13478,10 +13566,8 @@ Expression *ModExp::semantic(Scope *sc)
         }
         return this;
     }
-    if (tb->ty == Tvector)
-    {
+    if (!Target::isVectorOpSupported(tb, op, e2->type->toBasetype()))
         return incompatibleTypes();
-    }
 
     if (checkArithmeticBin())
         return new ErrorExp();
@@ -13552,6 +13638,9 @@ Expression *PowExp::semantic(Scope *sc)
 
     if (checkArithmeticBin())
         return new ErrorExp();
+
+    if (!Target::isVectorOpSupported(e1->type->toBasetype(), op, e2->type->toBasetype()))
+        return incompatibleTypes();
 
     // For built-in numeric types, there are several cases.
     // TODO: backend support, especially for  e1 ^^ 2.
@@ -13639,13 +13728,11 @@ Expression *ShlExp::semantic(Scope *sc)
 
     if (checkIntegralBin())
         return new ErrorExp;
-    if (e1->type->toBasetype()->ty == Tvector ||
-        e2->type->toBasetype()->ty == Tvector)
-    {
+    if (!Target::isVectorOpSupported(e1->type->toBasetype(), op, e2->type->toBasetype()))
         return incompatibleTypes();
-    }
     e1 = integralPromotions(e1, sc);
-    e2 = e2->castTo(sc, Type::tshiftcnt);
+    if (e2->type->toBasetype()->ty != Tvector)
+        e2 = e2->castTo(sc, Type::tshiftcnt);
 
     type = e1->type;
     return this;
@@ -13671,13 +13758,11 @@ Expression *ShrExp::semantic(Scope *sc)
 
     if (checkIntegralBin())
         return new ErrorExp();
-    if (e1->type->toBasetype()->ty == Tvector ||
-        e2->type->toBasetype()->ty == Tvector)
-    {
+    if (!Target::isVectorOpSupported(e1->type->toBasetype(), op, e2->type->toBasetype()))
         return incompatibleTypes();
-    }
     e1 = integralPromotions(e1, sc);
-    e2 = e2->castTo(sc, Type::tshiftcnt);
+    if (e2->type->toBasetype()->ty != Tvector)
+        e2 = e2->castTo(sc, Type::tshiftcnt);
 
     type = e1->type;
     return this;
@@ -13703,14 +13788,11 @@ Expression *UshrExp::semantic(Scope *sc)
 
     if (checkIntegralBin())
         return new ErrorExp();
-    if (e1->type->toBasetype()->ty == Tvector ||
-        e2->type->toBasetype()->ty == Tvector)
-    {
+    if (!Target::isVectorOpSupported(e1->type->toBasetype(), op, e2->type->toBasetype()))
         return incompatibleTypes();
-    }
-
     e1 = integralPromotions(e1, sc);
-    e2 = e2->castTo(sc, Type::tshiftcnt);
+    if (e2->type->toBasetype()->ty != Tvector)
+        e2 = e2->castTo(sc, Type::tshiftcnt);
 
     type = e1->type;
     return this;
@@ -13755,6 +13837,8 @@ Expression *AndExp::semantic(Scope *sc)
         return this;
     }
 
+    if (!Target::isVectorOpSupported(tb, op, e2->type->toBasetype()))
+        return incompatibleTypes();
     if (checkIntegralBin())
         return new ErrorExp();
 
@@ -13800,6 +13884,8 @@ Expression *OrExp::semantic(Scope *sc)
         return this;
     }
 
+    if (!Target::isVectorOpSupported(tb, op, e2->type->toBasetype()))
+        return incompatibleTypes();
     if (checkIntegralBin())
         return new ErrorExp();
 
@@ -13845,6 +13931,8 @@ Expression *XorExp::semantic(Scope *sc)
         return this;
     }
 
+    if (!Target::isVectorOpSupported(tb, op, e2->type->toBasetype()))
+        return incompatibleTypes();
     if (checkIntegralBin())
         return new ErrorExp();
 
@@ -13860,44 +13948,56 @@ OrOrExp::OrOrExp(Loc loc, Expression *e1, Expression *e2)
 
 Expression *OrOrExp::semantic(Scope *sc)
 {
+    if (type)
+        return this;
+
+    setNoderefOperands(this);
+
     // same as for AndAnd
-    e1 = e1->semantic(sc);
-    e1 = resolveProperties(sc, e1);
-    e1 = e1->toBoolean(sc);
+    Expression *e1x = e1->semantic(sc);
+    e1x = resolveProperties(sc, e1x);
+    e1x = e1x->toBoolean(sc);
     unsigned cs1 = sc->callSuper;
 
     if (sc->flags & SCOPEcondition)
     {
         /* If in static if, don't evaluate e2 if we don't have to.
          */
-        e1 = e1->optimize(WANTvalue);
-        if (e1->isBool(true))
+        e1x = e1x->optimize(WANTvalue);
+        if (e1x->isBool(true))
         {
             return new IntegerExp(loc, 1, Type::tbool);
         }
     }
 
-    e2 = e2->semantic(sc);
+    Expression *e2x = e2->semantic(sc);
     sc->mergeCallSuper(loc, cs1);
-    e2 = resolveProperties(sc, e2);
+    e2x = resolveProperties(sc, e2x);
 
-    if (e2->type->ty == Tvoid)
+    bool f1 = checkNonAssignmentArrayOp(e1x);
+    bool f2 = checkNonAssignmentArrayOp(e2x);
+    if (f1 || f2)
+      return new ErrorExp();
+
+    if (e2x->type->ty == Tvoid)
         type = Type::tvoid;
     else
     {
-        e2 = e2->toBoolean(sc);
+        e2x = e2x->toBoolean(sc);
         type = Type::tbool;
     }
-    if (e2->op == TOKtype || e2->op == TOKscope)
+    if (e2x->op == TOKtype || e2x->op == TOKscope)
     {
         error("%s is not an expression", e2->toChars());
         return new ErrorExp();
     }
-    if (e1->op == TOKerror)
-        return e1;
-    if (e2->op == TOKerror)
-        return e2;
+    if (e1x->op == TOKerror)
+        return e1x;
+    if (e2x->op == TOKerror)
+        return e2x;
 
+    e1 = e1x;
+    e2 = e2x;
     return this;
 }
 
@@ -13916,44 +14016,56 @@ AndAndExp::AndAndExp(Loc loc, Expression *e1, Expression *e2)
 
 Expression *AndAndExp::semantic(Scope *sc)
 {
+    if (type)
+        return this;
+
+    setNoderefOperands(this);
+
     // same as for OrOr
-    e1 = e1->semantic(sc);
-    e1 = resolveProperties(sc, e1);
-    e1 = e1->toBoolean(sc);
+    Expression *e1x = e1->semantic(sc);
+    e1x = resolveProperties(sc, e1x);
+    e1x = e1x->toBoolean(sc);
     unsigned cs1 = sc->callSuper;
 
     if (sc->flags & SCOPEcondition)
     {
         /* If in static if, don't evaluate e2 if we don't have to.
          */
-        e1 = e1->optimize(WANTvalue);
-        if (e1->isBool(false))
+        e1x = e1x->optimize(WANTvalue);
+        if (e1x->isBool(false))
         {
             return new IntegerExp(loc, 0, Type::tbool);
         }
     }
 
-    e2 = e2->semantic(sc);
+    Expression *e2x = e2->semantic(sc);
     sc->mergeCallSuper(loc, cs1);
-    e2 = resolveProperties(sc, e2);
+    e2x = resolveProperties(sc, e2x);
 
-    if (e2->type->ty == Tvoid)
+    bool f1 = checkNonAssignmentArrayOp(e1x);
+    bool f2 = checkNonAssignmentArrayOp(e2x);
+    if (f1 || f2)
+      return new ErrorExp();
+
+    if (e2x->type->ty == Tvoid)
         type = Type::tvoid;
     else
     {
-        e2 = e2->toBoolean(sc);
+        e2x = e2x->toBoolean(sc);
         type = Type::tbool;
     }
-    if (e2->op == TOKtype || e2->op == TOKscope)
+    if (e2x->op == TOKtype || e2x->op == TOKscope)
     {
         error("%s is not an expression", e2->toChars());
         return new ErrorExp();
     }
-    if (e1->op == TOKerror)
-        return e1;
-    if (e2->op == TOKerror)
-        return e2;
+    if (e1x->op == TOKerror)
+        return e1x;
+    if (e2x->op == TOKerror)
+        return e2x;
 
+    e1 = e1x;
+    e2 = e2x;
     return this;
 }
 
@@ -14043,6 +14155,8 @@ Expression *CmpExp::semantic(Scope *sc)
     if (type)
         return this;
 
+    setNoderefOperands(this);
+
     if (Expression *ex = binSemanticProp(sc))
         return ex;
     Type *t1 = e1->type->toBasetype();
@@ -14073,7 +14187,15 @@ Expression *CmpExp::semantic(Scope *sc)
     if (Expression *ex = typeCombine(this, sc))
         return ex;
 
-    type = Type::tbool;
+    bool f1 = checkNonAssignmentArrayOp(e1);
+    bool f2 = checkNonAssignmentArrayOp(e2);
+    if (f1 || f2)
+      return new ErrorExp();
+
+    if (e1->type->ty == Tvector)
+        type = e1->type;
+    else
+        type = Type::tbool;
 
     // Special handling for array comparisons
     t1 = e1->type->toBasetype();
@@ -14115,7 +14237,7 @@ Expression *CmpExp::semantic(Scope *sc)
         error("%s is not defined for associative arrays", Token::toChars(op));
         return new ErrorExp();
     }
-    else if (t1->ty == Tvector)
+    else if (!Target::isVectorOpSupported(t1, op, t2))
     {
         return incompatibleTypes();
     }
@@ -14189,6 +14311,8 @@ Expression *EqualExp::semantic(Scope *sc)
     if (type)
         return this;
 
+    setNoderefOperands(this);
+
     if (Expression *e = binSemanticProp(sc))
         return e;
     if (e1->op == TOKtype || e2->op == TOKtype)
@@ -14221,7 +14345,15 @@ Expression *EqualExp::semantic(Scope *sc)
     if (Expression *e = typeCombine(this, sc))
         return e;
 
-    type = Type::tbool;
+    bool f1 = checkNonAssignmentArrayOp(e1);
+    bool f2 = checkNonAssignmentArrayOp(e2);
+    if (f1 || f2)
+      return new ErrorExp();
+
+    if (e1->type->ty == Tvector)
+        type = e1->type;
+    else
+        type = Type::tbool;
 
     // Special handling for array comparisons
     if (!arrayTypeCompatible(loc, e1->type, e2->type))
@@ -14236,7 +14368,10 @@ Expression *EqualExp::semantic(Scope *sc)
     if (e1->type->toBasetype()->ty == Taarray)
         semanticTypeInfo(sc, e1->type->toBasetype());
 
-    if (e1->type->toBasetype()->ty == Tvector)
+    Type *t1 = e1->type->toBasetype();
+    Type *t2 = e2->type->toBasetype();
+
+    if (!Target::isVectorOpSupported(t1, op, t2))
         return incompatibleTypes();
 
     return this;
@@ -14254,12 +14389,23 @@ Expression *IdentityExp::semantic(Scope *sc)
     if (type)
         return this;
 
+    setNoderefOperands(this);
+
     if (Expression *ex = binSemanticProp(sc))
         return ex;
-    type = Type::tbool;
 
     if (Expression *ex = typeCombine(this, sc))
         return ex;
+
+    bool f1 = checkNonAssignmentArrayOp(e1);
+    bool f2 = checkNonAssignmentArrayOp(e2);
+    if (f1 || f2)
+      return new ErrorExp();
+
+    if (e1->type->ty == Tvector)
+        type = e1->type;
+    else
+        type = Type::tbool;
 
     if (e1->type != e2->type && e1->type->isfloating() && e2->type->isfloating())
     {
@@ -14268,7 +14414,9 @@ Expression *IdentityExp::semantic(Scope *sc)
         e2 = e2->castTo(sc, Type::tcomplex80);
     }
 
-    if (e1->type->toBasetype()->ty == Tvector)
+    Type *tb1 = e1->type->toBasetype();
+    Type *tb2 = e2->type->toBasetype();
+    if (!Target::isVectorOpSupported(tb1, op, tb2))
         return incompatibleTypes();
 
     return this;
@@ -14294,6 +14442,9 @@ Expression *CondExp::semantic(Scope *sc)
 #endif
     if (type)
         return this;
+
+    if (econd->op == TOKdotid)
+        ((DotIdExp *)econd)->noderef = true;
 
     Expression *ec = econd->semantic(sc);
     ec = resolveProperties(sc, ec);
@@ -14325,6 +14476,12 @@ Expression *CondExp::semantic(Scope *sc)
     if (e2x->op == TOKerror) return e2x;
     if (e2x->type == Type::terror) return new ErrorExp();
     e2 = e2x;
+
+    bool f0 = checkNonAssignmentArrayOp(econd);
+    bool f1 = checkNonAssignmentArrayOp(e1);
+    bool f2 = checkNonAssignmentArrayOp(e2);
+    if (f0 || f1 || f2)
+      return new ErrorExp();
 
     Type *t1 = e1->type;
     Type *t2 = e2->type;
