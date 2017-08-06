@@ -5,6 +5,26 @@
 
 2017-08-06  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-frontend.cc (isBuiltin): Remove restriction on builtins.
+	(eval_builtin): Check DECL_INTRINSIC_CODE.
+	* d-tree.h (intrinsic_code): Add enum declaration.
+	(lang_decl): Add intrinsic field.
+	(DECL_INTRINSIC_CODE): New macro.
+	(DECL_BUILT_IN_CTFE): New macro.
+	* decls.cc (get_symbol_decl): Initialize DECL_INTRINSIC_CODE.
+	* intrinsics.cc (intrinsic_decl): Add ctfeonly field.
+	(maybe_set_intrinsic): Set frontend builtin flag only if the function
+	is CTFE-able.  Set BUILT_IN_FRONTEND if function has no body.
+	(clear_intrinsic_flag): Clear DECL_INTRINSIC_CODE instead of frontend
+	builtin flag.
+	(maybe_expand_intrinsic): Handle INTRINSIC_TAN intrinsics.
+	Call clear_intrinsic_flag on CTFE built-ins if semantic has finished.
+	* intrinsics.def: Add INTRINSIC_TAN.
+	(DEF_D_BUILTIN): New macro.
+	(DEF_CTFE_BUILTIN): New macro.
+
+2017-08-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* decl.cc (DeclVisitor::visit): Don't set input_location.
 	(build_decl_tree): Handle set and restore of input_location.
 	(declare_local_var): Don't set input_location.
