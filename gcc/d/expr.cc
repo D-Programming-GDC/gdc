@@ -191,9 +191,8 @@ public:
   /* Visitor interfaces, each Expression class should have
      overridden the default.  */
 
-  void visit (Expression *e)
+  void visit (Expression *)
   {
-    input_location = get_linemap (e->loc);
     gcc_unreachable ();
   }
 
@@ -3033,8 +3032,12 @@ tree
 build_expr (Expression *e, bool const_p)
 {
   ExprVisitor v = ExprVisitor (const_p);
+  location_t saved_location = input_location;
+
+  input_location = get_linemap (e->loc);
   e->accept (&v);
   tree expr = v.result ();
+  input_location = saved_location;
 
   /* Check if initializer expression is valid constant.  */
   if (const_p && !initializer_constant_valid_p (expr, TREE_TYPE (expr)))
