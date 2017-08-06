@@ -376,6 +376,37 @@ expand_intrinsic_bswap (tree callexp)
   return call_builtin_fn (callexp, code, 1, arg);
 }
 
+/* Expand a front-end intrinsic call to popcnt().  This takes one argument, the
+   signature to which can be either:
+
+	int popcnt (uint arg);
+	int popcnt (ulong arg);
+
+   Calculates the number of set bits in an integer.  The original call
+   expression is held in CALLEXP.  */
+
+static tree
+expand_intrinsic_popcnt (tree callexp)
+{
+  tree arg = CALL_EXPR_ARG (callexp, 0);
+  int argsize = TYPE_PRECISION (TREE_TYPE (arg));
+
+  /* Which variant of __builtin_popcount* should we call?  */
+  built_in_function code = (argsize <= INT_TYPE_SIZE) ? BUILT_IN_POPCOUNT :
+    (argsize <= LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTL :
+    (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTLL : END_BUILTINS;
+
+  /* Fallback on runtime implementation, which shouldn't happen as the
+     argument for popcnt() is either 32-bit or 64-bit.  */
+  if (code == END_BUILTINS)
+    {
+      clear_intrinsic_flag (callexp);
+      return callexp;
+    }
+
+  return call_builtin_fn (callexp, code, 1, arg);
+}
+
 /* Expand a front-end intrinsic call to INTRINSIC, which is either a call to
    sqrt(), sqrtf(), sqrtl().  These intrinsics expect to take one argument,
    the signature to which can be either:
@@ -636,6 +667,9 @@ maybe_expand_intrinsic (tree callexp)
 
     case INTRINSIC_BSWAP:
       return expand_intrinsic_bswap (callexp);
+
+    case INTRINSIC_POPCNT:
+      return expand_intrinsic_popcnt (callexp);
 
     case INTRINSIC_COS:
       return call_builtin_fn (callexp, BUILT_IN_COSL, 1,
