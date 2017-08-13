@@ -7002,12 +7002,12 @@ Expression *UnaExp::incompatibleTypes()
     if (e1->op == TOKtype)
     {
         error("incompatible type for (%s(%s)): cannot use '%s' with types",
-	    Token::toChars(op), e1->toChars(), Token::toChars(op));
+              Token::toChars(op), e1->toChars(), Token::toChars(op));
     }
     else
     {
         error("incompatible type for (%s(%s)): '%s'",
-	    Token::toChars(op), e1->toChars(), e1->type->toChars());
+              Token::toChars(op), e1->toChars(), e1->type->toChars());
     }
     return new ErrorExp();
 }
@@ -13979,13 +13979,10 @@ Expression *OrOrExp::semantic(Scope *sc)
     if (f1 || f2)
       return new ErrorExp();
 
-    if (e2x->type->ty == Tvoid)
-        type = Type::tvoid;
-    else
-    {
+    // Unless the right operand is 'void', the expression is converted to 'bool'.
+    if (e2x->type->ty != Tvoid)
         e2x = e2x->toBoolean(sc);
-        type = Type::tbool;
-    }
+
     if (e2x->op == TOKtype || e2x->op == TOKscope)
     {
         error("%s is not an expression", e2->toChars());
@@ -13995,6 +13992,12 @@ Expression *OrOrExp::semantic(Scope *sc)
         return e1x;
     if (e2x->op == TOKerror)
         return e2x;
+
+    // The result type is 'bool', unless the right operand has type 'void'.
+    if (e2x->type->ty == Tvoid)
+        type = Type::tvoid;
+    else
+        type = Type::tbool;
 
     e1 = e1x;
     e2 = e2x;
@@ -14047,13 +14050,10 @@ Expression *AndAndExp::semantic(Scope *sc)
     if (f1 || f2)
       return new ErrorExp();
 
-    if (e2x->type->ty == Tvoid)
-        type = Type::tvoid;
-    else
-    {
+    // Unless the right operand is 'void', the expression is converted to 'bool'.
+    if (e2x->type->ty != Tvoid)
         e2x = e2x->toBoolean(sc);
-        type = Type::tbool;
-    }
+
     if (e2x->op == TOKtype || e2x->op == TOKscope)
     {
         error("%s is not an expression", e2->toChars());
@@ -14063,6 +14063,12 @@ Expression *AndAndExp::semantic(Scope *sc)
         return e1x;
     if (e2x->op == TOKerror)
         return e2x;
+
+    // The result type is 'bool', unless the right operand has type 'void'.
+    if (e2x->type->ty == Tvoid)
+        type = Type::tvoid;
+    else
+        type = Type::tbool;
 
     e1 = e1x;
     e2 = e2x;
@@ -14192,10 +14198,7 @@ Expression *CmpExp::semantic(Scope *sc)
     if (f1 || f2)
       return new ErrorExp();
 
-    if (e1->type->ty == Tvector)
-        type = e1->type;
-    else
-        type = Type::tbool;
+    type = Type::tbool;
 
     // Special handling for array comparisons
     t1 = e1->type->toBasetype();
@@ -14350,10 +14353,7 @@ Expression *EqualExp::semantic(Scope *sc)
     if (f1 || f2)
       return new ErrorExp();
 
-    if (e1->type->ty == Tvector)
-        type = e1->type;
-    else
-        type = Type::tbool;
+    type = Type::tbool;
 
     // Special handling for array comparisons
     if (!arrayTypeCompatible(loc, e1->type, e2->type))
@@ -14402,10 +14402,7 @@ Expression *IdentityExp::semantic(Scope *sc)
     if (f1 || f2)
       return new ErrorExp();
 
-    if (e1->type->ty == Tvector)
-        type = e1->type;
-    else
-        type = Type::tbool;
+    type = Type::tbool;
 
     if (e1->type != e2->type && e1->type->isfloating() && e2->type->isfloating())
     {
