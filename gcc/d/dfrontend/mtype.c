@@ -3847,8 +3847,18 @@ MATCH TypeVector::implicitConvTo(Type *to)
         return MATCHexact;
     if (to->ty == Tvector)
     {
-        // Test if the basetype is implicitly convertible.
         TypeVector *tv = (TypeVector *)to;
+        assert(basetype->ty == Tsarray && tv->basetype->ty == Tsarray);
+
+        // Can't convert to a vector which has different size.
+        if (basetype->size() != tv->basetype->size())
+            return MATCHnomatch;
+
+        // Allow conversion to void[]
+        if (tv->basetype->nextOf()->ty == Tvoid)
+            return MATCHconvert;
+
+        // Otherwise implicitly convertible only if basetypes are.
         return basetype->implicitConvTo(tv->basetype);
     }
     return MATCHnomatch;

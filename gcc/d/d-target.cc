@@ -384,7 +384,7 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
   if (!type->isscalar())
     return false;
 
-  /* Don't support if no expression can represent it.  */
+  /* Don't support if expression cannot be represented.  */
   switch (op)
     {
     case TOKpow:
@@ -398,6 +398,30 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
       if (type->isfloating())
 	return false;
       break;
+
+    case TOKandand:
+    case TOKoror:
+      /* Logical operators must have a result type of bool.  */
+      return false;
+
+    case TOKue:
+    case TOKlg:
+    case TOKule:
+    case TOKul:
+    case TOKuge:
+    case TOKug:
+    case TOKle:
+    case TOKlt:
+    case TOKge:
+    case TOKgt:
+    case TOKleg:
+    case TOKunord:
+    case TOKequal:
+    case TOKnotequal:
+    case TOKidentity:
+    case TOKnotidentity:
+      /* Comparison operators must have a result type of bool.  */
+      return false;
 
     default:
       break;
