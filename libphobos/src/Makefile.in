@@ -143,14 +143,17 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/algorithm/setops.lo std/algorithm/sorting.lo std/array.lo \
 	std/ascii.lo std/base64.lo std/bigint.lo std/bitmanip.lo \
 	std/compiler.lo std/complex.lo std/concurrency.lo \
-	std/concurrencybase.lo std/container/array.lo \
-	std/container/binaryheap.lo std/container/dlist.lo \
-	std/container/package.lo std/container/rbtree.lo \
-	std/container/slist.lo std/container/util.lo std/conv.lo \
-	std/csv.lo std/datetime.lo std/demangle.lo std/digest/crc.lo \
-	std/digest/digest.lo std/digest/hmac.lo std/digest/md.lo \
-	std/digest/murmurhash.lo std/digest/ripemd.lo \
-	std/digest/sha.lo std/encoding.lo std/exception.lo \
+	std/container/array.lo std/container/binaryheap.lo \
+	std/container/dlist.lo std/container/package.lo \
+	std/container/rbtree.lo std/container/slist.lo \
+	std/container/util.lo std/conv.lo std/csv.lo \
+	std/datetime/date.lo std/datetime/interval.lo \
+	std/datetime/package.lo std/datetime/stopwatch.lo \
+	std/datetime/systime.lo std/datetime/timezone.lo \
+	std/demangle.lo std/digest/crc.lo std/digest/digest.lo \
+	std/digest/hmac.lo std/digest/md.lo std/digest/murmurhash.lo \
+	std/digest/ripemd.lo std/digest/sha.lo std/encoding.lo \
+	std/exception.lo \
 	std/experimental/allocator/building_blocks/affix_allocator.lo \
 	std/experimental/allocator/building_blocks/allocator_list.lo \
 	std/experimental/allocator/building_blocks/bitmapped_block.lo \
@@ -180,15 +183,14 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/experimental/logger/package.lo \
 	std/experimental/typecons.lo std/file.lo std/format.lo \
 	std/functional.lo std/getopt.lo std/internal/cstring.lo \
-	std/internal/digest/sha_SSSE3.lo std/internal/encodinginit.lo \
+	std/internal/digest/sha_SSSE3.lo \
 	std/internal/math/biguintcore.lo \
 	std/internal/math/biguintnoasm.lo \
 	std/internal/math/biguintx86.lo \
 	std/internal/math/errorfunction.lo \
-	std/internal/math/gammafunction.lo std/internal/processinit.lo \
-	std/internal/scopebuffer.lo std/internal/test/dummyrange.lo \
-	std/internal/test/uda.lo std/internal/unicode_comp.lo \
-	std/internal/unicode_decomp.lo \
+	std/internal/math/gammafunction.lo std/internal/scopebuffer.lo \
+	std/internal/test/dummyrange.lo std/internal/test/uda.lo \
+	std/internal/unicode_comp.lo std/internal/unicode_decomp.lo \
 	std/internal/unicode_grapheme.lo std/internal/unicode_norm.lo \
 	std/internal/unicode_tables.lo \
 	std/internal/windows/advapi32.lo std/json.lo std/math.lo \
@@ -201,9 +203,9 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/regex/internal/kickstart.lo std/regex/internal/parser.lo \
 	std/regex/internal/tests.lo std/regex/internal/thompson.lo \
 	std/regex/package.lo std/signals.lo std/socket.lo \
-	std/stdint.lo std/stdio.lo std/stdiobase.lo std/string.lo \
-	std/system.lo std/traits.lo std/typecons.lo std/typetuple.lo \
-	std/uni.lo std/uri.lo std/utf.lo std/uuid.lo std/variant.lo \
+	std/stdint.lo std/stdio.lo std/string.lo std/system.lo \
+	std/traits.lo std/typecons.lo std/typetuple.lo std/uni.lo \
+	std/uri.lo std/utf.lo std/uuid.lo std/variant.lo \
 	std/windows/charset.lo std/windows/iunknown.lo \
 	std/windows/registry.lo std/windows/syserror.lo std/xml.lo \
 	std/zip.lo std/zlib.lo
@@ -559,13 +561,15 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/algorithm/package.d std/algorithm/searching.d \
 	std/algorithm/setops.d std/algorithm/sorting.d std/array.d std/ascii.d \
 	std/base64.d std/bigint.d std/bitmanip.d std/compiler.d std/complex.d \
-	std/concurrency.d std/concurrencybase.d std/container/array.d \
-	std/container/binaryheap.d std/container/dlist.d \
-	std/container/package.d std/container/rbtree.d std/container/slist.d \
-	std/container/util.d std/conv.d std/csv.d std/datetime.d \
-	std/demangle.d std/digest/crc.d std/digest/digest.d std/digest/hmac.d \
-	std/digest/md.d std/digest/murmurhash.d std/digest/ripemd.d \
-	std/digest/sha.d std/encoding.d std/exception.d \
+	std/concurrency.d std/container/array.d std/container/binaryheap.d \
+	std/container/dlist.d std/container/package.d std/container/rbtree.d \
+	std/container/slist.d std/container/util.d std/conv.d std/csv.d \
+	std/datetime/date.d std/datetime/interval.d std/datetime/package.d \
+	std/datetime/stopwatch.d std/datetime/systime.d \
+	std/datetime/timezone.d std/demangle.d std/digest/crc.d \
+	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
+	std/digest/murmurhash.d std/digest/ripemd.d std/digest/sha.d \
+	std/encoding.d std/exception.d \
 	std/experimental/allocator/building_blocks/affix_allocator.d \
 	std/experimental/allocator/building_blocks/allocator_list.d \
 	std/experimental/allocator/building_blocks/bitmapped_block.d \
@@ -593,10 +597,9 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
 	std/experimental/typecons.d std/file.d std/format.d std/functional.d \
 	std/getopt.d std/internal/cstring.d std/internal/digest/sha_SSSE3.d \
-	std/internal/encodinginit.d std/internal/math/biguintcore.d \
-	std/internal/math/biguintnoasm.d std/internal/math/biguintx86.d \
-	std/internal/math/errorfunction.d std/internal/math/gammafunction.d \
-	std/internal/processinit.d std/internal/scopebuffer.d \
+	std/internal/math/biguintcore.d std/internal/math/biguintnoasm.d \
+	std/internal/math/biguintx86.d std/internal/math/errorfunction.d \
+	std/internal/math/gammafunction.d std/internal/scopebuffer.d \
 	std/internal/test/dummyrange.d std/internal/test/uda.d \
 	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
 	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
@@ -609,9 +612,9 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
 	std/regex/internal/thompson.d std/regex/package.d std/signals.d \
-	std/socket.d std/stdint.d std/stdio.d std/stdiobase.d std/string.d \
-	std/system.d std/traits.d std/typecons.d std/typetuple.d std/uni.d \
-	std/uri.d std/utf.d std/uuid.d std/variant.d std/windows/charset.d \
+	std/socket.d std/stdint.d std/stdio.d std/string.d std/system.d \
+	std/traits.d std/typecons.d std/typetuple.d std/uni.d std/uri.d \
+	std/utf.d std/uuid.d std/variant.d std/windows/charset.d \
 	std/windows/iunknown.d std/windows/registry.d std/windows/syserror.d \
 	std/xml.d std/zip.d std/zlib.d
 
@@ -734,7 +737,6 @@ std/bitmanip.lo: std/$(am__dirstamp)
 std/compiler.lo: std/$(am__dirstamp)
 std/complex.lo: std/$(am__dirstamp)
 std/concurrency.lo: std/$(am__dirstamp)
-std/concurrencybase.lo: std/$(am__dirstamp)
 std/container/$(am__dirstamp):
 	@$(MKDIR_P) std/container
 	@: > std/container/$(am__dirstamp)
@@ -747,7 +749,15 @@ std/container/slist.lo: std/container/$(am__dirstamp)
 std/container/util.lo: std/container/$(am__dirstamp)
 std/conv.lo: std/$(am__dirstamp)
 std/csv.lo: std/$(am__dirstamp)
-std/datetime.lo: std/$(am__dirstamp)
+std/datetime/$(am__dirstamp):
+	@$(MKDIR_P) std/datetime
+	@: > std/datetime/$(am__dirstamp)
+std/datetime/date.lo: std/datetime/$(am__dirstamp)
+std/datetime/interval.lo: std/datetime/$(am__dirstamp)
+std/datetime/package.lo: std/datetime/$(am__dirstamp)
+std/datetime/stopwatch.lo: std/datetime/$(am__dirstamp)
+std/datetime/systime.lo: std/datetime/$(am__dirstamp)
+std/datetime/timezone.lo: std/datetime/$(am__dirstamp)
 std/demangle.lo: std/$(am__dirstamp)
 std/digest/$(am__dirstamp):
 	@$(MKDIR_P) std/digest
@@ -841,7 +851,6 @@ std/internal/digest/$(am__dirstamp):
 	@$(MKDIR_P) std/internal/digest
 	@: > std/internal/digest/$(am__dirstamp)
 std/internal/digest/sha_SSSE3.lo: std/internal/digest/$(am__dirstamp)
-std/internal/encodinginit.lo: std/internal/$(am__dirstamp)
 std/internal/math/$(am__dirstamp):
 	@$(MKDIR_P) std/internal/math
 	@: > std/internal/math/$(am__dirstamp)
@@ -850,7 +859,6 @@ std/internal/math/biguintnoasm.lo: std/internal/math/$(am__dirstamp)
 std/internal/math/biguintx86.lo: std/internal/math/$(am__dirstamp)
 std/internal/math/errorfunction.lo: std/internal/math/$(am__dirstamp)
 std/internal/math/gammafunction.lo: std/internal/math/$(am__dirstamp)
-std/internal/processinit.lo: std/internal/$(am__dirstamp)
 std/internal/scopebuffer.lo: std/internal/$(am__dirstamp)
 std/internal/test/$(am__dirstamp):
 	@$(MKDIR_P) std/internal/test
@@ -908,7 +916,6 @@ std/signals.lo: std/$(am__dirstamp)
 std/socket.lo: std/$(am__dirstamp)
 std/stdint.lo: std/$(am__dirstamp)
 std/stdio.lo: std/$(am__dirstamp)
-std/stdiobase.lo: std/$(am__dirstamp)
 std/string.lo: std/$(am__dirstamp)
 std/system.lo: std/$(am__dirstamp)
 std/traits.lo: std/$(am__dirstamp)
@@ -1078,8 +1085,6 @@ mostlyclean-compile:
 	-rm -f std/complex.lo
 	-rm -f std/concurrency.$(OBJEXT)
 	-rm -f std/concurrency.lo
-	-rm -f std/concurrencybase.$(OBJEXT)
-	-rm -f std/concurrencybase.lo
 	-rm -f std/container/array.$(OBJEXT)
 	-rm -f std/container/array.lo
 	-rm -f std/container/binaryheap.$(OBJEXT)
@@ -1098,8 +1103,18 @@ mostlyclean-compile:
 	-rm -f std/conv.lo
 	-rm -f std/csv.$(OBJEXT)
 	-rm -f std/csv.lo
-	-rm -f std/datetime.$(OBJEXT)
-	-rm -f std/datetime.lo
+	-rm -f std/datetime/date.$(OBJEXT)
+	-rm -f std/datetime/date.lo
+	-rm -f std/datetime/interval.$(OBJEXT)
+	-rm -f std/datetime/interval.lo
+	-rm -f std/datetime/package.$(OBJEXT)
+	-rm -f std/datetime/package.lo
+	-rm -f std/datetime/stopwatch.$(OBJEXT)
+	-rm -f std/datetime/stopwatch.lo
+	-rm -f std/datetime/systime.$(OBJEXT)
+	-rm -f std/datetime/systime.lo
+	-rm -f std/datetime/timezone.$(OBJEXT)
+	-rm -f std/datetime/timezone.lo
 	-rm -f std/demangle.$(OBJEXT)
 	-rm -f std/demangle.lo
 	-rm -f std/digest/crc.$(OBJEXT)
@@ -1190,8 +1205,6 @@ mostlyclean-compile:
 	-rm -f std/internal/cstring.lo
 	-rm -f std/internal/digest/sha_SSSE3.$(OBJEXT)
 	-rm -f std/internal/digest/sha_SSSE3.lo
-	-rm -f std/internal/encodinginit.$(OBJEXT)
-	-rm -f std/internal/encodinginit.lo
 	-rm -f std/internal/math/biguintcore.$(OBJEXT)
 	-rm -f std/internal/math/biguintcore.lo
 	-rm -f std/internal/math/biguintnoasm.$(OBJEXT)
@@ -1202,8 +1215,6 @@ mostlyclean-compile:
 	-rm -f std/internal/math/errorfunction.lo
 	-rm -f std/internal/math/gammafunction.$(OBJEXT)
 	-rm -f std/internal/math/gammafunction.lo
-	-rm -f std/internal/processinit.$(OBJEXT)
-	-rm -f std/internal/processinit.lo
 	-rm -f std/internal/scopebuffer.$(OBJEXT)
 	-rm -f std/internal/scopebuffer.lo
 	-rm -f std/internal/test/dummyrange.$(OBJEXT)
@@ -1278,8 +1289,6 @@ mostlyclean-compile:
 	-rm -f std/stdint.lo
 	-rm -f std/stdio.$(OBJEXT)
 	-rm -f std/stdio.lo
-	-rm -f std/stdiobase.$(OBJEXT)
-	-rm -f std/stdiobase.lo
 	-rm -f std/string.$(OBJEXT)
 	-rm -f std/string.lo
 	-rm -f std/system.$(OBJEXT)
@@ -1521,6 +1530,7 @@ clean-libtool:
 	-rm -rf std/c/osx/.libs std/c/osx/_libs
 	-rm -rf std/c/windows/.libs std/c/windows/_libs
 	-rm -rf std/container/.libs std/container/_libs
+	-rm -rf std/datetime/.libs std/datetime/_libs
 	-rm -rf std/digest/.libs std/digest/_libs
 	-rm -rf std/experimental/.libs std/experimental/_libs
 	-rm -rf std/experimental/allocator/.libs std/experimental/allocator/_libs
@@ -1653,6 +1663,7 @@ distclean-generic:
 	-rm -f std/c/osx/$(am__dirstamp)
 	-rm -f std/c/windows/$(am__dirstamp)
 	-rm -f std/container/$(am__dirstamp)
+	-rm -f std/datetime/$(am__dirstamp)
 	-rm -f std/digest/$(am__dirstamp)
 	-rm -f std/experimental/$(am__dirstamp)
 	-rm -f std/experimental/allocator/$(am__dirstamp)
