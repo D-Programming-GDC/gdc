@@ -10,15 +10,10 @@
  */
 
 #include "objc.h"
-#include "arraytypes.h"
 #include "aggregate.h"
-#include "mars.h"
-#include "outbuffer.h"
-#include "parse.h"
 #include "scope.h"
 
 class FuncDeclaration;
-class Identifier;
 
 // MARK: ObjcSelector
 
@@ -49,70 +44,42 @@ ObjcSelector *ObjcSelector::create(FuncDeclaration *fdecl)
     return NULL;
 }
 
-// MARK: semantic
-
-void objc_ClassDeclaration_semantic_PASSinit_LINKobjc(ClassDeclaration *cd)
+class UnsupportedObjc : public Objc
 {
-    cd->error("Objective-C classes not supported");
-}
+    void setObjc(ClassDeclaration *cd)
+    {
+        cd->error("Objective-C classes not supported");
+    }
 
-void objc_InterfaceDeclaration_semantic_objcExtern(InterfaceDeclaration *id, Scope *sc)
-{
-    if (sc->linkage == LINKobjc)
+    void setObjc(InterfaceDeclaration *id)
+    {
         id->error("Objective-C interfaces not supported");
+    }
+
+    void setSelector(FuncDeclaration *, Scope *)
+    {
+        // noop
+    }
+
+    void validateSelector(FuncDeclaration *)
+    {
+        // noop
+    }
+
+    void checkLinkage(FuncDeclaration *)
+    {
+        // noop
+    }
+};
+
+static Objc *_objc;
+
+Objc *objc()
+{
+    return _objc;
 }
 
-// MARK: Objc_ClassDeclaration
-
-bool Objc_ClassDeclaration::isInterface()
+void Objc::_init()
 {
-    return false;
-}
-
-// MARK: Objc_FuncDeclaration
-
-Objc_FuncDeclaration::Objc_FuncDeclaration()
-{
-    this->fdecl = NULL;
-    selector = NULL;
-}
-
-Objc_FuncDeclaration::Objc_FuncDeclaration(FuncDeclaration* fdecl)
-{
-    this->fdecl = fdecl;
-    selector = NULL;
-}
-
-bool objc_isUdaSelector (StructDeclaration *sd)
-{
-    printf("Should never be called when D_OBJC is false\n");
-    assert(0);
-    return false;
-}
-
-// MARK: semantic
-
-void objc_FuncDeclaration_semantic_setSelector(FuncDeclaration *fd, Scope *sc)
-{
-    // noop
-}
-
-void objc_FuncDeclaration_semantic_validateSelector (FuncDeclaration *fd)
-{
-    // noop
-}
-
-void objc_FuncDeclaration_semantic_checkLinkage(FuncDeclaration *fd)
-{
-    // noop
-}
-
-void objc_tryMain_dObjc()
-{
-    // noop
-}
-
-void objc_tryMain_init()
-{
-    // noop
+    _objc = new UnsupportedObjc();
 }

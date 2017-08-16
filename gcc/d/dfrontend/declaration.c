@@ -832,7 +832,6 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     lastVar = NULL;
     endlinnum = 0;
     ctfeAdrOnStack = -1;
-    rundtor = NULL;
     edtor = NULL;
     range = NULL;
 
@@ -2113,7 +2112,7 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
     if (tv->ty == Tstruct)
     {
         StructDeclaration *sd = ((TypeStruct *)tv)->sym;
-        if (!sd->dtor)
+        if (!sd->dtor || sd->errors)
            return NULL;
 
         const d_uns64 sz = type->size();
