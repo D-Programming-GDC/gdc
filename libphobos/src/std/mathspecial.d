@@ -53,9 +53,9 @@
  * Source:    $(PHOBOSSRC std/_mathspecial.d)
  */
 module std.mathspecial;
-public import std.math;
-private import std.internal.math.gammafunction;
 private import std.internal.math.errorfunction;
+private import std.internal.math.gammafunction;
+public import std.math;
 
 /* ***********************************************
  *            GAMMA AND RELATED FUNCTIONS        *
@@ -135,7 +135,7 @@ real sgnGamma(real x)
     return n & 1 ? 1.0 : -1.0;
 }
 
-unittest
+@safe unittest
 {
     assert(sgnGamma(5.0) == 1.0);
     assert(isNaN(sgnGamma(-3.0)));
@@ -159,7 +159,7 @@ real beta(real x, real y)
     } else return gamma(x) * gamma(y) / gamma(x+y);
 }
 
-unittest
+@safe unittest
 {
     assert(isIdentical(beta(NaN(0xABC), 4), NaN(0xABC)));
     assert(isIdentical(beta(2, NaN(0xABC)), NaN(0xABC)));
@@ -348,10 +348,12 @@ real normalDistribution(real x)
  * Returns the argument, x, for which the area under the
  * Normal probability density function (integrated from
  * minus infinity to x) is equal to p.
+ *
+ * Note: This function is only implemented to 80 bit precision.
  */
 real normalDistributionInverse(real p)
 in {
-  assert(p>=0.0L && p<=1.0L, "Domain error");
+  assert(p >= 0.0L && p <= 1.0L, "Domain error");
 }
 body
 {

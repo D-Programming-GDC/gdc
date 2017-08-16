@@ -1040,7 +1040,7 @@ version (GNU)
         
         static if (is(SaveEbx))
         {
-            pure asm nothrow @nogc
+            asm pure nothrow @nogc
             {
                 "xchg{l} {%%}ebx, %1; cpuid; xchg{l} {%%}ebx, %1"
                     : "=a" a, "=&r" b, "=c" c, "=d" d           // output
@@ -1049,7 +1049,7 @@ version (GNU)
         }
         else 
         {
-            pure asm nothrow @nogc
+            asm pure nothrow @nogc
             {
                 "cpuid"
                     : "=a" a, "=b" b, "=c" c, "=d" d            // output

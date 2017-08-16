@@ -44,10 +44,11 @@
  *           $(LREF anySatisfy)
  *           $(LREF staticIndexOf)
  * ))
- * $(TR $(TD Boolean template predicate operators) $(TD
+ * $(TR $(TD Template predicates) $(TD
  *           $(LREF templateAnd)
  *           $(LREF templateNot)
  *           $(LREF templateOr)
+ *           $(LREF staticIsSorted)
  * ))
  * $(TR $(TD Template instantiation) $(TD
  *           $(LREF ApplyLeft)
@@ -87,7 +88,7 @@ template AliasSeq(TList...)
 
     int foo(TL td)  // same as int foo(int, double);
     {
-        return td[0] + cast(int)td[1];
+        return td[0] + cast(int) td[1];
     }
 }
 
@@ -98,6 +99,75 @@ template AliasSeq(TList...)
 
     alias Types = AliasSeq!(TL, char);
     static assert(is(Types == AliasSeq!(int, double, char)));
+}
+
+
+/**
+  Returns an `AliasSeq` expression of `Func` being
+  applied to every variadic template argument.
+ */
+
+///
+@safe unittest
+{
+    auto ref ArgCall(alias Func, alias arg)()
+    {
+        return Func(arg);
+    }
+
+    template Map(alias Func, args...)
+    {
+        static if (args.length > 1)
+        {
+            alias Map = AliasSeq!(ArgCall!(Func, args[0]), Map!(Func, args[1 .. $]));
+        }
+        else
+        {
+            alias Map = ArgCall!(Func, args[0]);
+        }
+    }
+
+    static int square(int arg)
+    {
+        return arg * arg;
+    }
+
+    static int refSquare(ref int arg)
+    {
+        arg *= arg;
+        return arg;
+    }
+
+    static ref int refRetSquare(ref int arg)
+    {
+        arg *= arg;
+        return arg;
+    }
+
+    static void test(int a, int b)
+    {
+        assert(a == 4);
+        assert(b == 16);
+    }
+
+    static void testRef(ref int a, ref int b)
+    {
+        assert(a++ == 16);
+        assert(b++ == 256);
+    }
+
+    static int a = 2;
+    static int b = 4;
+
+    test(Map!(square, a, b));
+
+    test(Map!(refSquare, a, b));
+    assert(a == 4);
+    assert(b == 16);
+
+    testRef(Map!(refRetSquare, a, b));
+    assert(a == 17);
+    assert(b == 257);
 }
 
 /**
@@ -176,15 +246,10 @@ package template OldAlias(alias a)
 
 import std.traits : isAggregateType, Unqual;
 
-package template OldAlias(T) if (!isAggregateType!T || is(Unqual!T == T))
+package template OldAlias(T)
+if (!isAggregateType!T || is(Unqual!T == T))
 {
     alias OldAlias = T;
-}
-
-deprecated("Alias will stop to unqualify user defined types.")
-package template OldAlias(T) if (isAggregateType!T && !is(Unqual!T == T))
-{
-    alias OldAlias = Unqual!T;
 }
 
 @safe unittest
@@ -228,7 +293,7 @@ template staticIndexOf(alias T, TList...)
 
 // [internal]
 private template genericIndexOf(args...)
-    if (args.length >= 1)
+if (args.length >= 1)
 {
     alias e     = OldAlias!(args[0]);
     alias tuple = args[1 .. $];
@@ -276,10 +341,6 @@ private template genericIndexOf(args...)
     static assert(staticIndexOf!("void", 0, void, "void") == 2);
 }
 
-// Explicitly undocumented. It will be removed in February 2017. @@@DEPRECATED_2017-02@@@
-deprecated("Please use staticIndexOf")
-alias IndexOf = staticIndexOf;
-
 /**
  * Returns a typetuple created from TList with the first occurrence,
  * if any, of T removed.
@@ -305,7 +366,7 @@ template Erase(alias T, TList...)
 
 // [internal]
 private template GenericErase(args...)
-    if (args.length >= 1)
+if (args.length >= 1)
 {
     alias e     = OldAlias!(args[0]);
     alias tuple = args[1 .. $] ;
@@ -364,7 +425,7 @@ template EraseAll(alias T, TList...)
 
 // [internal]
 private template GenericEraseAll(args...)
-    if (args.length >= 1)
+if (args.length >= 1)
 {
     alias e     = OldAlias!(args[0]);
     alias tuple = args[1 .. $];
@@ -415,13 +476,13 @@ template NoDuplicates(TList...)
         }
         else
         {
-            alias EraseAllN = EraseAllN!(N-1, T[1..N], EraseAll!(T[0], T[N..$]));
+            alias EraseAllN = EraseAllN!(N-1, T[1 .. N], EraseAll!(T[0], T[N..$]));
         }
     }
     static if (TList.length > 500)
     {
         enum steps = 16;
-        alias first = NoDuplicates!(TList[0..steps]);
+        alias first = NoDuplicates!(TList[0 .. steps]);
         alias NoDuplicates = NoDuplicates!(EraseAllN!(first.length, first, TList[steps..$]));
     }
     else static if (TList.length == 0)
@@ -442,7 +503,10 @@ template NoDuplicates(TList...)
 
     alias TL = NoDuplicates!(Types);
     static assert(is(TL == AliasSeq!(int, long, float)));
+}
 
+@safe unittest
+{
     // Bugzilla 14561: huge enums
     alias LongList = Repeat!(1500, int);
     static assert(NoDuplicates!LongList.length == 1);
@@ -495,7 +559,7 @@ template Replace(alias T, alias U, TList...)
 
 // [internal]
 private template GenericReplace(args...)
-    if (args.length >= 2)
+if (args.length >= 2)
 {
     alias from  = OldAlias!(args[0]);
     alias to    = OldAlias!(args[1]);
@@ -575,7 +639,7 @@ template ReplaceAll(alias T, alias U, TList...)
 
 // [internal]
 private template GenericReplaceAll(args...)
-    if (args.length >= 2)
+if (args.length >= 2)
 {
     alias from  = OldAlias!(args[0]);
     alias to    = OldAlias!(args[1]);
@@ -782,8 +846,8 @@ template allSatisfy(alias F, T...)
 Tests whether any given items satisfy a template predicate, i.e. evaluates to
 $(D F!(T[0]) || F!(T[1]) || ... || F!(T[$ - 1])).
 
-Evaluation is $(I not) short-circuited if a true result is encountered; the
-template predicate must be instantiable with all the given items.
+Evaluation is short-circuited if a true result is encountered; the
+template predicate must be instantiable with one of the given items.
  */
 template anySatisfy(alias F, T...)
 {
@@ -1100,8 +1164,8 @@ template aliasSeqOf(alias range)
 
 @safe unittest
 {
-    import std.range : iota;
     import std.conv : to, octal;
+    import std.range : iota;
     //Testing compile time octal
     foreach (I2; aliasSeqOf!(iota(0, 8)))
         foreach (I1; aliasSeqOf!(iota(0, 8)))
@@ -1248,7 +1312,8 @@ private template SmartAlias(T...)
 /**
  * Creates an `AliasSeq` which repeats a type or an `AliasSeq` exactly `n` times.
  */
-template Repeat(size_t n, TList...) if (n > 0)
+template Repeat(size_t n, TList...)
+if (n > 0)
 {
     static if (n == 1)
     {
@@ -1324,9 +1389,15 @@ template staticSort(alias cmp, Seq...)
     }
     else
     {
-        private alias bottom = staticSort!(cmp, Seq[0 .. $ / 2]);
+        private alias btm = staticSort!(cmp, Seq[0 .. $ / 2]);
         private alias top = staticSort!(cmp, Seq[$ / 2 .. $]);
-        alias staticSort = staticMerge!(cmp, Seq.length / 2, bottom, top);
+
+        static if (isLessEq!(cmp, btm[$ - 1], top[0]))
+            alias staticSort = AliasSeq!(btm, top); // already ascending
+        else static if (isLessEq!(cmp, top[$ - 1], btm[0]))
+            alias staticSort = AliasSeq!(top, btm); // already descending
+        else
+            alias staticSort = staticMerge!(cmp, Seq.length / 2, btm, top);
     }
 }
 
@@ -1355,29 +1426,72 @@ private template staticMerge(alias cmp, int half, Seq...)
     }
     else
     {
-        private enum Result = cmp!(Seq[0], Seq[half]);
-        static if (is(typeof(Result) == bool))
+        static if (isLessEq!(cmp, Seq[0], Seq[half]))
         {
-            private enum Check = Result;
-        }
-        else static if (is(typeof(Result) : int))
-        {
-            private enum Check = Result <= 0;
+            alias staticMerge = AliasSeq!(Seq[0],
+                staticMerge!(cmp, half - 1, Seq[1 .. $]));
         }
         else
         {
-            static assert(0, typeof(Result).stringof ~ " is not a value comparison type");
-        }
-        static if (Check)
-        {
-            alias staticMerge = AliasSeq!(Seq[0], staticMerge!(cmp, half - 1, Seq[1 .. $]));
-        }
-        else
-        {
-            alias staticMerge = AliasSeq!(Seq[half], staticMerge!(cmp, half,
-                Seq[0 .. half], Seq[half + 1 .. $]));
+            alias staticMerge = AliasSeq!(Seq[half],
+                staticMerge!(cmp, half, Seq[0 .. half], Seq[half + 1 .. $]));
         }
     }
+}
+
+private template isLessEq(alias cmp, Seq...)
+if (Seq.length == 2)
+{
+    private enum Result = cmp!(Seq[1], Seq[0]);
+    static if (is(typeof(Result) == bool))
+        enum isLessEq = !Result;
+    else static if (is(typeof(Result) : int))
+        enum isLessEq = Result >= 0;
+    else
+        static assert(0, typeof(Result).stringof ~ " is not a value comparison type");
+}
+
+/**
+ * Checks if an $(LREF AliasSeq) is sorted according to $(D cmp).
+ *
+ * Parameters:
+ *     cmp = A template that returns a $(D bool) (if its first argument is less than the second one)
+ *         or an $(D int) (-1 means less than, 0 means equal, 1 means greater than)
+ *
+ *     Seq = The  $(LREF AliasSeq) to check
+ *
+ * Returns: `true` if `Seq` is sorted; otherwise `false`
+ */
+template staticIsSorted(alias cmp, Seq...)
+{
+    static if (Seq.length <= 1)
+        enum staticIsSorted = true;
+    else static if (Seq.length == 2)
+        enum staticIsSorted = isLessEq!(cmp, Seq[0], Seq[1]);
+    else
+    {
+        enum staticIsSorted =
+            isLessEq!(cmp, Seq[($ / 2) - 1], Seq[$ / 2]) &&
+            staticIsSorted!(cmp, Seq[0 .. $ / 2]) &&
+            staticIsSorted!(cmp, Seq[$ / 2 .. $]);
+    }
+}
+
+///
+@safe unittest
+{
+    enum Comp(int N1, int N2) = N1 < N2;
+    static assert( staticIsSorted!(Comp, 2, 2));
+    static assert( staticIsSorted!(Comp, 2, 3, 7, 23));
+    static assert(!staticIsSorted!(Comp, 7, 2, 3, 23));
+}
+
+///
+@safe unittest
+{
+    enum Comp(T1, T2) = __traits(isUnsigned, T2) - __traits(isUnsigned, T1);
+    static assert( staticIsSorted!(Comp, uint, ubyte, ulong, short, long));
+    static assert(!staticIsSorted!(Comp, uint, short, ubyte, long, ulong));
 }
 
 // : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : //
@@ -1394,7 +1508,7 @@ private:
  *                          templates, etc.)
  */
 private template isSame(ab...)
-    if (ab.length == 2)
+if (ab.length == 2)
 {
     static if (__traits(compiles, expectType!(ab[0]),
                                   expectType!(ab[1])))

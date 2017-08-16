@@ -31,12 +31,12 @@ struct SectionGroup
         return dg(_sections);
     }
 
-    @property immutable(ModuleInfo*)[] modules() const
+    @property immutable(ModuleInfo*)[] modules() const nothrow @nogc
     {
         return _moduleGroup.modules;
     }
 
-    @property ref inout(ModuleGroup) moduleGroup() inout
+    @property ref inout(ModuleGroup) moduleGroup() inout nothrow @nogc
     {
         return _moduleGroup;
     }
@@ -49,45 +49,96 @@ struct SectionGroup
         return pbeg[0 .. pend - pbeg];
     }
 
-    @property inout(void[])[] gcRanges() inout
+    @property inout(void[])[] gcRanges() inout nothrow @nogc
     {
         return _gcRanges[];
     }
 
 private:
     ModuleGroup _moduleGroup;
-    void[][1] _gcRanges;
+    void[][] _gcRanges;
 }
 
-void initSections()
+shared(bool) conservative;
+
+void initSections() nothrow @nogc
 {
     _sections._moduleGroup = ModuleGroup(getModuleInfos());
 
     // the ".data" image section includes both object file sections ".data" and ".bss"
-    _sections._gcRanges[0] = findImageSection(".data");
-    debug(PRINTF) printf("found .data section: [%p,+%llx]\n", _sections._gcRanges[0].ptr,
-                         cast(ulong)_sections._gcRanges[0].length);
+    void[] dataSection = findImageSection(".data");
+    debug(PRINTF) printf("found .data section: [%p,+%llx]\n", dataSection.ptr,
+                         cast(ulong)dataSection.length);
+
+    import rt.sections;
+    conservative = !scanDataSegPrecisely();
+
+    if (conservative)
+    {
+        _sections._gcRanges = (cast(void[]*) malloc((void[]).sizeof))[0..1];
+        _sections._gcRanges[0] = dataSection;
+    }
+    else
+    {
+        size_t count = &_DP_end - &_DP_beg;
+        auto ranges = cast(void[]*) malloc(count * (void[]).sizeof);
+        size_t r = 0;
+        void* prev = null;
+        for (size_t i = 0; i < count; i++)
+        {
+            auto off = (&_DP_beg)[i];
+            if (off == 0) // skip zero entries added by incremental linking
+                continue; // assumes there is no D-pointer at the very beginning of .data
+            void* addr = dataSection.ptr + off;
+            debug(PRINTF) printf("  scan %p\n", addr);
+            // combine consecutive pointers into single range
+            if (prev + (void*).sizeof == addr)
+                ranges[r-1] = ranges[r-1].ptr[0 .. ranges[r-1].length + (void*).sizeof];
+            else
+                ranges[r++] = (cast(void**)addr)[0..1];
+            prev = addr;
+        }
+        _sections._gcRanges = ranges[0..r];
+    }
 }
 
-void finiSections()
+void finiSections() nothrow @nogc
 {
     .free(cast(void*)_sections.modules.ptr);
+    .free(_sections._gcRanges.ptr);
 }
 
-void[] initTLSRanges()
+void[] initTLSRanges() nothrow @nogc
 {
     auto pbeg = cast(void*)&_tls_start;
     auto pend = cast(void*)&_tls_end;
     return pbeg[0 .. pend - pbeg];
 }
 
-void finiTLSRanges(void[] rng)
+void finiTLSRanges(void[] rng) nothrow @nogc
 {
 }
 
 void scanTLSRanges(void[] rng, scope void delegate(void* pbeg, void* pend) nothrow dg) nothrow
 {
-    dg(rng.ptr, rng.ptr + rng.length);
+    if (conservative)
+    {
+        dg(rng.ptr, rng.ptr + rng.length);
+    }
+    else
+    {
+        for (auto p = &_TP_beg; p < &_TP_end; )
+        {
+            uint beg = *p++;
+            uint end = beg + cast(uint)((void*).sizeof);
+            while (p < &_TP_end && *p == end)
+            {
+                end += (void*).sizeof;
+                p++;
+            }
+            dg(rng.ptr + beg, rng.ptr + end);
+        }
+    }
 }
 
 private:
@@ -99,7 +150,7 @@ extern(C)
     extern __gshared void* _minfo_end;
 }
 
-immutable(ModuleInfo*)[] getModuleInfos()
+immutable(ModuleInfo*)[] getModuleInfos() nothrow @nogc
 out (result)
 {
     foreach(m; result)
@@ -142,6 +193,11 @@ extern(C)
 
         void* _deh_beg;
         void* _deh_end;
+
+        uint _DP_beg;
+        uint _DP_end;
+        uint _TP_beg;
+        uint _TP_end;
     }
 
     extern
@@ -197,14 +253,14 @@ struct IMAGE_SECTION_HEADER
     uint   Characteristics;
 }
 
-bool compareSectionName(ref IMAGE_SECTION_HEADER section, string name) nothrow
+bool compareSectionName(ref IMAGE_SECTION_HEADER section, string name) nothrow @nogc
 {
     if (name[] != section.Name[0 .. name.length])
         return false;
     return name.length == 8 || section.Name[name.length] == 0;
 }
 
-void[] findImageSection(string name) nothrow
+void[] findImageSection(string name) nothrow @nogc
 {
     if (name.length > 8) // section name from string table not supported
         return null;

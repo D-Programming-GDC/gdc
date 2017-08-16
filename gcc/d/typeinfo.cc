@@ -1111,7 +1111,6 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 {
   tree type = tinfo_types[TK_CLASSINFO_TYPE];
   size_t structsize = int_size_in_bytes (type);
-  input_location = get_linemap (decl->loc);
 
   if (decl->vtblInterfaces->dim)
     {
@@ -1600,13 +1599,20 @@ public:
 	      return;
 
 	    this->result_ |= true;
-	    return;
 	  }
       }
   }
 
-  void visit (TypeClass *)
+  void visit (TypeClass *t)
   {
+    ClassDeclaration *cd = t->sym;
+    if (TemplateInstance *ti = cd->isInstantiated ())
+      {
+	if (!ti->needsCodegen () && !ti->minst)
+	  {
+	    this->result_ |= true;
+	  }
+      }
   }
 
   void visit (TypeTuple *t)

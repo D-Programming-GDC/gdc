@@ -6502,6 +6502,7 @@ bool Parser::isParameters(Token **pt)
             case TOKscope:
             case TOKfinal:
             case TOKauto:
+            case TOKreturn:
                 continue;
 
             case TOKconst:
@@ -7165,7 +7166,8 @@ Expression *Parser::parsePrimaryExp()
                          token.value == TOKwild && peek(&token)->value == TOKrparen ||
                          token.value == TOKfunction ||
                          token.value == TOKdelegate ||
-                         token.value == TOKreturn))
+                         token.value == TOKreturn ||
+                         token.value == TOKvector && peek(&token)->value == TOKrparen))
                     {
                         tok2 = token.value;
                         nextToken();

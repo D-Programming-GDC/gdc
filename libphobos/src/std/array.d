@@ -4,63 +4,64 @@ Functions and types that manipulate built-in arrays and associative arrays.
 
 This module provides all kinds of functions to create, manipulate or convert arrays:
 
+$(SCRIPT inhibitQuickIndex = 1;)
 $(BOOKTABLE ,
 $(TR $(TH Function Name) $(TH Description)
 )
-    $(TR $(TD $(D $(LREF _array)))
+    $(TR $(TD $(LREF _array))
         $(TD Returns a copy of the input in a newly allocated dynamic _array.
     ))
-    $(TR $(TD $(D $(LREF appender)))
-        $(TD Returns a new Appender initialized with a given _array.
+    $(TR $(TD $(LREF appender))
+        $(TD Returns a new $(LREF Appender) or $(LREF RefAppender) initialized with a given _array.
     ))
-    $(TR $(TD $(D $(LREF assocArray)))
+    $(TR $(TD $(LREF assocArray))
         $(TD Returns a newly allocated associative _array from a range of key/value tuples.
     ))
-    $(TR $(TD $(D $(LREF byPair)))
+    $(TR $(TD $(LREF byPair))
         $(TD Construct a range iterating over an associative _array by key/value tuples.
     ))
-    $(TR $(TD $(D $(LREF insertInPlace)))
+    $(TR $(TD $(LREF insertInPlace))
         $(TD Inserts into an existing _array at a given position.
     ))
-    $(TR $(TD $(D $(LREF join)))
+    $(TR $(TD $(LREF join))
         $(TD Concatenates a range of ranges into one _array.
     ))
-    $(TR $(TD $(D $(LREF minimallyInitializedArray)))
+    $(TR $(TD $(LREF minimallyInitializedArray))
         $(TD Returns a new _array of type $(D T).
     ))
-    $(TR $(TD $(D $(LREF replace)))
+    $(TR $(TD $(LREF replace))
         $(TD Returns a new _array with all occurrences of a certain subrange replaced.
     ))
-    $(TR $(TD $(D $(LREF replaceFirst)))
+    $(TR $(TD $(LREF replaceFirst))
         $(TD Returns a new _array with the first occurrence of a certain subrange replaced.
     ))
-    $(TR $(TD $(D $(LREF replaceInPlace)))
+    $(TR $(TD $(LREF replaceInPlace))
         $(TD Replaces all occurrences of a certain subrange and puts the result into a given _array.
     ))
-    $(TR $(TD $(D $(LREF replaceInto)))
+    $(TR $(TD $(LREF replaceInto))
         $(TD Replaces all occurrences of a certain subrange and puts the result into an output range.
     ))
-    $(TR $(TD $(D $(LREF replaceLast)))
+    $(TR $(TD $(LREF replaceLast))
         $(TD Returns a new _array with the last occurrence of a certain subrange replaced.
     ))
-    $(TR $(TD $(D $(LREF replaceSlice)))
+    $(TR $(TD $(LREF replaceSlice))
         $(TD Returns a new _array with a given slice replaced.
     ))
-    $(TR $(TD $(D $(LREF replicate)))
+    $(TR $(TD $(LREF replicate))
         $(TD Creates a new _array out of several copies of an input _array or range.
     ))
-    $(TR $(TD $(D $(LREF sameHead)))
+    $(TR $(TD $(LREF sameHead))
         $(TD Checks if the initial segments of two arrays refer to the same
         place in memory.
     ))
-    $(TR $(TD $(D $(LREF sameTail)))
+    $(TR $(TD $(LREF sameTail))
         $(TD Checks if the final segments of two arrays refer to the same place
         in memory.
     ))
-    $(TR $(TD $(D $(LREF split)))
+    $(TR $(TD $(LREF split))
         $(TD Eagerly split a range or string into an _array.
     ))
-    $(TR $(TD $(D $(LREF uninitializedArray)))
+    $(TR $(TD $(LREF uninitializedArray))
         $(TD Returns a new _array of type $(D T) without initializing its elements.
     ))
 )
@@ -75,10 +76,10 @@ Source: $(PHOBOSSRC std/_array.d)
 */
 module std.array;
 
+static import std.algorithm.iteration; // FIXME, remove with alias of splitter
+import std.functional;
 import std.meta;
 import std.traits;
-import std.functional;
-static import std.algorithm.iteration; // FIXME, remove with alias of splitter
 
 import std.range.primitives;
 public import std.range.primitives : save, empty, popFront, popBack, front, back;
@@ -125,7 +126,7 @@ if (isIterable!Range && !isNarrowString!Range && !isInfinite!Range)
             emplaceRef!E(result[i], e);
             ++i;
         }
-        return (() @trusted => cast(E[])result)();
+        return (() @trusted => cast(E[]) result)();
     }
     else
     {
@@ -162,7 +163,7 @@ if (isIterable!Range && !isNarrowString!Range && !isInfinite!Range)
     struct Foo
     {
         int a;
-        auto opAssign(Foo foo)
+        void opAssign(Foo foo)
         {
             assert(0);
         }
@@ -192,13 +193,22 @@ if (isIterable!Range && !isNarrowString!Range && !isInfinite!Range)
 
 /**
 Convert a narrow string to an array type that fully supports random access.
-This is handled as a special case and always returns a $(D dchar[]),
-$(D const(dchar)[]), or $(D immutable(dchar)[]) depending on the constness of
-the input.
+This is handled as a special case and always returns an array of `dchar`
+
+Params:
+    str = `isNarrowString` to be converted to an array of `dchar`
+Returns:
+    a $(D dchar[]), $(D const(dchar)[]), or $(D immutable(dchar)[]) depending on the constness of
+    the input.
 */
-ElementType!String[] array(String)(String str) if (isNarrowString!String)
+@trusted ElementType!String[] array(String)(scope String str)
+if (isNarrowString!String)
 {
     import std.utf : toUTF32;
+    /* This function is @trusted because the following cast
+     * is unsafe - converting a dstring[] to a dchar[], for example.
+     * Our special knowledge of toUTF32 is needed to know the cast is safe.
+     */
     return cast(typeof(return)) str.toUTF32;
 }
 
@@ -224,7 +234,7 @@ ElementType!String[] array(String)(String str) if (isNarrowString!String)
         int opApply(scope int delegate(ref int) dg)
         {
             int res;
-            foreach (i; 0..10)
+            foreach (i; 0 .. 10)
             {
                 res = dg(i);
                 if (res) break;
@@ -306,8 +316,8 @@ ElementType!String[] array(String)(String str) if (isNarrowString!String)
 // Bugzilla 10220
 @safe unittest
 {
-    import std.exception;
     import std.algorithm.comparison : equal;
+    import std.exception;
     import std.range : repeat;
 
     static struct S
@@ -334,17 +344,21 @@ ElementType!String[] array(String)(String str) if (isNarrowString!String)
 
 /**
 Returns a newly allocated associative _array from a range of key/value tuples.
-Params: r = An input range of tuples of keys and values.
+
+Params:
+    r = An $(REF_ALTTEXT input range, isInputRange, std,range,primitives)
+    of tuples of keys and values.
 Returns: A newly allocated associative array out of elements of the input
 range, which must be a range of tuples (Key, Value). Returns a null associative
 array reference when given an empty range.
 Duplicates: Associative arrays have unique keys. If r contains duplicate keys,
 then the result will contain the value of the last pair for that key in r.
-See_Also: $(REF Tuple, std,typecons)
+
+See_Also: $(REF Tuple, std,typecons), $(REF zip, std,range)
  */
 
 auto assocArray(Range)(Range r)
-    if (isInputRange!Range)
+if (isInputRange!Range)
 {
     import std.typecons : isTuple;
 
@@ -366,7 +380,7 @@ auto assocArray(Range)(Range r)
 {
     import std.range;
     import std.typecons;
-    auto a = assocArray(zip([0, 1, 2], ["a", "b", "c"]));
+    auto a = assocArray(zip([0, 1, 2], ["a", "b", "c"])); // aka zipMap
     assert(is(typeof(a) == string[int]));
     assert(a == [0:"a", 1:"b", 2:"c"]);
 
@@ -399,13 +413,13 @@ Construct a range iterating over an associative array by key/value tuples.
 
 Params: aa = The associative array to iterate over.
 
-Returns: A forward range of Tuple's of key and value pairs from the given
-associative array.
+Returns: A $(REF_ALTTEXT forward range, isForwardRange, std,_range,primitives)
+of Tuple's of key and value pairs from the given associative array.
 */
 auto byPair(Key, Value)(Value[Key] aa)
 {
-    import std.typecons : tuple;
     import std.algorithm.iteration : map;
+    import std.typecons : tuple;
 
     return aa.byKeyValue.map!(pair => tuple(pair.key, pair.value));
 }
@@ -413,8 +427,8 @@ auto byPair(Key, Value)(Value[Key] aa)
 ///
 @system unittest
 {
-    import std.typecons : tuple, Tuple;
     import std.algorithm.sorting : sort;
+    import std.typecons : tuple, Tuple;
 
     auto aa = ["a": 1, "b": 2, "c": 3];
     Tuple!(string, int)[] pairs;
@@ -576,7 +590,7 @@ if (isDynamicArray!T && allSatisfy!(isIntegral, I))
 
 @safe pure nothrow unittest
 {
-    cast(void)minimallyInitializedArray!(int[][][][][])();
+    cast(void) minimallyInitializedArray!(int[][][][][])();
     double[] arr = minimallyInitializedArray!(double[])(100);
     assert(arr.length == 100);
 
@@ -599,7 +613,7 @@ private auto arrayAllocImpl(bool minimallyInitialized, T, I...)(I sizes) nothrow
 
     static if (I.length != 0)
     {
-        static assert (is(I[0] == size_t));
+        static assert(is(I[0] == size_t));
         alias size = sizes[0];
     }
 
@@ -627,8 +641,8 @@ private auto arrayAllocImpl(bool minimallyInitialized, T, I...)(I sizes) nothrow
         }
         else
         {
-            import core.stdc.string : memset;
             import core.memory : GC;
+            import core.stdc.string : memset;
 
             import core.checkedint : mulu;
             bool overflow;
@@ -825,11 +839,12 @@ private void copyBackwards(T)(T[] src, T[] dest)
     Params:
         array = The array that $(D stuff) will be inserted into.
         pos   = The position in $(D array) to insert the $(D stuff).
-        stuff = An input range, or any number of implicitly convertible items to insert into $(D array).
+        stuff = An $(REF_ALTTEXT input range, isInputRange, std,range,primitives),
+        or any number of implicitly convertible items to insert into $(D array).
  +/
 void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
-    if (!isSomeString!(T[])
-        && allSatisfy!(isInputRangeOrConvertible!T, U) && U.length > 0)
+if (!isSomeString!(T[])
+    && allSatisfy!(isInputRangeOrConvertible!T, U) && U.length > 0)
 {
     static if (allSatisfy!(isInputRangeWithLengthOrConvertible!T, U))
     {
@@ -851,7 +866,7 @@ void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
 
             // Takes arguments array, pos, stuff
             // Spread apart array[] at pos by moving elements
-            (() @trusted { copyBackwards(array[pos..oldLen], array[pos+to_insert..$]); })();
+            (() @trusted { copyBackwards(array[pos .. oldLen], array[pos+to_insert..$]); })();
 
             // Initialize array[pos .. pos+to_insert] with stuff[]
             auto j = 0;
@@ -887,7 +902,7 @@ void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
 
 /// Ditto
 void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
-    if (isSomeString!(T[]) && allSatisfy!(isCharOrStringOrDcharRange, U))
+if (isSomeString!(T[]) && allSatisfy!(isCharOrStringOrDcharRange, U))
 {
     static if (is(Unqual!T == T)
         && allSatisfy!(isInputRangeWithLengthOrConvertible!dchar, U))
@@ -966,7 +981,7 @@ void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
     {
         // immutable/const, just construct a new array
         auto app = appender!(T[])();
-        app.put(array[0..pos]);
+        app.put(array[0 .. pos]);
         foreach (i, E; U)
             app.put(stuff[i]);
         app.put(array[pos..$]);
@@ -1016,9 +1031,9 @@ private template isInputRangeOrConvertible(E)
 @system unittest
 {
     // @system due to insertInPlace
+    import core.exception;
     import std.algorithm.comparison : equal;
     import std.algorithm.iteration : filter;
-    import core.exception;
     import std.conv : to;
     import std.exception;
 
@@ -1055,7 +1070,7 @@ private template isInputRangeOrConvertible(E)
     assert(test([1, 2, 3, 4], 2, 23, [1, 2, 23, 3, 4]));
     assert(test([1, 2, 3, 4], 4, 24, [1, 2, 3, 4, 24]));
 
-    auto testStr(T, U)(string file = __FILE__, size_t line = __LINE__)
+    void testStr(T, U)(string file = __FILE__, size_t line = __LINE__)
     {
 
         auto l = to!T("hello");
@@ -1200,7 +1215,7 @@ pure nothrow bool sameHead(T)(in T[] lhs, in T[] rhs)
 @safe pure nothrow unittest
 {
     auto a = [1, 2, 3, 4, 5];
-    auto b = a[0..2];
+    auto b = a[0 .. 2];
 
     assert(a.sameHead(b));
 }
@@ -1254,12 +1269,21 @@ pure nothrow bool sameTail(T)(in T[] lhs, in T[] rhs)
     }
 }
 
-/********************************************
-Returns an array that consists of $(D s) (which must be an input
-range) repeated $(D n) times. This function allocates, fills, and
-returns a new array. For a lazy version, refer to $(REF repeat, std,range).
+/**
+Params:
+    s = an $(REF_ALTTEXT input range, isInputRange, std,range,primitives)
+    or a dynamic array
+    n = number of times to repeat `s`
+
+Returns:
+    An array that consists of `s` repeated `n` times. This function allocates, fills, and
+    returns a new array.
+
+See_Also:
+    For a lazy version, refer to $(REF repeat, std,range).
  */
-ElementEncodingType!S[] replicate(S)(S s, size_t n) if (isDynamicArray!S)
+ElementEncodingType!S[] replicate(S)(S s, size_t n)
+if (isDynamicArray!S)
 {
     alias RetType = ElementEncodingType!S[];
 
@@ -1335,6 +1359,9 @@ Eagerly split the string $(D s) into an array of words, using whitespace as
 delimiter. Runs of whitespace are merged together (no empty words are produced).
 
 $(D @safe), $(D pure) and $(D CTFE)-able.
+
+Params:
+    s = the string to split
 
 See_Also:
 $(REF splitter, std,algorithm,iteration) for a version that splits using any
@@ -1429,13 +1456,7 @@ if (isSomeString!S)
     assert(a == [[1], [4, 5, 1], [4, 5]]);
 }
 
-// @@@DEPRECATED_2017-01@@@
-/++
-    $(RED Deprecated. Use $(REF _splitter, std,algorithm,iteration) instead.
-          This will be removed in January 2017.)
-
-    Alias for $(REF _splitter, std,algorithm,iteration).
- +/
+// Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
 deprecated("Please use std.algorithm.iteration.splitter instead.")
 alias splitter = std.algorithm.iteration.splitter;
 
@@ -1472,9 +1493,10 @@ if (isForwardRange!Range && is(typeof(ElementType!Range.init == Separator.init))
     return range.splitter(sep).array;
 }
 ///ditto
-auto split(Range, Separator)(Range range, Separator sep) if (
-        isForwardRange!Range && isForwardRange!Separator
-        && is(typeof(ElementType!Range.init == ElementType!Separator.init)))
+auto split(Range, Separator)(Range range, Separator sep)
+if (
+    isForwardRange!Range && isForwardRange!Separator
+    && is(typeof(ElementType!Range.init == ElementType!Separator.init)))
 {
     import std.algorithm.iteration : splitter;
     return range.splitter(sep).array;
@@ -1489,8 +1511,8 @@ if (isForwardRange!Range && is(typeof(unaryFun!isTerminator(range.front))))
 
 @safe unittest
 {
-    import std.conv;
     import std.algorithm.comparison : cmp;
+    import std.conv;
 
     debug(std_array) printf("array.split\n");
     foreach (S; AliasSeq!(string, wstring, dstring,
@@ -1556,7 +1578,8 @@ private enum bool hasCheapIteration(R) = isArray!R;
    into one array using `sep` as the separator if present.
 
    Params:
-        ror = An input range of input ranges
+        ror = An $(REF_ALTTEXT input range, isInputRange, std,range,primitives)
+        of input ranges
         sep = An input range, or a single element, to join the ranges on
 
    Returns:
@@ -1565,11 +1588,11 @@ private enum bool hasCheapIteration(R) = isArray!R;
    See_Also:
         For a lazy version, see $(REF joiner, std,algorithm,iteration)
   +/
-ElementEncodingType!(ElementType!RoR)[] join(RoR, R)(RoR ror, R sep)
-    if (isInputRange!RoR &&
-       isInputRange!(Unqual!(ElementType!RoR)) &&
-       isInputRange!R &&
-       is(Unqual!(ElementType!(ElementType!RoR)) == Unqual!(ElementType!R)))
+ElementEncodingType!(ElementType!RoR)[] join(RoR, R)(RoR ror, scope R sep)
+if (isInputRange!RoR &&
+    isInputRange!(Unqual!(ElementType!RoR)) &&
+    isInputRange!R &&
+    is(Unqual!(ElementType!(ElementType!RoR)) == Unqual!(ElementType!R)))
 {
     alias RetType = typeof(return);
     alias RetTypeElement = Unqual!(ElementEncodingType!RetType);
@@ -1642,10 +1665,10 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR, R)(RoR ror, R sep)
 }
 
 /// Ditto
-ElementEncodingType!(ElementType!RoR)[] join(RoR, E)(RoR ror, E sep)
-    if (isInputRange!RoR &&
-       isInputRange!(Unqual!(ElementType!RoR)) &&
-       is(E : ElementType!(ElementType!RoR)))
+ElementEncodingType!(ElementType!RoR)[] join(RoR, E)(RoR ror, scope E sep)
+if (isInputRange!RoR &&
+    isInputRange!(Unqual!(ElementType!RoR)) &&
+    is(E : ElementType!(ElementType!RoR)))
 {
     alias RetType = typeof(return);
     alias RetTypeElement = Unqual!(ElementEncodingType!RetType);
@@ -1661,7 +1684,7 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR, E)(RoR ror, E sep)
             import std.utf : encode;
             RetTypeElement[4 / RetTypeElement.sizeof] encodeSpace;
             immutable size_t sepArrLength = encode(encodeSpace, sep);
-            return join(ror, encodeSpace[0..sepArrLength]);
+            return join(ror, encodeSpace[0 .. sepArrLength]);
         }
         else
         {
@@ -1729,8 +1752,8 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR, E)(RoR ror, E sep)
 
 /// Ditto
 ElementEncodingType!(ElementType!RoR)[] join(RoR)(RoR ror)
-    if (isInputRange!RoR &&
-       isInputRange!(Unqual!(ElementType!RoR)))
+if (isInputRange!RoR &&
+    isInputRange!(Unqual!(ElementType!RoR)))
 {
     alias RetType = typeof(return);
     alias RetTypeElement = Unqual!(ElementEncodingType!RetType);
@@ -1752,7 +1775,7 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR)(RoR ror)
             foreach (e; r)
                 emplaceRef(result[len++], e);
         assert(len == result.length);
-        return (() @trusted => cast(RetType)result)();
+        return (() @trusted => cast(RetType) result)();
     }
     else
     {
@@ -1818,8 +1841,8 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR)(RoR ror)
 
 @system unittest
 {
-    import std.conv : to;
     import std.algorithm;
+    import std.conv : to;
     import std.range;
 
     debug(std_array) printf("array.join.unittest\n");
@@ -1955,9 +1978,23 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR)(RoR ror)
 
 
 /++
-    Replace occurrences of $(D from) with $(D to) in $(D subject). Returns a new
-    array without changing the contents of $(D subject), or the original array
-    if no match is found.
+    Replace occurrences of `from` with `to` in `subject` in a new
+    array. If `sink` is defined, then output the new array into
+    `sink`.
+
+    Params:
+        sink = an $(REF_ALTTEXT output range, isOutputRange, std,range,primitives)
+        subject = the array to scan
+        from = the item to replace
+        to = the item to replace all instances of `from` with
+
+    Returns:
+        If `sink` isn't defined, a new array without changing the
+        contents of `subject`, or the original array if no match
+        is found.
+
+    See_Also:
+        $(REF map, std,algorithm,iteration) which can act as a lazy replace
  +/
 E[] replace(E, R1, R2)(E[] subject, R1 from, R2 to)
 if (isDynamicArray!(E[]) && isForwardRange!R1 && isForwardRange!R2
@@ -1986,10 +2023,7 @@ if (isDynamicArray!(E[]) && isForwardRange!R1 && isForwardRange!R2
     assert("Hello Wörld".replace("l", "h") == "Hehho Wörhd");
 }
 
-/++
-    Same as above, but outputs the result via OutputRange $(D sink).
-    If no match is found the original array is transferred to $(D sink) as is.
-+/
+/// ditto
 void replaceInto(E, Sink, R1, R2)(Sink sink, E[] subject, R1 from, R2 to)
 if (isOutputRange!(Sink, E) && isDynamicArray!(E[])
     && isForwardRange!R1 && isForwardRange!R2
@@ -2031,8 +2065,8 @@ if (isOutputRange!(Sink, E) && isDynamicArray!(E[])
 
 @safe unittest
 {
-    import std.conv : to;
     import std.algorithm.comparison : cmp;
+    import std.conv : to;
 
     debug(std_array) printf("array.replace.unittest\n");
 
@@ -2064,8 +2098,8 @@ if (isOutputRange!(Sink, E) && isDynamicArray!(E[])
 
 @safe unittest
 {
-    import std.conv : to;
     import std.algorithm.searching : skipOver;
+    import std.conv : to;
 
     struct CheckOutput(C)
     {
@@ -2085,14 +2119,22 @@ if (isOutputRange!(Sink, E) && isDynamicArray!(E[])
 }
 
 /++
-    Replaces elements from $(D array) with indices ranging from $(D from)
-    (inclusive) to $(D to) (exclusive) with the range $(D stuff). Returns a new
-    array without changing the contents of $(D subject).
+    Replaces elements from `array` with indices ranging from `from`
+    (inclusive) to `to` (exclusive) with the range `stuff`.
+
+    Params:
+        subject = the array to scan
+        from = the starting index
+        to = the ending index
+        stuff = the items to replace in-between `from` and `to`
+
+    Returns:
+        A new array without changing the contents of `subject`.
  +/
 T[] replace(T, Range)(T[] subject, size_t from, size_t to, Range stuff)
-    if (isInputRange!Range &&
-       (is(ElementType!Range : T) ||
-        isSomeString!(T[]) && is(ElementType!Range : dchar)))
+if (isInputRange!Range &&
+    (is(ElementType!Range : T) ||
+    isSomeString!(T[]) && is(ElementType!Range : dchar)))
 {
     static if (hasLength!Range && is(ElementEncodingType!Range : T))
     {
@@ -2106,7 +2148,7 @@ T[] replace(T, Range)(T[] subject, size_t from, size_t to, Range stuff)
             copy(stuff, retval[from .. from + stuff.length]);
 
         retval[from + stuff.length .. $] = subject[to .. $];
-        return cast(T[])retval;
+        return cast(T[]) retval;
     }
     else
     {
@@ -2130,9 +2172,9 @@ T[] replace(T, Range)(T[] subject, size_t from, size_t to, Range stuff)
 @system unittest
 {
     import core.exception;
+    import std.algorithm.iteration : filter;
     import std.conv : to;
     import std.exception;
-    import std.algorithm.iteration : filter;
 
 
     auto a = [ 1, 2, 3, 4 ];
@@ -2149,7 +2191,7 @@ T[] replace(T, Range)(T[] subject, size_t from, size_t to, Range stuff)
     assert(replace(a, 2, 4, filter!"true"([5, 6, 7])) == [1, 2, 5, 6, 7]);
     assert(a == [ 1, 2, 3, 4 ]);
 
-    auto testStr(T, U)(string file = __FILE__, size_t line = __LINE__)
+    void testStr(T, U)(string file = __FILE__, size_t line = __LINE__)
     {
 
         auto l = to!T("hello");
@@ -2201,12 +2243,18 @@ T[] replace(T, Range)(T[] subject, size_t from, size_t to, Range stuff)
 }
 
 /++
-    Replaces elements from $(D array) with indices ranging from $(D from)
-    (inclusive) to $(D to) (exclusive) with the range $(D stuff). Expands or
+    Replaces elements from `array` with indices ranging from `from`
+    (inclusive) to `to` (exclusive) with the range `stuff`. Expands or
     shrinks the array as needed.
+
+    Params:
+        array = the _array to scan
+        from = the starting index
+        to = the ending index
+        stuff = the items to replace in-between `from` and `to`
  +/
 void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff)
-    if (is(typeof(replace(array, from, to, stuff))))
+if (is(typeof(replace(array, from, to, stuff))))
 {
     static if (isDynamicArray!Range &&
               is(Unqual!(ElementEncodingType!Range) == T) &&
@@ -2285,8 +2333,8 @@ void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff
 
     void testStringReplaceInPlace(T, U)()
     {
-        import std.conv;
         import std.algorithm.comparison : equal;
+        import std.conv;
         auto a = unicoded.to!(U[]);
         auto b = unicodedLong.to!(U[]);
 
@@ -2328,9 +2376,9 @@ void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff
 
 @system unittest
 {
+    import core.exception;
     import std.algorithm.comparison : equal;
     import std.algorithm.iteration : filter;
-    import core.exception;
     import std.conv : to;
     import std.exception;
 
@@ -2370,7 +2418,7 @@ void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff
     assert(test([1, 2, 3, 4], 0, 2, filter!"true"([5, 6, 7]), [5, 6, 7, 3, 4]));
     assert(test([1, 2, 3, 4], 2, 4, filter!"true"([5, 6, 7]), [1, 2, 5, 6, 7]));
 
-    auto testStr(T, U)(string file = __FILE__, size_t line = __LINE__)
+    void testStr(T, U)(string file = __FILE__, size_t line = __LINE__)
     {
 
         auto l = to!T("hello");
@@ -2400,9 +2448,16 @@ void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff
 }
 
 /++
-    Replaces the first occurrence of $(D from) with $(D to) in $(D a). Returns a
-    new array without changing the contents of $(D subject), or the original
-    array if no match is found.
+    Replaces the first occurrence of `from` with `to` in `subject`.
+
+    Params:
+        subject = the array to scan
+        from = the item to replace
+        to = the item to replace `from` with
+
+    Returns:
+        A new array without changing the contents of $(D subject), or the original
+        array if no match is found.
  +/
 E[] replaceFirst(E, R1, R2)(E[] subject, R1 from, R2 to)
 if (isDynamicArray!(E[]) &&
@@ -2454,8 +2509,8 @@ if (isDynamicArray!(E[]) &&
 
 @safe unittest
 {
-    import std.conv : to;
     import std.algorithm.comparison : cmp;
+    import std.conv : to;
 
     debug(std_array) printf("array.replaceFirst.unittest\n");
 
@@ -2499,9 +2554,16 @@ if (isDynamicArray!(E[]) &&
 }
 
 /++
-    Replaces the last occurrence of $(D from) with $(D to) in $(D a). Returns a
-    new array without changing the contents of $(D subject), or the original
-    array if no match is found.
+    Replaces the last occurrence of `from` with `to` in `subject`.
+
+    Params:
+        subject = the array to scan
+        from = the item to replace
+        to = the item to replace `from` with
+
+    Returns:
+        A new array without changing the contents of $(D subject), or the original
+        array if no match is found.
  +/
 E[] replaceLast(E, R1, R2)(E[] subject, R1 from , R2 to)
 if (isDynamicArray!(E[]) &&
@@ -2562,8 +2624,8 @@ if (isDynamicArray!(E[]) &&
 
 @safe unittest
 {
-    import std.conv : to;
     import std.algorithm.comparison : cmp;
+    import std.conv : to;
 
     debug(std_array) printf("array.replaceLast.unittest\n");
 
@@ -2599,8 +2661,18 @@ if (isDynamicArray!(E[]) &&
 }
 
 /++
-    Returns a new array that is $(D s) with $(D slice) replaced by
-    $(D replacement[]).
+    Creates a new array such that the items in `slice` are replaced with the
+    items in `replacement`. `slice` and `replacement` do not need to be the
+    same length. The result will grow or shrink based on the items given.
+
+    Params:
+        s = the base of the new array
+        slice = the slice of `s` to be replaced
+        replacement = the items to replace `slice` with
+
+    Returns:
+        A new array that is `s` with `slice` replaced by
+        `replacement[]`.
  +/
 inout(T)[] replaceSlice(T)(inout(T)[] s, in T[] slice, in T[] replacement)
 in
@@ -2624,7 +2696,7 @@ body
 @system unittest
 {
     auto a = [1, 2, 3, 4, 5];
-    auto b = replaceSlice(a, a[1..4], [0, 0, 0]);
+    auto b = replaceSlice(a, a[1 .. 4], [0, 0, 0]);
 
     assert(b == [1, 0, 0, 0, 5]);
 }
@@ -2645,8 +2717,10 @@ body
 
 /**
 Implements an output range that appends data to an array. This is
-recommended over $(D a ~= data) when appending many elements because it is more
-efficient.
+recommended over $(D array ~= data) when appending many elements because it is more
+efficient. `Appender` maintains its own array metadata locally, so it can avoid
+global locking for each append where $(LREF capacity) is non-zero.
+See_Also: $(LREF appender)
  */
 struct Appender(A)
 if (isDynamicArray!A)
@@ -2654,6 +2728,7 @@ if (isDynamicArray!A)
     import core.memory : GC;
 
     private alias T = ElementEncodingType!A;
+
     private struct Data
     {
         size_t capacity;
@@ -2664,16 +2739,16 @@ if (isDynamicArray!A)
     private Data* _data;
 
     /**
-     * Construct an appender with a given array.  Note that this does not copy the
-     * data.  If the array has a larger capacity as determined by arr.capacity,
+     * Constructs an `Appender` with a given array.  Note that this does not copy the
+     * data.  If the array has a larger capacity as determined by `arr.capacity`,
      * it will be used by the appender.  After initializing an appender on an array,
      * appending to the original array will reallocate.
      */
-    this(T[] arr) @trusted pure nothrow
+    this(A arr) @trusted pure nothrow
     {
         // initialize to a given array.
         _data = new Data;
-        _data.arr = cast(Unqual!T[])arr; //trusted
+        _data.arr = cast(Unqual!T[]) arr; //trusted
 
         if (__ctfe)
             return;
@@ -2694,7 +2769,7 @@ if (isDynamicArray!A)
 
     /**
      * Reserve at least newCapacity elements for appending.  Note that more elements
-     * may be reserved than requested.  If newCapacity <= capacity, then nothing is
+     * may be reserved than requested. If `newCapacity <= capacity`, then nothing is
      * done.
      */
     void reserve(size_t newCapacity) @safe pure nothrow
@@ -2711,9 +2786,9 @@ if (isDynamicArray!A)
     }
 
     /**
-     * Returns the capacity of the array (the maximum number of elements the
-     * managed array can accommodate before triggering a reallocation).  If any
-     * appending will reallocate, $(D capacity) returns $(D 0).
+     * Returns: the capacity of the array (the maximum number of elements the
+     * managed array can accommodate before triggering a reallocation). If any
+     * appending will reallocate, `0` will be returned.
      */
     @property size_t capacity() const @safe pure nothrow
     {
@@ -2721,9 +2796,9 @@ if (isDynamicArray!A)
     }
 
     /**
-     * Returns the managed array.
+     * Returns: The managed array.
      */
-    @property inout(T)[] data() inout @trusted pure nothrow
+    @property inout(ElementEncodingType!A)[] data() inout @trusted pure nothrow
     {
         /* @trusted operation:
          * casting Unqual!T[] to inout(T)[]
@@ -2789,7 +2864,7 @@ if (isDynamicArray!A)
             import core.stdc.string : memcpy;
             if (len)
                 memcpy(bi.base, _data.arr.ptr, len * T.sizeof);
-            _data.arr = (cast(Unqual!T*)bi.base)[0 .. len];
+            _data.arr = (cast(Unqual!T*) bi.base)[0 .. len];
             _data.canExtend = true;
             // leave the old data, for safety reasons
         }
@@ -2805,7 +2880,8 @@ if (isDynamicArray!A)
     {
         enum bool canPutConstRange =
             isInputRange!(Unqual!Range) &&
-            !isInputRange!Range;
+            !isInputRange!Range &&
+            is(typeof(Appender.init.put(Range.init.front)));
     }
     private template canPutRange(Range)
     {
@@ -2815,7 +2891,7 @@ if (isDynamicArray!A)
     }
 
     /**
-     * Appends one item to the managed array.
+     * Appends `item` to the managed array.
      */
     void put(U)(U item) if (canPutItem!U)
     {
@@ -2838,7 +2914,7 @@ if (isDynamicArray!A)
             immutable len = _data.arr.length;
 
             auto bigData = (() @trusted => _data.arr.ptr[0 .. len + 1])();
-            emplaceRef!(Unqual!T)(bigData[len], cast(Unqual!T)item);
+            emplaceRef!(Unqual!T)(bigData[len], cast(Unqual!T) item);
             //We do this at the end, in case of exceptions
             _data.arr = bigData;
         }
@@ -2888,7 +2964,7 @@ if (isDynamicArray!A)
             alias UT = Unqual!T;
 
             static if (is(typeof(_data.arr[] = items[])) &&
-                !hasElaborateAssign!(Unqual!T) && isAssignable!(UT, ElementEncodingType!Range))
+                !hasElaborateAssign!UT && isAssignable!(UT, ElementEncodingType!Range))
             {
                 bigData[len .. newlen] = items[];
             }
@@ -2917,25 +2993,14 @@ if (isDynamicArray!A)
     }
 
     /**
-     * Appends one item to the managed array.
+     * Appends `rhs` to the managed array.
+     * Params:
+     * rhs = Element or range.
      */
-    void opOpAssign(string op : "~", U)(U item) if (canPutItem!U)
+    void opOpAssign(string op : "~", U)(U rhs)
+    if (__traits(compiles, put(rhs)))
     {
-        put(item);
-    }
-
-    // Const fixing hack.
-    void opOpAssign(string op : "~", Range)(Range items) if (canPutConstRange!Range)
-    {
-        put(items);
-    }
-
-    /**
-     * Appends an entire range to the managed array.
-     */
-    void opOpAssign(string op : "~", Range)(Range items) if (canPutRange!Range)
-    {
-        put(items);
+        put(rhs);
     }
 
     // only allow overwriting data on non-immutable and non-const data
@@ -2945,7 +3010,7 @@ if (isDynamicArray!A)
          * Clears the managed array.  This allows the elements of the array to be reused
          * for appending.
          *
-         * Note that clear is disabled for immutable or const element types, due to the
+         * Note: clear is disabled for immutable or const element types, due to the
          * possibility that $(D Appender) might overwrite immutable data.
          */
         void clear() @trusted pure nothrow
@@ -2960,6 +3025,7 @@ if (isDynamicArray!A)
          * Shrinks the managed array to the given length.
          *
          * Throws: $(D Exception) if newlength is greater than the current array length.
+         * Note: shrinkTo is disabled for immutable or const element types.
          */
         void shrinkTo(size_t newlength) @trusted pure
         {
@@ -3007,6 +3073,21 @@ if (isDynamicArray!A)
     assert("%s".format(app) == "Appender!(int[])(%s)".format([1,2,3]));
 }
 
+@safe unittest // issue 17251
+{
+    static struct R
+    {
+        int front() const { return 0; }
+        bool empty() const { return true; }
+        void popFront() {}
+    }
+
+    auto app = appender!(R[]);
+    const(R)[1] r;
+    app.put(r[0]);
+    app.put(r[]);
+}
+
 //Calculates an efficient growth scheme based on the old capacity
 //of data, and the minimum requested capacity.
 //arg curLen: The current length
@@ -3027,68 +3108,63 @@ private size_t appenderNewCapacity(size_t TSizeOf)(size_t curLen, size_t reqLen)
 }
 
 /**
- * An appender that can update an array in-place.  It forwards all calls to an
- * underlying appender implementation.  Any calls made to the appender also update
- * the pointer to the original array passed in.
+ * A version of $(LREF Appender) that can update an array in-place.
+ * It forwards all calls to an underlying appender implementation.
+ * Any calls made to the appender also update the pointer to the
+ * original array passed in.
+ *
+ * Tip: Use the `arrayPtr` overload of $(LREF appender) for construction with type-inference.
  */
 struct RefAppender(A)
 if (isDynamicArray!A)
 {
     private
     {
-        alias T = ElementEncodingType!A;
         Appender!A impl;
-        T[] *arr;
+        A* arr;
     }
 
     /**
-     * Construct a ref appender with a given array reference.  This does not copy the
-     * data.  If the array has a larger capacity as determined by arr.capacity, it
-     * will be used by the appender.  $(D RefAppender) assumes that arr is a non-null
-     * value.
+     * Constructs a `RefAppender` with a given array reference.  This does not copy the
+     * data.  If the array has a larger capacity as determined by `arr.capacity`, it
+     * will be used by the appender.
      *
-     * Note, do not use builtin appending (i.e. ~=) on the original array passed in
-     * until you are done with the appender, because calls to the appender override
-     * those appends.
+     * Note: Do not use built-in appending (i.e. `~=`) on the original array
+     * until you are done with the appender, because subsequent calls to the appender
+     * will reallocate the array data without those appends.
+     *
+     * Params:
+     * arr = Pointer to an array. Must not be _null.
      */
-    this(T[] *arr)
+    this(A* arr)
     {
         impl = Appender!A(*arr);
         this.arr = arr;
     }
 
-    auto opDispatch(string fn, Args...)(Args args) if (is(typeof(mixin("impl." ~ fn ~ "(args)"))))
+    /** Wraps remaining `Appender` methods such as $(LREF put).
+     * Params:
+     * fn = Method name to call.
+     * args = Arguments to pass to the method.
+     */
+    void opDispatch(string fn, Args...)(Args args)
+    if (__traits(compiles, (Appender!A a) => mixin("a." ~ fn ~ "(args)")))
     {
         // we do it this way because we can't cache a void return
         scope(exit) *this.arr = impl.data;
         mixin("return impl." ~ fn ~ "(args);");
     }
 
-    private alias AppenderType = Appender!A;
-
     /**
-     * Appends one item to the managed array.
+     * Appends `rhs` to the managed array.
+     * Params:
+     * rhs = Element or range.
      */
-    void opOpAssign(string op : "~", U)(U item) if (AppenderType.canPutItem!U)
+    void opOpAssign(string op : "~", U)(U rhs)
+    if (__traits(compiles, (Appender!A a){ a.put(rhs); }))
     {
         scope(exit) *this.arr = impl.data;
-        impl.put(item);
-    }
-
-    // Const fixing hack.
-    void opOpAssign(string op : "~", Range)(Range items) if (AppenderType.canPutConstRange!Range)
-    {
-        scope(exit) *this.arr = impl.data;
-        impl.put(items);
-    }
-
-    /**
-     * Appends an entire range to the managed array.
-     */
-    void opOpAssign(string op : "~", Range)(Range items) if (AppenderType.canPutRange!Range)
-    {
-        scope(exit) *this.arr = impl.data;
-        impl.put(items);
+        impl.put(rhs);
     }
 
     /**
@@ -3104,15 +3180,15 @@ if (isDynamicArray!A)
     /**
      * Returns the managed array.
      */
-    @property inout(T)[] data() inout
+    @property inout(ElementEncodingType!A)[] data() inout
     {
         return impl.data;
     }
 }
 
 /++
-    Convenience function that returns an $(D Appender!A) object initialized
-    with $(D array).
+    Convenience function that returns an $(LREF Appender) instance,
+    optionally initialized with $(D array).
  +/
 Appender!A appender(A)()
 if (isDynamicArray!A)
@@ -3122,7 +3198,7 @@ if (isDynamicArray!A)
 /// ditto
 Appender!(E[]) appender(A : E[], E)(auto ref A array)
 {
-    static assert (!isStaticArray!A || __traits(isRef, array),
+    static assert(!isStaticArray!A || __traits(isRef, array),
         "Cannot create Appender from an rvalue static array");
 
     return Appender!(E[])(array);
@@ -3237,8 +3313,8 @@ Appender!(E[]) appender(A : E[], E)(auto ref A array)
     {
         auto w = appender!string();
         w.reserve(4);
-        cast(void)w.capacity;
-        cast(void)w.data;
+        cast(void) w.capacity;
+        cast(void) w.data;
         try
         {
             wchar wc = 'a';
@@ -3251,8 +3327,8 @@ Appender!(E[]) appender(A : E[], E)(auto ref A array)
     {
         auto w = appender!(int[])();
         w.reserve(4);
-        cast(void)w.capacity;
-        cast(void)w.data;
+        cast(void) w.capacity;
+        cast(void) w.data;
         w.put(10);
         w.put([10]);
         w.clear();
@@ -3283,8 +3359,8 @@ Appender!(E[]) appender(A : E[], E)(auto ref A array)
 
 @safe unittest
 {
-    import std.typecons;
     import std.algorithm;
+    import std.typecons;
     //10690
     [tuple(1)].filter!(t => true).array; // No error
     [tuple("A")].filter!(t => true).array; // error
@@ -3413,8 +3489,8 @@ Appender!(E[]) appender(A : E[], E)(auto ref A array)
 
 @safe unittest //Test large allocations (for GC.extend)
 {
-    import std.range;
     import std.algorithm.comparison : equal;
+    import std.range;
     Appender!(char[]) app;
     app.reserve(1); //cover reserve on non-initialized
     foreach (_; 0 .. 100_000)
@@ -3486,13 +3562,13 @@ Appender!(E[]) appender(A : E[], E)(auto ref A array)
 }
 
 /++
-    Convenience function that returns a $(D RefAppender!A) object initialized
-    with $(D array).  Don't use null for the $(D array) pointer, use the other
+    Convenience function that returns a $(LREF RefAppender) instance initialized
+    with `arrayPtr`. Don't use null for the array pointer, use the other
     version of $(D appender) instead.
  +/
-RefAppender!(E[]) appender(A : E[]*, E)(A array)
+RefAppender!(E[]) appender(P : E[]*, E)(P arrayPtr)
 {
-    return RefAppender!(E[])(array);
+    return RefAppender!(E[])(arrayPtr);
 }
 
 @system unittest

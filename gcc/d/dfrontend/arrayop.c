@@ -147,8 +147,8 @@ bool isNonAssignmentArrayOp(Expression *e)
 {
     if (e->op == TOKslice)
         return isNonAssignmentArrayOp(((SliceExp *)e)->e1);
-    Type *tb = e->type->toBasetype();
 
+    Type *tb = e->type->toBasetype();
     if (tb->ty == Tarray || tb->ty == Tsarray)
     {
         return (isUnaArrayOp(e->op) || isBinArrayOp(e->op));
@@ -323,7 +323,7 @@ void buildArrayIdent(Expression *e, OutBuffer *buf, Expressions *arguments)
             switch(e->op)
             {
             case TOKaddass: s = "Addass"; break;
-            case TOKminass: s = "Subass"; break;
+            case TOKminass: s = "Minass"; break;
             case TOKmulass: s = "Mulass"; break;
             case TOKdivass: s = "Divass"; break;
             case TOKmodass: s = "Modass"; break;
@@ -356,7 +356,7 @@ void buildArrayIdent(Expression *e, OutBuffer *buf, Expressions *arguments)
             switch(e->op)
             {
             case TOKadd: s = "Add"; break;
-            case TOKmin: s = "Sub"; break;
+            case TOKmin: s = "Min"; break;
             case TOKmul: s = "Mul"; break;
             case TOKdiv: s = "Div"; break;
             case TOKmod: s = "Mod"; break;

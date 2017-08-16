@@ -325,6 +325,7 @@ d_init (void)
   Id::initialize ();
   Module::_init ();
   Expression::_init ();
+  Objc::_init ();
   initPrecedence ();
   initTraitsStringTable ();
 

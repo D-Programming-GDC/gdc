@@ -1,8 +1,8 @@
 ///
 module std.experimental.logger.filelogger;
 
-import std.stdio;
 import std.experimental.logger.core;
+import std.stdio;
 
 /** This $(D Logger) implementation writes log messages to the associated
 file. The name of the file has to be passed on construction time. If the file
@@ -10,9 +10,9 @@ is already present new log messages will be append at its end.
 */
 class FileLogger : Logger
 {
-    import std.format : formattedWrite;
-    import std.datetime : SysTime;
     import std.concurrency : Tid;
+    import std.datetime : SysTime;
+    import std.format : formattedWrite;
 
     /** A constructor for the $(D FileLogger) Logger.
 
@@ -129,10 +129,10 @@ class FileLogger : Logger
     private string filename;
 }
 
-unittest
+@system unittest
 {
-    import std.file : deleteme, remove;
     import std.array : empty;
+    import std.file : deleteme, remove;
     import std.string : indexOf;
 
     string filename = deleteme ~ __FUNCTION__ ~ ".tempLogFile";
@@ -158,10 +158,10 @@ unittest
     assert(readLine.indexOf(notWritten) == -1, readLine);
 }
 
-unittest
+@system unittest
 {
-    import std.file : deleteme, remove;
     import std.array : empty;
+    import std.file : deleteme, remove;
     import std.string : indexOf;
 
     string filename = deleteme ~ __FUNCTION__ ~ ".tempLogFile";
@@ -191,12 +191,12 @@ unittest
 
 @safe unittest
 {
-    auto dl = cast(FileLogger)sharedLog;
+    auto dl = cast(FileLogger) sharedLog;
     assert(dl !is null);
     assert(dl.logLevel == LogLevel.all);
     assert(globalLogLevel == LogLevel.all);
 
-    auto tl = cast(StdForwardLogger)stdThreadLocalLog;
+    auto tl = cast(StdForwardLogger) stdThreadLocalLog;
     assert(tl !is null);
     stdThreadLocalLog.logLevel = LogLevel.all;
 }

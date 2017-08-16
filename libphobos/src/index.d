@@ -32,10 +32,6 @@ $(BOOKTABLE ,
             comparison, iteration, sorting, set operations, and mutation.
         )
     )
-    $(TR
-        $(TDNW $(LINK2 std_experimental_ndslice.html, std.experimental.ndslice))
-        $(TD Multidimensional random access ranges and arrays.)
-    )
     $(LEADINGROW Array manipulation)
     $(TR
         $(TDNW
@@ -87,6 +83,10 @@ $(BOOKTABLE ,
         $(TD Compress/decompress data using the zlib library.)
     )
     $(LEADINGROW Data integrity)
+    $(TR
+        $(TDNW $(LINK2 std_experimental_checkedint.html, std.experimental.checkedint))
+        $(TD Checked integral types.)
+    )
     $(TR
         $(TDNW $(LINK2 std_digest_crc.html, std.digest.crc))
         $(TD Cyclic Redundancy Check (32-bit) implementation.)
@@ -323,10 +323,6 @@ $(BOOKTABLE ,
         $(TD Families of transcendental functions.)
     )
     $(TR
-        $(TDNW $(LINK2 std_experimental_ndslice.html, std.experimental.ndslice))
-        $(TD Multidimensional random access ranges and arrays.)
-    )
-    $(TR
         $(TDNW $(LINK2 std_numeric.html, std.numeric))
         $(TD Floating point numerics functions.)
     )
@@ -465,7 +461,6 @@ $(COMMENT
     $(TR
         $(TDNW
             $(LINK2 core_sync_config.html, core.sync.config)$(BR)
-            $(LINK2 std_concurrencybase.html, std.concurrencybase)$(BR)
             $(LINK2 std_container_util.html, std.container.util)$(BR)
             $(LINK2 std_regex_internal_backtracking.html, std.regex.internal.backtracking)$(BR)
             $(LINK2 std_regex_internal_generator.html, std.regex.internal.generator)$(BR)
@@ -474,7 +469,6 @@ $(COMMENT
             $(LINK2 std_regex_internal_parser.html, std.regex.internal.parser)$(BR)
             $(LINK2 std_regex_internal_tests.html, std.regex.internal.tests)$(BR)
             $(LINK2 std_regex_internal_thompson.html, std.regex.internal.thompson)$(BR)
-            $(LINK2 std_stdiobase.html, std.stdiobase)$(BR)
         )
         $(TD
              Internal modules.

@@ -17,14 +17,16 @@ Distributed under the Boost Software License, Version 1.0.
 */
 module std.json;
 
+import std.array;
 import std.conv;
 import std.range.primitives;
-import std.array;
 import std.traits;
 
 ///
 @system unittest
 {
+    import std.conv : to;
+
     // parse a file or string of json into a usable structure
     string s = `{ "language": "D", "rating": 3.5, "code": "42" }`;
     JSONValue j = parseJSON(s);
@@ -128,9 +130,11 @@ struct JSONValue
           assert(j["language"].type == JSON_TYPE.STRING);
     }
 
-    /// Value getter/setter for $(D JSON_TYPE.STRING).
-    /// Throws: $(D JSONException) for read access if $(D type) is not
-    /// $(D JSON_TYPE.STRING).
+    /***
+     * Value getter/setter for $(D JSON_TYPE.STRING).
+     * Throws: $(D JSONException) for read access if $(D type) is not
+     * $(D JSON_TYPE.STRING).
+     */
     @property string str() const pure @trusted
     {
         enforce!JSONException(type == JSON_TYPE.STRING,
@@ -156,9 +160,11 @@ struct JSONValue
         assert(j["language"].str == "Perl");
     }
 
-    /// Value getter/setter for $(D JSON_TYPE.INTEGER).
-    /// Throws: $(D JSONException) for read access if $(D type) is not
-    /// $(D JSON_TYPE.INTEGER).
+    /***
+     * Value getter/setter for $(D JSON_TYPE.INTEGER).
+     * Throws: $(D JSONException) for read access if $(D type) is not
+     * $(D JSON_TYPE.INTEGER).
+     */
     @property inout(long) integer() inout pure @safe
     {
         enforce!JSONException(type == JSON_TYPE.INTEGER,
@@ -172,9 +178,11 @@ struct JSONValue
         return store.integer;
     }
 
-    /// Value getter/setter for $(D JSON_TYPE.UINTEGER).
-    /// Throws: $(D JSONException) for read access if $(D type) is not
-    /// $(D JSON_TYPE.UINTEGER).
+    /***
+     * Value getter/setter for $(D JSON_TYPE.UINTEGER).
+     * Throws: $(D JSONException) for read access if $(D type) is not
+     * $(D JSON_TYPE.UINTEGER).
+     */
     @property inout(ulong) uinteger() inout pure @safe
     {
         enforce!JSONException(type == JSON_TYPE.UINTEGER,
@@ -188,10 +196,12 @@ struct JSONValue
         return store.uinteger;
     }
 
-    /// Value getter/setter for $(D JSON_TYPE.FLOAT). Note that despite
-    /// the name, this is a $(B 64)-bit `double`, not a 32-bit `float`.
-    /// Throws: $(D JSONException) for read access if $(D type) is not
-    /// $(D JSON_TYPE.FLOAT).
+    /***
+     * Value getter/setter for $(D JSON_TYPE.FLOAT). Note that despite
+     * the name, this is a $(B 64)-bit `double`, not a 32-bit `float`.
+     * Throws: $(D JSONException) for read access if $(D type) is not
+     * $(D JSON_TYPE.FLOAT).
+     */
     @property inout(double) floating() inout pure @safe
     {
         enforce!JSONException(type == JSON_TYPE.FLOAT,
@@ -205,10 +215,11 @@ struct JSONValue
         return store.floating;
     }
 
-    /// Value getter/setter for $(D JSON_TYPE.OBJECT).
-    /// Throws: $(D JSONException) for read access if $(D type) is not
-    /// $(D JSON_TYPE.OBJECT).
-    /* Note: this is @system because of the following pattern:
+    /***
+     * Value getter/setter for $(D JSON_TYPE.OBJECT).
+     * Throws: $(D JSONException) for read access if $(D type) is not
+     * $(D JSON_TYPE.OBJECT).
+     * Note: this is @system because of the following pattern:
        ---
        auto a = &(json.object());
        json.uinteger = 0;        // overwrite AA pointer
@@ -228,19 +239,21 @@ struct JSONValue
         return v;
     }
 
-    /// Value getter for $(D JSON_TYPE.OBJECT).
-    /// Unlike $(D object), this retrieves the object by value and can be used in @safe code.
-    ///
-    /// A caveat is that, if the returned value is null, modifications will not be visible:
-    /// ---
-    /// JSONValue json;
-    /// json.object = null;
-    /// json.objectNoRef["hello"] = JSONValue("world");
-    /// assert("hello" !in json.object);
-    /// ---
-    ///
-    /// Throws: $(D JSONException) for read access if $(D type) is not
-    /// $(D JSON_TYPE.OBJECT).
+    /***
+     * Value getter for $(D JSON_TYPE.OBJECT).
+     * Unlike $(D object), this retrieves the object by value and can be used in @safe code.
+     *
+     * A caveat is that, if the returned value is null, modifications will not be visible:
+     * ---
+     * JSONValue json;
+     * json.object = null;
+     * json.objectNoRef["hello"] = JSONValue("world");
+     * assert("hello" !in json.object);
+     * ---
+     *
+     * Throws: $(D JSONException) for read access if $(D type) is not
+     * $(D JSON_TYPE.OBJECT).
+     */
     @property inout(JSONValue[string]) objectNoRef() inout pure @trusted
     {
         enforce!JSONException(type == JSON_TYPE.OBJECT,
@@ -248,10 +261,11 @@ struct JSONValue
         return store.object;
     }
 
-    /// Value getter/setter for $(D JSON_TYPE.ARRAY).
-    /// Throws: $(D JSONException) for read access if $(D type) is not
-    /// $(D JSON_TYPE.ARRAY).
-    /* Note: this is @system because of the following pattern:
+    /***
+     * Value getter/setter for $(D JSON_TYPE.ARRAY).
+     * Throws: $(D JSONException) for read access if $(D type) is not
+     * $(D JSON_TYPE.ARRAY).
+     * Note: this is @system because of the following pattern:
        ---
        auto a = &(json.array());
        json.uinteger = 0;  // overwrite array pointer
@@ -271,20 +285,22 @@ struct JSONValue
         return v;
     }
 
-    /// Value getter for $(D JSON_TYPE.ARRAY).
-    /// Unlike $(D array), this retrieves the array by value and can be used in @safe code.
-    ///
-    /// A caveat is that, if you append to the returned array, the new values aren't visible in the
-    /// JSONValue:
-    /// ---
-    /// JSONValue json;
-    /// json.array = [JSONValue("hello")];
-    /// json.arrayNoRef ~= JSONValue("world");
-    /// assert(json.array.length == 1);
-    /// ---
-    ///
-    /// Throws: $(D JSONException) for read access if $(D type) is not
-    /// $(D JSON_TYPE.ARRAY).
+    /***
+     * Value getter for $(D JSON_TYPE.ARRAY).
+     * Unlike $(D array), this retrieves the array by value and can be used in @safe code.
+     *
+     * A caveat is that, if you append to the returned array, the new values aren't visible in the
+     * JSONValue:
+     * ---
+     * JSONValue json;
+     * json.array = [JSONValue("hello")];
+     * json.arrayNoRef ~= JSONValue("world");
+     * assert(json.array.length == 1);
+     * ---
+     *
+     * Throws: $(D JSONException) for read access if $(D type) is not
+     * $(D JSON_TYPE.ARRAY).
+     */
     @property inout(JSONValue[]) arrayNoRef() inout pure @trusted
     {
         enforce!JSONException(type == JSON_TYPE.ARRAY,
@@ -409,7 +425,7 @@ struct JSONValue
      * $(D long), $(D double), an associative array $(D V[K]) for any $(D V)
      * and $(D K) i.e. a JSON object, any array or $(D bool). The type will
      * be set accordingly.
-    */
+     */
     this(T)(T arg) if (!isStaticArray!T)
     {
         assign(arg);
@@ -448,8 +464,10 @@ struct JSONValue
         assignRef(arg);
     }
 
-    /// Array syntax for json arrays.
-    /// Throws: $(D JSONException) if $(D type) is not $(D JSON_TYPE.ARRAY).
+    /***
+     * Array syntax for json arrays.
+     * Throws: $(D JSONException) if $(D type) is not $(D JSON_TYPE.ARRAY).
+     */
     ref inout(JSONValue) opIndex(size_t i) inout pure @safe
     {
         auto a = this.arrayNoRef;
@@ -465,8 +483,10 @@ struct JSONValue
         assert( j[1].integer == 43 );
     }
 
-    /// Hash syntax for json objects.
-    /// Throws: $(D JSONException) if $(D type) is not $(D JSON_TYPE.OBJECT).
+    /***
+     * Hash syntax for json objects.
+     * Throws: $(D JSONException) if $(D type) is not $(D JSON_TYPE.OBJECT).
+     */
     ref inout(JSONValue) opIndex(string k) inout pure @safe
     {
         auto o = this.objectNoRef;
@@ -480,13 +500,15 @@ struct JSONValue
         assert( j["language"].str == "D" );
     }
 
-    /// Operator sets $(D value) for element of JSON object by $(D key).
-    ///
-    /// If JSON value is null, then operator initializes it with object and then
-    /// sets $(D value) for it.
-    ///
-    /// Throws: $(D JSONException) if $(D type) is not $(D JSON_TYPE.OBJECT)
-    /// or $(D JSON_TYPE.NULL).
+    /***
+     * Operator sets $(D value) for element of JSON object by $(D key).
+     *
+     * If JSON value is null, then operator initializes it with object and then
+     * sets $(D value) for it.
+     *
+     * Throws: $(D JSONException) if $(D type) is not $(D JSON_TYPE.OBJECT)
+     * or $(D JSON_TYPE.NULL).
+     */
     void opIndexAssign(T)(auto ref T value, string key) pure
     {
         enforceEx!JSONException(type == JSON_TYPE.OBJECT || type == JSON_TYPE.NULL,
@@ -647,18 +669,22 @@ struct JSONValue
         return result;
     }
 
-    /// Implicitly calls $(D toJSON) on this JSONValue.
-    ///
-    /// $(I options) can be used to tweak the conversion behavior.
+    /***
+     * Implicitly calls $(D toJSON) on this JSONValue.
+     *
+     * $(I options) can be used to tweak the conversion behavior.
+     */
     string toString(in JSONOptions options = JSONOptions.none) const @safe
     {
         return toJSON(this, false, options);
     }
 
-    /// Implicitly calls $(D toJSON) on this JSONValue, like $(D toString), but
-    /// also passes $(I true) as $(I pretty) argument.
-    ///
-    /// $(I options) can be used to tweak the conversion behavior
+    /***
+     * Implicitly calls $(D toJSON) on this JSONValue, like $(D toString), but
+     * also passes $(I true) as $(I pretty) argument.
+     *
+     * $(I options) can be used to tweak the conversion behavior
+     */
     string toPrettyString(in JSONOptions options = JSONOptions.none) const @safe
     {
         return toJSON(this, true, options);
@@ -674,18 +700,24 @@ Params:
     options = enable decoding string representations of NaN/Inf as float values
 */
 JSONValue parseJSON(T)(T json, int maxDepth = -1, JSONOptions options = JSONOptions.none)
-if (isInputRange!T)
+if (isInputRange!T && !isInfinite!T && isSomeChar!(ElementEncodingType!T))
 {
     import std.ascii : isWhite, isDigit, isHexDigit, toUpper, toLower;
-    import std.utf : toUTF8;
-
+    import std.typecons : Yes;
     JSONValue root;
     root.type_tag = JSON_TYPE.NULL;
+
+    // Avoid UTF decoding when possible, as it is unnecessary when
+    // processing JSON.
+    static if (is(T : const(char)[]))
+        alias Char = char;
+    else
+        alias Char = Unqual!(ElementType!T);
 
     if (json.empty) return root;
 
     int depth = -1;
-    dchar next = 0;
+    Char next = 0;
     int line = 1, pos = 0;
 
     void error(string msg)
@@ -693,11 +725,19 @@ if (isInputRange!T)
         throw new JSONException(msg, line, pos);
     }
 
-    dchar popChar()
+    Char popChar()
     {
         if (json.empty) error("Unexpected end of data.");
-        dchar c = json.front;
-        json.popFront();
+        static if (is(T : const(char)[]))
+        {
+            Char c = json[0];
+            json = json[1..$];
+        }
+        else
+        {
+            Char c = json.front;
+            json.popFront();
+        }
 
         if (c == '\n')
         {
@@ -712,7 +752,7 @@ if (isInputRange!T)
         return c;
     }
 
-    dchar peekChar()
+    Char peekChar()
     {
         if (!next)
         {
@@ -727,11 +767,11 @@ if (isInputRange!T)
         while (isWhite(peekChar())) next = 0;
     }
 
-    dchar getChar(bool SkipWhitespace = false)()
+    Char getChar(bool SkipWhitespace = false)()
     {
         static if (SkipWhitespace) skipWhitespace();
 
-        dchar c;
+        Char c;
         if (next)
         {
             c = next;
@@ -764,8 +804,24 @@ if (isInputRange!T)
         return true;
     }
 
+    wchar parseWChar()
+    {
+        wchar val = 0;
+        foreach_reverse (i; 0 .. 4)
+        {
+            auto hex = toUpper(getChar());
+            if (!isHexDigit(hex)) error("Expecting hex character");
+            val += (isDigit(hex) ? hex - '0' : hex - ('A' - 10)) << (4 * i);
+        }
+        return val;
+    }
+
     string parseString()
     {
+        import std.ascii : isControl;
+        import std.uni : isSurrogateHi, isSurrogateLo;
+        import std.utf : encode, decode;
+
         auto str = appender!string();
 
     Next:
@@ -789,15 +845,30 @@ if (isInputRange!T)
                     case 'r':       str.put('\r');  break;
                     case 't':       str.put('\t');  break;
                     case 'u':
-                        dchar val = 0;
-                        foreach_reverse (i; 0 .. 4)
+                        wchar wc = parseWChar();
+                        dchar val;
+                        // Non-BMP characters are escaped as a pair of
+                        // UTF-16 surrogate characters (see RFC 4627).
+                        if (isSurrogateHi(wc))
                         {
-                            auto hex = toUpper(getChar());
-                            if (!isHexDigit(hex)) error("Expecting hex character");
-                            val += (isDigit(hex) ? hex - '0' : hex - ('A' - 10)) << (4 * i);
+                            wchar[2] pair;
+                            pair[0] = wc;
+                            if (getChar() != '\\') error("Expected escaped low surrogate after escaped high surrogate");
+                            if (getChar() != 'u') error("Expected escaped low surrogate after escaped high surrogate");
+                            pair[1] = parseWChar();
+                            size_t index = 0;
+                            val = decode(pair[], index);
+                            if (index != 2) error("Invalid escaped surrogate pair");
                         }
+                        else
+                        if (isSurrogateLo(wc))
+                            error(text("Unexpected low surrogate"));
+                        else
+                            val = wc;
+
                         char[4] buf;
-                        str.put(toUTF8(buf, val));
+                        immutable len = encode!(Yes.useReplacementDchar)(buf, val);
+                        str.put(buf[0 .. len]);
                         break;
 
                     default:
@@ -806,8 +877,12 @@ if (isInputRange!T)
                 goto Next;
 
             default:
+                // RFC 7159 states that control characters U+0000 through
+                // U+001F must not appear unescaped in a JSON string.
                 auto c = getChar();
-                appendJSONChar(str, c, options, &error);
+                if (isControl(c))
+                    error("Illegal control character.");
+                str.put(c);
                 goto Next;
         }
 
@@ -1042,7 +1117,7 @@ Params:
     options = enable decoding string representations of NaN/Inf as float values
 */
 JSONValue parseJSON(T)(T json, JSONOptions options)
-if (isInputRange!T)
+if (isInputRange!T && !isInfinite!T && isSomeChar!(ElementEncodingType!T))
 {
     return parseJSON!T(json, -1, options);
 }
@@ -1062,17 +1137,17 @@ Any Object types will be serialized in a key-sorted order.
 
 If $(D pretty) is false no whitespaces are generated.
 If $(D pretty) is true serialized string is formatted to be human-readable.
-Set the $(specialFloatLiterals) flag is set in $(D options) to encode NaN/Infinity as strings.
+Set the $(LREF JSONOptions.specialFloatLiterals) flag is set in $(D options) to encode NaN/Infinity as strings.
 */
 string toJSON(const ref JSONValue root, in bool pretty = false, in JSONOptions options = JSONOptions.none) @safe
 {
     auto json = appender!string();
 
-    void toString(string str) @safe
+    void toStringImpl(Char)(string str) @safe
     {
         json.put('"');
 
-        foreach (dchar c; str)
+        foreach (Char c; str)
         {
             switch (c)
             {
@@ -1085,12 +1160,52 @@ string toJSON(const ref JSONValue root, in bool pretty = false, in JSONOptions o
                 case '\r':      json.put("\\r");        break;
                 case '\t':      json.put("\\t");        break;
                 default:
-                    appendJSONChar(json, c, options,
-                                   (msg) { throw new JSONException(msg); });
+                {
+                    import std.ascii : isControl;
+                    import std.utf : encode;
+
+                    // Make sure we do UTF decoding iff we want to
+                    // escape Unicode characters.
+                    assert(((options & JSONOptions.escapeNonAsciiChars) != 0)
+                        == is(Char == dchar));
+
+                    with (JSONOptions) if (isControl(c) ||
+                        ((options & escapeNonAsciiChars) >= escapeNonAsciiChars && c >= 0x80))
+                    {
+                        // Ensure non-BMP characters are encoded as a pair
+                        // of UTF-16 surrogate characters, as per RFC 4627.
+                        wchar[2] wchars; // 1 or 2 UTF-16 code units
+                        size_t wNum = encode(wchars, c); // number of UTF-16 code units
+                        foreach (wc; wchars[0 .. wNum])
+                        {
+                            json.put("\\u");
+                            foreach_reverse (i; 0 .. 4)
+                            {
+                                char ch = (wc >>> (4 * i)) & 0x0f;
+                                ch += ch < 10 ? '0' : 'A' - 10;
+                                json.put(ch);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        json.put(c);
+                    }
+                }
             }
         }
 
         json.put('"');
+    }
+
+    void toString(string str) @safe
+    {
+        // Avoid UTF decoding when possible, as it is unnecessary when
+        // processing JSON.
+        if (options & JSONOptions.escapeNonAsciiChars)
+            toStringImpl!dchar(str);
+        else
+            toStringImpl!char(str);
     }
 
     void toValue(ref in JSONValue value, ulong indentLevel) @safe
@@ -1253,28 +1368,6 @@ string toJSON(const ref JSONValue root, in bool pretty = false, in JSONOptions o
     return json.data;
 }
 
-private void appendJSONChar(ref Appender!string dst, dchar c, JSONOptions opts,
-                            scope void delegate(string) error) @safe
-{
-    import std.uni : isControl;
-
-    with (JSONOptions) if (isControl(c) ||
-        ((opts & escapeNonAsciiChars) >= escapeNonAsciiChars && c >= 0x80))
-    {
-        dst.put("\\u");
-        foreach_reverse (i; 0 .. 4)
-        {
-            char ch = (c >>> (4 * i)) & 0x0f;
-            ch += ch < 10 ? '0' : 'A' - 10;
-            dst.put(ch);
-        }
-    }
-    else
-    {
-        dst.put(c);
-    }
-}
-
 @safe unittest // bugzilla 12897
 {
     JSONValue jv0 = JSONValue("test测试");
@@ -1327,7 +1420,7 @@ class JSONException : Exception
     assert(jv.type == JSON_TYPE.INTEGER);
     assertNotThrown(jv.integer);
 
-    jv = cast(uint)3;
+    jv = cast(uint) 3;
     assert(jv.type == JSON_TYPE.UINTEGER);
     assertNotThrown(jv.uinteger);
 
@@ -1433,12 +1526,12 @@ class JSONException : Exception
     // Adding new json element via array() / object() directly
 
     JSONValue jarr = JSONValue([10]);
-    foreach (i; 0..9)
+    foreach (i; 0 .. 9)
         jarr.array ~= JSONValue(i);
     assert(jarr.array.length == 10);
 
     JSONValue jobj = JSONValue(["key" : JSONValue("value")]);
-    foreach (i; 0..9)
+    foreach (i; 0 .. 9)
         jobj.object[text("key", i)] = JSONValue(text("value", i));
     assert(jobj.object.length == 10);
 }
@@ -1448,12 +1541,12 @@ class JSONException : Exception
     // Adding new json element without array() / object() access
 
     JSONValue jarr = JSONValue([10]);
-    foreach (i; 0..9)
+    foreach (i; 0 .. 9)
         jarr ~= [JSONValue(i)];
     assert(jarr.array.length == 10);
 
     JSONValue jobj = JSONValue(["key" : JSONValue("value")]);
-    foreach (i; 0..9)
+    foreach (i; 0 .. 9)
         jobj[text("key", i)] = JSONValue(text("value", i));
     assert(jobj.object.length == 10);
 
@@ -1609,8 +1702,8 @@ EOF";
 // handling of special float values (NaN, Inf, -Inf)
 @safe unittest
 {
-    import std.math : isNaN, isInfinity;
     import std.exception : assertThrown;
+    import std.math : isNaN, isInfinity;
 
     // expected representations of NaN and Inf
     enum {
@@ -1678,12 +1771,14 @@ pure nothrow @safe unittest // issue 15884
 
 @safe unittest // issue 15885
 {
+    enum bool realInDoublePrecision = real.mant_dig == double.mant_dig;
+
     static bool test(const double num0)
     {
         import std.math : feqrel;
         const json0 = JSONValue(num0);
         const num1 = to!double(toJSON(json0));
-        version(Win32)
+        static if (realInDoublePrecision)
             return feqrel(num1, num0) >= (double.mant_dig - 1);
         else
             return num1 == num0;
@@ -1697,10 +1792,53 @@ pure nothrow @safe unittest // issue 15884
     assert(test(30738.22));
 
     assert(test(1 + double.epsilon));
-    assert(test(-double.max));
     assert(test(double.min_normal));
+    static if (realInDoublePrecision)
+        assert(test(-double.max / 2));
+    else
+        assert(test(-double.max));
 
     const minSub = double.min_normal * double.epsilon;
     assert(test(minSub));
     assert(test(3*minSub));
+}
+
+@safe unittest // issue 17555
+{
+    import std.exception : assertThrown;
+
+    assertThrown!JSONException(parseJSON("\"a\nb\""));
+}
+
+@safe unittest // issue 17556
+{
+    auto v = JSONValue("\U0001D11E");
+    auto j = toJSON(v, false, JSONOptions.escapeNonAsciiChars);
+    assert(j == `"\uD834\uDD1E"`);
+}
+
+@safe unittest // issue 5904
+{
+    string s = `"\uD834\uDD1E"`;
+    auto j = parseJSON(s);
+    assert(j.str == "\U0001D11E");
+}
+
+@safe unittest // issue 17557
+{
+    assert(parseJSON("\"\xFF\"").str == "\xFF");
+    assert(parseJSON("\"\U0001D11E\"").str == "\U0001D11E");
+}
+
+@safe unittest // issue 17553
+{
+    auto v = JSONValue("\xFF");
+    assert(toJSON(v) == "\"\xFF\"");
+}
+
+@safe unittest
+{
+    import std.utf;
+    assert(parseJSON("\"\xFF\"".byChar).str == "\xFF");
+    assert(parseJSON("\"\U0001D11E\"".byChar).str == "\U0001D11E");
 }

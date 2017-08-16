@@ -119,14 +119,7 @@ public:
     if (d->semanticRun >= PASSobj)
       return;
 
-    /* Set input location, empty DECL_SOURCE_FILE can crash debug generator.  */
-    if (d->loc.filename)
-      input_location = get_linemap (d->loc);
-    else
-      input_location = get_linemap (Loc ("<no_file>", 1, 0));
-
     build_module_tree (d);
-
     d->semanticRun = PASSobj;
   }
 
@@ -140,8 +133,6 @@ public:
        this is a renamed import.  */
     if (d->isstatic)
       return;
-
-    input_location = get_linemap (d->loc);
 
     /* Get the context of this import, this should never be null.  */
     tree context = d_module_context ();
@@ -773,7 +764,6 @@ public:
 
     DECL_ARGUMENTS (fndecl) = param_list;
     rest_of_decl_compilation (fndecl, 1, 0);
-    input_location = get_linemap (d->loc);
 
     /* If this is a member function that nested (possibly indirectly) in another
        function, construct an expession for this member function's static chain
@@ -878,8 +868,18 @@ public:
 void
 build_decl_tree (Dsymbol *d)
 {
+  location_t saved_location = input_location;
+
+  /* Set input location, empty DECL_SOURCE_FILE can crash debug generator.  */
+  if (d->loc.filename)
+    input_location = get_linemap (d->loc);
+  else
+    input_location = get_linemap (Loc ("<no_file>", 1, 0));
+
   DeclVisitor v = DeclVisitor ();
   d->accept (&v);
+
+  input_location = saved_location;
 }
 
 /* Return the decl for the symbol, create it if it doesn't already exist.  */
@@ -1276,7 +1276,6 @@ declare_local_var (VarDeclaration *var)
 
   gcc_assert (!TREE_STATIC (decl));
 
-  input_location = get_linemap (var->loc);
   d_pushdecl (decl);
   DECL_CONTEXT (decl) = current_function_decl;
 
