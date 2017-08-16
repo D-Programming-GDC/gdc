@@ -1383,6 +1383,19 @@ build_boolop (tree_code code, tree arg0, tree arg1)
   if (AGGREGATE_TYPE_P (TREE_TYPE (arg1)))
     arg1 = d_save_expr (arg1);
 
+  if (VECTOR_TYPE_P (TREE_TYPE (arg0)) && VECTOR_TYPE_P (TREE_TYPE (arg1)))
+    {
+      /* Build a vector comparison.
+	 VEC_COND_EXPR <e1 op e2, { -1, -1, -1, -1 }, { 0, 0, 0, 0 }>; */
+      tree type = TREE_TYPE (arg0);
+      tree cmptype = build_same_sized_truth_vector_type (type);
+      tree cmp = fold_build2_loc (input_location, code, cmptype, arg0, arg1);
+
+      return fold_build3_loc (input_location, VEC_COND_EXPR, type, cmp,
+			      build_minus_one_cst (type),
+			      build_zero_cst (type));
+    }
+
   return fold_build2_loc (input_location, code, bool_type_node,
 			  arg0, d_convert (TREE_TYPE (arg0), arg1));
 }

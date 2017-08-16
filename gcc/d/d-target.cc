@@ -22,6 +22,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dfrontend/aggregate.h"
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
+#include "dfrontend/tokens.h"
 #include "dfrontend/target.h"
 
 #include "tree.h"
@@ -347,7 +348,7 @@ Target::loadModule (Module *m)
    (in bytes) and element type TYPE.  */
 
 int
-Target::checkVectorType (int sz, Type *type)
+Target::isVectorTypeSupported (int sz, Type *type)
 {
   /* Size must be greater than zero, and a power of two.  */
   if (sz <= 0 || sz & (sz - 1))
@@ -370,6 +371,66 @@ Target::checkVectorType (int sz, Type *type)
     return 3;
 
   return 0;
+}
+
+/* Checks whether the target supports operation OP for vectors of type TYPE.
+   For binary ops T2 is the type of the right-hand operand.
+   Returns true if the operation is supported or type is not a vector.  */
+
+bool
+Target::isVectorOpSupported (Type *type, TOK op, Type *)
+{
+  if (type->ty != Tvector)
+    return true;
+
+  /* Don't support if type is non-scalar, such as __vector(void[]).  */
+  if (!type->isscalar())
+    return false;
+
+  /* Don't support if expression cannot be represented.  */
+  switch (op)
+    {
+    case TOKpow:
+    case TOKpowass:
+      /* pow() is lowered as a function call.  */
+      return false;
+
+    case TOKmod:
+    case TOKmodass:
+      /* fmod() is lowered as a function call.  */
+      if (type->isfloating())
+	return false;
+      break;
+
+    case TOKandand:
+    case TOKoror:
+      /* Logical operators must have a result type of bool.  */
+      return false;
+
+    case TOKue:
+    case TOKlg:
+    case TOKule:
+    case TOKul:
+    case TOKuge:
+    case TOKug:
+    case TOKle:
+    case TOKlt:
+    case TOKge:
+    case TOKgt:
+    case TOKleg:
+    case TOKunord:
+    case TOKequal:
+    case TOKnotequal:
+    case TOKidentity:
+    case TOKnotidentity:
+      /* Comparison operators must have a result type of bool.  */
+      return false;
+
+    default:
+      break;
+    }
+
+  return true;
 }
 
 /* Apply any target-specific prefixes based on the given linkage.  */
