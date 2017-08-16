@@ -99,6 +99,9 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
       openbsd*)
                druntime_target_os_parsed="openbsd"
                ;;
+      netbsd*)
+               druntime_target_os_parsed="netbsd"
+               ;;
       linux*)  druntime_target_os_parsed="linux"
                ;;
       mingw*)  druntime_target_os_parsed="mingw"
@@ -109,6 +112,7 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
   AM_CONDITIONAL([DRUNTIME_OS_ANDROID], [test "$druntime_target_os_parsed" = "android"])
   AM_CONDITIONAL([DRUNTIME_OS_DARWIN], [test "$druntime_target_os_parsed" = "darwin"])
   AM_CONDITIONAL([DRUNTIME_OS_FREEBSD], [test "$druntime_target_os_parsed" = "freebsd"])
+  AM_CONDITIONAL([DRUNTIME_OS_NETBSD], [test "$druntime_target_os_parsed" = "netbsd"])
   AM_CONDITIONAL([DRUNTIME_OS_OPENBSD], [test "$druntime_target_os_parsed" = "openbsd"])
   AM_CONDITIONAL([DRUNTIME_OS_LINUX], [test "$druntime_target_os_parsed" = "linux"])
   AM_CONDITIONAL([DRUNTIME_OS_MINGW], [test "$druntime_target_os_parsed" = "mingw"])
