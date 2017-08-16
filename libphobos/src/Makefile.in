@@ -173,7 +173,7 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/experimental/allocator/package.lo \
 	std/experimental/allocator/showcase.lo \
 	std/experimental/allocator/typed.lo \
-	std/experimental/logger/core.lo \
+	std/experimental/checkedint.lo std/experimental/logger/core.lo \
 	std/experimental/logger/filelogger.lo \
 	std/experimental/logger/multilogger.lo \
 	std/experimental/logger/nulllogger.lo \
@@ -587,8 +587,8 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/experimental/allocator/mmap_allocator.d \
 	std/experimental/allocator/package.d \
 	std/experimental/allocator/showcase.d \
-	std/experimental/allocator/typed.d std/experimental/logger/core.d \
-	std/experimental/logger/filelogger.d \
+	std/experimental/allocator/typed.d std/experimental/checkedint.d \
+	std/experimental/logger/core.d std/experimental/logger/filelogger.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
 	std/experimental/typecons.d std/file.d std/format.d std/functional.d \
@@ -811,6 +811,10 @@ std/experimental/allocator/showcase.lo:  \
 	std/experimental/allocator/$(am__dirstamp)
 std/experimental/allocator/typed.lo:  \
 	std/experimental/allocator/$(am__dirstamp)
+std/experimental/$(am__dirstamp):
+	@$(MKDIR_P) std/experimental
+	@: > std/experimental/$(am__dirstamp)
+std/experimental/checkedint.lo: std/experimental/$(am__dirstamp)
 std/experimental/logger/$(am__dirstamp):
 	@$(MKDIR_P) std/experimental/logger
 	@: > std/experimental/logger/$(am__dirstamp)
@@ -824,9 +828,6 @@ std/experimental/logger/nulllogger.lo:  \
 	std/experimental/logger/$(am__dirstamp)
 std/experimental/logger/package.lo:  \
 	std/experimental/logger/$(am__dirstamp)
-std/experimental/$(am__dirstamp):
-	@$(MKDIR_P) std/experimental
-	@: > std/experimental/$(am__dirstamp)
 std/experimental/typecons.lo: std/experimental/$(am__dirstamp)
 std/file.lo: std/$(am__dirstamp)
 std/format.lo: std/$(am__dirstamp)
@@ -1163,6 +1164,8 @@ mostlyclean-compile:
 	-rm -f std/experimental/allocator/showcase.lo
 	-rm -f std/experimental/allocator/typed.$(OBJEXT)
 	-rm -f std/experimental/allocator/typed.lo
+	-rm -f std/experimental/checkedint.$(OBJEXT)
+	-rm -f std/experimental/checkedint.lo
 	-rm -f std/experimental/logger/core.$(OBJEXT)
 	-rm -f std/experimental/logger/core.lo
 	-rm -f std/experimental/logger/filelogger.$(OBJEXT)
