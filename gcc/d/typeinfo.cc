@@ -1134,7 +1134,6 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 {
   tree type = tinfo_types[TK_CLASSINFO_TYPE];
   size_t structsize = int_size_in_bytes (type);
-  input_location = get_linemap (decl->loc);
 
   if (decl->vtblInterfaces->dim)
     {

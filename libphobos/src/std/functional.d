@@ -15,7 +15,7 @@ $(TR $(TH Function Name) $(TH Description)
         $(TD Joins a couple of functions into one that executes the original
         functions independently and returns a tuple with all the results.
     ))
-    $(TR $(TD $(LREF compose)), $(LREF pipe)
+    $(TR $(TD $(LREF compose), $(LREF pipe))
         $(TD Join a couple of functions into one that executes the original
         functions one after the other, using one function's result for the next
         function's argument.
@@ -23,7 +23,7 @@ $(TR $(TH Function Name) $(TH Description)
     $(TR $(TD $(LREF forward))
         $(TD Forwards function arguments while saving ref-ness.
     ))
-    $(TR $(TD $(LREF lessThan)), $(LREF greaterThan)), $(D $(LREF equalTo)
+    $(TR $(TD $(LREF lessThan), $(LREF greaterThan), $(LREF equalTo))
         $(TD Ready-made predicate functions to compare two values.
     ))
     $(TR $(TD $(LREF memoize))
@@ -36,13 +36,13 @@ $(TR $(TH Function Name) $(TH Description)
         $(TD Creates a function that binds the first argument of a given function
         to a given value.
     ))
-    $(TR $(TD $(LREF reverseArgs)), $(LREF binaryReverseArgs)
+    $(TR $(TD $(LREF reverseArgs), $(LREF binaryReverseArgs))
         $(TD Predicate that reverses the order of its arguments.
     ))
     $(TR $(TD $(LREF toDelegate))
         $(TD Converts a callable to a delegate.
     ))
-    $(TR $(TD $(LREF unaryFun)), $(LREF binaryFun)
+    $(TR $(TD $(LREF unaryFun), $(LREF binaryFun))
         $(TD Create a unary or binary function from a string. Most often
         used when defining algorithms on ranges.
     ))
@@ -105,8 +105,8 @@ template unaryFun(alias fun, string parmName = "a")
     {
         static if (!fun._ctfeMatchUnary(parmName))
         {
-            import std.traits, std.typecons, std.meta;
             import std.algorithm, std.conv, std.exception, std.math, std.range, std.string;
+            import std.meta, std.traits, std.typecons;
         }
         auto unaryFun(ElementType)(auto ref ElementType __a)
         {
@@ -190,8 +190,8 @@ template binaryFun(alias fun, string parm1Name = "a",
     {
         static if (!fun._ctfeMatchBinary(parm1Name, parm2Name))
         {
-            import std.traits, std.typecons, std.meta;
             import std.algorithm, std.conv, std.exception, std.math, std.range, std.string;
+            import std.meta, std.traits, std.typecons;
         }
         auto binaryFun(ElementType1, ElementType2)
             (auto ref ElementType1 __a, auto ref ElementType2 __b)

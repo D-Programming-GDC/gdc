@@ -11,7 +11,6 @@ $(TR $(TH Category) $(TH Functions) )
 $(TR $(TDNW Searching)
     $(TD
          $(MYREF column)
-         $(MYREF inPattern)
          $(MYREF indexOf)
          $(MYREF indexOfAny)
          $(MYREF indexOfNeither)
@@ -22,16 +21,12 @@ $(TR $(TDNW Searching)
 )
 $(TR $(TDNW Comparison)
     $(TD
-         $(MYREF countchars)
          $(MYREF isNumeric)
     )
 )
 $(TR $(TDNW Mutation)
     $(TD
          $(MYREF capitalize)
-         $(MYREF munch)
-         $(MYREF removechars)
-         $(MYREF squeeze)
     )
 )
 $(TR $(TDNW Pruning and Filling)
@@ -185,9 +180,9 @@ private:
     }
 }
 
-public import std.uni : icmp, toLower, toLowerInPlace, toUpper, toUpperInPlace;
 public import std.format : format, sformat;
 import std.typecons : Flag, Yes, No;
+public import std.uni : icmp, toLower, toLowerInPlace, toUpper, toUpperInPlace;
 
 import std.meta; // AliasSeq, staticIndexOf
 import std.range.primitives; // back, ElementEncodingType, ElementType, front,
@@ -1551,7 +1546,7 @@ if (isSomeChar!Char && isSomeChar!Char2)
 }
 
 /**
-    Returns the index of the first occurence of any of the elements in $(D
+    Returns the index of the first occurrence of any of the elements in $(D
     needles) in $(D haystack). If no element of $(D needles) is found,
     then $(D -1) is returned. The $(D startIdx) slices $(D haystack) in the
     following way $(D haystack[startIdx .. $]). $(D startIdx) represents a
@@ -1722,7 +1717,7 @@ if (isSomeChar!Char && isSomeChar!Char2)
 }
 
 /**
-    Returns the index of the last occurence of any of the elements in $(D
+    Returns the index of the last occurrence of any of the elements in $(D
     needles) in $(D haystack). If no element of $(D needles) is found,
     then $(D -1) is returned. The $(D stopIdx) slices $(D haystack) in the
     following way $(D s[0 .. stopIdx]). $(D stopIdx) represents a codeunit
@@ -1909,7 +1904,7 @@ if (isSomeChar!Char && isSomeChar!Char2)
 }
 
 /**
-    Returns the index of the first occurence of any character not an elements
+    Returns the index of the first occurrence of any character not an elements
     in $(D needles) in $(D haystack). If all element of $(D haystack) are
     element of $(D needles) $(D -1) is returned.
 
@@ -2309,8 +2304,8 @@ S capitalize(S)(S input) @trusted pure
 if (isSomeString!S)
 {
     import std.array : array;
-    import std.utf : byUTF;
     import std.uni : asCapitalized;
+    import std.utf : byUTF;
 
     return input.asCapitalized.byUTF!(ElementEncodingType!(S)).array;
 }
@@ -5230,8 +5225,13 @@ body
     assert(buffer.data == "h5 rd");
 }
 
-
+//@@@DEPRECATED_2018-05@@@
 /***********************************************
+ * $(RED This function is deprecated and will be removed May 2018.)
+ * Please use the functions in $(MREF std, regex) and $(MREF std, algorithm)
+ * instead. If you still need this function, it will be available in
+ * $(LINK2 https://github.com/dlang/undeaD, undeaD).
+ *
  * See if character c is in the pattern.
  * Patterns:
  *
@@ -5248,7 +5248,7 @@ body
  * Note: In the future, the pattern syntax may be improved
  *  to be more like regular expression character classes.
  */
-
+deprecated("This function is obsolete and will be removed May 2018. See the docs for more details")
 bool inPattern(S)(dchar c, in S pattern) @safe pure @nogc
 if (isSomeString!S)
 {
@@ -5314,11 +5314,16 @@ if (isSomeString!S)
     });
 }
 
-
+//@@@DEPRECATED_2018-05@@@
 /***********************************************
+ * $(RED This function is deprecated and will be removed May 2018.)
+ * Please use the functions in $(MREF std, regex) and $(MREF std, algorithm)
+ * instead. If you still need this function, it will be available in
+ * $(LINK2 https://github.com/dlang/undeaD, undeaD).
+ *
  * See if character c is in the intersection of the patterns.
  */
-
+deprecated("This function is obsolete and will be removed May 2018. See the docs for more details")
 bool inPattern(S)(dchar c, S[] patterns) @safe pure @nogc
 if (isSomeString!S)
 {
@@ -5332,11 +5337,16 @@ if (isSomeString!S)
     return true;
 }
 
-
+//@@@DEPRECATED_2018-05@@@
 /********************************************
+ * $(RED This function is deprecated and will be removed May 2018.)
+ * Please use the functions in $(MREF std, regex) and $(MREF std, algorithm)
+ * instead. If you still need this function, it will be available in
+ * $(LINK2 https://github.com/dlang/undeaD, undeaD).
+ *
  * Count characters in s that match pattern.
  */
-
+deprecated("This function is obsolete and will be removed May 2018. See the docs for more details")
 size_t countchars(S, S1)(S s, in S1 pattern) @safe pure @nogc
 if (isSomeString!S && isSomeString!S1)
 {
@@ -5362,11 +5372,16 @@ if (isSomeString!S && isSomeString!S1)
     });
 }
 
-
+//@@@DEPRECATED_2018-05@@@
 /********************************************
+ * $(RED This function is deprecated and will be removed May 2018.)
+ * Please use the functions in $(MREF std, regex) and $(MREF std, algorithm)
+ * instead. If you still need this function, it will be available in
+ * $(LINK2 https://github.com/dlang/undeaD, undeaD).
+ *
  * Return string that is s with all characters removed that match pattern.
  */
-
+deprecated("This function is obsolete and will be removed May 2018. See the docs for more details")
 S removechars(S)(S s, in S pattern) @safe pure
 if (isSomeString!S)
 {
@@ -5418,13 +5433,18 @@ if (isSomeString!S)
     assert(removechars("abc", "x") == "abc");
 }
 
-
+//@@@DEPRECATED_2018-05@@@
 /***************************************************
+ * $(RED This function is deprecated and will be removed May 2018.)
+ * Please use the functions in $(MREF std, regex) and $(MREF std, algorithm)
+ * instead. If you still need this function, it will be available in
+ * $(LINK2 https://github.com/dlang/undeaD, undeaD).
+ *
  * Return string where sequences of a character in s[] from pattern[]
  * are replaced with a single instance of that character.
  * If pattern is null, it defaults to all characters.
  */
-
+deprecated("This function is obsolete and will be removed May 2018. See the docs for more details")
 S squeeze(S)(S s, in S pattern = null)
 {
     import std.utf : encode, stride;
@@ -5490,7 +5510,13 @@ S squeeze(S)(S s, in S pattern = null)
     });
 }
 
+//@@@DEPRECATED_2018-05@@@
 /***************************************************************
+ $(RED This function is deprecated and will be removed May 2018.)
+ Please use the functions in $(MREF std, regex) and $(MREF std, algorithm)
+ instead. If you still need this function, it will be available in
+ $(LINK2 https://github.com/dlang/undeaD, undeaD).
+
  Finds the position $(D_PARAM pos) of the first character in $(D_PARAM
  s) that does not match $(D_PARAM pattern) (in the terminology used by
  $(REF inPattern, std,string)). Updates $(D_PARAM s =
@@ -5501,6 +5527,7 @@ The $(D_PARAM munch) function is mostly convenient for skipping
 certain category of characters (e.g. whitespace) when parsing
 strings. (In such cases, the return value is not used.)
  */
+deprecated("This function is obsolete and will be removed May 2018. See the docs for more details")
 S1 munch(S1, S2)(ref S1 s, S2 pattern) @safe pure @nogc
 {
     size_t j = s.length;
@@ -5821,8 +5848,8 @@ C1[] tr(C1, C2, C3, C4 = immutable char)
 
 @system pure unittest
 {
-    import std.exception : assertThrown;
     import core.exception : AssertError;
+    import std.exception : assertThrown;
     assertThrown!AssertError(tr("abcdef", "cd", "CD", "X"));
 }
 
@@ -6348,7 +6375,7 @@ body
  *
  * This is useful in cases where the user is expected to type
  * in one of a known set of strings, and the program will helpfully
- * autocomplete the string once sufficient characters have been
+ * auto-complete the string once sufficient characters have been
  * entered that uniquely identify it.
  */
 
@@ -6921,6 +6948,9 @@ return it typed as a UTF string.
 
 $(D ubyte) becomes $(D char), $(D ushort) becomes $(D wchar) and $(D uint)
 becomes $(D dchar). Type qualifiers are preserved.
+
+When compiled with debug mode, this function performs an extra check to make
+sure the return value is a valid Unicode string.
 
 Params:
     arr = array of bytes, ubytes, shorts, ushorts, ints, or uints

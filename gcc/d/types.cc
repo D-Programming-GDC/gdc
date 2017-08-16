@@ -285,7 +285,6 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 	  if (var->isField ())
 	    {
 	      const char *ident = var->ident ? var->ident->toChars () : NULL;
-	      input_location = get_linemap (var->loc);
 	      tree field = create_field_decl (declaration_type (var), ident,
 					      inherited_p, inherited_p);
 	      insert_aggregate_field (context, field, var->offset);
@@ -318,10 +317,10 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 	  tree type = make_node (ad->isunion ? UNION_TYPE : RECORD_TYPE);
 	  ANON_AGGR_TYPE_P (type) = 1;
 	  d_keep (type);
-	  input_location = get_linemap (ad->loc);
 
 	  /* Build the type declaration.  */
-	  tree decl = build_decl (input_location, TYPE_DECL, ident, type);
+	  tree decl = build_decl (get_linemap (ad->loc),
+				  TYPE_DECL, ident, type);
 	  DECL_CONTEXT (decl) = context;
 	  DECL_ARTIFICIAL (decl) = 1;
 
@@ -384,7 +383,6 @@ layout_aggregate_type (AggregateDeclaration *decl, tree type,
 {
   ClassDeclaration *cd = base->isClassDeclaration ();
   bool inherited_p = (decl != base);
-  input_location = get_linemap (decl->loc);
 
   if (cd != NULL)
     {

@@ -183,9 +183,8 @@ public:
   /* Visitor interfaces, each Expression class should have
      overridden the default.  */
 
-  void visit (Expression *e)
+  void visit (Expression *)
   {
-    input_location = get_linemap (e->loc);
     gcc_unreachable ();
   }
 
@@ -229,7 +228,7 @@ public:
 	this->result_ = d_convert (build_ctype (e->type),
 				   build_boolop (code, t1, t2));
       }
-    else if (tb1->isfloating ())
+    else if (tb1->isfloating () && tb1->ty != Tvector)
       {
 	/* For floating point values, identity is defined as the bits in the
 	   operands being identical.  */
@@ -520,27 +519,36 @@ public:
 	result = build_boolop (code, call, integer_zero_node);
 
 	this->result_ = d_convert (build_ctype (e->type), result);
+	return;
       }
-    else
-      {
-	if (!tb1->isfloating () || !tb2->isfloating ())
-	  {
-	    if (code == ORDERED_EXPR)
-	      {
-		this->result_ = convert (bool_type_node, integer_one_node);
-		return;
-	      }
 
-	    if (code == UNORDERED_EXPR)
-	      {
-		this->result_ = convert (bool_type_node, integer_zero_node);
-		return;
-	      }
+    if (!tb1->isfloating () || !tb2->isfloating ())
+      {
+	/* Handle operators that are always true, or always false.  */
+	if (code == ORDERED_EXPR)
+	  {
+	    tree type = build_ctype (e->type);
+	    if (e->type->ty == Tvector)
+	      this->result_ = build_minus_one_cst (type);
+	    else
+	      this->result_ = convert (type, integer_one_node);
+	    return;
 	  }
 
-	result = build_boolop (code, build_expr (e->e1), build_expr (e->e2));
-	this->result_ = d_convert (build_ctype (e->type), result);
+	if (code == UNORDERED_EXPR)
+	  {
+	    tree type = build_ctype (e->type);
+	    if (e->type->ty == Tvector)
+	      this->result_ = build_zero_cst (type);
+	    else
+	      this->result_ = convert (type, integer_zero_node);
+	    return;
+	  }
       }
+
+    /* Simple comparison.  */
+    result = build_boolop (code, build_expr (e->e1), build_expr (e->e2));
+    this->result_ = d_convert (build_ctype (e->type), result);
   }
 
   /* Build an `and if' expression.  If the right operand expression is void,
@@ -3025,8 +3033,12 @@ tree
 build_expr (Expression *e, bool const_p)
 {
   ExprVisitor v = ExprVisitor (const_p);
+  location_t saved_location = input_location;
+
+  input_location = get_linemap (e->loc);
   e->accept (&v);
   tree expr = v.result ();
+  input_location = saved_location;
 
   /* Check if initializer expression is valid constant.  */
   if (const_p && !initializer_constant_valid_p (expr, TREE_TYPE (expr)))

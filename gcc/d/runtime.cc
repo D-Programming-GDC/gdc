@@ -246,7 +246,7 @@ build_libcall_decl (const char *name, libcall_type return_type,
   else
     fntype = build_function_type_array (tret, nparams, args);
 
-  tree decl = build_decl (input_location, FUNCTION_DECL,
+  tree decl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
 			  get_identifier (name), fntype);
   DECL_EXTERNAL (decl) = 1;
   TREE_PUBLIC (decl) = 1;
