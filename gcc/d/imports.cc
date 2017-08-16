@@ -189,8 +189,12 @@ build_import_decl (Dsymbol *d)
 {
   if (!d->isym)
     {
+      location_t saved_location = input_location;
       ImportVisitor v;
+
+      input_location = get_linemap (d->loc);
       d->accept (&v);
+      input_location = saved_location;
     }
 
   /* Not all visitors set 'isym'.  */

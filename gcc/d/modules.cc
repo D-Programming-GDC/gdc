@@ -308,7 +308,7 @@ get_dso_registry_fn (void)
   tree fntype = build_function_type_list (void_type_node,
 					  build_pointer_type (dso_type),
 					  NULL_TREE);
-  dso_registry_fn = build_decl (input_location, FUNCTION_DECL,
+  dso_registry_fn = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
 				get_identifier ("_d_dso_registry"), fntype);
   TREE_PUBLIC (dso_registry_fn) = 1;
   DECL_EXTERNAL (dso_registry_fn) = 1;

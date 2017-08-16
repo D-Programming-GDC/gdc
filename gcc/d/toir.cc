@@ -240,6 +240,17 @@ public:
     this->continue_label_ = NULL_TREE;
   }
 
+  /* Helper for generating code for the statement AST class S.
+     Sets up the location of the statement before lowering.  */
+
+  void build_stmt (Statement *s)
+  {
+    location_t saved_location = input_location;
+    input_location = get_linemap (s->loc);
+    s->accept (this);
+    input_location = saved_location;
+  }
+
   /* Start a new scope for a KIND statement.
      Each user-declared variable will have a binding contour that begins
      where the variable is declared and ends at it's containing scope.  */
@@ -322,11 +333,8 @@ public:
 
   /* Emit a goto expression to LABEL.  */
 
-  void do_jump (Statement *stmt, tree label)
+  void do_jump (tree label)
   {
-    if (stmt)
-      input_location = get_linemap (stmt->loc);
-
     add_stmt (fold_build1 (GOTO_EXPR, void_type_node, label));
     TREE_USED (label) = 1;
   }
@@ -417,7 +425,7 @@ public:
     else
       {
 	tree name = ident ? get_identifier (ident->toChars ()) : NULL_TREE;
-	tree decl = build_decl (input_location, LABEL_DECL,
+	tree decl = build_decl (get_linemap (s->loc), LABEL_DECL,
 				name, void_type_node);
 	DECL_CONTEXT (decl) = current_function_decl;
 	DECL_MODE (decl) = VOIDmode;
@@ -451,7 +459,7 @@ public:
 	TREE_VEC_ELT (vec, bc_break) = ent->label;
 
 	/* Build the continue label.  */
-	tree label = build_decl (input_location, LABEL_DECL,
+	tree label = build_decl (get_linemap (s->loc), LABEL_DECL,
 				 NULL_TREE, void_type_node);
 	DECL_CONTEXT (label) = current_function_decl;
 	DECL_MODE (label) = VOIDmode;
@@ -507,9 +515,8 @@ public:
 
   /* This should be overridden by each statement class.  */
 
-  void visit (Statement *s)
+  void visit (Statement *)
   {
-    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -525,7 +532,6 @@ public:
 
   void visit (IfStatement *s)
   {
-    input_location = get_linemap (s->loc);
     this->start_scope (level_cond);
 
     /* Build the outer 'if' condition, which may produce temporaries
@@ -539,7 +545,7 @@ public:
     if (s->ifbody)
       {
 	push_stmt_list ();
-	s->ifbody->accept (this);
+	this->build_stmt (s->ifbody);
 	ifbody = pop_stmt_list ();
       }
 
@@ -547,12 +553,11 @@ public:
     if (s->elsebody)
       {
 	push_stmt_list ();
-	s->elsebody->accept (this);
+	this->build_stmt (s->elsebody);
 	elsebody = pop_stmt_list ();
       }
 
     /* Wrap up our constructed if condition into a COND_EXPR.  */
-    input_location = get_linemap (s->loc);
     tree cond = build_vcondition (ifcond, ifbody, elsebody);
     add_stmt (cond);
 
@@ -572,9 +577,8 @@ public:
      This visitor is not strictly required other than to enforce that
      these kinds of statements never reach here.  */
 
-  void visit (WhileStatement *s)
+  void visit (WhileStatement *)
   {
-    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -583,20 +587,18 @@ public:
 
   void visit (DoStatement *s)
   {
-    input_location = get_linemap (s->loc);
     tree lbreak = this->push_break_label (s);
 
     this->start_scope (level_loop);
     if (s->_body)
       {
 	tree lcontinue = this->push_continue_label (s);
-	s->_body->accept (this);
+	this->build_stmt (s->_body);
 	this->pop_continue_label (lcontinue);
       }
 
     /* Build the outer 'while' condition, which may produce temporaries
        requiring scope destruction.  */
-    input_location = get_linemap (s->condition->loc);
     tree exitcond = convert_for_condition (build_expr_dtor (s->condition),
 					   s->condition->type);
     add_stmt (build_vcondition (exitcond, void_node,
@@ -604,7 +606,6 @@ public:
     TREE_USED (lbreak) = 1;
 
     tree body = this->end_scope ();
-    input_location = get_linemap (s->loc);
     add_stmt (build1 (LOOP_EXPR, void_type_node, body));
 
     this->pop_break_label (lbreak);
@@ -615,16 +616,14 @@ public:
 
   void visit (ForStatement *s)
   {
-    input_location = get_linemap (s->loc);
     tree lbreak = this->push_break_label (s);
     this->start_scope (level_loop);
 
     if (s->_init)
-      s->_init->accept (this);
+      this->build_stmt (s->_init);
 
     if (s->condition)
       {
-	input_location = get_linemap (s->condition->loc);
 	tree exitcond = convert_for_condition (build_expr_dtor (s->condition),
 					       s->condition->type);
 	add_stmt (build_vcondition (exitcond, void_node,
@@ -636,19 +635,17 @@ public:
     if (s->_body)
       {
 	tree lcontinue = this->push_continue_label (s);
-	s->_body->accept (this);
+	this->build_stmt (s->_body);
 	this->pop_continue_label (lcontinue);
       }
 
     if (s->increment)
       {
 	/* Force side effects?  */
-	input_location = get_linemap (s->increment->loc);
 	add_stmt (build_expr_dtor (s->increment));
       }
 
     tree body = this->end_scope ();
-    input_location = get_linemap (s->loc);
     add_stmt (build1 (LOOP_EXPR, void_type_node, body));
 
     this->pop_break_label (lbreak);
@@ -658,9 +655,8 @@ public:
      This visitor is not strictly required other than to enforce that
      these kinds of statements never reach here.  */
 
-  void visit (ForeachStatement *s)
+  void visit (ForeachStatement *)
   {
-    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -668,9 +664,8 @@ public:
      loops.  This visitor is not strictly required other than to enforce that
      these kinds of statements never reach here.  */
 
-  void visit (ForeachRangeStatement *s)
+  void visit (ForeachRangeStatement *)
   {
-    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -686,10 +681,10 @@ public:
 	LabelStatement *label = this->func_->searchLabel (s->ident)->statement;
 	gcc_assert (label != NULL);
 	Statement *stmt = label->statement->getRelatedLabeled ();
-	this->do_jump (s, this->lookup_bc_label (stmt, bc_break));
+	this->do_jump (this->lookup_bc_label (stmt, bc_break));
       }
     else
-      this->do_jump (s, this->break_label_);
+      this->do_jump (this->break_label_);
   }
 
   /* Jump to the associated continue label for the current loop.  If IDENT
@@ -701,11 +696,11 @@ public:
       {
 	LabelStatement *label = this->func_->searchLabel (s->ident)->statement;
 	gcc_assert (label != NULL);
-	this->do_jump (s, this->lookup_bc_label (label->statement,
-						 bc_continue));
+	this->do_jump (this->lookup_bc_label (label->statement,
+					      bc_continue));
       }
     else
-      this->do_jump (s, this->continue_label_);
+      this->do_jump (this->continue_label_);
   }
 
   /* A goto statement jumps to the statement identified by the given label.  */
@@ -715,13 +710,9 @@ public:
     gcc_assert (s->label->statement != NULL);
     gcc_assert (s->tf == s->label->statement->tf);
 
-    /* This makes the 'undefined label' error show up on the correct line.
-       The extra get_linemap in do_jump shouldn't cause a problem.  */
-    input_location = get_linemap (s->loc);
-
     /* If no label found, there was an error.  */
     tree label = this->lookup_label (s->label->statement, s->label->ident);
-    this->do_jump (s, label);
+    this->do_jump (label);
 
     /* Need to error if the goto is jumping into a try or catch block.  */
     this->check_goto (s, s->label->statement);
@@ -739,8 +730,6 @@ public:
     else
       sym = this->func_->searchLabel (s->ident);
 
-    input_location = get_linemap (s->loc);
-
     /* If no label found, there was an error.  */
     tree label = this->define_label (sym->statement, sym->ident);
     TREE_USED (label) = 1;
@@ -748,9 +737,9 @@ public:
     this->do_label (label);
 
     if (this->is_return_label (s->ident) && this->func_->fensure != NULL)
-      this->func_->fensure->accept (this);
+      this->build_stmt (this->func_->fensure);
     else if (s->statement)
-      s->statement->accept (this);
+      this->build_stmt (s->statement);
   }
 
   /* A switch statement goes to one of a collection of case statements
@@ -758,7 +747,6 @@ public:
 
   void visit (SwitchStatement *s)
   {
-    input_location = get_linemap (s->loc);
     this->start_scope (level_switch);
     tree lbreak = this->push_break_label (s);
 
@@ -870,7 +858,7 @@ public:
 	    /* The default label is the last 'else' block.  */
 	    if (s->hasVars)
 	      {
-		this->do_jump (NULL, defaultlabel);
+		this->do_jump (defaultlabel);
 		LABEL_VARIABLE_CASE (defaultlabel) = 1;
 	      }
 
@@ -881,7 +869,7 @@ public:
     /* Switch body goes in its own statement list.  */
     push_stmt_list ();
     if (s->_body)
-      s->_body->accept (this);
+      this->build_stmt (s->_body);
 
     tree casebody = pop_stmt_list ();
 
@@ -905,8 +893,6 @@ public:
 
   void visit (CaseStatement *s)
   {
-    input_location = get_linemap (s->loc);
-
     /* Emit the case label.  */
     tree label = this->define_label (s);
 
@@ -926,15 +912,13 @@ public:
 
     /* Now do the body.  */
     if (s->statement)
-      s->statement->accept (this);
+      this->build_stmt (s->statement);
   }
 
   /* Declare the default label associated with the current SwitchStatement.  */
 
   void visit (DefaultStatement *s)
   {
-    input_location = get_linemap (s->loc);
-
     /* Emit the default case label.  */
     tree label = this->define_label (s);
 
@@ -948,7 +932,7 @@ public:
 
     /* Now do the body.  */
     if (s->statement)
-      s->statement->accept (this);
+      this->build_stmt (s->statement);
   }
 
   /* Implements 'goto default' by jumping to the label associated with
@@ -957,7 +941,7 @@ public:
   void visit (GotoDefaultStatement *s)
   {
     tree label = this->lookup_label (s->sw->sdefault);
-    this->do_jump (s, label);
+    this->do_jump (label);
   }
 
   /* Implements 'goto case' by jumping to the label associated with the
@@ -966,7 +950,7 @@ public:
   void visit (GotoCaseStatement *s)
   {
     tree label = this->lookup_label (s->cs);
-    this->do_jump (s, label);
+    this->do_jump (label);
   }
 
   /* Throw a SwitchError exception, called when a switch statement has
@@ -974,7 +958,6 @@ public:
 
   void visit (SwitchErrorStatement *s)
   {
-    input_location = get_linemap (s->loc);
     add_stmt (d_assert_call (s->loc, LIBCALL_SWITCH_ERROR));
   }
 
@@ -983,8 +966,6 @@ public:
 
   void visit (ReturnStatement *s)
   {
-    input_location = get_linemap (s->loc);
-
     if (s->exp == NULL || s->exp->type->toBasetype ()->ty == Tvoid)
       {
 	/* Return has no value.  */
@@ -1021,7 +1002,6 @@ public:
   {
     if (s->exp)
       {
-	input_location = get_linemap (s->loc);
 	/* Expression may produce temporaries requiring scope destruction.  */
 	tree exp = build_expr_dtor (s->exp);
 	add_stmt (exp);
@@ -1040,7 +1020,7 @@ public:
 	Statement *statement = (*s->statements)[i];
 
 	if (statement != NULL)
-	  statement->accept (this);
+	  this->build_stmt (statement);
       }
   }
 
@@ -1063,15 +1043,14 @@ public:
 	if (statement != NULL)
 	  {
 	    tree lcontinue = this->push_continue_label (statement);
-	    statement->accept (this);
+	    this->build_stmt (statement);
 	    this->pop_continue_label (lcontinue);
 	  }
       }
 
-    this->do_jump (NULL, this->break_label_);
+    this->do_jump (this->break_label_);
 
     tree body = this->end_scope ();
-    input_location = get_linemap (s->loc);
     add_stmt (build1 (LOOP_EXPR, void_type_node, body));
 
     this->pop_break_label (lbreak);
@@ -1086,7 +1065,7 @@ public:
       return;
 
     this->start_scope (level_block);
-    s->statement->accept (this);
+    this->build_stmt (s->statement);
     this->finish_scope ();
   }
 
@@ -1095,7 +1074,6 @@ public:
 
   void visit (WithStatement *s)
   {
-    input_location = get_linemap (s->loc);
     this->start_scope (level_with);
 
     if (s->wthis)
@@ -1110,7 +1088,7 @@ public:
       }
 
     if (s->_body)
-      s->_body->accept (this);
+      this->build_stmt (s->_body);
 
     this->finish_scope ();
   }
@@ -1143,7 +1121,6 @@ public:
     else
       arg = build_nop (build_ctype (get_object_type ()), arg);
 
-    input_location = get_linemap (s->loc);
     add_stmt (build_libcall (LIBCALL_THROW, Type::tvoid, 1, arg));
   }
 
@@ -1153,11 +1130,9 @@ public:
 
   void visit (TryCatchStatement *s)
   {
-    input_location = get_linemap (s->loc);
-
     this->start_scope (level_try);
     if (s->_body)
-      s->_body->accept (this);
+      this->build_stmt (s->_body);
 
     tree trybody = this->end_scope ();
 
@@ -1170,7 +1145,6 @@ public:
 	  {
 	    Catch *vcatch = (*s->catches)[i];
 
-	    input_location = get_linemap (vcatch->loc);
 	    this->start_scope (level_catch);
 
 	    tree ehptr = builtin_decl_explicit (BUILT_IN_EH_POINTER);
@@ -1205,7 +1179,7 @@ public:
 	      }
 
 	    if (vcatch->handler)
-	      vcatch->handler->accept (this);
+	      this->build_stmt (vcatch->handler);
 
 	    tree catchbody = this->end_scope ();
 
@@ -1236,7 +1210,6 @@ public:
         catches = stmt_list;
       }
 
-    input_location = get_linemap (s->loc);
     add_stmt (build2 (TRY_CATCH_EXPR, void_type_node, trybody, catches));
   }
 
@@ -1246,20 +1219,18 @@ public:
 
   void visit (TryFinallyStatement *s)
   {
-    input_location = get_linemap (s->loc);
     this->start_scope (level_try);
     if (s->_body)
-      s->_body->accept (this);
+      this->build_stmt (s->_body);
 
     tree trybody = this->end_scope ();
 
     this->start_scope (level_finally);
     if (s->finalbody)
-      s->finalbody->accept (this);
+      this->build_stmt (s->finalbody);
 
     tree finally = this->end_scope ();
 
-    input_location = get_linemap (s->loc);
     add_stmt (build2 (TRY_FINALLY_EXPR, void_type_node, trybody, finally));
   }
 
@@ -1268,9 +1239,8 @@ public:
      This visitor is not strictly required other than to enforce that
      these kinds of statements never reach here.  */
 
-  void visit (SynchronizedStatement *s)
+  void visit (SynchronizedStatement *)
   {
-    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -1278,9 +1248,8 @@ public:
      an assembly parser for each supported target.  Instead we leverage
      GCC extended assembler using the ExtAsmStatement class.  */
 
-  void visit (AsmStatement *s)
+  void visit (AsmStatement *)
   {
-    input_location = get_linemap (s->loc);
     sorry ("D inline assembler statements are not supported in GDC.");
   }
 
@@ -1294,8 +1263,6 @@ public:
     tree inputs = NULL_TREE;
     tree clobbers = NULL_TREE;
     tree labels = NULL_TREE;
-
-    input_location = get_linemap (s->loc);
 
     /* Collect all arguments, which may be input or output operands.  */
     if (s->args)
@@ -1413,7 +1380,7 @@ public:
 
     tree exp = build5 (ASM_EXPR, void_type_node, string,
 		       outputs, inputs, clobbers, labels);
-    SET_EXPR_LOCATION (exp, input_location);
+    SET_EXPR_LOCATION (exp, get_linemap (s->loc));
 
     /* If the extended syntax was not used, mark the ASM_EXPR.  */
     if (s->args == NULL && s->clobbers == NULL)
@@ -1443,11 +1410,11 @@ public:
 };
 
 /* Main entry point for the IRVisitor interface to generate
-   code for the statement AST class S.  */
+   code for the body of function FD.  */
 
 void
 build_function_body (FuncDeclaration *fd)
 {
   IRVisitor v = IRVisitor (fd);
-  fd->fbody->accept (&v);
+  v.build_stmt (fd->fbody);
 }
