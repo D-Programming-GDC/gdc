@@ -447,13 +447,8 @@ isBuiltin (FuncDeclaration *fd)
   if (fd->builtin != BUILTINunknown)
     return fd->builtin;
 
-  fd->builtin = BUILTINno;
-
-  /* Intrinsics have no function body.  */
-  if (fd->fbody)
-    return BUILTINno;
-
   maybe_set_intrinsic (fd);
+
   return fd->builtin;
 }
 
@@ -467,7 +462,7 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
     return NULL;
 
   tree decl = get_symbol_decl (fd);
-  gcc_assert (DECL_BUILT_IN (decl));
+  gcc_assert (DECL_INTRINSIC_CODE (decl) != INTRINSIC_NONE);
 
   TypeFunction *tf = (TypeFunction *) fd->type;
   Expression *e = NULL;
