@@ -322,6 +322,16 @@ CTFloat::fabs (real_t r)
   return ldouble (x);
 }
 
+/* Return the value of R * 2 ^^ EXP.  */
+
+real_t
+CTFloat::ldexp (real_t r, int exp)
+{
+  real_value rv;
+  real_ldexp (&rv, &r.rv (), exp);
+  return ldouble (rv);
+}
+
 /* Return true if longdouble value X is identical to Y.  */
 
 bool
