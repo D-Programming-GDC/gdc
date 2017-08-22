@@ -146,8 +146,8 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/datetime/stopwatch.d std/datetime/systime.d \
 	std/datetime/timezone.d std/demangle.d std/digest/crc.d \
 	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
-	std/digest/murmurhash.d std/digest/ripemd.d std/digest/sha.d \
-	std/encoding.d std/exception.d \
+	std/digest/murmurhash.d std/digest/package.d std/digest/ripemd.d \
+	std/digest/sha.d std/encoding.d std/exception.d \
 	std/experimental/allocator/building_blocks/affix_allocator.d \
 	std/experimental/allocator/building_blocks/allocator_list.d \
 	std/experimental/allocator/building_blocks/bitmapped_block.d \
@@ -178,14 +178,15 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/internal/math/biguintcore.d std/internal/math/biguintnoasm.d \
 	std/internal/math/biguintx86.d std/internal/math/errorfunction.d \
 	std/internal/math/gammafunction.d std/internal/scopebuffer.d \
-	std/internal/test/dummyrange.d std/internal/test/uda.d \
-	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
-	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
-	std/internal/unicode_tables.d std/internal/windows/advapi32.d \
-	std/json.d std/math.d std/mathspecial.d std/meta.d std/mmfile.d \
-	std/net/curl.d std/net/isemail.d std/numeric.d std/outbuffer.d \
-	std/parallelism.d std/path.d std/process.d std/random.d \
-	std/range/interfaces.d std/range/package.d std/range/primitives.d \
+	std/internal/test/dummyrange.d std/internal/test/range.d \
+	std/internal/test/uda.d std/internal/unicode_comp.d \
+	std/internal/unicode_decomp.d std/internal/unicode_grapheme.d \
+	std/internal/unicode_norm.d std/internal/unicode_tables.d \
+	std/internal/windows/advapi32.d std/json.d std/math.d \
+	std/mathspecial.d std/meta.d std/mmfile.d std/net/curl.d \
+	std/net/isemail.d std/numeric.d std/outbuffer.d std/parallelism.d \
+	std/path.d std/process.d std/random.d std/range/interfaces.d \
+	std/range/package.d std/range/primitives.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
