@@ -19,8 +19,8 @@ module std.container.rbtree;
 ///
 @safe pure unittest
 {
-    import std.container.rbtree;
     import std.algorithm.comparison : equal;
+    import std.container.rbtree;
 
     auto rbt = redBlackTree(3, 1, 4, 2, 5);
     assert(rbt.front == 1);
@@ -56,8 +56,8 @@ module std.container.rbtree;
     assert(equal(ubt[], [0, 0, 1, 1]));
 }
 
-import std.functional : binaryFun;
 import std.format;
+import std.functional : binaryFun;
 
 public import std.container.util;
 
@@ -627,8 +627,7 @@ struct RBNode(V)
 
     Node dup()
     {
-        Node copy = new RBNode!V;
-        copy.value = value;
+        Node copy = new RBNode!V(null, null, null, value);
         copy.color = color;
         if (_left !is null)
             copy.left = _left.dup();
@@ -740,8 +739,8 @@ final class RedBlackTree(T, alias less = "a < b", bool allowDuplicates = false)
 if (is(typeof(binaryFun!less(T.init, T.init))))
 {
     import std.meta : allSatisfy;
-    import std.range.primitives : isInputRange, walkLength;
     import std.range : Take;
+    import std.range.primitives : isInputRange, walkLength;
     import std.traits : isIntegral, isDynamicArray, isImplicitlyConvertible;
 
     alias _less = binaryFun!less;
@@ -801,9 +800,7 @@ if (is(typeof(binaryFun!less(T.init, T.init))))
 
     static private Node allocate(Elem v)
     {
-        auto result = allocate();
-        result.value = v;
-        return result;
+        return new RBNode(null, null, null, v);
     }
 
     /**
@@ -1190,7 +1187,8 @@ if (is(typeof(binaryFun!less(T.init, T.init))))
         else
         {
             assert(ts.length == 5);
-            assert(ts.stableInsert(cast(Elem[])[7, 8, 6, 9, 10, 8]) == 5);
+            Elem[] elems = [7, 8, 6, 9, 10, 8];
+            assert(ts.stableInsert(elems) == 5);
             assert(ts.length == 10);
             assert(ts.stableInsert(cast(Elem) 11) == 1 && ts.length == 11);
             assert(ts.stableInsert(cast(Elem) 7) == 0 && ts.length == 11);
@@ -1398,11 +1396,7 @@ assert(equal(rbt[], [5]));
     size_t removeKey(U...)(U elems)
         if (allSatisfy!(isImplicitlyConvertibleToElem, U))
     {
-        Elem[U.length] toRemove;
-
-        foreach (i, e; elems)
-            toRemove[i] = e;
-
+        Elem[U.length] toRemove = [elems];
         return removeKey(toRemove[]);
     }
 
@@ -2055,4 +2049,17 @@ if ( is(typeof(binaryFun!less((ElementType!Stuff).init, (ElementType!Stuff).init
 {
     class C {}
     RedBlackTree!(C, "cast(void*)a < cast(void*) b") tree;
+}
+
+@safe pure unittest // const/immutable elements (issue 17519)
+{
+    RedBlackTree!(immutable int) t1;
+    RedBlackTree!(const int) t2;
+
+    import std.algorithm.iteration : map;
+    static struct S { int* p; }
+    auto t3 = new RedBlackTree!(immutable S, (a, b) => *a.p < *b.p);
+    t3.insert([1, 2, 3].map!(x => immutable S(new int(x))));
+    static assert(!__traits(compiles, *t3.front.p = 4));
+    assert(*t3.front.p == 1);
 }

@@ -230,14 +230,21 @@ DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/errno.d core/sys/linux/execinfo.d \
 	core/sys/linux/fcntl.d core/sys/linux/ifaddrs.d core/sys/linux/link.d \
 	core/sys/linux/sched.d core/sys/linux/stdio.d \
-	core/sys/linux/sys/auxv.d core/sys/linux/sys/file.d \
-	core/sys/linux/sys/inotify.d core/sys/linux/sys/mman.d \
-	core/sys/linux/sys/netinet/tcp.d core/sys/linux/sys/prctl.d \
-	core/sys/linux/sys/signalfd.d core/sys/linux/sys/socket.d \
-	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/time.d \
-	core/sys/linux/sys/xattr.d core/sys/linux/termios.d \
-	core/sys/linux/time.d core/sys/linux/timerfd.d core/sys/linux/tipc.d \
-	core/sys/linux/unistd.d
+	core/sys/linux/sys/auxv.d core/sys/linux/sys/eventfd.d \
+	core/sys/linux/sys/file.d core/sys/linux/sys/inotify.d \
+	core/sys/linux/sys/mman.d core/sys/linux/sys/netinet/tcp.d \
+	core/sys/linux/sys/prctl.d core/sys/linux/sys/signalfd.d \
+	core/sys/linux/sys/socket.d core/sys/linux/sys/sysinfo.d \
+	core/sys/linux/sys/time.d core/sys/linux/sys/xattr.d \
+	core/sys/linux/termios.d core/sys/linux/time.d \
+	core/sys/linux/timerfd.d core/sys/linux/tipc.d core/sys/linux/unistd.d
+
+DRUNTIME_DSOURCES_NETBSD = core/sys/netbsd/dlfcn.d \
+	core/sys/netbsd/execinfo.d core/sys/netbsd/sys/elf.d \
+	core/sys/netbsd/sys/elf32.d core/sys/netbsd/sys/elf64.d \
+	core/sys/netbsd/sys/elf_common.d core/sys/netbsd/sys/event.d \
+	core/sys/netbsd/sys/link_elf.d core/sys/netbsd/sys/mman.d \
+	core/sys/netbsd/time.d
 
 DRUNTIME_DSOURCES_OPENBSD = core/sys/openbsd/dlfcn.d
 
