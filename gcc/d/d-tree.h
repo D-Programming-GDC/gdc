@@ -63,7 +63,8 @@ typedef Array<TREE_H_Expression_Ptr> Expressions;
    5: TYPE_ASSOCIATIVE_ARRAY (in RECORD_TYPE).
 
    Usage of DECL_LANG_FLAG_?:
-   0: LABEL_VARIABLE_CASE (in LABEL_DECL).  */
+   0: LABEL_VARIABLE_CASE (in LABEL_DECL).
+      DECL_BUILT_IN_CTFE (in FUNCTION_DECL).  */
 
 /* The kinds of scopes we recognise.  */
 
@@ -78,6 +79,18 @@ enum level_kind
   level_loop,		/* A for, do-while, or unrolled-loop block.  */
   level_with,		/* The scope for a with statement.  */
   level_function,	/* The block representing an entire function.  */
+};
+
+/* List of codes for internally recognised compiler intrinsics.  */
+
+enum intrinsic_code
+{
+#define DEF_D_INTRINSIC(CODE, A, N, M, D, C) INTRINSIC_ ## CODE,
+
+#include "intrinsics.def"
+
+#undef DEF_D_INTRINSIC
+  INTRINSIC_LAST
 };
 
 /* For use with break and continue statements.  */
@@ -250,6 +263,9 @@ struct GTY(()) lang_decl
   /* In a FUNCTION_DECL, this is the THUNK_LANG_OFFSET.  */
   int offset;
 
+  /* In a FUNCTION_DECL, if this is an intrinsic, the code for it.  */
+  enum intrinsic_code intrinsic;
+
   /* FUNCFRAME_INFO in a function that has non-local references.  */
   tree frame_info;
 };
@@ -282,6 +298,9 @@ struct GTY(()) lang_decl
 
 #define THUNK_LANG_OFFSET(NODE) \
   DECL_LANG_SPECIFIC (NODE)->offset
+
+#define DECL_INTRINSIC_CODE(NODE) \
+  DECL_LANG_SPECIFIC (NODE)->intrinsic
 
 #define DECL_LANG_FRAMEINFO(NODE) \
   DECL_LANG_SPECIFIC (NODE)->frame_info
@@ -356,6 +375,10 @@ lang_tree_node
 /* True if the decl is a variable case label decl.  */
 #define LABEL_VARIABLE_CASE(NODE) \
   (DECL_LANG_FLAG_0 (LABEL_DECL_CHECK (NODE)))
+
+/* True if the decl is a CTFE built-in.  */
+#define DECL_BUILT_IN_CTFE(NODE) \
+  (DECL_LANG_FLAG_0 (FUNCTION_DECL_CHECK (NODE)))
 
 enum d_tree_index
 {

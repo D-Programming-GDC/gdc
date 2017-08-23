@@ -29,18 +29,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "d-frontend.h"
 
 
-/* List of codes for internally recognised compiler intrinsics.  */
-
-enum intrinsic_code
-{
-#define DEF_D_INTRINSIC(CODE, A, N, M, D) INTRINSIC_ ## CODE,
-
-#include "intrinsics.def"
-
-#undef DEF_D_INTRINSIC
-  INTRINSIC_LAST
-};
-
 /* An internal struct used to hold information on D intrinsics.  */
 
 struct intrinsic_decl
@@ -56,32 +44,40 @@ struct intrinsic_decl
 
   /* The mangled signature decoration of the intrinsic.  */
   const char *deco;
+
+  /* True if the intrinsic is only handled in CTFE.  */
+  bool ctfeonly;
 };
 
 static const intrinsic_decl intrinsic_decls[] =
 {
-#define DEF_D_INTRINSIC(CODE, ALIAS, NAME, MODULE, DECO) \
-    { INTRINSIC_ ## ALIAS, NAME, MODULE, DECO },
+#define DEF_D_INTRINSIC(CODE, ALIAS, NAME, MODULE, DECO, CTFE) \
+    { INTRINSIC_ ## ALIAS, NAME, MODULE, DECO, CTFE },
 
 #include "intrinsics.def"
 
 #undef DEF_D_INTRINSIC
 };
 
-/* Checks if DECL is an intrinsic or runtime library function that
-   requires special processing.  Marks the generated trees for DECL
-   as BUILT_IN_FRONTEND so can be identified later.  */
+/* Checks if DECL is an intrinsic or runtime library function that requires
+   special processing.  Sets DECL_INTRINSIC_CODE so it can be identified
+   later in maybe_expand_intrinsic.  */
 
 void
 maybe_set_intrinsic (FuncDeclaration *decl)
 {
-  if (!decl->ident || decl->builtin == BUILTINyes)
+  if (!decl->ident || decl->builtin != BUILTINunknown)
     return;
+
+  /* The builtin flag is updated only if we can evaluate the intrinsic
+     at compile-time.  Such as the math or bitop intrinsics.  */
+  decl->builtin = BUILTINno;
 
   /* Check if it's a compiler intrinsic.  We only require that any
      internally recognised intrinsics are declared in a module with
      an explicit module declaration.  */
   Module *m = decl->getModule ();
+
   if (!m || !m->md)
     return;
 
@@ -95,6 +91,9 @@ maybe_set_intrinsic (FuncDeclaration *decl)
   /* Look through all D intrinsics.  */
   for (size_t i = 0; i < (int) INTRINSIC_LAST; i++)
     {
+      if (!intrinsic_decls[i].name)
+	continue;
+
       if (strcmp (intrinsic_decls[i].name, tname) != 0
 	  || strcmp (intrinsic_decls[i].module, tmodule) != 0)
 	continue;
@@ -115,23 +114,50 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 	  tdeco = buf.extractString ();
 	}
 
+      /* Matching the type deco may be a bit too strict, as it means that all
+	 function attributes that end up in the signature must be kept aligned
+	 between the compiler and library declaration.  */
       if (strcmp (intrinsic_decls[i].deco, tdeco) == 0)
 	{
 	  intrinsic_code code = intrinsic_decls[i].code;
 
 	  if (decl->csym == NULL)
+	    get_symbol_decl (decl);
+
+	  /* If there is no function body, then the implementation is always
+	     provided by the compiler.  */
+	  if (!decl->fbody)
 	    {
-	      /* Store a stub BUILT_IN_FRONTEND decl.  */
-	      decl->csym = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
-				       get_identifier (tname),
-				       build_ctype (decl->type));
-	      DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (decl);
-	      d_keep (decl->csym);
+	      DECL_BUILT_IN_CLASS (decl->csym) = BUILT_IN_FRONTEND;
+	      DECL_FUNCTION_CODE (decl->csym) = (built_in_function) code;
 	    }
 
-	  DECL_BUILT_IN_CLASS (decl->csym) = BUILT_IN_FRONTEND;
-	  DECL_FUNCTION_CODE (decl->csym) = (built_in_function) code;
-	  decl->builtin = BUILTINyes;
+	  /* The intrinsic was marked as CTFE-only, let the front-end know
+	     that it can be evaluated at compile-time.  */
+	  if (intrinsic_decls[i].ctfeonly)
+	    {
+	      DECL_BUILT_IN_CTFE (decl->csym) = 1;
+	      decl->builtin = BUILTINyes;
+	    }
+	  else
+	    {
+	      /* Infer whether the intrinsic can be used for CTFE.  */
+	      switch (code)
+		{
+		case INTRINSIC_VA_ARG:
+		case INTRINSIC_C_VA_ARG:
+		case INTRINSIC_VASTART:
+		case INTRINSIC_VLOAD:
+		case INTRINSIC_VSTORE:
+		  break;
+
+		default:
+		  decl->builtin = BUILTINyes;
+		  break;
+		}
+	    }
+
+	  DECL_INTRINSIC_CODE (decl->csym) = code;
 	  break;
 	}
     }
@@ -149,8 +175,7 @@ clear_intrinsic_flag (tree callexp)
 
   gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
 
-  FuncDeclaration *fd = DECL_LANG_FRONTEND (decl)->isFuncDeclaration ();
-  fd->builtin = BUILTINno;
+  DECL_INTRINSIC_CODE (decl) = INTRINSIC_NONE;
   DECL_BUILT_IN_CLASS (decl) = NOT_BUILT_IN;
   DECL_FUNCTION_CODE (decl) = BUILT_IN_NONE;
 }
@@ -343,6 +368,37 @@ expand_intrinsic_bswap (tree callexp)
   return call_builtin_fn (callexp, code, 1, arg);
 }
 
+/* Expand a front-end intrinsic call to popcnt().  This takes one argument, the
+   signature to which can be either:
+
+	int popcnt (uint arg);
+	int popcnt (ulong arg);
+
+   Calculates the number of set bits in an integer.  The original call
+   expression is held in CALLEXP.  */
+
+static tree
+expand_intrinsic_popcnt (tree callexp)
+{
+  tree arg = CALL_EXPR_ARG (callexp, 0);
+  int argsize = TYPE_PRECISION (TREE_TYPE (arg));
+
+  /* Which variant of __builtin_popcount* should we call?  */
+  built_in_function code = (argsize <= INT_TYPE_SIZE) ? BUILT_IN_POPCOUNT :
+    (argsize <= LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTL :
+    (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTLL : END_BUILTINS;
+
+  /* Fallback on runtime implementation, which shouldn't happen as the
+     argument for popcnt() is either 32-bit or 64-bit.  */
+  if (code == END_BUILTINS)
+    {
+      clear_intrinsic_flag (callexp);
+      return callexp;
+    }
+
+  return call_builtin_fn (callexp, code, 1, arg);
+}
+
 /* Expand a front-end intrinsic call to INTRINSIC, which is either a call to
    sqrt(), sqrtf(), sqrtl().  These intrinsics expect to take one argument,
    the signature to which can be either:
@@ -513,7 +569,7 @@ expand_volatile_store (tree callexp)
   return modify_expr (result, value);
 }
 
-/* If CALLEXP is a BUILT_IN_FRONTEND, expand and return inlined compiler
+/* If CALLEXP is for an intrinsic , expand and return inlined compiler
    generated instructions.  Most map directly to GCC builtins, others
    require a little extra work around them.  */
 
@@ -525,77 +581,103 @@ maybe_expand_intrinsic (tree callexp)
   if (TREE_CODE (callee) == ADDR_EXPR)
     callee = TREE_OPERAND (callee, 0);
 
-  if (TREE_CODE (callee) == FUNCTION_DECL
-      && DECL_BUILT_IN_CLASS (callee) == BUILT_IN_FRONTEND)
+  if (TREE_CODE (callee) != FUNCTION_DECL)
+    return callexp;
+
+  /* Need a better way to determine if we are compiling for CTFE or not.  */
+  if (DECL_BUILT_IN_CTFE (callee) && d_function_chain)
     {
-      intrinsic_code intrinsic = (intrinsic_code) DECL_FUNCTION_CODE (callee);
-
-      switch (intrinsic)
-	{
-	case INTRINSIC_BSF:
-	  return expand_intrinsic_bsf (callexp);
-
-	case INTRINSIC_BSR:
-	  return expand_intrinsic_bsr (callexp);
-
-	case INTRINSIC_BT:
-	case INTRINSIC_BTC:
-	case INTRINSIC_BTR:
-	case INTRINSIC_BTS:
-	  return expand_intrinsic_bt (intrinsic, callexp);
-
-	case INTRINSIC_BSWAP:
-	  return expand_intrinsic_bswap (callexp);
-
-	case INTRINSIC_COS:
-	  return call_builtin_fn (callexp, BUILT_IN_COSL, 1,
-				  CALL_EXPR_ARG (callexp, 0));
-
-	case INTRINSIC_SIN:
-	  return call_builtin_fn (callexp, BUILT_IN_SINL, 1,
-				  CALL_EXPR_ARG (callexp, 0));
-
-	case INTRINSIC_RNDTOL:
-	  /* Not sure if llroundl stands as a good replacement for the
-	     expected behaviour of rndtol.  */
-	  return call_builtin_fn (callexp, BUILT_IN_LLROUNDL, 1,
-				  CALL_EXPR_ARG (callexp, 0));
-
-	case INTRINSIC_SQRT:
-	case INTRINSIC_SQRTF:
-	case INTRINSIC_SQRTL:
-	  return expand_intrinsic_sqrt (intrinsic, callexp);
-
-	case INTRINSIC_LDEXP:
-	  return call_builtin_fn (callexp, BUILT_IN_LDEXPL, 2,
-				  CALL_EXPR_ARG (callexp, 0),
-				  CALL_EXPR_ARG (callexp, 1));
-
-	case INTRINSIC_FABS:
-	  return call_builtin_fn (callexp, BUILT_IN_FABSL, 1,
-				  CALL_EXPR_ARG (callexp, 0));
-
-	case INTRINSIC_RINT:
-	  return call_builtin_fn (callexp, BUILT_IN_RINTL, 1,
-				  CALL_EXPR_ARG (callexp, 0));
-
-	case INTRINSIC_VA_ARG:
-	case INTRINSIC_C_VA_ARG:
-	  return expand_intrinsic_vaarg (callexp);
-
-	case INTRINSIC_VASTART:
-	  return expand_intrinsic_vastart (callexp);
-
-	case INTRINSIC_VLOAD:
-	  return expand_volatile_load (callexp);
-
-	case INTRINSIC_VSTORE:
-	  return expand_volatile_store (callexp);
-
-	default:
-	  gcc_unreachable ();
-	}
+      clear_intrinsic_flag (callexp);
+      return callexp;
     }
 
-  return callexp;
+  intrinsic_code intrinsic = DECL_INTRINSIC_CODE (callee);
+
+  switch (intrinsic)
+    {
+    case INTRINSIC_NONE:
+      return callexp;
+
+    case INTRINSIC_BSF:
+      return expand_intrinsic_bsf (callexp);
+
+    case INTRINSIC_BSR:
+      return expand_intrinsic_bsr (callexp);
+
+    case INTRINSIC_BT:
+    case INTRINSIC_BTC:
+    case INTRINSIC_BTR:
+    case INTRINSIC_BTS:
+      return expand_intrinsic_bt (intrinsic, callexp);
+
+    case INTRINSIC_BSWAP:
+      return expand_intrinsic_bswap (callexp);
+
+    case INTRINSIC_POPCNT:
+      return expand_intrinsic_popcnt (callexp);
+
+    case INTRINSIC_COS:
+      return call_builtin_fn (callexp, BUILT_IN_COSL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_SIN:
+      return call_builtin_fn (callexp, BUILT_IN_SINL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_RNDTOL:
+      /* Not sure if llroundl stands as a good replacement for the
+	 expected behaviour of rndtol.  */
+      return call_builtin_fn (callexp, BUILT_IN_LLROUNDL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_SQRT:
+    case INTRINSIC_SQRTF:
+    case INTRINSIC_SQRTL:
+      return expand_intrinsic_sqrt (intrinsic, callexp);
+
+    case INTRINSIC_LDEXP:
+      return call_builtin_fn (callexp, BUILT_IN_LDEXPL, 2,
+			      CALL_EXPR_ARG (callexp, 0),
+			      CALL_EXPR_ARG (callexp, 1));
+
+    case INTRINSIC_FABS:
+      return call_builtin_fn (callexp, BUILT_IN_FABSL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_RINT:
+      return call_builtin_fn (callexp, BUILT_IN_RINTL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_TAN:
+      return call_builtin_fn (callexp, BUILT_IN_TANL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_ISNAN:
+      return call_builtin_fn (callexp, BUILT_IN_ISNAN, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_ISINFINITY:
+      return call_builtin_fn (callexp, BUILT_IN_ISINF, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_ISFINITE:
+      return call_builtin_fn (callexp, BUILT_IN_ISFINITE, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_VA_ARG:
+    case INTRINSIC_C_VA_ARG:
+      return expand_intrinsic_vaarg (callexp);
+
+    case INTRINSIC_VASTART:
+      return expand_intrinsic_vastart (callexp);
+
+    case INTRINSIC_VLOAD:
+      return expand_volatile_load (callexp);
+
+    case INTRINSIC_VSTORE:
+      return expand_volatile_store (callexp);
+
+    default:
+      gcc_unreachable ();
+    }
 }

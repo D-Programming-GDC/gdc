@@ -553,6 +553,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
       break;
 
     case Tnull:
+      /* Casting from typeof(null) is represented as all zeros.  */
       if (tbtype->ty == Tarray)
 	{
 	  tree ptrtype = build_ctype (tbtype->nextOf ()->pointerTo ());
@@ -563,7 +564,8 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	return build_constructor (build_ctype (totype), NULL);
       else if (tbtype->ty == Tdelegate)
 	return build_delegate_cst (exp, null_pointer_node, totype);
-      break;
+
+      return build_zero_cst (build_ctype (totype));
 
     case Tvector:
       if (tbtype->ty == Tsarray)

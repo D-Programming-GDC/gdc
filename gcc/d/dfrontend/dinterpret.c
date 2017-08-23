@@ -44,6 +44,7 @@ enum CtfeGoal
 bool walkPostorder(Expression *e, StoppableVisitor *v);
 Expression *interpret(Statement *s, InterState *istate);
 Expression *interpret(Expression *e, InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
+Expression *semantic(Expression *e, Scope *sc);
 
 #define LOG     0
 #define LOGASSIGN 0
@@ -2398,7 +2399,7 @@ public:
             e = s->dsym->type->defaultInitLiteral(loc);
             if (e->op == TOKerror)
                 error(loc, "CTFE failed because of previous errors in %s.init", s->toChars());
-            e = e->semantic(NULL);
+            e = ::semantic(e, NULL);
             if (e->op == TOKerror)
                 e = CTFEExp::cantexp;
             else // Convert NULL to CTFEExp
@@ -4207,10 +4208,14 @@ public:
             {
                 SliceExp *se = (SliceExp *)newval;
                 Expression *aggr2 = se->e1;
-                if (aggregate == aggr2)
+                const dinteger_t srclower = se->lwr->toInteger();
+                const dinteger_t srcupper = se->upr->toInteger();
+
+                if (aggregate == aggr2 &&
+                    lowerbound < srcupper && srclower < upperbound)
                 {
                     e->error("overlapping slice assignment [%d..%d] = [%llu..%llu]",
-                        lowerbound, upperbound, se->lwr->toInteger(), se->upr->toInteger());
+                        lowerbound, upperbound, srclower, srcupper);
                     return CTFEExp::cantexp;
                 }
             #if 1   // todo: instead we can directly access to each elements of the slice
@@ -4272,9 +4277,9 @@ public:
             {
                 SliceExp *se = (SliceExp *)newval;
                 Expression *aggr2 = se->e1;
-                dinteger_t srclower = se->lwr->toInteger();
-                dinteger_t srcupper = se->upr->toInteger();
-                bool wantCopy = (newval->type->toBasetype()->nextOf()->baseElemOf()->ty == Tstruct);
+                const dinteger_t srclower = se->lwr->toInteger();
+                const dinteger_t srcupper = se->upr->toInteger();
+                const bool wantCopy = (newval->type->toBasetype()->nextOf()->baseElemOf()->ty == Tstruct);
 
                 //printf("oldval = %p %s[%d..%u]\nnewval = %p %s[%llu..%llu] wantCopy = %d\n",
                 //    aggregate, aggregate->toChars(), lowerbound, upperbound,
@@ -4334,10 +4339,11 @@ public:
                     //assert(0);
                     return newval;  // oldval?
                 }
-                if (aggregate == aggr2)
+                if (aggregate == aggr2 &&
+                    lowerbound < srcupper && srclower < upperbound)
                 {
                     e->error("overlapping slice assignment [%d..%d] = [%llu..%llu]",
-                        lowerbound, upperbound, se->lwr->toInteger(), se->upr->toInteger());
+                        lowerbound, upperbound, srclower, srcupper);
                     return CTFEExp::cantexp;
                 }
             #if 1   // todo: instead we can directly access to each elements of the slice

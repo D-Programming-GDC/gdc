@@ -952,31 +952,6 @@ public:
     if (!sd->members)
       return;
 
-    /* Send member functions to backend here.  */
-    TemplateInstance *tinst = sd->isInstantiated ();
-    if (tinst && !tinst->needsCodegen ())
-      {
-	gcc_assert (tinst->minst || sd->requestTypeInfo);
-
-	if (sd->xeq && sd->xeq != StructDeclaration::xerreq)
-	  build_decl_tree (sd->xeq);
-
-	if (sd->xcmp && sd->xcmp != StructDeclaration::xerrcmp)
-	  build_decl_tree (sd->xcmp);
-
-	if (FuncDeclaration *ftostr = search_toString (sd))
-	  build_decl_tree (ftostr);
-
-	if (sd->xhash)
-	  build_decl_tree (sd->xhash);
-
-	if (sd->postblit)
-	  build_decl_tree (sd->postblit);
-
-	if (sd->dtor)
-	  build_decl_tree (sd->dtor);
-      }
-
     /* Name of the struct declaration.  */
     this->layout_string (sd->toPrettyChars ());
 
