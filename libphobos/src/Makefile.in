@@ -152,8 +152,8 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/datetime/systime.lo std/datetime/timezone.lo \
 	std/demangle.lo std/digest/crc.lo std/digest/digest.lo \
 	std/digest/hmac.lo std/digest/md.lo std/digest/murmurhash.lo \
-	std/digest/ripemd.lo std/digest/sha.lo std/encoding.lo \
-	std/exception.lo \
+	std/digest/package.lo std/digest/ripemd.lo std/digest/sha.lo \
+	std/encoding.lo std/exception.lo \
 	std/experimental/allocator/building_blocks/affix_allocator.lo \
 	std/experimental/allocator/building_blocks/allocator_list.lo \
 	std/experimental/allocator/building_blocks/bitmapped_block.lo \
@@ -189,8 +189,9 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/internal/math/biguintx86.lo \
 	std/internal/math/errorfunction.lo \
 	std/internal/math/gammafunction.lo std/internal/scopebuffer.lo \
-	std/internal/test/dummyrange.lo std/internal/test/uda.lo \
-	std/internal/unicode_comp.lo std/internal/unicode_decomp.lo \
+	std/internal/test/dummyrange.lo std/internal/test/range.lo \
+	std/internal/test/uda.lo std/internal/unicode_comp.lo \
+	std/internal/unicode_decomp.lo \
 	std/internal/unicode_grapheme.lo std/internal/unicode_norm.lo \
 	std/internal/unicode_tables.lo \
 	std/internal/windows/advapi32.lo std/json.lo std/math.lo \
@@ -568,8 +569,8 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/datetime/stopwatch.d std/datetime/systime.d \
 	std/datetime/timezone.d std/demangle.d std/digest/crc.d \
 	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
-	std/digest/murmurhash.d std/digest/ripemd.d std/digest/sha.d \
-	std/encoding.d std/exception.d \
+	std/digest/murmurhash.d std/digest/package.d std/digest/ripemd.d \
+	std/digest/sha.d std/encoding.d std/exception.d \
 	std/experimental/allocator/building_blocks/affix_allocator.d \
 	std/experimental/allocator/building_blocks/allocator_list.d \
 	std/experimental/allocator/building_blocks/bitmapped_block.d \
@@ -600,14 +601,15 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/internal/math/biguintcore.d std/internal/math/biguintnoasm.d \
 	std/internal/math/biguintx86.d std/internal/math/errorfunction.d \
 	std/internal/math/gammafunction.d std/internal/scopebuffer.d \
-	std/internal/test/dummyrange.d std/internal/test/uda.d \
-	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
-	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
-	std/internal/unicode_tables.d std/internal/windows/advapi32.d \
-	std/json.d std/math.d std/mathspecial.d std/meta.d std/mmfile.d \
-	std/net/curl.d std/net/isemail.d std/numeric.d std/outbuffer.d \
-	std/parallelism.d std/path.d std/process.d std/random.d \
-	std/range/interfaces.d std/range/package.d std/range/primitives.d \
+	std/internal/test/dummyrange.d std/internal/test/range.d \
+	std/internal/test/uda.d std/internal/unicode_comp.d \
+	std/internal/unicode_decomp.d std/internal/unicode_grapheme.d \
+	std/internal/unicode_norm.d std/internal/unicode_tables.d \
+	std/internal/windows/advapi32.d std/json.d std/math.d \
+	std/mathspecial.d std/meta.d std/mmfile.d std/net/curl.d \
+	std/net/isemail.d std/numeric.d std/outbuffer.d std/parallelism.d \
+	std/path.d std/process.d std/random.d std/range/interfaces.d \
+	std/range/package.d std/range/primitives.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
@@ -767,6 +769,7 @@ std/digest/digest.lo: std/digest/$(am__dirstamp)
 std/digest/hmac.lo: std/digest/$(am__dirstamp)
 std/digest/md.lo: std/digest/$(am__dirstamp)
 std/digest/murmurhash.lo: std/digest/$(am__dirstamp)
+std/digest/package.lo: std/digest/$(am__dirstamp)
 std/digest/ripemd.lo: std/digest/$(am__dirstamp)
 std/digest/sha.lo: std/digest/$(am__dirstamp)
 std/encoding.lo: std/$(am__dirstamp)
@@ -864,6 +867,7 @@ std/internal/test/$(am__dirstamp):
 	@$(MKDIR_P) std/internal/test
 	@: > std/internal/test/$(am__dirstamp)
 std/internal/test/dummyrange.lo: std/internal/test/$(am__dirstamp)
+std/internal/test/range.lo: std/internal/test/$(am__dirstamp)
 std/internal/test/uda.lo: std/internal/test/$(am__dirstamp)
 std/internal/unicode_comp.lo: std/internal/$(am__dirstamp)
 std/internal/unicode_decomp.lo: std/internal/$(am__dirstamp)
@@ -1127,6 +1131,8 @@ mostlyclean-compile:
 	-rm -f std/digest/md.lo
 	-rm -f std/digest/murmurhash.$(OBJEXT)
 	-rm -f std/digest/murmurhash.lo
+	-rm -f std/digest/package.$(OBJEXT)
+	-rm -f std/digest/package.lo
 	-rm -f std/digest/ripemd.$(OBJEXT)
 	-rm -f std/digest/ripemd.lo
 	-rm -f std/digest/sha.$(OBJEXT)
@@ -1219,6 +1225,8 @@ mostlyclean-compile:
 	-rm -f std/internal/scopebuffer.lo
 	-rm -f std/internal/test/dummyrange.$(OBJEXT)
 	-rm -f std/internal/test/dummyrange.lo
+	-rm -f std/internal/test/range.$(OBJEXT)
+	-rm -f std/internal/test/range.lo
 	-rm -f std/internal/test/uda.$(OBJEXT)
 	-rm -f std/internal/test/uda.lo
 	-rm -f std/internal/unicode_comp.$(OBJEXT)
