@@ -322,6 +322,16 @@ CTFloat::fabs (real_t r)
   return ldouble (x);
 }
 
+/* Return the value of R * 2 ^^ EXP.  */
+
+real_t
+CTFloat::ldexp (real_t r, int exp)
+{
+  real_value rv;
+  real_ldexp (&rv, &r.rv (), exp);
+  return ldouble (rv);
+}
+
 /* Return true if longdouble value X is identical to Y.  */
 
 bool
@@ -447,13 +457,8 @@ isBuiltin (FuncDeclaration *fd)
   if (fd->builtin != BUILTINunknown)
     return fd->builtin;
 
-  fd->builtin = BUILTINno;
-
-  /* Intrinsics have no function body.  */
-  if (fd->fbody)
-    return BUILTINno;
-
   maybe_set_intrinsic (fd);
+
   return fd->builtin;
 }
 
@@ -467,7 +472,7 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
     return NULL;
 
   tree decl = get_symbol_decl (fd);
-  gcc_assert (DECL_BUILT_IN (decl));
+  gcc_assert (DECL_INTRINSIC_CODE (decl) != INTRINSIC_NONE);
 
   TypeFunction *tf = (TypeFunction *) fd->type;
   Expression *e = NULL;
