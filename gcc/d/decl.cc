@@ -1137,6 +1137,7 @@ get_symbol_decl (Declaration *decl)
 	DECL_FINAL_P (decl->csym) = 1;
 
       /* Check whether this function is expanded by the frontend.  */
+      DECL_INTRINSIC_CODE (decl->csym) = INTRINSIC_NONE;
       maybe_set_intrinsic (fd);
     }
 

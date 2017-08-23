@@ -147,17 +147,18 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	core/checkedint.lo core/cpuid.lo core/demangle.lo \
 	core/exception.lo core/internal/abort.lo \
-	core/internal/convert.lo core/internal/hash.lo \
-	core/internal/spinlock.lo core/internal/string.lo \
-	core/internal/traits.lo core/math.lo core/memory.lo \
-	core/runtime.lo core/simd.lo core/stdc/complex.lo \
-	core/stdc/config.lo core/stdc/ctype.lo core/stdc/errno.lo \
-	core/stdc/fenv.lo core/stdc/float_.lo core/stdc/inttypes.lo \
-	core/stdc/limits.lo core/stdc/locale.lo core/stdc/math.lo \
-	core/stdc/signal.lo core/stdc/stdarg.lo core/stdc/stddef.lo \
-	core/stdc/stdint.lo core/stdc/stdio.lo core/stdc/stdlib.lo \
-	core/stdc/string.lo core/stdc/tgmath.lo core/stdc/time.lo \
-	core/stdc/wchar_.lo core/stdc/wctype.lo core/sync/barrier.lo \
+	core/internal/arrayop.lo core/internal/convert.lo \
+	core/internal/hash.lo core/internal/spinlock.lo \
+	core/internal/string.lo core/internal/traits.lo core/math.lo \
+	core/memory.lo core/runtime.lo core/simd.lo \
+	core/stdc/assert_.lo core/stdc/complex.lo core/stdc/config.lo \
+	core/stdc/ctype.lo core/stdc/errno.lo core/stdc/fenv.lo \
+	core/stdc/float_.lo core/stdc/inttypes.lo core/stdc/limits.lo \
+	core/stdc/locale.lo core/stdc/math.lo core/stdc/signal.lo \
+	core/stdc/stdarg.lo core/stdc/stddef.lo core/stdc/stdint.lo \
+	core/stdc/stdio.lo core/stdc/stdlib.lo core/stdc/string.lo \
+	core/stdc/tgmath.lo core/stdc/time.lo core/stdc/wchar_.lo \
+	core/stdc/wctype.lo core/sync/barrier.lo \
 	core/sync/condition.lo core/sync/config.lo \
 	core/sync/exception.lo core/sync/mutex.lo core/sync/rwmutex.lo \
 	core/sync/semaphore.lo core/thread.lo core/time.lo \
@@ -687,27 +688,27 @@ DRUNTIME_SSOURCES = core/threadasm.S
 DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
 DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/checkedint.d core/cpuid.d core/demangle.d core/exception.d \
-	core/internal/abort.d core/internal/convert.d core/internal/hash.d \
-	core/internal/spinlock.d core/internal/string.d core/internal/traits.d \
-	core/math.d core/memory.d core/runtime.d core/simd.d \
-	core/stdc/complex.d core/stdc/config.d core/stdc/ctype.d \
-	core/stdc/errno.d core/stdc/fenv.d core/stdc/float_.d \
-	core/stdc/inttypes.d core/stdc/limits.d core/stdc/locale.d \
-	core/stdc/math.d core/stdc/signal.d core/stdc/stdarg.d \
-	core/stdc/stddef.d core/stdc/stdint.d core/stdc/stdio.d \
-	core/stdc/stdlib.d core/stdc/string.d core/stdc/tgmath.d \
-	core/stdc/time.d core/stdc/wchar_.d core/stdc/wctype.d \
-	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
-	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
-	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
-	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d gcc/builtins.d \
-	gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d gcc/unwind/c6x.d \
-	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
-	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
-	rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d rt/backtrace/elf.d \
-	rt/cast_.d rt/config.d rt/critical_.d rt/deh.d rt/dmain2.d \
-	rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d rt/monitor_.d \
-	rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
+	core/internal/abort.d core/internal/arrayop.d core/internal/convert.d \
+	core/internal/hash.d core/internal/spinlock.d core/internal/string.d \
+	core/internal/traits.d core/math.d core/memory.d core/runtime.d \
+	core/simd.d core/stdc/assert_.d core/stdc/complex.d core/stdc/config.d \
+	core/stdc/ctype.d core/stdc/errno.d core/stdc/fenv.d \
+	core/stdc/float_.d core/stdc/inttypes.d core/stdc/limits.d \
+	core/stdc/locale.d core/stdc/math.d core/stdc/signal.d \
+	core/stdc/stdarg.d core/stdc/stddef.d core/stdc/stdint.d \
+	core/stdc/stdio.d core/stdc/stdlib.d core/stdc/string.d \
+	core/stdc/tgmath.d core/stdc/time.d core/stdc/wchar_.d \
+	core/stdc/wctype.d core/sync/barrier.d core/sync/condition.d \
+	core/sync/config.d core/sync/exception.d core/sync/mutex.d \
+	core/sync/rwmutex.d core/sync/semaphore.d core/thread.d core/time.d \
+	core/vararg.d etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
+	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
+	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
+	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
+	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d \
+	rt/backtrace/elf.d rt/cast_.d rt/config.d rt/critical_.d rt/deh.d \
+	rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d \
+	rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
 	rt/sections_elf_shared.d rt/sections_osx.d rt/sections_solaris.d \
 	rt/sections_win32.d rt/sections_win64.d rt/switch_.d rt/tlsgc.d \
 	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
@@ -995,6 +996,7 @@ core/internal/$(am__dirstamp):
 	@$(MKDIR_P) core/internal
 	@: > core/internal/$(am__dirstamp)
 core/internal/abort.lo: core/internal/$(am__dirstamp)
+core/internal/arrayop.lo: core/internal/$(am__dirstamp)
 core/internal/convert.lo: core/internal/$(am__dirstamp)
 core/internal/hash.lo: core/internal/$(am__dirstamp)
 core/internal/spinlock.lo: core/internal/$(am__dirstamp)
@@ -1007,6 +1009,7 @@ core/simd.lo: core/$(am__dirstamp)
 core/stdc/$(am__dirstamp):
 	@$(MKDIR_P) core/stdc
 	@: > core/stdc/$(am__dirstamp)
+core/stdc/assert_.lo: core/stdc/$(am__dirstamp)
 core/stdc/complex.lo: core/stdc/$(am__dirstamp)
 core/stdc/config.lo: core/stdc/$(am__dirstamp)
 core/stdc/ctype.lo: core/stdc/$(am__dirstamp)
@@ -1591,6 +1594,8 @@ mostlyclean-compile:
 	-rm -f core/exception.lo
 	-rm -f core/internal/abort.$(OBJEXT)
 	-rm -f core/internal/abort.lo
+	-rm -f core/internal/arrayop.$(OBJEXT)
+	-rm -f core/internal/arrayop.lo
 	-rm -f core/internal/convert.$(OBJEXT)
 	-rm -f core/internal/convert.lo
 	-rm -f core/internal/hash.$(OBJEXT)
@@ -1609,6 +1614,8 @@ mostlyclean-compile:
 	-rm -f core/runtime.lo
 	-rm -f core/simd.$(OBJEXT)
 	-rm -f core/simd.lo
+	-rm -f core/stdc/assert_.$(OBJEXT)
+	-rm -f core/stdc/assert_.lo
 	-rm -f core/stdc/complex.$(OBJEXT)
 	-rm -f core/stdc/complex.lo
 	-rm -f core/stdc/config.$(OBJEXT)
