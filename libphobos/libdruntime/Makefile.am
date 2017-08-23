@@ -155,27 +155,27 @@ DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
 
 DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/checkedint.d core/cpuid.d core/demangle.d core/exception.d \
-	core/internal/abort.d core/internal/convert.d core/internal/hash.d \
-	core/internal/spinlock.d core/internal/string.d core/internal/traits.d \
-	core/math.d core/memory.d core/runtime.d core/simd.d \
-	core/stdc/complex.d core/stdc/config.d core/stdc/ctype.d \
-	core/stdc/errno.d core/stdc/fenv.d core/stdc/float_.d \
-	core/stdc/inttypes.d core/stdc/limits.d core/stdc/locale.d \
-	core/stdc/math.d core/stdc/signal.d core/stdc/stdarg.d \
-	core/stdc/stddef.d core/stdc/stdint.d core/stdc/stdio.d \
-	core/stdc/stdlib.d core/stdc/string.d core/stdc/tgmath.d \
-	core/stdc/time.d core/stdc/wchar_.d core/stdc/wctype.d \
-	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
-	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
-	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
-	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d gcc/builtins.d \
-	gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d gcc/unwind/c6x.d \
-	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
-	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
-	rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d rt/backtrace/elf.d \
-	rt/cast_.d rt/config.d rt/critical_.d rt/deh.d rt/dmain2.d \
-	rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d rt/monitor_.d \
-	rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
+	core/internal/abort.d core/internal/arrayop.d core/internal/convert.d \
+	core/internal/hash.d core/internal/spinlock.d core/internal/string.d \
+	core/internal/traits.d core/math.d core/memory.d core/runtime.d \
+	core/simd.d core/stdc/assert_.d core/stdc/complex.d core/stdc/config.d \
+	core/stdc/ctype.d core/stdc/errno.d core/stdc/fenv.d \
+	core/stdc/float_.d core/stdc/inttypes.d core/stdc/limits.d \
+	core/stdc/locale.d core/stdc/math.d core/stdc/signal.d \
+	core/stdc/stdarg.d core/stdc/stddef.d core/stdc/stdint.d \
+	core/stdc/stdio.d core/stdc/stdlib.d core/stdc/string.d \
+	core/stdc/tgmath.d core/stdc/time.d core/stdc/wchar_.d \
+	core/stdc/wctype.d core/sync/barrier.d core/sync/condition.d \
+	core/sync/config.d core/sync/exception.d core/sync/mutex.d \
+	core/sync/rwmutex.d core/sync/semaphore.d core/thread.d core/time.d \
+	core/vararg.d etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
+	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
+	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
+	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
+	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d \
+	rt/backtrace/elf.d rt/cast_.d rt/config.d rt/critical_.d rt/deh.d \
+	rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d \
+	rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
 	rt/sections_elf_shared.d rt/sections_osx.d rt/sections_solaris.d \
 	rt/sections_win32.d rt/sections_win64.d rt/switch_.d rt/tlsgc.d \
 	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
