@@ -1411,7 +1411,8 @@ build_boolop (tree_code code, tree arg0, tree arg1)
       /* Build a vector comparison.
 	 VEC_COND_EXPR <e1 op e2, { -1, -1, -1, -1 }, { 0, 0, 0, 0 }>; */
       tree type = TREE_TYPE (arg0);
-      tree cmptype = build_same_sized_truth_vector_type (type);
+      /* GCC <= 5 does not have build_same_sized_truth_vector_type */
+      tree cmptype = type;
       tree cmp = fold_build2_loc (input_location, code, cmptype, arg0, arg1);
 
       return fold_build3_loc (input_location, VEC_COND_EXPR, type, cmp,
