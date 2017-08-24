@@ -39,6 +39,19 @@ load_gcc_lib gcc-defs.exp
 load_gcc_lib timeout.exp
 load_gcc_lib gdc.exp
 
+# Return 1 if -shared is supported, as in no warnings or errors
+# emitted, 0 otherwise.
+
+proc check_effective_target_shared { } {
+    # Note that M68K has a multilib that supports -fpic but not
+    # -fPIC, so we need to check both.  We test with a program that
+    # requires GOT references.
+    return [check_no_compiler_messages shared executable {
+	extern int foo (void); extern int bar;
+	int baz (void) { return foo () + bar; }
+    } "-shared -fpic"]
+}
+
 #
 # GDC_UNDER_TEST is the compiler under test.
 #
