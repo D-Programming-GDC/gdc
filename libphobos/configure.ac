@@ -119,12 +119,12 @@ AC_SUBST([PHOBOS_SOVERSION])
 
 # Set default flags (after DRUNTIME_WERROR!)
 if test -z "$DFLAGS"; then
-    DFLAGS="-Wall $WERROR_FLAG -g -frelease -O2"
+    DFLAGS="-Wall $WERROR_FLAG -frelease -O2"
 fi
 AC_SUBST(DFLAGS)
 
 if test -z "$DFLAGSX"; then
-    DFLAGSX="-Wall $WERROR_FLAG -g -fno-release -funittest"
+    DFLAGSX="-Wall $WERROR_FLAG -fno-release -funittest"
 fi
 AC_SUBST(DFLAGSX)
 
