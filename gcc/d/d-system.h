@@ -54,6 +54,10 @@
 
 // GCC backported macros
 
+/* Nonzero if TYPE represents a vector type.  */
+
+#define VECTOR_TYPE_P(TYPE) (TREE_CODE (TYPE) == VECTOR_TYPE)
+
 #define FUNC_OR_METHOD_TYPE_P(NODE) \
   (TREE_CODE (NODE) == FUNCTION_TYPE || TREE_CODE (NODE) == METHOD_TYPE)
 
