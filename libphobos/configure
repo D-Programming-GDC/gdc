@@ -619,6 +619,7 @@ BACKTRACE_SUPPORTED_TRUE
 HAVE_DLADDR
 DRUNTIME_ZLIB_SYSTEM_FALSE
 DRUNTIME_ZLIB_SYSTEM_TRUE
+LIBATOMIC
 DCFG_HAVE_LIBATOMIC
 DCFG_HAVE_64BIT_ATOMICS
 DCFG_HAVE_ATOMIC_BUILTINS
@@ -11253,7 +11254,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11256 "configure"
+#line 11257 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11359,7 +11360,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11362 "configure"
+#line 11363 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14513,56 +14514,11 @@ fi
 
 
   DCFG_HAVE_LIBATOMIC=false
+  LIBATOMIC=
   if test "x$with_libatomic" != "xno"; then :
 
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing __atomic_load" >&5
-$as_echo_n "checking for library containing __atomic_load... " >&6; }
-if test "${ac_cv_search___atomic_load+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_func_search_save_LIBS=$LIBS
-cat > conftest.$ac_ext <<_ACEOF
-module mod;
- extern(C) int __atomic_load();
-
-extern(C) int main() {
-  __atomic_load(); return 0;
-}
-_ACEOF
-for ac_lib in '' atomic; do
-  if test -z "$ac_lib"; then
-    ac_res="none required"
-  else
-    ac_res=-l$ac_lib
-    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
-  fi
-  if ac_fn_d_try_link "$LINENO"; then :
-  ac_cv_search___atomic_load=$ac_res
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext
-  if test "${ac_cv_search___atomic_load+set}" = set; then :
-  break
-fi
-done
-if test "${ac_cv_search___atomic_load+set}" = set; then :
-
-else
-  ac_cv_search___atomic_load=no
-fi
-rm conftest.$ac_ext
-LIBS=$ac_func_search_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search___atomic_load" >&5
-$as_echo "$ac_cv_search___atomic_load" >&6; }
-ac_res=$ac_cv_search___atomic_load
-if test "$ac_res" != no; then :
-  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
-
-        DCFG_HAVE_LIBATOMIC=true
-
-fi
-
+    DCFG_HAVE_LIBATOMIC=true
+    LIBATOMIC=../../libatomic/libatomic_convenience.la
 
 else
 
@@ -14572,6 +14528,7 @@ $as_echo_n "checking for libatomic... " >&6; }
 $as_echo "disabled" >&6; }
 
 fi
+
 
 
 
