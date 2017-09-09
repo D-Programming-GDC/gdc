@@ -4823,7 +4823,7 @@ private:
                     return;
                 else
                 {
-                    uint old = getControlState();
+                    uint old = FloatingPointControl.getControlState();
                     old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
                     asm pure nothrow @nogc
                     {
@@ -4917,6 +4917,14 @@ else
     assert(ieeeFlags == f);
 }
 
+version (GNU)
+{
+    unittest
+    {
+        pragma(msg, "ieeeFlags test disabled, see LDC Issue #888");
+    }
+}
+else
 @system unittest
 {
     import std.meta : AliasSeq;
