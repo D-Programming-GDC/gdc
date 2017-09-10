@@ -142,7 +142,9 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(toolexeclibdir)"
 LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
-libgdruntime_la_DEPENDENCIES = $(BACKTRACE_LIB)
+am__DEPENDENCIES_1 =
+libgdruntime_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	core/checkedint.lo core/cpuid.lo core/demangle.lo \
@@ -382,7 +384,7 @@ am__objects_27 = $(am__objects_24) $(am__objects_25) $(am__objects_26)
 am_libgdruntime_la_OBJECTS = $(am__objects_27)
 libgdruntime_la_OBJECTS = $(am_libgdruntime_la_OBJECTS)
 libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS) \
-	$(BACKTRACE_LIB)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__objects_28 = libgdruntime_t_la-errno_.lo \
 	libgdruntime_t_la-bss_section.lo
 am__objects_29 = libgdruntime_t_la-threadasm.lo
@@ -400,7 +402,7 @@ am_unittest_static_OBJECTS = ../testsuite/test_runner.$(OBJEXT) \
 	$(am__objects_30) $(am__objects_31)
 unittest_static_OBJECTS = $(am_unittest_static_OBJECTS)
 unittest_static_DEPENDENCIES = $(DRUNTIME_TEST_OBJECTS) \
-	$(BACKTRACE_LIB)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp =
 am__depfiles_maybe =
@@ -477,7 +479,8 @@ LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
-LIBBACKTRACE_DIR = @LIBBACKTRACE_DIR@
+LIBATOMIC = @LIBATOMIC@
+LIBBACKTRACE = @LIBBACKTRACE@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -633,8 +636,6 @@ ALL_DRUNTIME_COMPILE_DSOURCES = $(DRUNTIME_DSOURCES) $(am__append_1) \
 	$(am__append_5) $(am__append_6) $(am__append_7) \
 	$(am__append_8) $(am__append_9) $(am__append_10) \
 	$(DRUNTIME_DSOURCES_GENERATED)
-# libbacktrace support
-@BACKTRACE_SUPPORTED_TRUE@BACKTRACE_LIB = $(LIBBACKTRACE_DIR)/libbacktrace.la
 ALL_DRUNTIME_SOURCES = $(ALL_DRUNTIME_COMPILE_DSOURCES) $(DRUNTIME_CSOURCES) \
 	$(DRUNTIME_SSOURCES)
 
@@ -654,7 +655,7 @@ toolexeclib_LTLIBRARIES = libgdruntime.la
 libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
 libgdruntime_la_LIBTOOLFLAGS = 
 libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(DRUNTIME_SOVERSION)
-libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
+libgdruntime_la_LIBADD = $(LIBATOMIC) $(LIBBACKTRACE)
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = ../testsuite/test_runner.d $(DRUNTIME_CSOURCES) \
@@ -662,7 +663,7 @@ unittest_static_SOURCES = ../testsuite/test_runner.d $(DRUNTIME_CSOURCES) \
 
 unittest_static_LIBTOOLFLAGS = 
 unittest_static_LDFLAGS = -Xcompiler -nophoboslib
-unittest_static_LDADD = $(DRUNTIME_TEST_OBJECTS) $(BACKTRACE_LIB)
+unittest_static_LDADD = $(DRUNTIME_TEST_OBJECTS) $(LIBATOMIC) $(LIBBACKTRACE)
 EXTRA_unittest_static_DEPENDENCIES = $(DRUNTIME_TEST_OBJECTS)
 
 # For unittest with dynamic library
@@ -671,7 +672,7 @@ libgdruntime_t_la_LIBTOOLFLAGS =
 # Automake by default does not generate shared libs for non-installed
 # libraries. Use -rpath to force shared lib generation.
 libgdruntime_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
-libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
+libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(LIBATOMIC) $(LIBBACKTRACE)
 EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
 # For unittest

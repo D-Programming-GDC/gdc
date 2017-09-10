@@ -613,12 +613,13 @@ toolexecdir
 BACKTRACE_SUPPORTS_THREADS
 BACKTRACE_USES_MALLOC
 BACKTRACE_SUPPORTED
-LIBBACKTRACE_DIR
+LIBBACKTRACE
 BACKTRACE_SUPPORTED_FALSE
 BACKTRACE_SUPPORTED_TRUE
 HAVE_DLADDR
 DRUNTIME_ZLIB_SYSTEM_FALSE
 DRUNTIME_ZLIB_SYSTEM_TRUE
+LIBATOMIC
 DCFG_HAVE_LIBATOMIC
 DCFG_HAVE_64BIT_ATOMICS
 DCFG_HAVE_ATOMIC_BUILTINS
@@ -787,7 +788,6 @@ enable_unix
 enable_thread_lib
 with_libatomic
 with_target_system_zlib
-with_libbacktrace
 enable_libbacktrace
 with_cross_host
 '
@@ -1442,7 +1442,6 @@ Optional Packages:
   --without-libatomic     Do not use libatomic in core.atomic (default: auto)
   --with-target-system-zlib
                           use installed libz (default: no)
-  --with-libbacktrace=PATH specify directory containing libbacktrace object files
   --with-cross-host=HOST  configuring with a cross compiler
 
 Some influential environment variables:
@@ -11253,7 +11252,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11256 "configure"
+#line 11255 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11359,7 +11358,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11362 "configure"
+#line 11361 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14513,56 +14512,11 @@ fi
 
 
   DCFG_HAVE_LIBATOMIC=false
+  LIBATOMIC=
   if test "x$with_libatomic" != "xno"; then :
 
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing __atomic_load" >&5
-$as_echo_n "checking for library containing __atomic_load... " >&6; }
-if test "${ac_cv_search___atomic_load+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_func_search_save_LIBS=$LIBS
-cat > conftest.$ac_ext <<_ACEOF
-module mod;
- extern(C) int __atomic_load();
-
-extern(C) int main() {
-  __atomic_load(); return 0;
-}
-_ACEOF
-for ac_lib in '' atomic; do
-  if test -z "$ac_lib"; then
-    ac_res="none required"
-  else
-    ac_res=-l$ac_lib
-    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
-  fi
-  if ac_fn_d_try_link "$LINENO"; then :
-  ac_cv_search___atomic_load=$ac_res
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext
-  if test "${ac_cv_search___atomic_load+set}" = set; then :
-  break
-fi
-done
-if test "${ac_cv_search___atomic_load+set}" = set; then :
-
-else
-  ac_cv_search___atomic_load=no
-fi
-rm conftest.$ac_ext
-LIBS=$ac_func_search_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search___atomic_load" >&5
-$as_echo "$ac_cv_search___atomic_load" >&6; }
-ac_res=$ac_cv_search___atomic_load
-if test "$ac_res" != no; then :
-  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
-
-        DCFG_HAVE_LIBATOMIC=true
-
-fi
-
+    DCFG_HAVE_LIBATOMIC=true
+    LIBATOMIC=../../libatomic/libatomic_convenience.la
 
 else
 
@@ -14572,6 +14526,7 @@ $as_echo_n "checking for libatomic... " >&6; }
 $as_echo "disabled" >&6; }
 
 fi
+
 
 
 
@@ -14669,29 +14624,10 @@ fi
   BACKTRACE_SUPPORTED=false
   BACKTRACE_USES_MALLOC=false
   BACKTRACE_SUPPORTS_THREADS=false
-  LIBBACKTRACE_DIR=""
+  LIBBACKTRACE=""
 
   gdc_save_CPPFLAGS=$CPPFLAGS
-
-# Check whether --with-libbacktrace was given.
-if test "${with_libbacktrace+set}" = set; then :
-  withval=$with_libbacktrace;
-else
-  with_libbacktrace=no
-fi
-
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking where to find compiled libbacktrace" >&5
-$as_echo_n "checking where to find compiled libbacktrace... " >&6; }
-  if test "x$with_libbacktrace" != xno; then
-    CPPFLAGS+=" -I$with_libbacktrace "
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_libbacktrace" >&5
-$as_echo "$with_libbacktrace" >&6; }
-  else
-    CPPFLAGS+=" -I../libbacktrace "
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: in GCC tree" >&5
-$as_echo "in GCC tree" >&6; }
-  fi
+  CPPFLAGS+=" -I../libbacktrace "
 
   # Check whether --enable-libbacktrace was given.
 if test "${enable_libbacktrace+set}" = set; then :
@@ -14793,13 +14729,9 @@ fi
 
 
   if $BACKTRACE_SUPPORTED; then
-    if test "x$with_libbacktrace" != xno; then
-      LIBBACKTRACE_DIR="$with_libbacktrace"
-    else
-      LIBBACKTRACE_DIR="../../libbacktrace"
-    fi
+    LIBBACKTRACE="../../libbacktrace/libbacktrace.la"
   else
-    LIBBACKTRACE_DIR=""
+    LIBBACKTRACE=""
   fi
 
 
