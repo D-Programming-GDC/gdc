@@ -168,7 +168,8 @@ public:
 	    tree name = (alias != NULL)
 	      ? get_identifier (alias->toChars ()) : NULL_TREE;
 
-	    debug_hooks->imported_module_or_decl (decl, name, context, false);
+	    debug_hooks->imported_module_or_decl (decl, name, context,
+						  false, false);
 	  }
       }
     else
@@ -179,7 +180,8 @@ public:
 	tree name = (d->aliasId != NULL)
 	  ? get_identifier (d->aliasId->toChars ()) : NULL_TREE;
 
-	debug_hooks->imported_module_or_decl (decl, name, context, false);
+	debug_hooks->imported_module_or_decl (decl, name, context,
+					      false, false);
       }
   }
 

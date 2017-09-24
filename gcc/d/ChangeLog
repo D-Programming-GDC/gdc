@@ -1,3 +1,16 @@
+2017-09-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attribs.c: Add include for attribs.h.
+	* d-codegen.cc (copy_aggregate_type): Remove TYPE_METHODS.
+	(lower_struct_comparison): Use opt_scalar_int_mode.
+	* d-target.cc (Target::_init): Use TYPE_MAX_VALUE instead of
+	TYPE_MAXVAL.
+	(Target::isVectorTypeSupported):  Update call to
+	scalar_mode_supported_p.
+	* decl.cc (DeclVisitor::visit(Import)): Pass false as new argument to
+	the imported_module_or_decl hook.
+	* types.cc (TypeVisitor::visit(TypeClass)): Remove TYPE_METHODS.
+
 2017-09-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_FRONTEND_OBJS): Add blockexit.o, initsem.o,

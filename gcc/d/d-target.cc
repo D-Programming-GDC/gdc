@@ -138,7 +138,7 @@ Target::_init (void)
   Target::cppExceptions = true;
 
   /* Allow data sizes up to half of the address space.  */
-  Target::maxStaticDataSize = tree_to_shwi (TYPE_MAXVAL (ptrdiff_type_node));
+  Target::maxStaticDataSize = tree_to_shwi (TYPE_MAX_VALUE (ptrdiff_type_node));
 
   /* Define what type to use for size_t, ptrdiff_t.  */
   if (POINTER_SIZE == 64)
@@ -364,7 +364,7 @@ Target::isVectorTypeSupported (int sz, Type *type)
   machine_mode mode = TYPE_MODE (ctype);
 
   if (!targetm.vector_mode_supported_p (mode)
-      && !targetm.scalar_mode_supported_p (mode))
+      && !targetm.scalar_mode_supported_p (as_a <scalar_mode> (mode)))
     return 3;
 
   return 0;

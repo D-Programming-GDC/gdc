@@ -117,13 +117,9 @@ copy_aggregate_type (tree type)
 {
   tree newtype = build_distinct_type_copy (type);
   TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
-  TYPE_METHODS (newtype) = copy_list (TYPE_METHODS (type));
 
   for (tree f = TYPE_FIELDS (newtype); f; f = DECL_CHAIN (f))
     DECL_FIELD_CONTEXT (f) = newtype;
-
-  for (tree m = TYPE_METHODS (newtype); m; m = DECL_CHAIN (m))
-    DECL_CONTEXT (m) = newtype;
 
   return newtype;
 }
@@ -816,21 +812,21 @@ lower_struct_comparison (tree_code code, StructDeclaration *sd,
       else
 	{
 	  tree stype = build_ctype (vd->type);
-	  machine_mode mode = int_mode_for_mode (TYPE_MODE (stype));
+	  opt_scalar_int_mode mode = int_mode_for_mode (TYPE_MODE (stype));
 
 	  if (vd->type->ty != Tvector && vd->type->isintegral ())
 	    {
 	      /* Integer comparison, no special handling required.  */
 	      tcmp = build_boolop (code, t1ref, t2ref);
 	    }
-	  else if (mode != BLKmode)
+	  else if (mode.exists ())
 	    {
 	      /* Compare field bits as their corresponding integer type.
 		    *((T*) &t1) == *((T*) &t2)  */
-	      tree tmode = lang_hooks.types.type_for_mode (mode, 1);
+	      tree tmode = lang_hooks.types.type_for_mode (mode.require (), 1);
 
 	      if (tmode == NULL_TREE)
-		tmode = make_unsigned_type (GET_MODE_BITSIZE (mode));
+		tmode = make_unsigned_type (GET_MODE_BITSIZE (mode.require ()));
 
 	      t1ref = build_vconvert (tmode, t1ref);
 	      t2ref = build_vconvert (tmode, t2ref);

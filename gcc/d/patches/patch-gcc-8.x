@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- a/gcc/config/powerpcspe/powerpcspe.c
 +++ b/gcc/config/powerpcspe/powerpcspe.c
-@@ -31921,11 +31921,12 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -32015,11 +32015,12 @@ rs6000_output_function_epilogue (FILE *file)
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -21,7 +21,7 @@ relevant documentation about the GDC front end.
        else if (! strcmp (language_string, "GNU F77")
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -31980,11 +31980,12 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -28828,11 +28828,12 @@ rs6000_output_function_epilogue (FILE *file)
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -82,7 +82,7 @@ relevant documentation about the GDC front end.
  default language, but is built by default because @option{--enable-lto} is
  enabled by default.  The other languages are default languages.  If
  @code{all} is specified, then all available languages are built.  An
-@@ -2715,7 +2715,7 @@ on a simulator as described at @uref{http://gcc.gnu.org/simtest-howto.html}.
+@@ -2716,7 +2716,7 @@ on a simulator as described at @uref{http://gcc.gnu.org/simtest-howto.html}.
  
  In order to run sets of tests selectively, there are targets
  @samp{make check-gcc} and language specific @samp{make check-c},
@@ -93,7 +93,7 @@ relevant documentation about the GDC front end.
  in the @file{gcc} subdirectory of the object directory.  You can also
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -1345,6 +1345,15 @@ Go source code.
+@@ -1351,6 +1351,15 @@ Go source code.
  @item @var{file}.brig
  BRIG files (binary representation of HSAIL).
  
@@ -109,7 +109,7 @@ relevant documentation about the GDC front end.
  @item @var{file}.ads
  Ada source code file that contains a library unit declaration (a
  declaration of a package, subprogram, or generic, or a generic
-@@ -1391,6 +1400,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1397,6 +1406,7 @@ objective-c  objective-c-header  objective-c-cpp-output
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -132,7 +132,7 @@ relevant documentation about the GDC front end.
  
 --- a/gcc/doc/standards.texi
 +++ b/gcc/doc/standards.texi
-@@ -309,6 +309,12 @@ capability is typically utilized to implement the HSA runtime API's HSAIL
+@@ -307,6 +307,12 @@ capability is typically utilized to implement the HSA runtime API's HSAIL
  finalization extension for a gcc supported processor. HSA standards are
  freely available at @uref{http://www.hsafoundation.com/standards/}.
  
@@ -147,7 +147,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
-@@ -5083,6 +5083,16 @@ is_ada (void)
+@@ -5170,6 +5170,16 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -164,7 +164,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  Return TRUE if removal
     was successful.  */
  
-@@ -23599,6 +23609,8 @@ gen_compile_unit_die (const char *filename)
+@@ -23519,6 +23529,8 @@ gen_compile_unit_die (const char *filename)
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)
  	language = DW_LANG_ObjC_plus_plus;
@@ -173,7 +173,7 @@ relevant documentation about the GDC front end.
        else if (dwarf_version >= 5 || !dwarf_strict)
  	{
  	  if (strcmp (language_string, "GNU Go") == 0)
-@@ -25182,7 +25194,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+@@ -25122,7 +25134,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
  
    if (ns_context != context_die)
      {
@@ -182,7 +182,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, NULL, ns_context);
-@@ -25205,7 +25217,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -25145,7 +25157,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -191,7 +191,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -25272,7 +25284,7 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
+@@ -25217,7 +25229,7 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
        break;
  
      case CONST_DECL:
@@ -200,7 +200,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -25820,7 +25832,7 @@ dwarf2out_decl (tree decl)
+@@ -25785,7 +25797,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -211,9 +211,9 @@ relevant documentation about the GDC front end.
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
-@@ -1309,6 +1309,7 @@ static const struct compiler default_compilers[] =
-   {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
-   {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
+@@ -1307,6 +1307,7 @@ static const struct compiler default_compilers[] =
+   {".f08", "#Fortran", 0, 0, 0}, {".F08", "#Fortran", 0, 0, 0},
+   {".r", "#Ratfor", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},
 +  {".d", "#D", 0, 1, 0}, {".dd", "#D", 0, 1, 0}, {".di", "#D", 0, 1, 0},
    /* Next come the entries for C.  */

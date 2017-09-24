@@ -944,10 +944,7 @@ public:
 	tree method = fd ? get_symbol_decl (fd) : NULL_TREE;
 
 	if (method && DECL_CONTEXT (method) == basetype)
-	  {
-	    DECL_CHAIN (method) = TYPE_METHODS (basetype);
-	    TYPE_METHODS (basetype) = method;
-	  }
+	  TYPE_FIELDS (basetype) = chainon (TYPE_FIELDS (basetype), method);
       }
 
     TYPE_CONTEXT (basetype) = d_decl_context (t->sym);
