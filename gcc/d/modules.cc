@@ -34,7 +34,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 
 #include "d-tree.h"
-#include "id.h"
 
 
 /* D generates module information to inform the runtime library which modules
@@ -137,14 +136,11 @@ get_internal_fn (tree ident)
       name = IDENTIFIER_POINTER (s);
     }
 
-  TypeFunction *tf = TypeFunction::create (0, Type::tvoid, 0, LINKc);
-  FuncDeclaration *fd = new FuncDeclaration (mod->loc, mod->loc,
-					     Identifier::idPool (name),
-					     STCstatic, tf);
+  FuncDeclaration *fd = FuncDeclaration::genCfunc (NULL, Type::tvoid,
+						   Identifier::idPool (name));
   fd->loc = Loc (mod->srcfile->toChars (), 1, 0);
-  fd->linkage = tf->linkage;
   fd->parent = mod;
-  fd->protection = PROTprivate;
+  fd->protection.kind = PROTprivate;
   fd->semanticRun = PASSsemantic3done;
 
   return fd;
@@ -723,7 +719,8 @@ build_module_tree (Module *decl)
 
   /* Default behaviour is to always generate module info because of templates.
      Can be switched off for not compiling against runtime library.  */
-  if (!global.params.betterC && decl->ident != Id::entrypoint)
+  if (!global.params.betterC
+      && decl->ident != Identifier::idPool ("__entrypoint"))
     {
       if (mi.ctors || mi.ctorgates)
 	decl->sctor = build_funcs_gates_fn (get_identifier ("*__modctor"),
