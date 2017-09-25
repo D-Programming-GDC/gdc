@@ -33,6 +33,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 #include "common/common-target.h"
 #include "stringpool.h"
+#include "attribs.h"
 #include "varasm.h"
 
 #include "d-tree.h"
