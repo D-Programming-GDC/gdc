@@ -1376,7 +1376,7 @@ else version( GNU )
             res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, *cast(ulong*) &writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
-        else static if(T.sizeof == long.sizeof * 2 && GNU_Have_LibAtomic)
+        else static if (GNU_Have_LibAtomic)
         {
             res = __atomic_compare_exchange(T.sizeof, here, cast(void*) &ifThis, cast(void*) &writeThis,
                                             MemoryOrder.seq, MemoryOrder.seq);
@@ -1428,7 +1428,7 @@ else version( GNU )
             ulong value = __atomic_load_8(&val, ms);
             return *cast(HeadUnshared!T*) &value;
         }
-        else static if (T.sizeof == ulong.sizeof * 2 && GNU_Have_LibAtomic)
+        else static if (GNU_Have_LibAtomic)
         {
             T value;
             __atomic_load(T.sizeof, &val, cast(void*)&value, ms);
@@ -1462,7 +1462,7 @@ else version( GNU )
         {
             __atomic_store_8(&val, *cast(ulong*) &newval, ms);
         }
-        else static if (T.sizeof == ulong.sizeof * 2 && GNU_Have_LibAtomic)
+        else static if (GNU_Have_LibAtomic)
         {
             __atomic_store(T.sizeof, &val, cast(void*)&newval, ms);
         }
