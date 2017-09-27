@@ -1,10 +1,5 @@
-// { dg-additional-sources "imports/ltoa.d" }
-// { dg-additional-options "-flto" }
-// { dg-do run { target arm*-*-* i?86-*-* x86_64-*-* } }
+module ltotests_0;
 
-module lto;
-
-import imports.ltoa;
 import core.stdc.stdio;
 
 
@@ -63,6 +58,8 @@ struct S61b
 /******************************************/
 
 // Bug 88
+
+extern(C) int test88a();
 
 void test88()
 {
