@@ -27,19 +27,23 @@ class Dsymbol;
 class FuncDeclaration;
 class StructDeclaration;
 class Type;
+class Module;
 struct OutBuffer;
 
 /* Used in typeinfo.cc.  */
 FuncDeclaration *search_toString (StructDeclaration *);
 
 /* Used in d-lang.cc.  */
-void initTraitsStringTable (void);
+void gendocfile(Module *m);
 
 /* Used in intrinsics.cc.  */
-void mangleToBuffer(Type *, OutBuffer *);
+void mangleToBuffer (Type *, OutBuffer *);
 
 /* Used in d-target.cc.  */
-const char *toCppMangleItanium(Dsymbol *);
-const char *cppTypeInfoMangleItanium(Dsymbol *);
+const char *toCppMangleItanium (Dsymbol *);
+const char *cppTypeInfoMangleItanium (Dsymbol *);
+
+/* Used in decl.cc.  */
+Expression *initializerToExpression (Initializer *i, Type *t = NULL);
 
 #endif  /* ! GCC_D_FRONTEND_H */

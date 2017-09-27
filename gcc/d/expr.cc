@@ -39,7 +39,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
-#include "id.h"
+#include "d-frontend.h"
 
 
 /* Implements the visitor interface to build the GCC trees of all Expression
@@ -1103,17 +1103,19 @@ public:
     Type *tb1 = e->e1->type->toBasetype ();
     tree_code modifycode = (e->op == TOKconstruct) ? INIT_EXPR : MODIFY_EXPR;
 
+    /* Look for struct assignment.  */
     if (tb1->ty == Tstruct)
       {
 	tree t1 = build_expr (e->e1);
 	tree t2 = convert_for_assignment (build_expr (e->e2),
 					  e->e2->type, e->e1->type);
 
+	/* Look for struct = 0.  */
 	if (e->e2->op == TOKint64)
 	  {
 	    /* Use memset to fill struct.  */
-	    StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
 	    gcc_assert (e->op == TOKblit);
+	    StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
 
 	    tree tmemset = builtin_decl_explicit (BUILT_IN_MEMSET);
 	    tree result = build_call_expr (tmemset, 3, build_address (t1),
@@ -1137,8 +1139,26 @@ public:
 	return;
       }
 
+    /* Look for static array assignment.  */
     if (tb1->ty == Tsarray)
       {
+	/* Look for array = 0.  */
+	if (e->e2->op == TOKint64)
+	  {
+	    /* Use memset to fill the array.  */
+	    gcc_assert (e->op == TOKblit);
+
+	    tree t1 = build_expr (e->e1);
+	    tree t2 = convert_for_assignment (build_expr (e->e2),
+					      e->e2->type, e->e1->type);
+	    tree size = size_int (e->e1->type->size ());
+
+	    tree tmemset = builtin_decl_explicit (BUILT_IN_MEMSET);
+	    this->result_ = build_call_expr (tmemset, 3, build_address (t1),
+					     t2, size);
+	    return;
+	  }
+
 	Type *etype = tb1->nextOf ();
 	gcc_assert (e->e2->type->toBasetype ()->ty == Tsarray);
 
@@ -2170,7 +2190,7 @@ public:
 	this->result_ = error_mark_node;
 	return;
       }
-    else if (e->var->ident == Id::ctfe)
+    else if (e->var->ident == Identifier::idPool ("__ctfe"))
       {
 	/* __ctfe is always false at runtime.  */
 	this->result_ = integer_zero_node;
@@ -2206,7 +2226,7 @@ public:
 	    else
 	      {
 		var->inuse++;
-		init = build_expr (var->_init->toExpression (), true);
+		init = build_expr (initializerToExpression (var->_init), true);
 		var->inuse--;
 	      }
 	  }
@@ -2577,8 +2597,9 @@ public:
     Type *tb = e->type->toBasetype ();
 
     /* All strings are null terminated except static arrays.  */
+    const char *string = (const char *)(e->len ? e->string : "");
     dinteger_t length = (e->len * e->sz) + (tb->ty != Tsarray);
-    tree value = build_string (length, (char *) e->string);
+    tree value = build_string (length, string);
     tree type = build_ctype (e->type);
 
     if (tb->ty == Tsarray)

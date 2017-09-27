@@ -7,7 +7,7 @@
 # ---------------------------
 # Add the --with-libbacktrace=PATH and --disable-libbacktrace option,
 # add BACKTRACE_SUPPORTED conditional
-# and subsitute HAVE_DLADDR LIBBACKTRACE_DIR BACKTRACE_SUPPORTED
+# and subsitute HAVE_DLADDR LIBBACKTRACE BACKTRACE_SUPPORTED
 # BACKTRACE_USES_MALLOC BACKTRACE_SUPPORTS_THREADS.
 AC_DEFUN([DRUNTIME_LIBBACKTRACE_SETUP],
 [
@@ -20,21 +20,10 @@ AC_DEFUN([DRUNTIME_LIBBACKTRACE_SETUP],
   BACKTRACE_SUPPORTED=false
   BACKTRACE_USES_MALLOC=false
   BACKTRACE_SUPPORTS_THREADS=false
-  LIBBACKTRACE_DIR=""
+  LIBBACKTRACE=""
 
   gdc_save_CPPFLAGS=$CPPFLAGS
-  AC_ARG_WITH([libbacktrace],
-  [  --with-libbacktrace=PATH specify directory containing libbacktrace object files],
-  [], [with_libbacktrace=no])
-
-  AC_MSG_CHECKING([where to find compiled libbacktrace])
-  if test "x$with_libbacktrace" != xno; then
-    CPPFLAGS+=" -I$with_libbacktrace "
-    AC_MSG_RESULT([$with_libbacktrace])
-  else
-    CPPFLAGS+=" -I../libbacktrace "
-    AC_MSG_RESULT([in GCC tree])
-  fi
+  CPPFLAGS+=" -I../libbacktrace "
 
   AC_ARG_ENABLE(libbacktrace,
    [  --disable-libbacktrace  Do not use libbacktrace for backtraces],
@@ -83,16 +72,12 @@ AC_DEFUN([DRUNTIME_LIBBACKTRACE_SETUP],
   AM_CONDITIONAL([BACKTRACE_SUPPORTED], [$BACKTRACE_SUPPORTED])
 
   if $BACKTRACE_SUPPORTED; then
-    if test "x$with_libbacktrace" != xno; then
-      LIBBACKTRACE_DIR="$with_libbacktrace"
-    else
-      LIBBACKTRACE_DIR="../../libbacktrace"
-    fi
+    LIBBACKTRACE="../../libbacktrace/libbacktrace.la"
   else
-    LIBBACKTRACE_DIR=""
+    LIBBACKTRACE=""
   fi
 
-  AC_SUBST(LIBBACKTRACE_DIR)
+  AC_SUBST(LIBBACKTRACE)
   AC_SUBST(BACKTRACE_SUPPORTED)
   AC_SUBST(BACKTRACE_USES_MALLOC)
   AC_SUBST(BACKTRACE_SUPPORTS_THREADS)

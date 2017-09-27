@@ -33,7 +33,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
-#include "id.h"
 
 
 /* Implements the Global interface defined by the frontend.
@@ -146,11 +145,11 @@ Loc::equals (const Loc& loc)
 /* Compare the first N bytes of S1 and S2 without regard to the case.  */
 
 int
-Port::memicmp (const char *s1, const char *s2, int n)
+Port::memicmp (const char *s1, const char *s2, size_t n)
 {
   int result = 0;
 
-  for (int i = 0; i < n; i++)
+  for (size_t i = 0; i < n; i++)
     {
       char c1 = s1[i];
       char c2 = s2[i];
@@ -505,7 +504,7 @@ genCmain (Scope *sc)
   /* The D code to be generated is provided by __entrypoint.di, try to load it,
      but don't fail if unfound.  */
   unsigned errors = global.startGagging ();
-  Module *m = Module::load (Loc (), NULL, Id::entrypoint);
+  Module *m = Module::load (Loc (), NULL, Identifier::idPool ("__entrypoint"));
 
   if (global.endGagging (errors))
     m = NULL;
