@@ -55,19 +55,80 @@ DMDGEN_COMPILE = $(subst $(COMPILER), $(COMPILER_FOR_BUILD), $(DMD_COMPILE))
 
 # D Frontend object files.
 D_FRONTEND_OBJS = \
-	d/argtypes.o d/aav.o d/access.o d/aliasthis.o d/apply.o d/arrayop.o \
-	d/attrib.o d/canthrow.o d/checkedint.o d/clone.o d/cond.o \
-	d/constfold.o d/cppmangle.o d/ctfeexpr.o d/dcast.o d/dclass.o \
-	d/declaration.o d/delegatize.o d/denum.o d/dimport.o d/dinterpret.o \
-	d/dmacro.o d/dmangle.o d/dmodule.o d/doc.o d/dscope.o d/dstruct.o \
-	d/dsymbol.o d/dtemplate.o d/dversion.o d/entity.o d/escape.o \
-	d/expression.o d/expressionsem.o d/file.o d/filename.o d/func.o \
-	d/hdrgen.o d/identifier.o d/imphint.o d/init.o d/inline.o \
-	d/intrange.o d/json.o d/lexer.o d/mtype.o d/nogc.o d/newdelete.o \
-	d/nspace.o d/objc.o d/opover.o d/optimize.o d/outbuffer.o d/parse.o \
-	d/rmem.o d/rootobject.o d/sapply.o d/sideeffect.o d/speller.o \
-	d/statement.o d/statementsem.o d/staticassert.o d/stringtable.o \
-	d/tokens.o d/traits.o d/unittests.o d/utf.o d/utils.o
+	d/aav.o \
+	d/access.o \
+	d/aliasthis.o \
+	d/apply.o \
+	d/argtypes.o \
+	d/arrayop.o \
+	d/attrib.o \
+	d/blockexit.o \
+	d/canthrow.o \
+	d/checkedint.o \
+	d/clone.o \
+	d/cond.o \
+	d/constfold.o \
+	d/cppmangle.o \
+	d/ctfeexpr.o \
+	d/dcast.o \
+	d/dclass.o \
+	d/declaration.o \
+	d/delegatize.o \
+	d/denum.o \
+	d/dimport.o \
+	d/dinterpret.o \
+	d/dmacro.o \
+	d/dmangle.o \
+	d/dmodule.o \
+	d/doc.o \
+	d/dscope.o \
+	d/dstruct.o \
+	d/dsymbol.o \
+	d/dtemplate.o \
+	d/dversion.o \
+	d/entity.o \
+	d/escape.o \
+	d/expression.o \
+	d/expressionsem.o \
+	d/file.o \
+	d/filename.o \
+	d/func.o \
+	d/hdrgen.o \
+	d/identifier.o \
+	d/imphint.o \
+	d/init.o \
+	d/initsem.o \
+	d/inline.o \
+	d/inlinecost.o \
+	d/intrange.o \
+	d/json.o \
+	d/lexer.o \
+	d/mtype.o \
+	d/nogc.o \
+	d/newdelete.o \
+	d/nspace.o \
+	d/objc.o \
+	d/opover.o \
+	d/optimize.o \
+	d/outbuffer.o \
+	d/parse.o \
+	d/rmem.o \
+	d/rootobject.o \
+	d/safe.o \
+	d/sapply.o \
+	d/sideeffect.o \
+	d/speller.o \
+	d/statement.o \
+	d/statementsem.o \
+	d/staticassert.o \
+	d/staticcond.o \
+	d/stringtable.o \
+	d/tokens.o \
+	d/traits.o \
+	d/typesem.o \
+	d/unittests.o \
+	d/utf.o \
+	d/utils.o
 
 # D Frontend generated files.
 D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c

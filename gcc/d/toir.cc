@@ -35,7 +35,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "toplev.h"
 
 #include "d-tree.h"
-#include "id.h"
 
 
 /* Update data for defined and undefined labels when leaving a scope.  */
@@ -1270,13 +1269,16 @@ public:
 	for (size_t i = 0; i < s->args->dim; i++)
 	  {
 	    Identifier *name = (*s->names)[i];
-	    StringExp *constr = (StringExp *)(*s->constraints)[i];
-	    Expression *arg = (*s->args)[i];
-
 	    const char *sname = name ? name->toChars () : NULL;
 	    tree id = name ? build_string (strlen (sname), sname) : NULL_TREE;
-	    tree str = build_string (constr->len, (char *)constr->string);
-	    tree val = build_expr (arg);
+
+	    StringExp *constr = (StringExp *)(*s->constraints)[i];
+	    const char *cstring = (const char *)(constr->len
+						 ? constr->string : "");
+	    tree str = build_string (constr->len, cstring);
+
+	    Expression *earg = (*s->args)[i];
+	    tree val = build_expr (earg);
 
 	    if (i < s->outputargs)
 	      {
@@ -1297,7 +1299,10 @@ public:
 	for (size_t i = 0; i < s->clobbers->dim; i++)
 	  {
 	    StringExp *clobber = (StringExp *)(*s->clobbers)[i];
-	    tree val = build_string (clobber->len, (char *)clobber->string);
+	    const char *cstring = (const char *)(clobber->len
+						 ? clobber->string : "");
+
+	    tree val = build_string (clobber->len, cstring);
 	    clobbers = chainon (clobbers, build_tree_list (0, val));
 	  }
       }
@@ -1325,7 +1330,8 @@ public:
       }
 
     /* Do some extra validation on all input and output operands.  */
-    tree string = build_string (insn->len, (char *)insn->string);
+    const char *insnstring = (const char *)(insn->len ? insn->string : "");
+    tree string = build_string (insn->len, insnstring);
     string = resolve_asm_operand_names (string, outputs, inputs, labels);
 
     if (s->args)
