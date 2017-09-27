@@ -1,9 +1,9 @@
-module imports.ltoa;
+module ltotests_1;
 
 /******************************************/
 // Bug 88
 
-int test88a()
+extern(C) int test88a()
 {
     return 0;
 }
