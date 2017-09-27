@@ -21,10 +21,8 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "dfrontend/aggregate.h"
 #include "dfrontend/cond.h"
-#include "dfrontend/doc.h"
 #include "dfrontend/hdrgen.h"
 #include "dfrontend/json.h"
-#include "dfrontend/lexer.h"
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
 #include "dfrontend/target.h"
@@ -130,8 +128,15 @@ deps_add_target (const char *target, bool quoted)
 static void
 deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 {
-  StringTable dependencies;
-  dependencies._init ();
+  static StringTable *dependencies = NULL;
+
+  if (dependencies)
+    dependencies->reset ();
+  else
+    {
+      dependencies = new StringTable ();
+      dependencies->_init ();
+    }
 
   Modules modlist;
   modlist.push (module);
@@ -168,7 +173,7 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
     size = strlen (str);
 
     /* Skip dependencies that have already been written.  */
-    if (!dependencies.insert (str, size, NULL))
+    if (!dependencies->insert (str, size, NULL))
       continue;
 
     column += size;
@@ -196,21 +201,23 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 	Module *m = depmod->aimports[i];
 
 	/* Ignore compiler-generated modules.  */
-	if (m->ident == Id::entrypoint && m->parent == NULL)
+	if (m->ident == Identifier::idPool ("__entrypoint")
+	    && m->parent == NULL)
 	  continue;
 
 	/* Don't search system installed modules, this includes
 	   object, core.*, std.*, and gcc.* packages.  */
 	if (d_option.deps_skip_system)
 	  {
-	    if (m->ident == Id::object && m->parent == NULL)
+	    if (m->ident == Identifier::idPool ("object") && m->parent == NULL)
 	      continue;
 
 	    if (m->md && m->md->packages)
 	      {
 		Identifier *package = (*m->md->packages)[0];
 
-		if (package == Id::core || package == Id::std
+		if (package == Identifier::idPool ("core")
+		    || package == Identifier::idPool ("std")
 		    || package == Identifier::idPool ("gcc"))
 		  continue;
 	      }
@@ -320,14 +327,11 @@ d_option_lang_mask (void)
 static bool
 d_init (void)
 {
-  Lexer::initLexer ();
   Type::_init ();
   Id::initialize ();
   Module::_init ();
   Expression::_init ();
   Objc::_init ();
-  initPrecedence ();
-  initTraitsStringTable ();
 
   /* Backend init.  */
   global_binding_level = ggc_alloc_cleared_binding_level ();
@@ -1118,10 +1122,10 @@ d_parse_file (void)
 
       if (global.params.moduleDepsFile)
 	{
-	  File fdeps (global.params.moduleDepsFile);
-	  fdeps.setbuffer ((void *) buf->data, buf->offset);
-	  fdeps.ref = 1;
-	  writeFile (Loc (), &fdeps);
+	  File *fdeps = File::create (global.params.moduleDepsFile);
+	  fdeps->setbuffer ((void *) buf->data, buf->offset);
+	  fdeps->ref = 1;
+	  writeFile (Loc (), fdeps);
 	}
       else
 	fprintf (global.stdmsg, "%.*s", (int) buf->offset, (char *) buf->data);
@@ -1141,10 +1145,10 @@ d_parse_file (void)
 
       if (d_option.deps_filename)
 	{
-	  File fdeps (d_option.deps_filename);
-	  fdeps.setbuffer ((void *) buf.data, buf.offset);
-	  fdeps.ref = 1;
-	  writeFile (Loc (), &fdeps);
+	  File *fdeps = File::create (d_option.deps_filename);
+	  fdeps->setbuffer ((void *) buf.data, buf.offset);
+	  fdeps->ref = 1;
+	  writeFile (Loc (), fdeps);
 	}
       else
 	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
@@ -1160,10 +1164,11 @@ d_parse_file (void)
 
       if (name && (name[0] != '-' || name[1] != '\0'))
 	{
-	  File fjson (FileName::defaultExt (name, global.json_ext));
-	  fjson.setbuffer ((void *) buf.data, buf.offset);
-	  fjson.ref = 1;
-	  writeFile (Loc (), &fjson);
+	  const char *nameext = FileName::defaultExt (name, global.json_ext);
+	  File *fjson = File::create (nameext);
+	  fjson->setbuffer ((void *) buf.data, buf.offset);
+	  fjson->ref = 1;
+	  writeFile (Loc (), fjson);
 	}
       else
 	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);

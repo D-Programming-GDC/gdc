@@ -645,8 +645,9 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	}
     }
 
-  /* D Front end uses IntegerExp(0) to mean zero-init a structure.  */
-  if (tbtype->ty == Tstruct && ebtype->isintegral ())
+  /* D Front end uses IntegerExp(0) to mean zero-init an array or structure.  */
+  if ((tbtype->ty == Tsarray || tbtype->ty == Tstruct)
+      && ebtype->isintegral ())
     {
       if (!integer_zerop (expr))
 	gcc_unreachable ();

@@ -28,7 +28,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "id.h"
 
 // Hash and equality functions for the d_label_entry table.
 static hashval_t
@@ -175,7 +174,7 @@ declaration_type (Declaration *decl)
   if (decl->storage_class & STClazy)
     {
       TypeFunction *tf = TypeFunction::create (NULL, decl->type, false, LINKd);
-      TypeDelegate *t = new TypeDelegate (tf);
+      TypeDelegate *t = TypeDelegate::create (tf);
       return build_ctype (t->merge ());
     }
 
@@ -228,7 +227,7 @@ type_passed_as (Parameter *arg)
   if (arg->storageClass & STClazy)
     {
       TypeFunction *tf = TypeFunction::create (NULL, arg->type, false, LINKd);
-      TypeDelegate *t = new TypeDelegate (tf);
+      TypeDelegate *t = TypeDelegate::create (tf);
       return build_ctype (t->merge ());
     }
 
@@ -2189,7 +2188,8 @@ get_frame_for_symbol (Dsymbol *sym)
 	}
 
       /* Special case for __ensure and __require.  */
-      if (thisfd->ident == Id::ensure || thisfd->ident == Id::require)
+      if (thisfd->ident == Identifier::idPool ("__ensure")
+	  || thisfd->ident == Identifier::idPool ("__require"))
 	parentfd = func;
       else
 	parentfd = thisfd->toParent2 ()->isFuncDeclaration ();
@@ -2577,30 +2577,35 @@ get_frameinfo (FuncDeclaration *fd)
 
   DECL_LANG_FRAMEINFO (fds) = ffi;
 
-  /* Nested functions, or functions with nested refs must create
-     a static frame for local variables to be referenced from.  */
-  if (fd->hasNestedFrameRefs ()
-      || (fd->vthis && fd->vthis->type == Type::tvoidptr))
-    FRAMEINFO_CREATES_FRAME (ffi) = 1;
-
-  /* In checkNestedReference, references from contracts are not added to the
-     closureVars array, so assume all parameters referenced.  Even if they
-     aren't the 'this' parameter may still be needed for the static chain.  */
-  if ((global.params.useIn && fd->frequire)
-      || (global.params.useOut && fd->fensure))
-    FRAMEINFO_CREATES_FRAME (ffi) = 1;
-
-  /* D2 maybe setup closure instead.  */
   if (fd->needsClosure ())
     {
+      /* Set-up a closure frame, this will be allocated on the heap.  */
       FRAMEINFO_CREATES_FRAME (ffi) = 1;
       FRAMEINFO_IS_CLOSURE (ffi) = 1;
     }
-  else if (fd->closureVars.dim == 0)
+  else if (fd->hasNestedFrameRefs ())
     {
-      /* If fd is nested (deeply) in a function that creates a closure,
-	 then fd inherits that closure via hidden vthis pointer, and
-	 doesn't create a stack frame at all.  */
+      /* Functions with nested refs must create a static frame for local
+	 variables to be referenced from.  */
+      FRAMEINFO_CREATES_FRAME (ffi) = 1;
+    }
+  else
+    {
+      /* For nested functions, default to creating a frame.  Even if there is no
+	 fields to populate the frame, create it anyway, as this will be used as
+	 the record type instead of `void*` for the this parameter.  */
+      if (fd->vthis && fd->vthis->type == Type::tvoidptr)
+	FRAMEINFO_CREATES_FRAME (ffi) = 1;
+
+      /* In checkNestedReference, references from contracts are not added to the
+	 closureVars array, so assume all parameters referenced.  */
+      if ((global.params.useIn && fd->frequire)
+	  || (global.params.useOut && fd->fensure))
+	FRAMEINFO_CREATES_FRAME (ffi) = 1;
+
+      /* If however `fd` is nested (deeply) in a function that creates a
+	 closure, then `fd` instead inherits that closure via hidden vthis
+	 pointer, and doesn't create a stack frame at all.  */
       FuncDeclaration *ff = fd;
 
       while (ff)

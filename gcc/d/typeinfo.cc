@@ -31,7 +31,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "d-tree.h"
 #include "d-frontend.h"
 #include "d-target.h"
-#include "id.h"
 
 #include <new>
 
@@ -196,7 +195,8 @@ make_frontend_typeinfo (Module *mod, Identifier *ident,
   /* Assignment of global typeinfo variables is managed by the ClassDeclaration
      constructor, so only need to new the declaration here.  */
   Loc loc = (mod->md) ? mod->md->loc : mod->loc;
-  ClassDeclaration *tinfo = new ClassDeclaration (loc, ident, NULL, true);
+  ClassDeclaration *tinfo = ClassDeclaration::create (loc, ident, NULL, NULL,
+						      true);
   tinfo->parent = mod;
   tinfo->semantic (mod->_scope);
   tinfo->baseClass = base;
@@ -210,9 +210,11 @@ create_tinfo_types (Module *mod)
 {
   /* Build the internal TypeInfo and ClassInfo types.
      See TypeInfoVisitor for documentation of field layout.  */
-  make_internal_typeinfo (TK_TYPEINFO_TYPE, Id::TypeInfo, NULL);
+  make_internal_typeinfo (TK_TYPEINFO_TYPE, Identifier::idPool ("TypeInfo"),
+			  NULL);
 
-  make_internal_typeinfo (TK_CLASSINFO_TYPE, Id::TypeInfo_Class,
+  make_internal_typeinfo (TK_CLASSINFO_TYPE,
+			  Identifier::idPool ("TypeInfo_Class"),
 			  array_type_node, array_type_node, array_type_node,
 			  array_type_node, ptr_type_node, ptr_type_node,
 			  ptr_type_node, uint_type_node, ptr_type_node,
@@ -221,58 +223,62 @@ create_tinfo_types (Module *mod)
   /* Create all frontend TypeInfo classes declarations.  We rely on all
      existing, even if only just as stubs.  */
   if (!Type::dtypeinfo)
-    make_frontend_typeinfo (mod, Id::TypeInfo, ClassDeclaration::object);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo"),
+			    ClassDeclaration::object);
 
   if (!Type::typeinfoclass)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Class);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Class"));
 
   if (!Type::typeinfointerface)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Interface);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Interface"));
 
   if (!Type::typeinfostruct)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Struct);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Struct"));
 
   if (!Type::typeinfopointer)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Pointer);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Pointer"));
 
   if (!Type::typeinfoarray)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Array);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Array"));
 
   if (!Type::typeinfostaticarray)
-    make_frontend_typeinfo (mod, Id::TypeInfo_StaticArray);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_StaticArray"));
 
   if (!Type::typeinfoassociativearray)
-    make_frontend_typeinfo (mod, Id::TypeInfo_AssociativeArray);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_AssociativeArray"));
 
   if (!Type::typeinfoenum)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Enum);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Enum"));
 
   if (!Type::typeinfofunction)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Function);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Function"));
 
   if (!Type::typeinfodelegate)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Delegate);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Delegate"));
 
   if (!Type::typeinfotypelist)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Tuple);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Tuple"));
 
   if (!Type::typeinfoconst)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Const);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Const"));
 
   if (!Type::typeinfoinvariant)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Invariant, Type::typeinfoconst);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Invariant"),
+			    Type::typeinfoconst);
 
   if (!Type::typeinfoshared)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Shared, Type::typeinfoconst);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Shared"),
+			    Type::typeinfoconst);
 
   if (!Type::typeinfowild)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Wild, Type::typeinfoconst);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Wild"),
+			    Type::typeinfoconst);
 
   if (!Type::typeinfovector)
-    make_frontend_typeinfo (mod, Id::TypeInfo_Vector);
+    make_frontend_typeinfo (mod, Identifier::idPool ("TypeInfo_Vector"));
 
   if (!ClassDeclaration::cpp_type_info_ptr)
-    make_frontend_typeinfo (mod, Id::cpp_type_info_ptr,
+    make_frontend_typeinfo (mod, Identifier::idPool ("__cpp_type_info_ptr"),
 			    ClassDeclaration::object);
 }
 
@@ -1088,12 +1094,7 @@ layout_typeinfo (TypeInfoDeclaration *d)
 tree
 layout_classinfo (ClassDeclaration *cd)
 {
-  /* The classinfo decl initialized here to accomodate both class and interfaces
-     is thrown away immediately after exiting.  So the use of placement new is
-     deliberate to avoid making more heap allocations than necessary.  */
-  char buf[sizeof (TypeInfoClassDeclaration)];
-  TypeInfoClassDeclaration *d = new (buf) TypeInfoClassDeclaration (cd->type);
-
+  TypeInfoClassDeclaration *d = TypeInfoClassDeclaration::create (cd->type);
   tree type = TREE_TYPE (get_classinfo_decl (cd));
   TypeInfoVisitor v = TypeInfoVisitor (type);
   d->accept (&v);
@@ -1313,7 +1314,8 @@ get_cpp_typeinfo_decl (ClassDeclaration *decl)
     return decl->cpp_type_info_ptr_sym;
 
   if (!tinfo_types[TK_CPPTI_TYPE])
-    make_internal_typeinfo (TK_CPPTI_TYPE, Id::cpp_type_info_ptr,
+    make_internal_typeinfo (TK_CPPTI_TYPE,
+			    Identifier::idPool ("__cpp_type_info_ptr"),
 			    ptr_type_node, NULL);
 
   tree ident = mangle_internal_decl (decl, "_cpp_type_info_ptr", "");
@@ -1384,42 +1386,42 @@ create_typeinfo (Type *type, Module *mod)
 	    {
 	      /* Does both 'shared' and 'shared const'.  */
 	      t->vtinfo = TypeInfoSharedDeclaration::create (t);
-	      ident = Id::TypeInfo_Shared;
+	      ident = Identifier::idPool ("TypeInfo_Shared");
 	    }
 	  else if (tk == TK_CONST_TYPE)
 	    {
 	      t->vtinfo = TypeInfoConstDeclaration::create (t);
-	      ident = Id::TypeInfo_Const;
+	      ident = Identifier::idPool ("TypeInfo_Const");
 	    }
 	  else if (tk == TK_IMMUTABLE_TYPE)
 	    {
 	      t->vtinfo = TypeInfoInvariantDeclaration::create (t);
-	      ident = Id::TypeInfo_Invariant;
+	      ident = Identifier::idPool ("TypeInfo_Invariant");
 	    }
 	  else if (tk == TK_INOUT_TYPE)
 	    {
 	      t->vtinfo = TypeInfoWildDeclaration::create (t);
-	      ident = Id::TypeInfo_Wild;
+	      ident = Identifier::idPool ("TypeInfo_Wild");
 	    }
 	  else if (tk == TK_POINTER_TYPE)
 	    {
 	      t->vtinfo = TypeInfoPointerDeclaration::create (t);
-	      ident = Id::TypeInfo_Pointer;
+	      ident = Identifier::idPool ("TypeInfo_Pointer");
 	    }
 	  else if (tk == TK_ARRAY_TYPE)
 	    {
 	      t->vtinfo = TypeInfoArrayDeclaration::create (t);
-	      ident = Id::TypeInfo_Array;
+	      ident = Identifier::idPool ("TypeInfo_Array");
 	    }
 	  else if (tk == TK_VECTOR_TYPE)
 	    {
 	      t->vtinfo = TypeInfoVectorDeclaration::create (t);
-	      ident = Id::TypeInfo_Vector;
+	      ident = Identifier::idPool ("TypeInfo_Vector");
 	    }
 	  else if (tk == TK_INTERFACE_TYPE)
 	    {
 	      t->vtinfo = TypeInfoInterfaceDeclaration::create (t);
-	      ident = Id::TypeInfo_Interface;
+	      ident = Identifier::idPool ("TypeInfo_Interface");
 	    }
 	  else
 	    gcc_unreachable ();
@@ -1431,8 +1433,9 @@ create_typeinfo (Type *type, Module *mod)
 	case TK_STATICARRAY_TYPE:
 	  if (!tinfo_types[tk])
 	    {
-	      make_internal_typeinfo (tk, Id::TypeInfo_StaticArray,
-				      ptr_type_node, size_type_node, NULL);
+	      ident = Identifier::idPool ("TypeInfo_StaticArray");
+	      make_internal_typeinfo (tk, ident, ptr_type_node, size_type_node,
+				      NULL);
 	    }
 	  t->vtinfo = TypeInfoStaticArrayDeclaration::create (t);
 	  break;
@@ -1440,8 +1443,9 @@ create_typeinfo (Type *type, Module *mod)
 	case TK_ASSOCIATIVEARRAY_TYPE:
 	  if (!tinfo_types[tk])
 	    {
-	      make_internal_typeinfo (tk, Id::TypeInfo_AssociativeArray,
-				      ptr_type_node, ptr_type_node, NULL);
+	      ident = Identifier::idPool ("TypeInfo_AssociativeArray");
+	      make_internal_typeinfo (tk, ident, ptr_type_node, ptr_type_node,
+				      NULL);
 	    }
 	  t->vtinfo = TypeInfoAssociativeArrayDeclaration::create (t);
 	  break;
@@ -1452,7 +1456,8 @@ create_typeinfo (Type *type, Module *mod)
 	      /* Some ABIs add extra TypeInfo fields on the end.  */
 	      tree argtype = global.params.is64bit ? ptr_type_node : NULL_TREE;
 
-	      make_internal_typeinfo (tk, Id::TypeInfo_Struct,
+	      ident = Identifier::idPool ("TypeInfo_Struct");
+	      make_internal_typeinfo (tk, ident,
 				      array_type_node, array_type_node,
 				      ptr_type_node, ptr_type_node,
 				      ptr_type_node, ptr_type_node,
@@ -1466,7 +1471,8 @@ create_typeinfo (Type *type, Module *mod)
 	case TK_ENUMERAL_TYPE:
 	  if (!tinfo_types[tk])
 	    {
-	      make_internal_typeinfo (tk, Id::TypeInfo_Enum,
+	      ident = Identifier::idPool ("TypeInfo_Enum");
+	      make_internal_typeinfo (tk, ident,
 				      ptr_type_node, array_type_node,
 				      array_type_node, NULL);
 	    }
@@ -1479,12 +1485,12 @@ create_typeinfo (Type *type, Module *mod)
 	  if (tk == TK_FUNCTION_TYPE)
 	    {
 	      t->vtinfo = TypeInfoFunctionDeclaration::create (t);
-	      ident = Id::TypeInfo_Function;
+	      ident = Identifier::idPool ("TypeInfo_Function");
 	    }
 	  else if (tk == TK_DELEGATE_TYPE)
 	    {
 	      t->vtinfo = TypeInfoDelegateDeclaration::create (t);
-	      ident = Id::TypeInfo_Delegate;
+	      ident = Identifier::idPool ("TypeInfo_Delegate");
 	    }
 	  else
 	    gcc_unreachable ();
@@ -1499,8 +1505,8 @@ create_typeinfo (Type *type, Module *mod)
 	case TK_TYPELIST_TYPE:
 	  if (!tinfo_types[tk])
 	    {
-	      make_internal_typeinfo (tk, Id::TypeInfo_Tuple,
-				      array_type_node, NULL);
+	      ident = Identifier::idPool ("TypeInfo_Tuple");
+	      make_internal_typeinfo (tk, ident, array_type_node, NULL);
 	    }
 	  t->vtinfo = TypeInfoTupleDeclaration::create (t);
 	  break;
