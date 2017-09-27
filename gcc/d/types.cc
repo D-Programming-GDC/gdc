@@ -110,24 +110,27 @@ get_object_type (void)
 tree
 make_array_type (Type *type, unsigned HOST_WIDE_INT size)
 {
-  tree telem = build_ctype (type);
+  /* In [arrays/void-arrays], void arrays can also be static, the length is
+     specified in bytes.  */
+  if (type->toBasetype ()->ty == Tvoid)
+    type = Type::tuns8;
 
   /* In [arrays/static-arrays], a static array with a dimension of 0 is allowed,
      but no space is allocated for it.  */
   if (size == 0)
     {
-      tree zrange = lang_hooks.types.type_for_size (TYPE_PRECISION (sizetype),
-						    TYPE_UNSIGNED (sizetype));
-      tree zindex = build_range_type (zrange, size_zero_node, NULL_TREE);
-      tree ztype = build_array_type (build_ctype (type), zindex);
+      tree range = lang_hooks.types.type_for_size (TYPE_PRECISION (sizetype),
+						   TYPE_UNSIGNED (sizetype));
+      tree index = build_range_type (range, size_zero_node, NULL_TREE);
 
-      TYPE_SIZE (ztype) = bitsize_zero_node;
-      TYPE_SIZE_UNIT (ztype) = size_zero_node;
-
-      return ztype;
+      tree t = build_array_type (build_ctype (type), index);
+      TYPE_SIZE (t) = bitsize_zero_node;
+      TYPE_SIZE_UNIT (t) = size_zero_node;
+      return t;
     }
 
-  return build_array_type (telem, build_index_type (size_int (size - 1)));
+  return build_array_type (build_ctype (type),
+			   build_index_type (size_int (size - 1)));
 }
 
 /* Builds a record type whose name is NAME.  NFIELDS is the number of fields,
@@ -615,12 +618,7 @@ public:
     if (t->dim->isConst () && t->dim->type->isintegral ())
       {
 	uinteger_t size = t->dim->toUInteger ();
-	/* In [arrays/void-arrays], void arrays can also be static,
-	   the length is specified in bytes.  */
-	if (t->next->toBasetype ()->ty == Tvoid)
-	  t->ctype = make_array_type (Type::tuns8, size);
-	else
-	  t->ctype = make_array_type (t->next, size);
+	t->ctype = make_array_type (t->next, size);
       }
     else
       {
