@@ -30,7 +30,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "d-tree.h"
 #include "d-builtins.h"
 #include "d-target.h"
-#include "id.h"
 
 
 vec<tree, va_gc> *gcc_builtins_functions = NULL;
@@ -88,7 +87,7 @@ build_frontend_type (tree type)
 	    return Type::tchar->addMod (dtype->mod)->pointerTo ()->addMod (mod);
 
 	  if (dtype->ty == Tfunction)
-	    return (new TypePointer (dtype))->addMod (mod);
+	    return (TypePointer::create (dtype))->addMod (mod);
 
 	  return dtype->pointerTo ()->addMod (mod);
 	}
@@ -101,7 +100,7 @@ build_frontend_type (tree type)
 	  /* Want to assign ctype directly so that the REFERENCE_TYPE code
 	     can be turned into as an `inout' argument.  Can't use pointerTo(),
 	     because the returned Type is shared.  */
-	  dtype = (new TypePointer (dtype))->addMod (mod);
+	  dtype = (TypePointer::create (dtype))->addMod (mod);
 	  dtype->ctype = type;
 	  builtin_converted_decls.safe_push (builtin_data (dtype, type));
 	  return dtype;
@@ -196,7 +195,7 @@ build_frontend_type (tree type)
 	  if (dtype->nextOf ()->isTypeBasic () == NULL)
 	    break;
 
-	  dtype = (new TypeVector (Loc (), dtype))->addMod (mod);
+	  dtype = (TypeVector::create (Loc (), dtype))->addMod (mod);
 	  builtin_converted_decls.safe_push (builtin_data (dtype, type));
 	  return dtype;
 	}
@@ -213,14 +212,16 @@ build_frontend_type (tree type)
 	     this is called.  Use a stub 'object' module parent in the meantime.
 	     If `gcc.builtins' is later imported, the parent will be overridden
 	     with the correct module symbol.  */
-	  static Module *stubmod = Module::create ("object.d", Id::object, 0, 0);
+	  static Identifier *object = Identifier::idPool ("object");
+	  static Module *stubmod = Module::create ("object.d", object, 0, 0);
 
-	  StructDeclaration *sdecl = new StructDeclaration (Loc (), ident);
+	  StructDeclaration *sdecl = StructDeclaration::create (Loc (), ident,
+								false);
 	  sdecl->parent = stubmod;
 	  sdecl->structsize = int_size_in_bytes (type);
 	  sdecl->alignsize = TYPE_ALIGN_UNIT (type);
 	  sdecl->sizeok = SIZEOKdone;
-	  sdecl->type = (new TypeStruct (sdecl))->addMod (mod);
+	  sdecl->type = (TypeStruct::create (sdecl))->addMod (mod);
 	  sdecl->type->ctype = type;
 	  sdecl->type->merge ();
 
@@ -309,23 +310,23 @@ d_eval_constant_expression (tree cst)
 	  real_value re = TREE_REAL_CST (TREE_REALPART (cst));
 	  real_value im = TREE_REAL_CST (TREE_IMAGPART (cst));
 	  complex_t value = complex_t (ldouble (re), ldouble (im));
-	  return new ComplexExp (Loc (), value, type);
+	  return ComplexExp::create (Loc (), value, type);
 	}
       else if (code == INTEGER_CST)
 	{
 	  dinteger_t value = TREE_INT_CST_LOW (cst);
-	  return new IntegerExp (Loc (), value, type);
+	  return IntegerExp::create (Loc (), value, type);
 	}
       else if (code == REAL_CST)
 	{
 	  real_value value = TREE_REAL_CST (cst);
-	  return new RealExp (Loc (), ldouble (value), type);
+	  return RealExp::create (Loc (), ldouble (value), type);
 	}
       else if (code == STRING_CST)
 	{
 	  const void *string = TREE_STRING_POINTER (cst);
 	  size_t len = TREE_STRING_LENGTH (cst);
-	  return new StringExp (Loc (), CONST_CAST (void *, string), len);
+	  return StringExp::create (Loc (), CONST_CAST (void *, string), len);
 	}
       else if (code == VECTOR_CST)
 	{
@@ -343,10 +344,10 @@ d_eval_constant_expression (tree cst)
 	      (*elements)[i] = elem;
 	    }
 
-	  Expression *e = new ArrayLiteralExp (Loc (), elements);
+	  Expression *e = ArrayLiteralExp::create (Loc (), elements);
 	  e->type = ((TypeVector *) type)->basetype;
 
-	  return new VectorExp (Loc (), e, type);
+	  return VectorExp::create (Loc (), e, type);
 	}
     }
 
@@ -442,7 +443,7 @@ d_init_versions (void)
 static AliasDeclaration *
 build_alias_declaration (const char *alias, Type *type)
 {
-  return new AliasDeclaration (Loc (), Identifier::idPool (alias), type);
+  return AliasDeclaration::create (Loc (), Identifier::idPool (alias), type);
 }
 
 /* A helper function for Target::loadModule.  Generates all code for the
@@ -484,9 +485,9 @@ d_build_builtins_module (Module *m)
       tf->isnothrow = true;
       tf->isnogc = true;
 
-      FuncDeclaration *func = new FuncDeclaration (Loc (), Loc (),
-						   Identifier::idPool (name),
-						   STCextern, tf);
+      FuncDeclaration *func = FuncDeclaration::create (Loc (), Loc (),
+						       Identifier::idPool (name),
+						       STCextern, tf);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (func);
       func->csym = decl;
       func->builtin = BUILTINyes;
@@ -575,7 +576,7 @@ d_build_builtins_module (Module *m)
     members->push (build_alias_declaration ("__builtin_unwind_uint", t));
   }
 
-  m->members->push (new LinkDeclaration (LINKc, members));
+  m->members->push (LinkDeclaration::create (LINKc, members));
 }
 
 /* Search for any `extern(C)' functions that match any known GCC library builtin

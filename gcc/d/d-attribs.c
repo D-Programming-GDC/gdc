@@ -154,21 +154,21 @@ insert_decl_attribute (tree decl, const char *attrname, tree value)
    the `gcc.attribute' module.  */
 
 static bool
-uda_attribute_p (const char* name)
+uda_attribute_p (const char *name)
 {
-  Identifier *ident = Identifier::idPool (name);
+  tree ident = get_identifier (name);
 
   /* Search both our language, and target attribute tables.
      Common and format attributes are kept internal.  */
   for (const attribute_spec *p = d_langhook_attribute_table; p->name; p++)
     {
-      if (Identifier::idPool (p->name) == ident)
+      if (get_identifier (p->name) == ident)
 	return true;
     }
 
   for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
     {
-      if (Identifier::idPool (p->name) == ident)
+      if (get_identifier (p->name) == ident)
 	return true;
     }
 
@@ -236,7 +236,7 @@ build_attributes (Expressions *eattrs)
 
       /* Check if the attribute is recognized and handled.
 	 Done here to report the diagnostic at the right location.  */
-      const char* name = (const char*) se->string;
+      const char *name = (const char *)(se->len ? se->string : "");
       if (!uda_attribute_p (name))
 	{
 	  warning_at (get_linemap (e0->loc), OPT_Wattributes,
@@ -254,7 +254,8 @@ build_attributes (Expressions *eattrs)
 	  if (e->op == TOKstring && ((StringExp *) e)->sz == 1)
 	    {
 	      StringExp *s = (StringExp *) e;
-	      t = build_string (s->len, (const char *) s->string);
+	      const char *string = (const char *)(s->len ? s->string : "");
+	      t = build_string (s->len, string);
 	    }
 	  else
 	    t = build_expr (e);

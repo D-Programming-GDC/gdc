@@ -1,6 +1,6 @@
 // { dg-additional-sources "imports/ltoa.d" }
 // { dg-additional-options "-flto" }
-// { dg-do run { target aarch64*-*-* arm*-*-* i?86-*-* x86_64-*-* } }
+// { dg-do run { target arm*-*-* i?86-*-* x86_64-*-* } }
 
 module lto;
 
