@@ -37,7 +37,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "d-system.h"
 #include "debug.h"
 #include "d-tree.h"
-#include "id.h"
+#include "d-frontend.h"
 
 
 /* Return identifier for the external mangled name of DECL.  */
@@ -208,7 +208,8 @@ public:
   {
     if (!global.params.ignoreUnsupportedPragmas)
       {
-	if (d->ident == Id::lib || d->ident == Id::startaddress)
+	if (d->ident == Identifier::idPool ("lib")
+	    || d->ident == Identifier::idPool ("startaddress"))
 	  {
 	    warning_at (get_linemap (d->loc), OPT_Wunknown_pragmas,
 			"pragma(%s) not implemented", d->ident->toChars ());
@@ -532,7 +533,7 @@ public:
 
 	tree decl = get_symbol_decl (d);
 	gcc_assert (d->_init && !d->_init->isVoidInitializer ());
-	Expression *ie = d->_init->toExpression ();
+	Expression *ie = initializerToExpression (d->_init);
 
 	/* CONST_DECL was initially intended for enumerals and may be used for
 	   scalars in general, but not for aggregates.  Here a non-constant
@@ -569,7 +570,7 @@ public:
 
 	if (d->_init && !d->_init->isVoidInitializer ())
 	  {
-	    Expression *e = d->_init->toExpression (d->type);
+	    Expression *e = initializerToExpression (d->_init, d->type);
 	    DECL_INITIAL (t) = build_expr (e, true);
 	  }
 	else
@@ -607,7 +608,7 @@ public:
 	    if (!d->_init->isVoidInitializer ())
 	      {
 		ExpInitializer *vinit = d->_init->isExpInitializer ();
-		Expression *ie = vinit->toExpression ();
+		Expression *ie = initializerToExpression (vinit);
 		tree exp = build_expr (ie);
 		add_stmt (exp);
 	      }
@@ -1111,7 +1112,8 @@ get_symbol_decl (Declaration *decl)
 	}
 
       /* And so are ensure and require contracts.  */
-      if (fd->ident == Id::ensure || fd->ident == Id::require)
+      if (fd->ident == Identifier::idPool ("ensure")
+	  || fd->ident == Identifier::idPool ("require"))
 	{
 	  DECL_ARTIFICIAL (decl->csym) = 1;
 	  TREE_PUBLIC (decl->csym) = 1;
@@ -1138,9 +1140,9 @@ get_symbol_decl (Declaration *decl)
     TREE_THIS_VOLATILE (decl->csym) = 1;
 
   /* Protection attributes are used by the debugger.  */
-  if (decl->protection == PROTprivate)
+  if (decl->protection.kind == PROTprivate)
     TREE_PRIVATE (decl->csym) = 1;
-  else if (decl->protection == PROTprotected)
+  else if (decl->protection.kind == PROTprotected)
     TREE_PROTECTED (decl->csym) = 1;
 
   /* Likewise, so could the deprecated attribute.  */
@@ -2002,7 +2004,7 @@ aggregate_initializer_decl (AggregateDeclaration *decl)
 tree
 layout_class_initializer (ClassDeclaration *cd)
 {
-  NewExp *ne = new NewExp (cd->loc, NULL, NULL, cd->type, NULL);
+  NewExp *ne = NewExp::create (cd->loc, NULL, NULL, cd->type, NULL);
   ne->type = cd->type;
 
   Expression *e = ne->ctfeInterpret ();
