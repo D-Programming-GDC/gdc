@@ -57,8 +57,7 @@ AC_DEFUN([DRUNTIME_LIBRARIES_ZLIB],
 
 # DRUNTIME_LIBRARIES_ATOMIC
 # -------------------------
-# Allow specifying whether to use libatomic for
-# 128 bit atomic support.
+# Allow specifying whether to use libatomic for atomic support.
 AC_DEFUN([DRUNTIME_LIBRARIES_ATOMIC],
 [
   AC_ARG_WITH(libatomic,
@@ -66,14 +65,15 @@ AC_DEFUN([DRUNTIME_LIBRARIES_ATOMIC],
                    [Do not use libatomic in core.atomic (default: auto)]))
 
   DCFG_HAVE_LIBATOMIC=false
+  LIBATOMIC=
   AS_IF([test "x$with_libatomic" != "xno"], [
-    AC_SEARCH_LIBS([__atomic_load], [atomic], [
-        DCFG_HAVE_LIBATOMIC=true
-      ])
+    DCFG_HAVE_LIBATOMIC=true
+    LIBATOMIC=../../libatomic/libatomic_convenience.la
   ], [
     AC_MSG_CHECKING([for libatomic])
     AC_MSG_RESULT([disabled])
   ])
 
   AC_SUBST(DCFG_HAVE_LIBATOMIC)
+  AC_SUBST(LIBATOMIC)
 ])
