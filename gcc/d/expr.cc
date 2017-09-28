@@ -2536,7 +2536,7 @@ public:
 
     /* All strings are null terminated except static arrays.  */
     const char *string = (const char *)(e->len ? e->string : "");
-    dinteger_t length = (e->len * e->sz) + (tb->ty != Tsarray);
+    dinteger_t length = (e->len * e->sz);
     tree value = build_string (length, string);
     tree type = build_ctype (e->type);
 
@@ -2545,7 +2545,7 @@ public:
     else
       {
 	/* Array type string length includes the null terminator.  */
-	TREE_TYPE (value) = make_array_type (tb->nextOf (), length);
+	TREE_TYPE (value) = make_array_type (tb->nextOf (), length + 1);
 	value = build_address (value);
 
 	if (tb->ty == Tarray)
