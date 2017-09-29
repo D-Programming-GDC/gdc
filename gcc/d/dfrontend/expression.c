@@ -293,8 +293,6 @@ Expression *resolvePropertiesX(Scope *sc, Expression *e1, Expression *e2 = NULL)
                     fd = f;
                     assert(fd->type->ty == Tfunction);
                     TypeFunction *tf = (TypeFunction *)fd->type;
-                    if (!tf->isproperty && global.params.enforcePropertySyntax)
-                        goto Leprop;
                 }
             }
             if (fd)
@@ -316,8 +314,6 @@ Expression *resolvePropertiesX(Scope *sc, Expression *e1, Expression *e2 = NULL)
                     TypeFunction *tf = (TypeFunction *)fd->type;
                     if (!tf->isref && e2)
                         goto Leproplvalue;
-                    if (!tf->isproperty && global.params.enforcePropertySyntax)
-                        goto Leprop;
                 }
             }
             if (fd)
@@ -415,8 +411,6 @@ Expression *resolvePropertiesX(Scope *sc, Expression *e1, Expression *e2 = NULL)
                     return new ErrorExp();
                 assert(fd->type->ty == Tfunction);
                 TypeFunction *tf = (TypeFunction *)fd->type;
-                if (!tf->isproperty && global.params.enforcePropertySyntax)
-                    goto Leprop;
                 Expression *e = new CallExp(loc, e1, e2);
                 return semantic(e, sc);
             }
@@ -431,8 +425,6 @@ Expression *resolvePropertiesX(Scope *sc, Expression *e1, Expression *e2 = NULL)
                 TypeFunction *tf = (TypeFunction *)fd->type;
                 if (!e2 || tf->isref)
                 {
-                    if (!tf->isproperty && global.params.enforcePropertySyntax)
-                        goto Leprop;
                     Expression *e = new CallExp(loc, e1);
                     if (e2)
                         e = new AssignExp(loc, e, e2);
@@ -445,11 +437,6 @@ Expression *resolvePropertiesX(Scope *sc, Expression *e1, Expression *e2 = NULL)
             // Keep better diagnostic message for invalid property usage of functions
             assert(fd->type->ty == Tfunction);
             TypeFunction *tf = (TypeFunction *)fd->type;
-            if (!tf->isproperty && global.params.enforcePropertySyntax)
-            {
-                error(loc, "not a property %s", e1->toChars());
-                return new ErrorExp();
-            }
             Expression *e = new CallExp(loc, e1, e2);
             return semantic(e, sc);
         }
@@ -558,12 +545,6 @@ bool checkPropertyCall(Expression *e, Expression *emsg)
             tf = (TypeFunction *)ce->e1->type->nextOf();
         else
             assert(0);
-
-        if (!tf->isproperty && global.params.enforcePropertySyntax)
-        {
-            ce->e1->error("not a property %s", emsg->toChars());
-            return true;
-        }
     }
     return false;
 }
@@ -1709,14 +1690,7 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
             }
             if (p->storageClass & STCref)
             {
-                if (p->storageClass & STCautoref &&
-                    (arg->op == TOKthis || arg->op == TOKsuper))
-                {
-                    // suppress deprecation message for auto ref parameter
-                    // temporary workaround for Bugzilla 14283
-                }
-                else
-                    arg = arg->toLvalue(sc, arg);
+                arg = arg->toLvalue(sc, arg);
 
                 // Look for mutable misaligned pointer, etc., in @safe mode
                 err |= checkUnsafeAccess(sc, arg, false, true);
@@ -3482,20 +3456,15 @@ bool ThisExp::isBool(bool result)
 bool ThisExp::isLvalue()
 {
     // Class `this` should be an rvalue; struct `this` should be an lvalue.
-    // Need to deprecate the old behavior first, see Bugzilla 14262.
-    return true;
+    return type->toBasetype()->ty != Tclass;
 }
 
 Expression *ThisExp::toLvalue(Scope *sc, Expression *e)
 {
     if (type->toBasetype()->ty == Tclass)
     {
-        // use Expression::toLvalue when deprecation is over
-        if (!e)
-            e = this;
-        else if (!loc.filename)
-            loc = e->loc;
-        deprecation("%s is not an lvalue", e->toChars());
+        // Class `this` is an rvalue; struct `this` is an lvalue.
+        return Expression::toLvalue(sc, e);
     }
     return this;
 }
@@ -6151,6 +6120,15 @@ bool CommaExp::isBool(bool result)
     return e2->isBool(result);
 }
 
+Expression *CommaExp::toBoolean(Scope *sc)
+{
+    Expression *ex2 = e2->toBoolean(sc);
+    if (ex2->op == TOKerror)
+        return ex2;
+    e2 = ex2;
+    type = e2->type;
+    return this;
+}
 
 Expression *CommaExp::addDtorHook(Scope *sc)
 {
@@ -6522,7 +6500,10 @@ OrOrExp::OrOrExp(Loc loc, Expression *e1, Expression *e2)
 
 Expression *OrOrExp::toBoolean(Scope *sc)
 {
-    e2 = e2->toBoolean(sc);
+    Expression *ex2 = e2->toBoolean(sc);
+    if (ex2->op == TOKerror)
+        return ex2;
+    e2 = ex2;
     return this;
 }
 
@@ -6535,7 +6516,10 @@ AndAndExp::AndAndExp(Loc loc, Expression *e1, Expression *e2)
 
 Expression *AndAndExp::toBoolean(Scope *sc)
 {
-    e2 = e2->toBoolean(sc);
+    Expression *ex2 = e2->toBoolean(sc);
+    if (ex2->op == TOKerror)
+        return ex2;
+    e2 = ex2;
     return this;
 }
 
@@ -6691,8 +6675,14 @@ Expression *CondExp::modifiableLvalue(Scope *sc, Expression *e)
 
 Expression *CondExp::toBoolean(Scope *sc)
 {
-    e1 = e1->toBoolean(sc);
-    e2 = e2->toBoolean(sc);
+    Expression *ex1 = e1->toBoolean(sc);
+    Expression *ex2 = e2->toBoolean(sc);
+    if (ex1->op == TOKerror)
+        return ex1;
+    if (ex2->op == TOKerror)
+        return ex2;
+    e1 = ex1;
+    e2 = ex2;
     return this;
 }
 
