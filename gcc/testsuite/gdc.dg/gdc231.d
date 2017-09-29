@@ -5,7 +5,7 @@ import imports.gdc231a;
 
 class Range : Widget
 {
-    void* getStruct()
+    override void* getStruct()
     {
         return null;
     }
