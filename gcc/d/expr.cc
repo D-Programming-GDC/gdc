@@ -453,36 +453,6 @@ public:
 
     switch (e->op)
       {
-      case TOKue:
-	code = (tb1->isfloating () && tb2->isfloating ())
-	  ? UNEQ_EXPR : EQ_EXPR;
-	break;
-
-      case TOKlg:
-	code = (tb1->isfloating () && tb2->isfloating ())
-	  ? LTGT_EXPR : NE_EXPR;
-	break;
-
-      case TOKule:
-	code = (tb1->isfloating () && tb2->isfloating ())
-	  ? UNLE_EXPR : LE_EXPR;
-	break;
-
-      case TOKul:
-	code = (tb1->isfloating () && tb2->isfloating ())
-	  ? UNLT_EXPR : LT_EXPR;
-	break;
-
-      case TOKuge:
-	code = (tb1->isfloating () && tb2->isfloating ())
-	  ? UNGE_EXPR : GE_EXPR;
-	break;
-
-      case TOKug:
-	code = (tb1->isfloating () && tb2->isfloating ())
-	  ? UNGT_EXPR : GT_EXPR;
-	break;
-
       case TOKle:
 	code = LE_EXPR;
 	break;
@@ -497,14 +467,6 @@ public:
 
       case TOKgt:
 	code = GT_EXPR;
-	break;
-
-      case TOKleg:
-	code = ORDERED_EXPR;
-	break;
-
-      case TOKunord:
-	code = UNORDERED_EXPR;
 	break;
 
       default:
@@ -528,30 +490,6 @@ public:
 
 	this->result_ = d_convert (build_ctype (e->type), result);
 	return;
-      }
-
-    if (!tb1->isfloating () || !tb2->isfloating ())
-      {
-	/* Handle operators that are always true, or always false.  */
-	if (code == ORDERED_EXPR)
-	  {
-	    tree type = build_ctype (e->type);
-	    if (e->type->ty == Tvector)
-	      this->result_ = build_minus_one_cst (type);
-	    else
-	      this->result_ = convert (type, integer_one_node);
-	    return;
-	  }
-
-	if (code == UNORDERED_EXPR)
-	  {
-	    tree type = build_ctype (e->type);
-	    if (e->type->ty == Tvector)
-	      this->result_ = build_zero_cst (type);
-	    else
-	      this->result_ = convert (type, integer_zero_node);
-	    return;
-	  }
       }
 
     /* Simple comparison.  */
@@ -2598,7 +2536,7 @@ public:
 
     /* All strings are null terminated except static arrays.  */
     const char *string = (const char *)(e->len ? e->string : "");
-    dinteger_t length = (e->len * e->sz) + (tb->ty != Tsarray);
+    dinteger_t length = (e->len * e->sz);
     tree value = build_string (length, string);
     tree type = build_ctype (e->type);
 
@@ -2607,7 +2545,7 @@ public:
     else
       {
 	/* Array type string length includes the null terminator.  */
-	TREE_TYPE (value) = make_array_type (tb->nextOf (), length);
+	TREE_TYPE (value) = make_array_type (tb->nextOf (), length + 1);
 	value = build_address (value);
 
 	if (tb->ty == Tarray)

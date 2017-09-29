@@ -1,3 +1,8 @@
+2017-09-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(StringExp)): Add extra null terminator
+	onto string type, not the literal.
+
 2017-09-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* types.cc (make_array_type): Move checking of void static arrays

@@ -286,7 +286,7 @@ Generate code for precondition contracts.
 
 fproperty
 D
-Enforce property syntax.
+This switch is deprecated; do not use.
 
 frelease
 D
