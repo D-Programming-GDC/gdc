@@ -1,3 +1,8 @@
+2017-10-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* typeinfo.cc (TypeInfoVisitor::visit(TypeInfoClassDeclaration)):
+	Properly check base classes for pointers.
+
 2017-09-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(StringExp)): Add extra null terminator
