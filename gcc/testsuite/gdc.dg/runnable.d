@@ -1477,6 +1477,26 @@ class D253 : B253, C253
 
 /******************************************/
 
+// Bug 273
+
+class B273
+{
+    B273[] members;
+}
+
+class D273 : B273
+{
+}
+
+void test273()
+{
+    auto noPointers = ClassInfo.ClassFlags.noPointers;
+    assert((B273.classinfo.m_flags & noPointers) == 0);
+    assert((D273.classinfo.m_flags & noPointers) == 0);
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -1506,6 +1526,7 @@ void main()
     test210();
     test248();
     test250();
+    test273();
 
     printf("Success!\n");
 }
