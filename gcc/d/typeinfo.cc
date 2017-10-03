@@ -808,9 +808,9 @@ public:
 	    if (!bcd->members)
 	      continue;
 
-	    for (size_t i = 0; i < cd->members->dim; i++)
+	    for (size_t i = 0; i < bcd->members->dim; i++)
 	      {
-		Dsymbol *sm = (*cd->members)[i];
+		Dsymbol *sm = (*bcd->members)[i];
 		if (sm->hasPointers ())
 		  goto Lhaspointers;
 	      }
