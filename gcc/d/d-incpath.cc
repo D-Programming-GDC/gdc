@@ -116,9 +116,10 @@ add_globalpaths (Strings *paths)
 	  const char *path = (*paths)[i];
 	  const char *target = FileName::canonicalName (path);
 
-	  if (!FileName::exists (target))
+	  if (target == NULL || !FileName::exists (target))
 	    {
-	      free (CONST_CAST (char *, target));
+	      if (target)
+		free (CONST_CAST (char *, target));
 	      continue;
 	    }
 
