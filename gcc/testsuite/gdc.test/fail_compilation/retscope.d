@@ -4,7 +4,7 @@ PERMUTE_ARGS:
 TEST_OUTPUT:
 ---
 fail_compilation/retscope.d(23): Error: scope variable p may not be returned
-fail_compilation/retscope.d(33): Error: escaping reference to local variable j
+fail_compilation/retscope.d(33): Error: returning `b ? nested1(& i) : nested2(& j)` escapes a reference to local variable `j`
 fail_compilation/retscope.d(46): Error: scope variable p assigned to non-scope q
 fail_compilation/retscope.d(48): Error: address of variable i assigned to q with longer lifetime
 fail_compilation/retscope.d(49): Error: variadic variable a assigned to non-scope b
@@ -108,7 +108,7 @@ int[] bar8(int[] a) @safe
 /*
 TEST_OUTPUT:
 ---
-fail_compilation/retscope.d(124): Error: escaping reference to local variable tmp
+fail_compilation/retscope.d(124): Error: returning `foo9(cast(char[])tmp)` escapes a reference to local variable `tmp`
 ---
 */
 
@@ -235,10 +235,10 @@ void* funretscope(scope dg_t ptr) @safe
 /*
 TEST_OUTPUT:
 ---
-fail_compilation/retscope.d(249): Error: cannot implicitly convert expression (__lambda1) of type void* delegate() pure nothrow @nogc return @safe to void* delegate() @safe
-fail_compilation/retscope.d(249): Error: cannot implicitly convert expression (__lambda1) of type void* delegate() pure nothrow @nogc return @safe to void* delegate() @safe
-fail_compilation/retscope.d(250): Error: cannot implicitly convert expression (__lambda2) of type void* delegate() pure nothrow @nogc return @safe to void* delegate() @safe
-fail_compilation/retscope.d(250): Error: cannot implicitly convert expression (__lambda2) of type void* delegate() pure nothrow @nogc return @safe to void* delegate() @safe
+fail_compilation/retscope.d(249): Error: cannot implicitly convert expression (__lambda1) of type void* delegate() pure nothrow @nogc return scope @safe to void* delegate() scope @safe
+fail_compilation/retscope.d(249): Error: cannot implicitly convert expression (__lambda1) of type void* delegate() pure nothrow @nogc return scope @safe to void* delegate() scope @safe
+fail_compilation/retscope.d(250): Error: cannot implicitly convert expression (__lambda2) of type void* delegate() pure nothrow @nogc return scope @safe to void* delegate() scope @safe
+fail_compilation/retscope.d(250): Error: cannot implicitly convert expression (__lambda2) of type void* delegate() pure nothrow @nogc return scope @safe to void* delegate() scope @safe
 ---
 */
 
@@ -272,7 +272,7 @@ void escape5() @safe
 /*
 TEST_OUTPUT:
 ---
-fail_compilation/retscope.d(287): Error: escaping reference to local variable b
+fail_compilation/retscope.d(287): Error: returning `foo6(& b)` escapes a reference to local variable `b`
 ---
 */
 
@@ -364,7 +364,7 @@ void escape15() @safe
 /*
 TEST_OUTPUT:
 ---
-fail_compilation/retscope.d(1003): Error: escaping reference to local variable f
+fail_compilation/retscope.d(1003): Error: returning `f.foo()` escapes a reference to local variable `f`
 ---
 */
 
@@ -603,4 +603,45 @@ int test21()
 {
         foo22(s);
 }
+
+/************************************************/
+
+/*
+TEST_OUTPUT:
+---
+fail_compilation/retscope.d(1405): Error: reference to local variable buf assigned to non-scope parameter unnamed calling retscope.myprintf
+---
+*/
+
+#line 1400
+@trusted extern(C) int myprintf(const(char)*, ...);
+
+@safe void foo14()
+{
+    char[4] buf = [ 'h', 'i', '\n', 0 ];
+    myprintf(&buf[0]);
+}
+
+/************************************************/
+
+/*
+TEST_OUTPUT:
+---
+fail_compilation/retscope.d(1509): Error: reference to stack allocated value returned by (*fp15)() assigned to non-scope parameter unnamed
+---
+*/
+
+#line 1500
+
+@safe void bar15(int*);
+
+struct S15 { int a,b,c,d; }
+
+@safe S15 function() fp15;
+
+void test15() @safe
+{
+    bar15(&fp15().d);
+}
+
 

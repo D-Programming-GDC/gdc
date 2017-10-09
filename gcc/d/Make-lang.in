@@ -105,7 +105,6 @@ D_FRONTEND_OBJS = \
 	d/lexer.o \
 	d/mtype.o \
 	d/nogc.o \
-	d/newdelete.o \
 	d/nspace.o \
 	d/objc.o \
 	d/opover.o \
