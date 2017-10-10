@@ -27,8 +27,6 @@ The following CPU versions are implemented:
 ** MIPS_EABI
 ** MIPS_HardFloat
 ** MIPS_SoftFloat
-* HPPA
-* HPPA64
 * PPC
 * PPC64
 ** PPC_HardFloat
@@ -36,7 +34,6 @@ The following CPU versions are implemented:
 * S390
 * S390X (deprecated)
 * SystemZ
-* SH
 * SPARC
 * SPARC64
 * SPARC_V8Plus
@@ -322,16 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4534,6 +4562,8 @@ case ${target} in
- 		then
- 			target_cpu_default2="MASK_GAS"
- 		fi
-+		d_target_objs="${d_target_objs} pa-d.o"
-+		tmake_file="pa/t-pa ${tmake_file}"
- 		;;
- 
- 	fido*-*-* | m68k*-*-*)
-@@ -4619,12 +4649,14 @@ case ${target} in
+@@ -4619,6 +4649,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -339,17 +327,10 @@ The following OS versions are implemented:
  		tmake_file="${cpu_type}/t-${cpu_type} ${tmake_file}"
  		;;
  
- 	sh[123456ble]*-*-* | sh-*-*)
- 		c_target_objs="${c_target_objs} sh-c.o"
- 		cxx_target_objs="${cxx_target_objs} sh-c.o"
-+		d_target_objs="${d_target_objs} sh-d.o"
- 		;;
- 
- 	sparc*-*-*)
 --- a/gcc/config/aarch64/aarch64-d.c
 +++ b/gcc/config/aarch64/aarch64-d.c
 @@ -0,0 +1,31 @@
-+/* Subroutines for the D front end on the ARM64 architecture.
++/* Subroutines for the D front end on the AArch64 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
@@ -372,7 +353,7 @@ The following OS versions are implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_VERSIONS for ARM64 targets.  */
++/* Implement TARGET_D_CPU_VERSIONS for AArch64 targets.  */
 +
 +void
 +aarch64_d_target_versions (void)
@@ -984,86 +965,6 @@ The following OS versions are implemented:
 +mips-d.o: $(srcdir)/config/mips/mips-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/pa/pa-d.c
-+++ b/gcc/config/pa/pa-d.c
-@@ -0,0 +1,39 @@
-+/* Subroutines for the D front end on the HPPA architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify
-+it under the terms of the GNU General Public License as published by
-+the Free Software Foundation; either version 3, or (at your option)
-+any later version.
-+
-+GCC is distributed in the hope that it will be useful,
-+but WITHOUT ANY WARRANTY; without even the implied warranty of
-+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+GNU General Public License for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_CPU_VERSIONS for HPPA targets.  */
-+
-+void
-+pa_d_target_versions (void)
-+{
-+  if (TARGET_64BIT)
-+    d_add_builtin_version ("HPPA64");
-+  else
-+    d_add_builtin_version("HPPA");
-+
-+  if (TARGET_SOFT_FLOAT)
-+    d_add_builtin_version ("D_SoftFloat");
-+  else
-+    d_add_builtin_version ("D_HardFloat");
-+}
---- a/gcc/config/pa/pa-linux.h
-+++ b/gcc/config/pa/pa-linux.h
-@@ -27,6 +27,8 @@ along with GCC; see the file COPYING3.  If not see
-     }						\
-   while (0)
- 
-+#define GNU_USER_TARGET_D_CRITSEC_SIZE 48
-+
- #undef CPP_SPEC
- #define CPP_SPEC "%{posix:-D_POSIX_SOURCE} %{pthread:-D_REENTRANT}"
- 
---- a/gcc/config/pa/pa-protos.h
-+++ b/gcc/config/pa/pa-protos.h
-@@ -109,3 +109,6 @@ extern void pa_hpux_asm_output_external (FILE *, tree, const char *);
- extern HOST_WIDE_INT pa_initial_elimination_offset (int, int);
- 
- extern const int pa_magic_milli[];
-+
-+/* Routines implemented in pa-d.c  */
-+extern void pa_d_target_versions (void);
---- a/gcc/config/pa/pa.h
-+++ b/gcc/config/pa/pa.h
-@@ -196,6 +196,9 @@ do {								\
-     }								\
-   while (0)
- 
-+/* Target CPU versions for D.  */
-+#define TARGET_D_CPU_VERSIONS pa_d_target_versions
-+
- #define CC1_SPEC "%{pg:} %{p:}"
- 
- #define LINK_SPEC "%{mlinker-opt:-O} %{!shared:-u main} %{shared:-b}"
---- a/gcc/config/pa/t-pa
-+++ b/gcc/config/pa/t-pa
-@@ -0,0 +1,3 @@
-+pa-d.o: $(srcdir)/config/pa/pa-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
 --- a/gcc/config/powerpcspe/linux.h
 +++ b/gcc/config/powerpcspe/linux.h
 @@ -57,6 +57,9 @@
@@ -1357,80 +1258,6 @@ The following OS versions are implemented:
 +s390-d.o: $(srcdir)/config/s390/s390-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/sh/sh-d.c
-+++ b/gcc/config/sh/sh-d.c
-@@ -0,0 +1,36 @@
-+/* Subroutines for the D front end on the SuperH architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify
-+it under the terms of the GNU General Public License as published by
-+the Free Software Foundation; either version 3, or (at your option)
-+any later version.
-+
-+GCC is distributed in the hope that it will be useful,
-+but WITHOUT ANY WARRANTY; without even the implied warranty of
-+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+GNU General Public License for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_CPU_VERSIONS for SuperH targets.  */
-+
-+void
-+sh_d_target_versions (void)
-+{
-+  d_add_builtin_version ("SH");
-+
-+  if (TARGET_FPU_ANY)
-+    d_add_builtin_version ("D_HardFloat");
-+  else
-+    d_add_builtin_version ("D_SoftFloat");
-+}
---- a/gcc/config/sh/sh-protos.h
-+++ b/gcc/config/sh/sh-protos.h
-@@ -363,4 +363,7 @@ extern machine_mode sh_hard_regno_caller_save_mode (unsigned int, unsigned int,
- 						    machine_mode);
- extern bool sh_can_use_simple_return_p (void);
- extern rtx sh_load_function_descriptor (rtx);
-+
-+/* Routines implemented in sh-d.c  */
-+extern void sh_d_target_versions (void);
- #endif /* ! GCC_SH_PROTOS_H */
---- a/gcc/config/sh/sh.h
-+++ b/gcc/config/sh/sh.h
-@@ -31,6 +31,9 @@ extern int code_for_indirect_jump_scratch;
- 
- #define TARGET_CPU_CPP_BUILTINS() sh_cpu_cpp_builtins (pfile)
- 
-+/* Target CPU versions for D.  */
-+#define TARGET_D_CPU_VERSIONS sh_d_target_versions
-+
- /* Value should be nonzero if functions must have frame pointers.
-    Zero means the frame pointer need not be set up (and parms may be accessed
-    via the stack pointer) in functions that seem suitable.  */
---- a/gcc/config/sh/t-sh
-+++ b/gcc/config/sh/t-sh
-@@ -25,6 +25,10 @@ sh-c.o: $(srcdir)/config/sh/sh-c.c \
- 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
- 		$(srcdir)/config/sh/sh-c.c
- 
-+sh-d.o: $(srcdir)/config/sh/sh-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
-+
- sh_treg_combine.o: $(srcdir)/config/sh/sh_treg_combine.cc \
-   $(CONFIG_H) $(SYSTEM_H) $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
- 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- a/gcc/config/sparc/sparc-d.c
 +++ b/gcc/config/sparc/sparc-d.c
 @@ -0,0 +1,48 @@
