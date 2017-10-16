@@ -248,18 +248,18 @@ The following OS versions are implemented:
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
 +	d_target_objs="i386-d.o"
+	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
- 		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
-@@ -383,6 +398,7 @@ x86_64-*-*)
+@@ -384,6 +399,7 @@ x86_64-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
 +	d_target_objs="i386-d.o"
  	extra_options="${extra_options} fused-madd.opt"
+	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
- 		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
-@@ -426,6 +442,7 @@ microblaze*-*-*)
+@@ -428,6 +444,7 @@ microblaze*-*-*)
          ;;
  mips*-*-*)
  	cpu_type=mips
@@ -267,7 +267,7 @@ The following OS versions are implemented:
  	extra_headers="loongson.h msa.h"
  	extra_objs="frame-header-opt.o"
  	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
-@@ -480,6 +497,7 @@ sparc*-*-*)
+@@ -483,6 +500,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -275,7 +275,7 @@ The following OS versions are implemented:
  	extra_headers="visintrin.h"
  	;;
  spu*-*-*)
-@@ -487,6 +505,7 @@ spu*-*-*)
+@@ -490,6 +508,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -283,7 +283,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
-@@ -516,10 +535,13 @@ tilepro*-*-*)
+@@ -519,10 +538,13 @@ tilepro*-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -297,7 +297,7 @@ The following OS versions are implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -788,8 +810,10 @@ case ${target} in
+@@ -791,8 +813,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -307,8 +307,8 @@ The following OS versions are implemented:
 +  target_has_targetdm=yes
    ;;
  *-*-netbsd*)
-   tmake_file="t-slibgcc"
-@@ -3141,6 +3165,10 @@ if [ "$common_out_file" = "" ]; then
+   tm_p_file="${tm_p_file} netbsd-protos.h"
+@@ -3138,6 +3162,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4619,6 +4649,7 @@ case ${target} in
+@@ -4616,6 +4644,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
