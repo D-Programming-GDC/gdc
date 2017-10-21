@@ -34,7 +34,6 @@ The following CPU versions are implemented:
 * S390
 * S390X (deprecated)
 * SystemZ
-* SH
 * SPARC
 * SPARC64
 * SPARC_V8Plus
@@ -328,7 +327,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4152,12 +4181,14 @@ case ${target} in
+@@ -4152,6 +4181,7 @@ case ${target} in
  		out_file=rs6000/rs6000.c
  		c_target_objs="${c_target_objs} rs6000-c.o"
  		cxx_target_objs="${cxx_target_objs} rs6000-c.o"
@@ -336,17 +335,10 @@ The following OS versions are implemented:
  		tmake_file="rs6000/t-rs6000 ${tmake_file}"
  		;;
  
- 	sh[123456ble]*-*-* | sh-*-*)
- 		c_target_objs="${c_target_objs} sh-c.o"
- 		cxx_target_objs="${cxx_target_objs} sh-c.o"
-+		d_target_objs="${d_target_objs} sh-d.o"
- 		;;
- 
- 	sparc*-*-*)
 --- /dev/null
 +++ b/gcc/config/aarch64/aarch64-d.c
 @@ -0,0 +1,31 @@
-+/* Subroutines for the D front end on the ARM64 architecture.
++/* Subroutines for the D front end on the AArch64 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
@@ -369,7 +361,7 @@ The following OS versions are implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_VERSIONS for ARM64 targets.  */
++/* Implement TARGET_D_CPU_VERSIONS for AArch64 targets.  */
 +
 +void
 +aarch64_d_target_versions (void)
@@ -1190,80 +1182,6 @@ The following OS versions are implemented:
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
 --- /dev/null
-+++ b/gcc/config/sh/sh-d.c
-@@ -0,0 +1,36 @@
-+/* Subroutines for the D front end on the SuperH architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify
-+it under the terms of the GNU General Public License as published by
-+the Free Software Foundation; either version 3, or (at your option)
-+any later version.
-+
-+GCC is distributed in the hope that it will be useful,
-+but WITHOUT ANY WARRANTY; without even the implied warranty of
-+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+GNU General Public License for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_CPU_VERSIONS for SuperH targets.  */
-+
-+void
-+sh_d_target_versions (void)
-+{
-+  d_add_builtin_version ("SH");
-+
-+  if (TARGET_FPU_ANY)
-+    d_add_builtin_version ("D_HardFloat");
-+  else
-+    d_add_builtin_version ("D_SoftFloat");
-+}
---- a/gcc/config/sh/sh-protos.h
-+++ b/gcc/config/sh/sh-protos.h
-@@ -231,4 +231,7 @@ extern bool sh2a_is_function_vector_call (rtx);
- extern void sh_fix_range (const char *);
- extern bool sh_hard_regno_mode_ok (unsigned int, enum machine_mode);
- extern bool sh_can_use_simple_return_p (void);
-+
-+/* Routines implemented in sh-d.c  */
-+extern void sh_d_target_versions (void);
- #endif /* ! GCC_SH_PROTOS_H */
---- a/gcc/config/sh/sh.h
-+++ b/gcc/config/sh/sh.h
-@@ -31,6 +31,9 @@ extern int code_for_indirect_jump_scratch;
- 
- #define TARGET_CPU_CPP_BUILTINS() sh_cpu_cpp_builtins (pfile)
- 
-+/* Target CPU versions for D.  */
-+#define TARGET_D_CPU_VERSIONS sh_d_target_versions
-+
- /* Value should be nonzero if functions must have frame pointers.
-    Zero means the frame pointer need not be set up (and parms may be accessed
-    via the stack pointer) in functions that seem suitable.  */
---- a/gcc/config/sh/t-sh
-+++ b/gcc/config/sh/t-sh
-@@ -25,6 +25,10 @@ sh-c.o: $(srcdir)/config/sh/sh-c.c \
- 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
- 		$(srcdir)/config/sh/sh-c.c
- 
-+sh-d.o: $(srcdir)/config/sh/sh-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
-+
- sh_treg_combine.o: $(srcdir)/config/sh/sh_treg_combine.cc \
-   $(CONFIG_H) $(SYSTEM_H) $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
- 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
---- /dev/null
 +++ b/gcc/config/sparc/sparc-d.c
 @@ -0,0 +1,48 @@
 +/* Subroutines for the D front end on the SPARC architecture.
@@ -1441,16 +1359,16 @@ The following OS versions are implemented:
      fi
      ;;
    pw32*)
-@@ -27945,6 +27964,9 @@ fi
+@@ -27924,6 +27943,9 @@ fi
  
  
  
 +
 +
 +
- # Echo link setup.
- if test x${build} = x${host} ; then
-   if test x${host} = x${target} ; then
+ 
+ 
+ 
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
 @@ -1555,6 +1555,7 @@ AC_SUBST(build_subdir)
