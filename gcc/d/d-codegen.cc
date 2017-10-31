@@ -607,6 +607,11 @@ build_address (tree exp)
   if (TREE_CODE (exp) == CONST_DECL)
     exp = DECL_INITIAL (exp);
 
+  /* Some expression lowering may request an address of a compile-time constant.
+     Make sure it is assigned to a location we can reference.  */
+  if (CONSTANT_CLASS_P (exp) && TREE_CODE (exp) != STRING_CST)
+    exp = build_target_expr (exp);
+
   d_mark_addressable (exp);
   exp = build_fold_addr_expr_with_type_loc (input_location, exp, ptrtype);
 
