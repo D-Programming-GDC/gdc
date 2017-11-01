@@ -49,7 +49,7 @@ else echo "cannot get gcc version"
     exit 1
 fi
 echo "found gcc version $gcc_ver"
-gcc_patch_key=${gcc_ver}.x
+gcc_patch_key=${gcc_ver}.patch
 
 # 1. Determine if this version of GCC is supported
 if test ! -f "$d_gdcsrc/gcc/d/patches/patch-gcc-$gcc_patch_key"; then
@@ -101,14 +101,14 @@ fi
 #
 # You will need the autogen package to do this. (http://autogen.sf.net/)
 cd $d_gccsrc && \
-  patch -p1 -i gcc/d/patches/patch-toplev-$gcc_patch_key && \
+  patch -p1 -i gcc/d/patches/patch-toplev-${gcc_patch_key} && \
   cd $top || exit 1
 
 
 # 4. Patch the gcc subdirectory
 cd $d_gccsrc && \
-  patch -p1 -i gcc/d/patches/patch-gcc-$gcc_patch_key && \
-  patch -p1 -i gcc/d/patches/patch-targetdm-$gcc_patch_key && \
+  patch -p1 -i gcc/d/patches/patch-gcc-${gcc_patch_key} && \
+  patch -p1 -i gcc/d/patches/patch-targetdm-${gcc_patch_key} && \
   cd $top || exit 1
 
 
