@@ -20,17 +20,19 @@ This implements building of libphobos library in GCC.
  flags_to_pass = { flag= LD_FOR_TARGET ; };
  flags_to_pass = { flag= LIPO_FOR_TARGET ; };
  flags_to_pass = { flag= LDFLAGS_FOR_TARGET ; };
-@@ -550,6 +553,9 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
+@@ -550,6 +553,11 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
  dependencies = { module=all-target-libgo; on=all-target-libbacktrace; };
  dependencies = { module=all-target-libgo; on=all-target-libffi; };
  dependencies = { module=all-target-libgo; on=all-target-libatomic; };
++dependencies = { module=configure-target-libphobos; on=configure-target-libbacktrace; };
 +dependencies = { module=configure-target-libphobos; on=configure-target-zlib; };
++dependencies = { module=all-target-libphobos; on=all-target-libbacktrace; };
 +dependencies = { module=all-target-libphobos; on=all-target-zlib; };
 +dependencies = { module=all-target-libphobos; on=all-target-libatomic; };
  dependencies = { module=configure-target-libstdc++-v3; on=configure-target-libgomp; };
  dependencies = { module=configure-target-liboffloadmic; on=configure-target-libgomp; };
  dependencies = { module=configure-target-libsanitizer; on=all-target-libstdc++-v3; };
-@@ -563,6 +569,7 @@ dependencies = { module=all-target-liboffloadmic; on=all-target-libgomp; };
+@@ -563,6 +571,7 @@ dependencies = { module=all-target-liboffloadmic; on=all-target-libgomp; };
  dependencies = { module=install-target-libgo; on=install-target-libatomic; };
  dependencies = { module=install-target-libgfortran; on=install-target-libquadmath; };
  dependencies = { module=install-target-libgfortran; on=install-target-libgcc; };
@@ -38,7 +40,7 @@ This implements building of libphobos library in GCC.
  dependencies = { module=install-target-libsanitizer; on=install-target-libstdc++-v3; };
  dependencies = { module=install-target-libsanitizer; on=install-target-libgcc; };
  dependencies = { module=install-target-libvtv; on=install-target-libstdc++-v3; };
-@@ -605,6 +612,8 @@ languages = { language=go;	gcc-check-target=check-go;
+@@ -605,6 +614,8 @@ languages = { language=go;	gcc-check-target=check-go;
  				lib-check-target=check-gotools; };
  languages = { language=brig;	gcc-check-target=check-brig;
  				lib-check-target=check-target-libhsail-rt; };
@@ -772,17 +774,19 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-gcc
  configure-target-winsup: maybe-all-gcc
  configure-target-libgloss: maybe-all-gcc
-@@ -58416,6 +58915,9 @@ configure-target-libgo: maybe-all-target-libstdc++-v3
+@@ -58416,6 +58915,11 @@ configure-target-libgo: maybe-all-target-libstdc++-v3
  all-target-libgo: maybe-all-target-libbacktrace
  all-target-libgo: maybe-all-target-libffi
  all-target-libgo: maybe-all-target-libatomic
++configure-target-libphobos: maybe-configure-target-libbacktrace
 +configure-target-libphobos: maybe-configure-target-zlib
++all-target-libphobos: maybe-all-target-libbacktrace
 +all-target-libphobos: maybe-all-target-zlib
 +all-target-libphobos: maybe-all-target-libatomic
  configure-target-libstdc++-v3: maybe-configure-target-libgomp
  
  configure-stage1-target-libstdc++-v3: maybe-configure-stage1-target-libgomp
-@@ -58465,6 +58967,7 @@ all-target-liboffloadmic: maybe-all-target-libgomp
+@@ -58465,6 +58969,7 @@ all-target-liboffloadmic: maybe-all-target-libgomp
  install-target-libgo: maybe-install-target-libatomic
  install-target-libgfortran: maybe-install-target-libquadmath
  install-target-libgfortran: maybe-install-target-libgcc
@@ -790,7 +794,7 @@ This implements building of libphobos library in GCC.
  install-target-libsanitizer: maybe-install-target-libstdc++-v3
  install-target-libsanitizer: maybe-install-target-libgcc
  install-target-libvtv: maybe-install-target-libstdc++-v3
-@@ -58552,6 +59055,7 @@ configure-target-libgfortran: maybe-all-target-libgcc
+@@ -58552,6 +59057,7 @@ configure-target-libgfortran: maybe-all-target-libgcc
  configure-target-libobjc: maybe-all-target-libgcc
  configure-target-libgo: maybe-all-target-libgcc
  configure-target-libhsail-rt: maybe-all-target-libgcc
@@ -798,7 +802,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-target-libgcc
  configure-target-winsup: maybe-all-target-libgcc
  configure-target-libgloss: maybe-all-target-libgcc
-@@ -58595,6 +59099,8 @@ configure-target-libgo: maybe-all-target-newlib maybe-all-target-libgloss
+@@ -58595,6 +59101,8 @@ configure-target-libgo: maybe-all-target-newlib maybe-all-target-libgloss
  
  configure-target-libhsail-rt: maybe-all-target-newlib maybe-all-target-libgloss
  
