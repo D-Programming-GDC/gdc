@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- a/gcc/config/powerpcspe/powerpcspe.c
 +++ b/gcc/config/powerpcspe/powerpcspe.c
-@@ -32015,11 +32015,12 @@ rs6000_output_function_epilogue (FILE *file)
+@@ -32030,11 +32030,12 @@ rs6000_output_function_epilogue (FILE *file)
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -21,7 +21,7 @@ relevant documentation about the GDC front end.
        else if (! strcmp (language_string, "GNU F77")
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -28828,11 +28828,12 @@ rs6000_output_function_epilogue (FILE *file)
+@@ -29182,11 +29182,12 @@ rs6000_output_function_epilogue (FILE *file)
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -82,7 +82,7 @@ relevant documentation about the GDC front end.
  default language, but is built by default because @option{--enable-lto} is
  enabled by default.  The other languages are default languages.  If
  @code{all} is specified, then all available languages are built.  An
-@@ -2716,7 +2716,7 @@ on a simulator as described at @uref{http://gcc.gnu.org/simtest-howto.html}.
+@@ -2723,7 +2723,7 @@ on a simulator as described at @uref{http://gcc.gnu.org/simtest-howto.html}.
  
  In order to run sets of tests selectively, there are targets
  @samp{make check-gcc} and language specific @samp{make check-c},
@@ -93,7 +93,7 @@ relevant documentation about the GDC front end.
  in the @file{gcc} subdirectory of the object directory.  You can also
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -1351,6 +1351,15 @@ Go source code.
+@@ -1354,6 +1354,15 @@ Go source code.
  @item @var{file}.brig
  BRIG files (binary representation of HSAIL).
  
@@ -109,7 +109,7 @@ relevant documentation about the GDC front end.
  @item @var{file}.ads
  Ada source code file that contains a library unit declaration (a
  declaration of a package, subprogram, or generic, or a generic
-@@ -1397,6 +1406,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1400,6 +1409,7 @@ objective-c  objective-c-header  objective-c-cpp-output
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -147,7 +147,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
-@@ -5170,6 +5170,16 @@ is_ada (void)
+@@ -5176,6 +5176,16 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -164,7 +164,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  Return TRUE if removal
     was successful.  */
  
-@@ -23519,6 +23529,8 @@ gen_compile_unit_die (const char *filename)
+@@ -23549,6 +23559,8 @@ gen_compile_unit_die (const char *filename)
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)
  	language = DW_LANG_ObjC_plus_plus;
@@ -173,7 +173,7 @@ relevant documentation about the GDC front end.
        else if (dwarf_version >= 5 || !dwarf_strict)
  	{
  	  if (strcmp (language_string, "GNU Go") == 0)
-@@ -25122,7 +25134,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+@@ -25152,7 +25164,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
  
    if (ns_context != context_die)
      {
@@ -182,7 +182,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, NULL, ns_context);
-@@ -25145,7 +25157,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -25175,7 +25187,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -191,7 +191,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -25217,7 +25229,7 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
+@@ -25247,7 +25259,7 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
        break;
  
      case CONST_DECL:
@@ -200,7 +200,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -25785,7 +25797,7 @@ dwarf2out_decl (tree decl)
+@@ -25821,7 +25833,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;

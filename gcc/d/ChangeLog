@@ -1,3 +1,8 @@
+2017-10-31  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_address): Store CST nodes into a TARGET_EXPR
+	before taking its address.
+
 2017-10-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_FRONTEND_OBJS): Remove newdelete.o.
