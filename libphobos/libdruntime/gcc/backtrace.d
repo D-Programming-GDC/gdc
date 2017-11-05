@@ -24,8 +24,7 @@ module gcc.backtrace;
 
 import gcc.libbacktrace;
 
-
-version( Posix )
+version (Posix)
 {
     // NOTE: The first 5 frames with the current implementation are
     //       inside core.runtime and the object code, so eliminate
@@ -43,7 +42,7 @@ else
     static enum FIRSTFRAME = 0;
 }
 
-static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
+static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 {
     import core.stdc.stdint, core.stdc.string, core.stdc.stdio;
     enum MAXFRAMES = 128;
@@ -52,7 +51,7 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
     {
         auto context = cast(LibBacktrace)data;
 
-        if(context.numPCs == MAXFRAMES)
+        if (context.numPCs == MAXFRAMES)
             return 1;
 
         context.pcs[context.numPCs++] = pc;
@@ -64,7 +63,7 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
      */
     extern(C) void simpleErrorCallback(void* data, const(char)* msg, int errnum)
     {
-        if(data) //context is not available in backtrace_create_state
+        if (data) //context is not available in backtrace_create_state
         {
             auto context = cast(LibBacktrace)data;
             strncpy(context.errorBuf.ptr, msg, context.errorBuf.length - 1);
@@ -76,18 +75,18 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
      * Used for backtrace_pcinfo
      */
     extern(C) int pcinfoCallback(void* data, uintptr_t pc, const(char)* filename,
-        int lineno, const(char)* func)
+                                 int lineno, const(char)* func)
     {
         auto context = cast(SymbolCallbackInfo*)data;
 
         //Try to get the function name via backtrace_syminfo
-        if(func is null)
+        if (func is null)
         {
             SymbolCallbackInfo2 info;
             info.base = context;
             info.filename = filename;
             info.lineno = lineno;
-            if(backtrace_syminfo(context.state, pc, &syminfoCallback2, null, &info) != 0)
+            if (backtrace_syminfo(context.state, pc, &syminfoCallback2, null, &info) != 0)
             {
                 return context.retval;
             }
@@ -107,7 +106,7 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
     {
         auto context = cast(SymbolCallbackInfo*)data;
 
-        if(errnum == -1)
+        if (errnum == -1)
         {
             context.noInfo = true;
             return;
@@ -125,7 +124,7 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
      * Used for backtrace_syminfo (in opApply)
      */
     extern(C) void syminfoCallback(void* data, uintptr_t pc,
-        const(char)* symname, uintptr_t symval)
+                                   const(char)* symname, uintptr_t symval)
     {
         auto context = cast(SymbolCallbackInfo*)data;
 
@@ -140,7 +139,7 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
      * callback. It merges it's information with the information from pcinfoCallback.
      */
     extern(C) void syminfoCallback2(void* data, uintptr_t pc,
-        const(char)* symname, uintptr_t symval)
+                                    const(char)* symname, uintptr_t symval)
     {
         auto context = cast(SymbolCallbackInfo2*)data;
 
@@ -207,7 +206,7 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 
         static void initLibBacktrace()
         {
-            if(!initialized)
+            if (!initialized)
             {
                 state = backtrace_create_state(null, false, &simpleErrorCallback, null);
                 initialized = true;
@@ -220,50 +219,48 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 
             initLibBacktrace();
 
-            if(state)
+            if (state)
             {
                 backtrace_simple(state, _firstFrame, &simpleCallback,
-                    &simpleErrorCallback, cast(void*)this);
+                                 &simpleErrorCallback, cast(void*)this);
             }
         }
 
-        override int opApply( scope int delegate(ref const(char[])) dg ) const
+        override int opApply(scope int delegate(ref const(char[])) dg) const
         {
-            return opApply( (ref size_t, ref const(char[]) buf)
+            return opApply((ref size_t, ref const(char[]) buf)
                             {
-                                return dg( buf );
-                            } );
+                                return dg(buf);
+                            });
         }
 
-        override int opApply( scope int delegate(ref size_t, ref const(char[])) dg ) const
+        override int opApply(scope int delegate(ref size_t, ref const(char[])) dg) const
         {
-            return opApply( (ref size_t i, ref SymbolOrError sym)
-                {
-                    char[512] buffer = '\0';
-                    char[] msg;
-                    if(sym.errnum != 0)
-                    {
-                        auto retval = snprintf(buffer.ptr, buffer.length,
-                            "libbacktrace error: '%s' errno: %d", sym.msg, sym.errnum);
-
-                        if(retval >= buffer.length)
-                            msg = buffer[0 .. $-1]; //Ignore zero terminator
-                        else if(retval > 0)
-                            msg = buffer[0 .. retval];
-                    }
-                    else
-                    {
-                        msg = formatLine(sym.symbol, buffer);
-                    }
-
-                    return dg(i, msg);
-                } );
+            return opApply((ref size_t i, ref SymbolOrError sym)
+                            {
+                               char[512] buffer = '\0';
+                               char[] msg;
+                               if (sym.errnum != 0)
+                               {
+                                    auto retval = snprintf(buffer.ptr, buffer.length,
+                                                           "libbacktrace error: '%s' errno: %d", sym.msg, sym.errnum);
+                                    if (retval >= buffer.length)
+                                        msg = buffer[0 .. $-1]; //Ignore zero terminator
+                                    else if (retval > 0)
+                                        msg = buffer[0 .. retval];
+                                }
+                                else
+                                {
+                                    msg = formatLine(sym.symbol, buffer);
+                                }
+                                return dg(i, msg);
+                            });
         }
 
         int opApply(ApplyCallback dg) const
         {
             //If backtrace_simple produced an error report it and exit
-            if(!state || error != 0)
+            if (!state || error != 0)
             {
                 size_t pos = 0;
                 SymbolOrError symError;
@@ -278,10 +275,10 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
             cinfo.state = cast(backtrace_state*)state;
 
             //Try using debug info first
-            foreach(i, pc; pcs[0 .. numPCs])
+            foreach (i, pc; pcs[0 .. numPCs])
             {
                 //FIXME: We may violate const guarantees here...
-                if(backtrace_pcinfo(cast(backtrace_state*)state, pc, &pcinfoCallback,
+                if (backtrace_pcinfo(cast(backtrace_state*)state, pc, &pcinfoCallback,
                     &pcinfoErrorCallback, &cinfo) != 0)
                 {
                     break; //User delegate requested abort or no debug info at all
@@ -289,28 +286,28 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
             }
 
             //If no error or other error which has already been reported via callback
-            if(!cinfo.noInfo)
+            if (!cinfo.noInfo)
                 return cinfo.retval;
 
             //Try using symbol table
             cinfo.reset();
-            foreach(pc; pcs[0 .. numPCs])
+            foreach (pc; pcs[0 .. numPCs])
             {
-                if(backtrace_syminfo(cast(backtrace_state*)state, pc, &syminfoCallback,
+                if (backtrace_syminfo(cast(backtrace_state*)state, pc, &syminfoCallback,
                     &pcinfoErrorCallback, &cinfo) == 0)
                 {
                     break;
                 }
             }
 
-            if(!cinfo.noInfo)
+            if (!cinfo.noInfo)
                 return cinfo.retval;
 
             //No symbol table
-            foreach(i, pc; pcs[0 .. numPCs])
+            foreach (i, pc; pcs[0 .. numPCs])
             {
                 auto sym = SymbolOrError(0, SymbolInfo(null, null, 0, cast(void*)pc));
-                if(auto ret = dg(i, sym) != 0)
+                if (auto ret = dg(i, sym) != 0)
                     return ret;
             }
 
@@ -320,7 +317,7 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
         override string toString() const
         {
             string buf;
-            foreach(i, const(char[]) line; this )
+            foreach (i, const(char[]) line; this)
                 buf ~= i ? "\n" ~ line : line;
             return buf;
         }
@@ -328,12 +325,12 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
     private:
         static backtrace_state* state = null;
         static bool initialized       = false;
-        size_t                  numPCs = 0;
-        uintptr_t[MAXFRAMES]    pcs;
+        size_t                 numPCs = 0;
+        uintptr_t[MAXFRAMES] pcs;
 
-        int                   error = 0;
-        int                   _firstFrame = 0;
-        char[128]             errorBuf;
+        int       error = 0;
+        int _firstFrame = 0;
+        char[128] errorBuf;
     }
 }
 else
@@ -353,25 +350,25 @@ else
             _framelist = getBacktraceSymbols(_callstack);
         }
 
-        override int opApply( scope int delegate(ref const(char[])) dg ) const
+        override int opApply(scope int delegate(ref const(char[])) dg) const
         {
-            return opApply( (ref size_t, ref const(char[]) buf)
+            return opApply((ref size_t, ref const(char[]) buf)
                             {
-                                return dg( buf );
-                            } );
+                                return dg(buf);
+                            });
         }
 
-        override int opApply( scope int delegate(ref size_t, ref const(char[])) dg ) const
+        override int opApply(scope int delegate(ref size_t, ref const(char[])) dg) const
         {
             int ret = 0;
             char[512] fixbuf = '\0';
 
-            for( int i = _firstFrame; i < _framelist.entries; ++i )
+            for (int i = _firstFrame; i < _framelist.entries; ++i)
             {
                 auto pos = cast(size_t)(i - _firstFrame);
                 auto buf = formatLine(_framelist.symbols[i], fixbuf);
-                ret = dg( pos, buf );
-                if( ret )
+                ret = dg(pos, buf);
+                if (ret)
                     break;
             }
             return ret;
@@ -380,7 +377,7 @@ else
         override string toString() const
         {
             string buf;
-            foreach( i, line; this )
+            foreach (i, line; this)
                 buf ~= i ? "\n" ~ line : line;
             return buf;
         }
@@ -392,63 +389,70 @@ else
     }
 
     // Implementation details
-    private:
-        import gcc.unwind;
+private:
+    import gcc.unwind;
 
-        static enum MAXFRAMES = 128;
+    version (linux)
+        import core.sys.linux.dlfcn;
+    else version (OSX)
+        import core.sys.darwin.dlfcn;
+    else version (FreeBSD)
+        import core.sys.freebsd.dlfcn;
+    else version (NetBSD)
+        import core.sys.netbsd.dlfcn;
+    else version (Solaris)
+        import core.sys.netbsd.dlfcn;
+    else version (Posix)
+        import core.sys.posix.dlfcn;
 
-        struct UnwindBacktraceData
-        {
-            void*[MAXFRAMES] callstack;
-            int numframes = 0;
-        }
+    static enum MAXFRAMES = 128;
 
-        struct BTSymbolData
-        {
-            size_t entries;
-            SymbolInfo[MAXFRAMES] symbols;
-        }
+    struct UnwindBacktraceData
+    {
+        void*[MAXFRAMES] callstack;
+        int numframes = 0;
+    }
 
-        static extern (C) _Unwind_Reason_Code unwindCB(_Unwind_Context *ctx, void *d)
-        {
-            UnwindBacktraceData* bt = cast(UnwindBacktraceData*)d;
-            if(bt.numframes >= MAXFRAMES)
-                return _URC_NO_REASON;
+    struct BTSymbolData
+    {
+        size_t entries;
+        SymbolInfo[MAXFRAMES] symbols;
+    }
 
-            bt.callstack[bt.numframes] = cast(void*)_Unwind_GetIP(ctx);
-            bt.numframes++;
+    static extern (C) _Unwind_Reason_Code unwindCB(_Unwind_Context *ctx, void *d)
+    {
+        UnwindBacktraceData* bt = cast(UnwindBacktraceData*)d;
+        if (bt.numframes >= MAXFRAMES)
             return _URC_NO_REASON;
-        }
 
-        UnwindBacktraceData getBacktrace()
+        bt.callstack[bt.numframes] = cast(void*)_Unwind_GetIP(ctx);
+        bt.numframes++;
+        return _URC_NO_REASON;
+    }
+
+    UnwindBacktraceData getBacktrace()
+    {
+        UnwindBacktraceData stackframe;
+        _Unwind_Backtrace(&unwindCB, &stackframe);
+        return stackframe;
+    }
+
+    BTSymbolData getBacktraceSymbols(UnwindBacktraceData data)
+    {
+        BTSymbolData symData;
+
+        for (auto i = 0; i < data.numframes; i++)
         {
-            UnwindBacktraceData stackframe;
-            _Unwind_Backtrace(&unwindCB, &stackframe);
-            return stackframe;
-        }
-
-        BTSymbolData getBacktraceSymbols(UnwindBacktraceData data)
-        {
-            BTSymbolData symData;
-
-            for(auto i = 0; i < data.numframes; i++)
+            static if( __traits(compiles, Dl_info))
             {
-                static if(HAVE_DLADDR)
+                Dl_info funcInfo;
+
+                if (data.callstack[i] !is null && dladdr(data.callstack[i], &funcInfo) != 0)
                 {
-                    Dl_info funcInfo;
+                    symData.symbols[symData.entries].funcName = funcInfo.dli_sname;
 
-                    if(data.callstack[i] !is null && dladdr(data.callstack[i], &funcInfo) != 0)
-                    {
-                        symData.symbols[symData.entries].funcName = funcInfo.dli_sname;
-
-                        symData.symbols[symData.entries].address = data.callstack[i];
-                        symData.entries++;
-                    }
-                    else
-                    {
-                        symData.symbols[symData.entries].address = data.callstack[i];
-                        symData.entries++;
-                    }
+                    symData.symbols[symData.entries].address = data.callstack[i];
+                    symData.entries++;
                 }
                 else
                 {
@@ -456,9 +460,15 @@ else
                     symData.entries++;
                 }
             }
-
-            return symData;
+            else
+            {
+                symData.symbols[symData.entries].address = data.callstack[i];
+                symData.entries++;
+            }
         }
+
+        return symData;
+    }
 }
 
 /*
@@ -484,12 +494,12 @@ char[] formatLine(const SymbolInfo sym, ref char[512] fixbuf)
     int ret;
 
     ret = snprintf(fixbuf.ptr, fixbuf.sizeof, "0x%lx ", cast(c_ulong)sym.address);
-    if(ret >= fixbuf.sizeof)
+    if (ret >= fixbuf.sizeof)
         return fixbuf[0 .. $-1]; //Ignore zero terminator
 
-    if(sym.funcName is null)
+    if (sym.funcName is null)
     {
-        if(!(fixbuf.sizeof - ret > 3))
+        if (!(fixbuf.sizeof - ret > 3))
             return fixbuf[0 .. ret];
 
         fixbuf[ret] = fixbuf[ret+1] = fixbuf[ret+2] = '?';
@@ -501,7 +511,7 @@ char[] formatLine(const SymbolInfo sym, ref char[512] fixbuf)
             fixbuf[ret .. $-1]);
 
         ret += demangled.length;
-        if(ret + 1 >= fixbuf.sizeof)
+        if (ret + 1 >= fixbuf.sizeof)
             return fixbuf[0 .. $-1]; //Ignore zero terminator
     }
 
@@ -509,7 +519,7 @@ char[] formatLine(const SymbolInfo sym, ref char[512] fixbuf)
         sym.fileName is null ? "???" : sym.fileName,
         sym.line);
 
-    if(ret >= fixbuf.sizeof)
+    if (ret >= fixbuf.sizeof)
         return fixbuf[0 .. $-1]; //Ignore zero terminator
     else
         return fixbuf[0 .. ret];
@@ -521,7 +531,7 @@ unittest
     char[512] sbuf = '\0';
     char[] result;
     string longString;
-    for(size_t i = 0; i < 60; i++)
+    for (size_t i = 0; i < 60; i++)
         longString ~= "abcdefghij";
     longString ~= '\0';
 

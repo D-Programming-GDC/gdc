@@ -77,3 +77,73 @@ AC_DEFUN([DRUNTIME_LIBRARIES_ATOMIC],
   AC_SUBST(DCFG_HAVE_LIBATOMIC)
   AC_SUBST(LIBATOMIC)
 ])
+
+# DRUNTIME_LIBRARIES_BACKTRACE
+# ---------------------------
+# Allow specifying whether to use libbacktrace for backtrace support.
+# Adds subsitute for BACKTRACE_SUPPORTED, BACKTRACE_USES_MALLOC,
+# and BACKTRACE_SUPPORTS_THREADS.
+AC_DEFUN([DRUNTIME_LIBRARIES_BACKTRACE],
+[
+  AC_LANG_PUSH([C])
+  BACKTRACE_SUPPORTED=false
+  BACKTRACE_USES_MALLOC=false
+  BACKTRACE_SUPPORTS_THREADS=false
+  LIBBACKTRACE=""
+
+  AC_ARG_WITH(libbacktrace,
+    AS_HELP_STRING([--without-libbacktrace],
+                   [Do not use libbacktrace in core.runtime (default: auto)]))
+
+  AS_IF([test "x$with_libbacktrace" != "xno"], [
+    LIBBACKTRACE=../../libbacktrace/libbacktrace.la
+
+    gdc_save_CPPFLAGS=$CPPFLAGS
+    CPPFLAGS+=" -I../libbacktrace "
+
+    AC_CHECK_HEADER(backtrace-supported.h, have_libbacktrace_h=true,
+      have_libbacktrace_h=false)
+
+    if $have_libbacktrace_h; then
+      AC_MSG_CHECKING([libbacktrace: BACKTRACE_SUPPORTED])
+      AC_EGREP_CPP(FOUND_LIBBACKTRACE_RESULT_GDC,
+      [
+      #include <backtrace-supported.h>
+      #if BACKTRACE_SUPPORTED
+        FOUND_LIBBACKTRACE_RESULT_GDC
+      #endif
+      ], BACKTRACE_SUPPORTED=true, BACKTRACE_SUPPORTED=false)
+      AC_MSG_RESULT($BACKTRACE_SUPPORTED)
+
+      AC_MSG_CHECKING([libbacktrace: BACKTRACE_USES_MALLOC])
+      AC_EGREP_CPP(FOUND_LIBBACKTRACE_RESULT_GDC,
+      [
+      #include <backtrace-supported.h>
+      #if BACKTRACE_USES_MALLOC
+        FOUND_LIBBACKTRACE_RESULT_GDC
+      #endif
+      ], BACKTRACE_USES_MALLOC=true, BACKTRACE_USES_MALLOC=false)
+      AC_MSG_RESULT($BACKTRACE_USES_MALLOC)
+
+      AC_MSG_CHECKING([libbacktrace: BACKTRACE_SUPPORTS_THREADS])
+      AC_EGREP_CPP(FOUND_LIBBACKTRACE_RESULT_GDC,
+      [
+      #include <backtrace-supported.h>
+      #if BACKTRACE_SUPPORTS_THREADS
+        FOUND_LIBBACKTRACE_RESULT_GDC
+      #endif
+      ], BACKTRACE_SUPPORTS_THREADS=true, BACKTRACE_SUPPORTS_THREADS=false)
+      AC_MSG_RESULT($BACKTRACE_SUPPORTS_THREADS)
+    fi
+    CPPFLAGS=$gdc_save_CPPFLAGS
+  ], [
+    AC_MSG_CHECKING([for libbacktrace])
+    AC_MSG_RESULT([disabled])
+  ])
+
+  AC_SUBST(LIBBACKTRACE)
+  AC_SUBST(BACKTRACE_SUPPORTED)
+  AC_SUBST(BACKTRACE_USES_MALLOC)
+  AC_SUBST(BACKTRACE_SUPPORTS_THREADS)
+  AC_LANG_POP([C])
+])
