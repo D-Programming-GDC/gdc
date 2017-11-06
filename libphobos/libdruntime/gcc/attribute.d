@@ -31,3 +31,6 @@ auto attribute(A...)(A args) if(A.length > 0 && is(A[0] == string))
 {
     return Attribute!A(args);
 }
+
+enum cctor = attribute("cctor");
+enum cdtor = attribute("cdtor");

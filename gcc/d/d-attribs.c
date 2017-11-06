@@ -63,6 +63,7 @@ static tree d_handle_noclone_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_section_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_alias_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_weak_attribute (tree *, tree, tree, int, bool *) ;
+static tree d_handle_cctor_attribute (tree *, tree, tree, int, bool *) ;
 
 
 /* Table of machine-independent attributes.
@@ -123,6 +124,10 @@ const attribute_spec d_langhook_attribute_table[] =
 				d_handle_alias_attribute, false },
     { "weak",                   0, 0, true,  false, false,
 				d_handle_weak_attribute, false },
+    { "cctor",                  0, 1, true,  false, false,
+				d_handle_cctor_attribute, false },
+    { "cdtor",                  0, 1, true,  false, false,
+				d_handle_cctor_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -654,9 +659,9 @@ d_handle_target_attribute (tree *node, tree name, tree args, int flags,
 
 static tree
 d_handle_noclone_attribute (tree *node, tree name,
-				tree ARG_UNUSED (args),
-				int ARG_UNUSED (flags),
-				bool *no_add_attrs)
+			    tree ARG_UNUSED (args),
+			    int ARG_UNUSED (flags),
+			    bool *no_add_attrs)
 {
   Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
@@ -745,7 +750,7 @@ d_handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
 static tree
 d_handle_alias_attribute (tree *node, tree ARG_UNUSED (name),
 			  tree args, int ARG_UNUSED (flags),
-			  bool *no_add_attrs ATTRIBUTE_UNUSED)
+			  bool *no_add_attrs)
 {
   tree decl = *node;
 
@@ -805,7 +810,7 @@ static tree
 d_handle_weak_attribute (tree *node, tree name,
 		         tree ARG_UNUSED (args),
 		         int ARG_UNUSED (flags),
-		         bool * ARG_UNUSED (no_add_attrs))
+		         bool * no_add_attrs)
 {
   if (TREE_CODE (*node) == FUNCTION_DECL
       && DECL_DECLARED_INLINE_P (*node))
@@ -826,3 +831,116 @@ d_handle_weak_attribute (tree *node, tree name,
   return NULL_TREE;
 }
 
+/* Subroutine of d_handle_cctor_attribute.  Evaluate ARGS to
+   get the requested priority for a constructor or destructor,
+   possibly issuing diagnostics for invalid or reserved
+   priorities.  */
+
+static priority_type
+get_priority (location_t loc, tree args, bool is_destructor)
+{
+  HOST_WIDE_INT pri;
+  tree arg;
+
+  if (!args)
+    return DEFAULT_INIT_PRIORITY;
+
+  if (!SUPPORTS_INIT_PRIORITY)
+    {
+      if (is_destructor)
+	error_at (loc, "destructor priorities are not supported");
+      else
+	error_at (loc, "constructor priorities are not supported");
+      return DEFAULT_INIT_PRIORITY;
+    }
+
+  arg = TREE_VALUE (args);
+  if (TREE_CODE (arg) == IDENTIFIER_NODE)
+    goto invalid;
+  if (arg == error_mark_node)
+    return DEFAULT_INIT_PRIORITY;
+
+  if (!tree_fits_shwi_p (arg)
+      || !INTEGRAL_TYPE_P (TREE_TYPE (arg)))
+    goto invalid;
+
+  pri = tree_to_shwi (arg);
+  if (pri < 0 || pri > MAX_INIT_PRIORITY)
+    goto invalid;
+
+  if (pri <= MAX_RESERVED_INIT_PRIORITY)
+    {
+      if (is_destructor)
+	warning_at (loc, 0,
+		    "destructor priorities from 0 to %d are reserved "
+		    "for the implementation",
+		    MAX_RESERVED_INIT_PRIORITY);
+      else
+	warning_at (loc, 0,
+		    "constructor priorities from 0 to %d are reserved "
+		    "for the implementation",
+		    MAX_RESERVED_INIT_PRIORITY);
+    }
+  return pri;
+
+ invalid:
+  if (is_destructor)
+    error_at (loc, "destructor priorities must be integers from 0 to %d inclusive",
+	      MAX_INIT_PRIORITY);
+  else
+    error_at (loc, "constructor priorities must be integers from 0 to %d inclusive",
+	      MAX_INIT_PRIORITY);
+  return DEFAULT_INIT_PRIORITY;
+}
+
+/* Handle a "cctor" or "cdtor" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+d_handle_cctor_attribute (tree *node, tree name,
+			  tree args,
+			  int ARG_UNUSED (flags),
+			  bool *no_add_attrs)
+{
+  tree decl = *node;
+  tree type = TREE_TYPE (decl);
+
+  if (TREE_CODE (decl) != FUNCTION_DECL || TREE_CODE (type) != FUNCTION_TYPE)
+    {
+      error_at (DECL_SOURCE_LOCATION (decl),
+		"Can only apply %qE attribute to functions", name);
+      *no_add_attrs = true;
+    }
+  else if (TREE_TYPE (type) != void_type_node
+      || TYPE_ARG_TYPES (type) != void_list_node
+      || DECL_EXTERNAL (decl))
+    {
+      error_at (DECL_SOURCE_LOCATION (decl),
+		"%qE function must be void function() extern(C) and requires "
+		"a function body", name);
+      *no_add_attrs = true;
+    }
+  else
+    {
+      priority_type priority;
+      if (name == get_identifier("cctor"))
+        {
+	  DECL_STATIC_CONSTRUCTOR (decl) = true;
+	  priority = get_priority (DECL_SOURCE_LOCATION (decl), args,
+	    /*is_destructor=*/false);
+        }
+      else if (name == get_identifier("cdtor"))
+        {
+	  DECL_STATIC_DESTRUCTOR (decl) = true;
+	  priority = get_priority (DECL_SOURCE_LOCATION (decl), args,
+	    /*is_destructor=*/true);
+        }
+      else
+	gcc_unreachable();
+
+      SET_DECL_INIT_PRIORITY (decl, priority);
+      TREE_USED (decl) = 1;
+    }
+
+  return NULL_TREE;
+}
