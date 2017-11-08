@@ -82,7 +82,7 @@ The following OS versions are implemented:
  MACHMODE_H = machmode.h mode-classes.def
  HOOKS_H = hooks.h
  HOSTHOOKS_DEF_H = hosthooks-def.h $(HOOKS_H)
-@@ -1174,6 +1179,9 @@ C_TARGET_OBJS=@c_target_objs@
+@@ -1175,6 +1180,9 @@ C_TARGET_OBJS=@c_target_objs@
  # Target specific, C++ specific object file
  CXX_TARGET_OBJS=@cxx_target_objs@
  
@@ -251,7 +251,7 @@ The following OS versions are implemented:
  	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
-@@ -384,6 +399,7 @@ x86_64-*-*)
+@@ -385,6 +400,7 @@ x86_64-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
@@ -259,7 +259,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
-@@ -428,6 +444,7 @@ microblaze*-*-*)
+@@ -430,6 +446,7 @@ microblaze*-*-*)
          ;;
  mips*-*-*)
  	cpu_type=mips
@@ -267,7 +267,7 @@ The following OS versions are implemented:
  	extra_headers="loongson.h msa.h"
  	extra_objs="frame-header-opt.o"
  	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
-@@ -483,6 +500,7 @@ sparc*-*-*)
+@@ -485,6 +502,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -275,7 +275,7 @@ The following OS versions are implemented:
  	extra_headers="visintrin.h"
  	;;
  spu*-*-*)
-@@ -490,6 +508,7 @@ spu*-*-*)
+@@ -492,6 +510,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -283,7 +283,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
-@@ -519,10 +538,13 @@ tilepro*-*-*)
+@@ -521,10 +540,13 @@ tilepro*-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -297,7 +297,7 @@ The following OS versions are implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -791,8 +813,10 @@ case ${target} in
+@@ -793,8 +815,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -308,7 +308,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3138,6 +3162,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3140,6 +3164,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4624,6 +4652,7 @@ case ${target} in
+@@ -4626,6 +4654,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -1430,7 +1430,7 @@ The following OS versions are implemented:
  tm_p_include_list
  tm_p_file_list
  tm_defines
-@@ -11802,6 +11805,7 @@ fi
+@@ -11804,6 +11807,7 @@ fi
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -1438,7 +1438,7 @@ The following OS versions are implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -12171,6 +12175,21 @@ for f in $tm_p_file; do
+@@ -12173,6 +12177,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -1460,25 +1460,25 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -18440,7 +18459,7 @@ else
+@@ -18442,7 +18461,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18443 "configure"
-+#line 18462 "configure"
+-#line 18445 "configure"
++#line 18464 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18546,7 +18565,7 @@ else
+@@ -18548,7 +18567,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18549 "configure"
-+#line 18568 "configure"
+-#line 18551 "configure"
++#line 18570 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -29552,6 +29571,9 @@ fi
+@@ -29559,6 +29578,9 @@ fi
  
  
  
@@ -1520,7 +1520,7 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -6216,6 +6232,8 @@ AC_SUBST(tm_include_list)
+@@ -6242,6 +6258,8 @@ AC_SUBST(tm_include_list)
  AC_SUBST(tm_defines)
  AC_SUBST(tm_p_file_list)
  AC_SUBST(tm_p_include_list)
@@ -1529,7 +1529,7 @@ The following OS versions are implemented:
  AC_SUBST(xm_file_list)
  AC_SUBST(xm_include_list)
  AC_SUBST(xm_defines)
-@@ -6223,6 +6241,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -6249,6 +6267,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)
@@ -1562,7 +1562,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10517,6 +10526,22 @@ unloaded. The default is to return false.
+@@ -10488,6 +10497,22 @@ unloaded. The default is to return false.
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1610,7 +1610,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7272,6 +7281,16 @@ floating-point support; they are not included in this mechanism.
+@@ -7234,6 +7243,16 @@ floating-point support; they are not included in this mechanism.
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  
