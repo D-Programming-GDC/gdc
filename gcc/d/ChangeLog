@@ -1,3 +1,11 @@
+2017-11-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_float_cst): Remove float rounding check.
+	* d-longdouble.cc (longdouble::to_int): Don't round floats before int
+	conversion.
+	* expr.cc (ExprVisitor::binary_op): Handle excess precision.
+	(ExprVisitor::visit(NegExp)): Likwise.
+
 2017-10-31  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_address): Store CST nodes into a TARGET_EXPR

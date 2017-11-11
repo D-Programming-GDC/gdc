@@ -69,7 +69,7 @@ longdouble::to_int (Type *type) const
     return 0;
 
   tree t = fold_build1 (FIX_TRUNC_EXPR, build_ctype (type),
-		       build_float_cst (*this, Type::tfloat64));
+		       build_float_cst (*this, Type::tfloat80));
   return TREE_INT_CST_LOW (t);
 }
 

@@ -1307,6 +1307,23 @@ auto test198()
 
 /******************************************/
 
+// Bug 200
+
+void test200a(double x, double y)
+{
+  const double y2 = x + 1.0;
+  assert(y == y2);
+}
+
+void test200()
+{
+  const double x = .012;
+  const double y = x + 1.0;
+  test200a(x, y);
+}
+
+/******************************************/
+
 // Bug 210
 
 struct S210
@@ -1523,6 +1540,7 @@ void main()
     test191();
     test196();
     test198();
+    test200();
     test210();
     test248();
     test250();
