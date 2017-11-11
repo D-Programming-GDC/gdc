@@ -246,10 +246,6 @@ build_float_cst (const real_t& value, Type *totype)
   tree type_node = build_ctype (tb);
   real_convert (&new_value.rv (), TYPE_MODE (type_node), &value.rv ());
 
-  /* Use original if the value grew as a result of the conversion.  */
-  if (new_value > value)
-    new_value = value;
-
   return build_real (type_node, new_value.rv ());
 }
 

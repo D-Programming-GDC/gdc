@@ -107,7 +107,7 @@ class ExprVisitor : public Visitor
 
     /* Deal with float mod expressions immediately.  */
     if (code == FLOAT_MOD_EXPR)
-      return build_float_modulus (TREE_TYPE (arg0), arg0, arg1);
+      return build_float_modulus (type, arg0, arg1);
 
     if (POINTER_TYPE_P (t0) && INTEGRAL_TYPE_P (t1))
       return build_nop (type, build_offset_op (code, arg0, arg1));
@@ -134,6 +134,16 @@ class ExprVisitor : public Visitor
       }
     else
       {
+	/* If the operation needs excess precision.  */
+	tree eptype = excess_precision_type (type);
+	if (eptype != NULL_TREE)
+	  {
+	    arg0 = d_convert (eptype, arg0);
+	    arg1 = d_convert (eptype, arg1);
+	  }
+	else
+	  eptype = type;
+
 	/* Front-end does not do this conversion and GCC does not
 	   always do it right.  */
 	if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
@@ -141,7 +151,7 @@ class ExprVisitor : public Visitor
 	else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
 	  arg0 = d_convert (t1, arg0);
 
-	ret = fold_build2 (code, type, arg0, arg1);
+	ret = fold_build2 (code, eptype, arg0, arg1);
       }
 
     return d_convert (type, ret);
@@ -1565,8 +1575,18 @@ public:
     TY ty1 = e->e1->type->toBasetype ()->ty;
     gcc_assert (ty1 != Tarray && ty1 != Tsarray);
 
-    this->result_ = fold_build1 (NEGATE_EXPR, build_ctype (e->type),
-				 build_expr (e->e1));
+    tree type = build_ctype (e->type);
+    tree expr = build_expr (e->e1);
+
+    /* If the operation needs excess precision.  */
+    tree eptype = excess_precision_type (type);
+    if (eptype != NULL_TREE)
+      expr = d_convert (eptype, expr);
+    else
+      eptype = type;
+
+    tree ret = fold_build1 (NEGATE_EXPR, eptype, expr);
+    this->result_ = d_convert (type, ret);
   }
 
   /* Build a pointer index expression.  */
