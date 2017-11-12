@@ -178,7 +178,7 @@ bool checkParamArgumentEscape(Scope *sc, FuncDeclaration *fdc, Identifier *par, 
  * to eliminate the error.
  * Params:
  *      sc = used to determine current function and module
- *      ae = AssignExp to check for any pointers to the stack
+ *      e = AssignExp or CatAssignExp to check for any pointers to the stack
  *      gag = do not print error messages
  * Returns:
  *      true if pointers to the stack can escape via assignment
@@ -186,9 +186,10 @@ bool checkParamArgumentEscape(Scope *sc, FuncDeclaration *fdc, Identifier *par, 
 bool checkAssignEscape(Scope *sc, Expression *e, bool gag)
 {
     //printf("checkAssignEscape(e: %s)\n", e->toChars());
-    if (e->op != TOKassign && e->op != TOKblit && e->op != TOKconstruct)
+    if (e->op != TOKassign && e->op != TOKblit && e->op != TOKconstruct &&
+        e->op != TOKcatass && e->op != TOKcatelemass && e->op != TOKcatdcharass)
         return false;
-    AssignExp *ae = (AssignExp *)e;
+    BinExp *ae = (BinExp *)e;
     Expression *e1 = ae->e1;
     Expression *e2 = ae->e2;
     //printf("type = %s, %d\n", e1->type->toChars(), e1->type->hasPointers());

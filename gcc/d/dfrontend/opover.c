@@ -35,6 +35,7 @@ bool MODimplicitConv(MOD modfrom, MOD modto);
 Expression *trySemantic(Expression *e, Scope *sc);
 Expression *binSemanticProp(BinExp *e, Scope *sc);
 Expression *semantic(Expression *e, Scope *sc);
+Type *semantic(Type *t, Loc loc, Scope *sc);
 
 /******************************** Expression **************************/
 
@@ -1107,9 +1108,9 @@ Expression *op_overload(Expression *e, Scope *sc)
                         if (!result)
                             result = eeq;
                         else if (e->op == TOKequal)
-                            result = new AndAndExp(e->loc, result, eeq);
+                            result = new LogicalExp(e->loc, TOKandand, result, eeq);
                         else
-                            result = new OrOrExp(e->loc, result, eeq);
+                            result = new LogicalExp(e->loc, TOKoror, result, eeq);
                     }
                     assert(result);
                 }
@@ -1715,7 +1716,7 @@ bool inferApplyArgTypes(ForeachStatement *fes, Scope *sc, Dsymbol *&sapply)
             Parameter *p = (*fes->parameters)[u];
             if (p->type)
             {
-                p->type = p->type->semantic(fes->loc, sc);
+                p->type = semantic(p->type, fes->loc, sc);
                 p->type = p->type->addStorageClass(p->storageClass);
             }
         }

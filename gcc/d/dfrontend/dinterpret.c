@@ -17,13 +17,7 @@
 #include "rmem.h"
 
 #include "statement.h"
-#include "expression.h"
-#include "cond.h"
 #include "init.h"
-#include "staticassert.h"
-#include "mtype.h"
-#include "scope.h"
-#include "declaration.h"
 #include "aggregate.h"
 #include "id.h"
 #include "utf.h"
@@ -47,6 +41,7 @@ Expression *interpret(Expression *e, InterState *istate, CtfeGoal goal = ctfeNee
 Expression *semantic(Expression *e, Scope *sc);
 Expression *initializerToExpression(Initializer *i, Type *t = NULL);
 Initializer *semantic(Initializer *init, Scope *sc, Type *t, NeedInterpret needInterpret);
+void semantic(Dsymbol *dsym, Scope *sc);
 
 #define LOG     0
 #define LOGASSIGN 0
@@ -2290,7 +2285,7 @@ public:
 
             if (!v->originalType && v->_scope)   // semantic() not yet run
             {
-                v->semantic (v->_scope);
+                semantic(v, v->_scope);
                 if (v->type->ty == Terror)
                     return CTFEExp::cantexp;
             }
@@ -2307,7 +2302,7 @@ public:
                 if (v->_scope)
                 {
                     v->inuse++;
-                    v->_init = ::semantic(v->_init, v->_scope, v->type, INITinterpret); // might not be run on aggregate members
+                    v->_init = semantic(v->_init, v->_scope, v->type, INITinterpret); // might not be run on aggregate members
                     v->inuse--;
                 }
                 e = initializerToExpression(v->_init, v->type);
@@ -2401,7 +2396,7 @@ public:
             e = s->dsym->type->defaultInitLiteral(loc);
             if (e->op == TOKerror)
                 error(loc, "CTFE failed because of previous errors in %s.init", s->toChars());
-            e = ::semantic(e, NULL);
+            e = semantic(e, NULL);
             if (e->op == TOKerror)
                 e = CTFEExp::cantexp;
             else // Convert NULL to CTFEExp
@@ -3698,7 +3693,7 @@ public:
             if (e->e1->type->ty != Tpointer)
             {
                 // ~= can create new values (see bug 6052)
-                if (e->op == TOKcatass)
+                if (e->op == TOKcatass || e->op == TOKcatelemass || e->op == TOKcatdcharass)
                 {
                     // We need to dup it and repaint the type. For a dynamic array
                     // we can skip duplication, because it gets copied later anyway.
@@ -4491,19 +4486,47 @@ public:
     {
         switch (e->op)
         {
-        case TOKaddass:  interpretAssignCommon(e, &Add);        return;
-        case TOKminass:  interpretAssignCommon(e, &Min);        return;
-        case TOKcatass:  interpretAssignCommon(e, &ctfeCat);    return;
-        case TOKmulass:  interpretAssignCommon(e, &Mul);        return;
-        case TOKdivass:  interpretAssignCommon(e, &Div);        return;
-        case TOKmodass:  interpretAssignCommon(e, &Mod);        return;
-        case TOKshlass:  interpretAssignCommon(e, &Shl);        return;
-        case TOKshrass:  interpretAssignCommon(e, &Shr);        return;
-        case TOKushrass: interpretAssignCommon(e, &Ushr);       return;
-        case TOKandass:  interpretAssignCommon(e, &And);        return;
-        case TOKorass:   interpretAssignCommon(e, &Or);         return;
-        case TOKxorass:  interpretAssignCommon(e, &Xor);        return;
-        case TOKpowass:  interpretAssignCommon(e, &Pow);        return;
+        case TOKaddass:
+            interpretAssignCommon(e, &Add);
+            return;
+        case TOKminass:
+            interpretAssignCommon(e, &Min);
+            return;
+        case TOKcatass:
+        case TOKcatelemass:
+        case TOKcatdcharass:
+            interpretAssignCommon(e, &ctfeCat);
+            return;
+        case TOKmulass:
+            interpretAssignCommon(e, &Mul);
+            return;
+        case TOKdivass:
+            interpretAssignCommon(e, &Div);
+            return;
+        case TOKmodass:
+            interpretAssignCommon(e, &Mod);
+            return;
+        case TOKshlass:
+            interpretAssignCommon(e, &Shl);
+            return;
+        case TOKshrass:
+            interpretAssignCommon(e, &Shr);
+            return;
+        case TOKushrass:
+            interpretAssignCommon(e, &Ushr);
+            return;
+        case TOKandass:
+            interpretAssignCommon(e, &And);
+            return;
+        case TOKorass:
+            interpretAssignCommon(e, &Or);
+            return;
+        case TOKxorass:
+            interpretAssignCommon(e, &Xor);
+            return;
+        case TOKpowass:
+            interpretAssignCommon(e, &Pow);
+            return;
         default:
             assert(0);
             return;
@@ -4711,10 +4734,10 @@ public:
         result = new IntegerExp(e->loc, (e->op == TOKandand) ? 0 : 1, e->type);
     }
 
-    void visit(AndAndExp *e)
+    void visit(LogicalExp *e)
     {
     #if LOG
-        printf("%s AndAndExp::interpret() %s\n", e->loc.toChars(), e->toChars());
+        printf("%s LogicalExp::interpret() %s\n", e->loc.toChars(), e->toChars());
     #endif
 
         // Check for an insidePointer expression, evaluate it if so
@@ -4727,9 +4750,10 @@ public:
             return;
 
         int res;
-        if (result->isBool(false))
-            res = 0;
-        else if (isTrueBool(result))
+        const bool andand = e->op == TOKandand;
+        if (andand ? result->isBool(false) : isTrueBool(result))
+            res = !andand;
+        else if (andand ? isTrueBool(result) : result->isBool(false))
         {
             result = interpret(e->e2, istate);
             if (exceptionOrCant(result))
@@ -4746,64 +4770,14 @@ public:
                 res = 1;
             else
             {
-                result->error("%s does not evaluate to a boolean", result->toChars());
+                result->error("`%s` does not evaluate to a bool", result->toChars());
                 result = CTFEExp::cantexp;
                 return;
             }
         }
         else
         {
-            result->error("%s cannot be interpreted as a boolean", result->toChars());
-            result = CTFEExp::cantexp;
-            return;
-        }
-        if (goal != ctfeNeedNothing)
-            result = new IntegerExp(e->loc, res, e->type);
-    }
-
-    void visit(OrOrExp *e)
-    {
-    #if LOG
-        printf("%s OrOrExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
-        // Check for an insidePointer expression, evaluate it if so
-        interpretFourPointerRelation(e);
-        if (result)
-            return;
-
-        result = interpret(e->e1, istate);
-        if (exceptionOrCant(result))
-            return;
-
-        int res;
-        if (isTrueBool(result))
-            res = 1;
-        else if (result->isBool(false))
-        {
-            result = interpret(e->e2, istate);
-            if (exceptionOrCant(result))
-                return;
-            if (result->op == TOKvoidexp)
-            {
-                assert(e->type->ty == Tvoid);
-                result = NULL;
-                return;
-            }
-            if (result->isBool(false))
-                res = 0;
-            else if (isTrueBool(result))
-                res = 1;
-            else
-            {
-                result->error("%s cannot be interpreted as a boolean", result->toChars());
-                result = CTFEExp::cantexp;
-                return;
-            }
-        }
-        else
-        {
-            result->error("%s cannot be interpreted as a boolean", result->toChars());
+            result->error("`%s` cannot be interpreted as a boolean", result->toChars());
             result = CTFEExp::cantexp;
             return;
         }

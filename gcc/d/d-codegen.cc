@@ -38,6 +38,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "function.h"
 
 #include "d-tree.h"
+#include "d-frontend.h"
 
 
 /* Return the GCC location for the D frontend location LOC.   */
@@ -148,7 +149,7 @@ declaration_type (Declaration *decl)
     {
       TypeFunction *tf = TypeFunction::create (NULL, decl->type, false, LINKd);
       TypeDelegate *t = TypeDelegate::create (tf);
-      return build_ctype (t->merge ());
+      return build_ctype (merge (t));
     }
 
   /* Static array va_list have array->pointer conversions applied.  */
@@ -201,7 +202,7 @@ type_passed_as (Parameter *arg)
     {
       TypeFunction *tf = TypeFunction::create (NULL, arg->type, false, LINKd);
       TypeDelegate *t = TypeDelegate::create (tf);
-      return build_ctype (t->merge ());
+      return build_ctype (merge (t));
     }
 
   /* Static array va_list have array->pointer conversions applied.  */

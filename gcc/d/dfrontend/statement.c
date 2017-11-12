@@ -14,23 +14,17 @@
 #include <assert.h>
 
 #include "statement.h"
-#include "expression.h"
 #include "cond.h"
-#include "init.h"
 #include "staticassert.h"
 #include "scope.h"
-#include "declaration.h"
 #include "aggregate.h"
 #include "id.h"
 #include "hdrgen.h"
 #include "parse.h"
 #include "template.h"
 #include "attrib.h"
-#include "import.h"
 
 bool walkPostorder(Statement *s, StoppableVisitor *v);
-StorageClass mergeFuncAttrs(StorageClass s1, FuncDeclaration *f);
-bool checkEscapeRef(Scope *sc, Expression *e, bool gag);
 VarDeclaration *copyToTemp(StorageClass stc, const char *name, Expression *e);
 Expression *semantic(Expression *e, Scope *sc);
 

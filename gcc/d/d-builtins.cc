@@ -37,6 +37,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-target.h"
+#include "d-frontend.h"
 
 
 static GTY(()) vec<tree, va_gc> *gcc_builtins_functions = NULL;
@@ -230,7 +231,7 @@ build_frontend_type (tree type)
 	  sdecl->sizeok = SIZEOKdone;
 	  sdecl->type = (TypeStruct::create (sdecl))->addMod (mod);
 	  sdecl->type->ctype = type;
-	  sdecl->type->merge ();
+	  merge (sdecl->type);
 
 	  /* Does not seem necessary to convert fields, but the members field
 	     must be non-null for the above size setting to stick.  */

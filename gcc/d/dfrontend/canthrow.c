@@ -12,18 +12,10 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "mars.h"
 #include "init.h"
-#include "expression.h"
 #include "template.h"
-#include "statement.h"
-#include "mtype.h"
-#include "utf.h"
-#include "declaration.h"
 #include "aggregate.h"
-#include "scope.h"
 #include "attrib.h"
-#include "tokens.h"
 
 bool Dsymbol_canThrow(Dsymbol *s, FuncDeclaration *func, bool mustNotThrow);
 bool walkPostorder(Expression *e, StoppableVisitor *v);

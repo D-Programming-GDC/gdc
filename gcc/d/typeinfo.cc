@@ -202,7 +202,7 @@ make_frontend_typeinfo (Module *mod, Identifier *ident,
   ClassDeclaration *tinfo = ClassDeclaration::create (loc, ident, NULL, NULL,
 						      true);
   tinfo->parent = mod;
-  tinfo->semantic (mod->_scope);
+  semantic (tinfo, mod->_scope);
   tinfo->baseClass = base;
 }
 
@@ -477,7 +477,7 @@ public:
   void visit (TypeInfoConstDeclaration *d)
   {
     Type *tm = d->tinfo->mutableOf ();
-    tm = tm->merge ();
+    tm = merge (tm);
 
     /* The vtable for TypeInfo_Const.  */
     this->layout_base (Type::typeinfoconst);
@@ -494,7 +494,7 @@ public:
   void visit (TypeInfoInvariantDeclaration *d)
   {
     Type *tm = d->tinfo->mutableOf ();
-    tm = tm->merge ();
+    tm = merge (tm);
 
     /* The vtable for TypeInfo_Invariant.  */
     this->layout_base (Type::typeinfoinvariant);
@@ -511,7 +511,7 @@ public:
   void visit (TypeInfoSharedDeclaration *d)
   {
     Type *tm = d->tinfo->unSharedOf ();
-    tm = tm->merge ();
+    tm = merge (tm);
 
     /* The vtable for TypeInfo_Shared.  */
     this->layout_base (Type::typeinfoshared);
@@ -528,7 +528,7 @@ public:
   void visit (TypeInfoWildDeclaration *d)
   {
     Type *tm = d->tinfo->mutableOf ();
-    tm = tm->merge ();
+    tm = merge (tm);
 
     /* The vtable for TypeInfo_Inout.  */
     this->layout_base (Type::typeinfowild);

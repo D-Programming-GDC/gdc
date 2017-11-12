@@ -100,11 +100,6 @@ void DebugSymbol::addMember(Scope *sc, ScopeDsymbol *sds)
     }
 }
 
-void DebugSymbol::semantic(Scope *sc)
-{
-    //printf("DebugSymbol::semantic() %s\n", toChars());
-}
-
 const char *DebugSymbol::kind()
 {
     return "debug";
@@ -187,10 +182,6 @@ void VersionSymbol::addMember(Scope *sc, ScopeDsymbol *sds)
         else
             m->versionlevel = level;
     }
-}
-
-void VersionSymbol::semantic(Scope *sc)
-{
 }
 
 const char *VersionSymbol::kind()

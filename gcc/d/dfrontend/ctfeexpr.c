@@ -17,8 +17,6 @@
 
 #include "rmem.h"
 
-#include "expression.h"
-#include "declaration.h"
 #include "aggregate.h"
 // for AssocArray
 #include "id.h"
@@ -220,6 +218,8 @@ bool needToCopyLiteral(Expression *expr)
                 return needToCopyLiteral(((BinExp *)expr)->e1) ||
                     needToCopyLiteral(((BinExp *)expr)->e2);
             case TOKcatass:
+            case TOKcatelemass:
+            case TOKcatdcharass:
                 expr = ((BinExp *)expr)->e2;
                 continue;
             default:

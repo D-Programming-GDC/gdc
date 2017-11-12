@@ -1053,7 +1053,7 @@ d_parse_file (void)
       if (global.params.verbose)
 	fprintf (global.stdmsg, "semantic  %s\n", m->toChars ());
 
-      m->semantic (NULL);
+      semantic (m, NULL);
     }
 
   /* Do deferred semantic analysis.  */
@@ -1084,7 +1084,7 @@ d_parse_file (void)
       if (global.params.verbose)
 	fprintf (global.stdmsg, "semantic2 %s\n", m->toChars ());
 
-      m->semantic2 (NULL);
+      semantic2 (m, NULL);
     }
 
   Module::runDeferredSemantic2 ();

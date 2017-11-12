@@ -37,6 +37,7 @@
 #include "nspace.h"
 #include "ctfe.h"
 #include "target.h"
+#include "visitor.h"
 
 bool typeMerge(Scope *sc, TOK op, Type **pt, Expression **pe1, Expression **pe2);
 bool isArrayOpValid(Expression *e);
@@ -75,6 +76,9 @@ Expression *binSemanticProp(BinExp *e, Scope *sc);
 Expression *semantic(Expression *e, Scope *sc);
 Expression *semanticY(DotIdExp *exp, Scope *sc, int flag);
 Expression *semanticY(DotTemplateInstanceExp *exp, Scope *sc, int flag);
+Type *semantic(Type *t, Loc loc, Scope *sc);
+void semantic(Dsymbol *dsym, Scope *sc);
+void semantic2(Dsymbol *dsym, Scope *sc);
 
 #define LOGSEMANTIC     0
 
@@ -209,7 +213,7 @@ public:
         printf("Expression::semantic() %s\n", e->toChars());
 #endif
         if (e->type)
-            e->type = e->type->semantic(e->loc, sc);
+            e->type = semantic(e->type, e->loc, sc);
         else
             e->type = Type::tvoid;
         result = e;
@@ -230,7 +234,7 @@ public:
         if (!e->type)
             e->type = Type::tfloat64;
         else
-            e->type = e->type->semantic(e->loc, sc);
+            e->type = semantic(e->type, e->loc, sc);
         result = e;
     }
 
@@ -239,7 +243,7 @@ public:
         if (!e->type)
             e->type = Type::tcomplex80;
         else
-            e->type = e->type->semantic(e->loc, sc);
+            e->type = semantic(e->type, e->loc, sc);
         result = e;
     }
 
@@ -625,7 +629,7 @@ public:
                 e->type = new TypeDArray(Type::tchar->immutableOf());
                 break;
         }
-        e->type = e->type->semantic(e->loc, sc);
+        e->type = semantic(e->type, e->loc, sc);
         //e->type = e->type->immutableOf();
         //printf("type = %s\n", e->type->toChars());
 
@@ -662,7 +666,7 @@ public:
             return setError();
 
         e->type = t0->arrayOf();
-        e->type = e->type->semantic(e->loc, sc);
+        e->type = semantic(e->type, e->loc, sc);
 
         /* Disallow array literals of type void being used.
         */
@@ -712,7 +716,7 @@ public:
             return setError();
 
         e->type = new TypeAArray(tvalue, tkey);
-        e->type = e->type->semantic(e->loc, sc);
+        e->type = semantic(e->type, e->loc, sc);
 
         semanticTypeInfo(sc, e->type);
 
@@ -778,7 +782,7 @@ public:
         else if (t)
         {
             //printf("t = %d %s\n", t->ty, t->toChars());
-            exp->type = t->semantic(exp->loc, sc);
+            exp->type = semantic(t, exp->loc, sc);
             e = exp;
         }
         else if (s)
@@ -853,7 +857,7 @@ public:
                 result = exp;
                 return;
             }
-            ti->semantic(sc);
+            semantic(ti, sc);
             if (!ti->inst || ti->errors)
                 return setError();
 
@@ -920,7 +924,7 @@ public:
 
         //printf("sds2 = %s, '%s'\n", sds2->kind(), sds2->toChars());
         //printf("\tparent = '%s'\n", sds2->parent->toChars());
-        sds2->semantic(sc);
+        semantic(sds2, sc);
 
         if (Type *t = sds2->getType())    // (Aggregate|Enum)Declaration
         {
@@ -962,7 +966,7 @@ public:
             if (cdthis)
             {
                 sc = sc->push(cdthis);
-                exp->type = exp->newtype->semantic(exp->loc, sc);
+                exp->type = semantic(exp->newtype, exp->loc, sc);
                 sc = sc->pop();
 
                 if (exp->type->ty == Terror)
@@ -982,7 +986,7 @@ public:
         }
         else
         {
-            exp->type = exp->newtype->semantic(exp->loc, sc);
+            exp->type = semantic(exp->newtype, exp->loc, sc);
             if (exp->type->ty == Terror)
                 goto Lerr;
         }
@@ -1028,6 +1032,7 @@ public:
                 exp->error("cannot create instance of interface %s", cd->toChars());
                 goto Lerr;
             }
+
             if (cd->isAbstract())
             {
                 exp->error("cannot create instance of abstract class %s", cd->toChars());
@@ -1394,7 +1399,7 @@ public:
             e->type = e->var->type;
 
         if (e->type && !e->type->deco)
-            e->type = e->type->semantic(e->loc, sc);
+            e->type = semantic(e->type, e->loc, sc);
 
         /* Fix for 1161 doesn't work because it causes protection
          * problems when instantiating imported templates passing private
@@ -1461,7 +1466,7 @@ public:
 
         expandTuples(exp->exps);
         exp->type = new TypeTuple(exp->exps);
-        exp->type = exp->type->semantic(exp->loc, sc);
+        exp->type = semantic(exp->type, exp->loc, sc);
         //printf("-TupleExp::semantic(%s)\n", exp->toChars());
         result = exp;
     }
@@ -1508,7 +1513,7 @@ public:
             if (exp->td)
             {
                 assert(exp->td->parameters && exp->td->parameters->dim);
-                exp->td->semantic(sc);
+                semantic(exp->td, sc);
                 exp->type = Type::tvoid; // temporary type
 
                 if (exp->fd->treq)       // defer type determination
@@ -1523,10 +1528,10 @@ public:
             }
 
             unsigned olderrors = global.errors;
-            exp->fd->semantic(sc);
+            semantic(exp->fd, sc);
             if (olderrors == global.errors)
             {
-                exp->fd->semantic2(sc);
+                semantic2(exp->fd, sc);
                 if (olderrors == global.errors)
                     exp->fd->semantic3(sc);
             }
@@ -1543,14 +1548,14 @@ public:
                 (exp->tok == TOKreserved && exp->fd->treq && exp->fd->treq->ty == Tdelegate))
             {
                 exp->type = new TypeDelegate(exp->fd->type);
-                exp->type = exp->type->semantic(exp->loc, sc);
+                exp->type = semantic(exp->type, exp->loc, sc);
 
                 exp->fd->tok = TOKdelegate;
             }
             else
             {
                 exp->type = new TypePointer(exp->fd->type);
-                exp->type = exp->type->semantic(exp->loc, sc);
+                exp->type = semantic(exp->type, exp->loc, sc);
                 //exp->type = exp->fd->type->pointerTo();
 
                 /* A lambda expression deduced to function pointer might become
@@ -1589,7 +1594,7 @@ public:
             exp->genIdent(sc);
 
             assert(exp->td->parameters && exp->td->parameters->dim);
-            exp->td->semantic(sc);
+            semantic(exp->td, sc);
 
             TypeFunction *tfl = (TypeFunction *)exp->fd->type;
             size_t dim = Parameter::dim(tfl->parameters);
@@ -1670,7 +1675,7 @@ public:
             // Do semantic() on initializer first, so:
             //      int a = a;
             // will be illegal.
-            e->declaration->semantic(sc);
+            semantic(e->declaration, sc);
             s->parent = sc->parent;
         }
 
@@ -1720,14 +1725,14 @@ public:
             if (sc2->stc & (STCpure | STCnothrow | STCnogc))
                 sc2 = sc->push();
             sc2->stc &= ~(STCpure | STCnothrow | STCnogc);
-            e->declaration->semantic(sc2);
+            semantic(e->declaration, sc2);
             if (sc2 != sc)
                 sc2->pop();
             s->parent = sc->parent;
         }
         if (global.errors == olderrors)
         {
-            e->declaration->semantic2(sc);
+            semantic2(e->declaration, sc);
             if (global.errors == olderrors)
             {
                 e->declaration->semantic3(sc);
@@ -1914,7 +1919,7 @@ public:
                         Parameters *args = new Parameters;
                         args->reserve(cd->baseclasses->dim);
                         if (cd->_scope && !cd->symtab)
-                            cd->semantic(cd->_scope);
+                            semantic(cd, cd->_scope);
                         for (size_t i = 0; i < cd->baseclasses->dim; i++)
                         {
                             BaseClass *b = (*cd->baseclasses)[i];
@@ -2021,7 +2026,7 @@ public:
              * is(targ == tspec)
              * is(targ : tspec)
              */
-            e->tspec = e->tspec->semantic(e->loc, sc);
+            e->tspec = semantic(e->tspec, e->loc, sc);
             //printf("targ  = %s, %s\n", e->targ->toChars(), e->targ->deco);
             //printf("tspec = %s, %s\n", e->tspec->toChars(), e->tspec->deco);
             if (e->tok == TOKcolon)
@@ -2085,7 +2090,7 @@ public:
                     m = tp->matchArg(e->loc, sc, &tiargs, i, e->parameters, &dedtypes, &s);
                     if (m <= MATCHnomatch)
                         goto Lno;
-                    s->semantic(sc);
+                    semantic(s, sc);
                     if (sc->sds)
                         s->addMember(sc, sc->sds);
                     else if (!sc->insert(s))
@@ -2114,7 +2119,7 @@ public:
                 s = new TupleDeclaration(e->loc, e->id, &(tup->objects));
             else
                 s = new AliasDeclaration(e->loc, e->id, tded);
-            s->semantic(sc);
+            semantic(s, sc);
             /* The reason for the !tup is unclear. It fails Phobos unittests if it is not there.
              * More investigation is needed.
              */
@@ -2646,7 +2651,7 @@ public:
 
         e->e1 = semantic(e->e1, sc);
         e->type = new TypeDelegate(e->func->type);
-        e->type = e->type->semantic(e->loc, sc);
+        e->type = semantic(e->type, e->loc, sc);
         FuncDeclaration *f = e->func->toAliasFunc();
         AggregateDeclaration *ad = f->toParent()->isAggregateDeclaration();
         if (f->needThis())
@@ -2881,9 +2886,9 @@ public:
                     Type *tw = ve->var->type;
                     Type *tc = ve->var->type->substWildTo(MODconst);
                     TypeFunction *tf = new TypeFunction(NULL, tc, 0, LINKd, STCsafe | STCpure);
-                    (tf = (TypeFunction *)tf->semantic(exp->loc, sc))->next = tw;    // hack for bug7757
+                    (tf = (TypeFunction *)semantic(tf, exp->loc, sc))->next = tw;    // hack for bug7757
                     TypeDelegate *t = new TypeDelegate(tf);
-                    ve->type = t->semantic(exp->loc, sc);
+                    ve->type = semantic(t, exp->loc, sc);
                 }
                 VarDeclaration *v = ve->var->isVarDeclaration();
                 if (v && ve->checkPurity(sc, v))
@@ -3583,7 +3588,7 @@ public:
             TemplateInstance *ti = dti->ti;
             {
                 //assert(ti->needsTypeInference(sc));
-                ti->semantic(sc);
+                semantic(ti, sc);
                 if (!ti->inst || ti->errors)    // if template failed to expand
                     return setError();
                 Dsymbol *s = ti->toAlias();
@@ -3601,7 +3606,7 @@ public:
             if (ti)
             {
                 //assert(ti->needsTypeInference(sc));
-                ti->semantic(sc);
+                semantic(ti, sc);
                 if (!ti->inst || ti->errors)    // if template failed to expand
                     return setError();
                 Dsymbol *s = ti->toAlias();
@@ -4084,7 +4089,7 @@ public:
                 if (fd && f)
                 {
                     v = copyToTemp(0, "__tmpea", exp->e1);
-                    v->semantic(sc);
+                    semantic(v, sc);
                     ea = new DeclarationExp(exp->loc, v);
                     ea->type = v->type;
                 }
@@ -4174,7 +4179,7 @@ public:
 
         if (exp->to)
         {
-            exp->to = exp->to->semantic(exp->loc, sc);
+            exp->to = semantic(exp->to, exp->loc, sc);
             if (exp->to == Type::terror)
                 return setError();
 
@@ -4210,7 +4215,7 @@ public:
         if (!exp->to)    // Handle cast(const) and cast(immutable), etc.
         {
             exp->to = exp->e1->type->castMod(exp->mod);
-            exp->to = exp->to->semantic(exp->loc, sc);
+            exp->to = semantic(exp->to, exp->loc, sc);
             if (exp->to == Type::terror)
                 return setError();
         }
@@ -4388,7 +4393,7 @@ public:
         }
 
         exp->e1 = semantic(exp->e1, sc);
-        exp->type = exp->to->semantic(exp->loc, sc);
+        exp->type = semantic(exp->to, exp->loc, sc);
         if (exp->e1->op == TOKerror || exp->type->ty == Terror)
         {
             result = exp->e1;
@@ -6250,7 +6255,7 @@ public:
             return;
         }
 
-        //printf("CatAssignExp::semantic() %s\n", toChars());
+        //printf("CatAssignExp::semantic() %s\n", exp->toChars());
         Expression *e = exp->op_overload(sc);
         if (e)
         {
@@ -6287,35 +6292,40 @@ public:
         Type *tb1next = tb1->nextOf();
         Type *tb2 = exp->e2->type->toBasetype();
 
+        /* Possibilities:
+         * TOKcatass: appending T[] to T[]
+         * TOKcatelemass: appending T to T[]
+         * TOKcatdcharass: appending dchar to T[]
+         */
         if ((tb1->ty == Tarray) &&
             (tb2->ty == Tarray || tb2->ty == Tsarray) &&
             (exp->e2->implicitConvTo(exp->e1->type)
              || (tb2->nextOf()->implicitConvTo(tb1next) &&
-                 (tb2->nextOf()->size(Loc()) == tb1next->size(Loc())))
-            )
-           )
+                 (tb2->nextOf()->size(Loc()) == tb1next->size(Loc())))))
         {
-            // Append array
+            // TOKcatass
+            assert(exp->op == TOKcatass);
             if (exp->e1->checkPostblit(sc, tb1next))
                 return setError();
             exp->e2 = exp->e2->castTo(sc, exp->e1->type);
         }
         else if ((tb1->ty == Tarray) &&
-                 exp->e2->implicitConvTo(tb1next)
-                )
+                 exp->e2->implicitConvTo(tb1next))
         {
             // Append element
             if (exp->e2->checkPostblit(sc, tb2))
                 return setError();
+            exp->op = TOKcatelemass;
             exp->e2 = exp->e2->castTo(sc, tb1next);
             exp->e2 = doCopyOrMove(sc, exp->e2);
         }
         else if (tb1->ty == Tarray &&
                  (tb1next->ty == Tchar || tb1next->ty == Twchar) &&
                  exp->e2->type->ty != tb1next->ty &&
-                 exp->e2->implicitConvTo(Type::tdchar)
-                )
-        {   // Append dchar to char[] or wchar[]
+                 exp->e2->implicitConvTo(Type::tdchar))
+        {
+            // Append dchar to char[] or wchar[]
+            exp->op = TOKcatdcharass;
             exp->e2 = exp->e2->castTo(sc, Type::tdchar);
 
             /* Do not allow appending wchar to char[] because if wchar happens
@@ -6331,7 +6341,10 @@ public:
             return setError();
 
         exp->type = exp->e1->type;
-        result = exp->reorderSettingAAElem(sc);
+        Expression *res = exp->reorderSettingAAElem(sc);
+        if ((exp->op == TOKcatelemass || exp->op == TOKcatdcharass) && global.params.vsafe)
+            checkAssignEscape(sc, res, false);
+        result = res;
     }
 
     void visit(PowAssignExp *exp)
@@ -6847,7 +6860,7 @@ public:
             return;
         }
 
-        e->type = e->type->semantic(exp->loc, sc);
+        e->type = semantic(e->type, exp->loc, sc);
         result = e;
     }
 
@@ -7125,7 +7138,7 @@ public:
             if (s->mod)
             {
                 s->mod->importAll(NULL);
-                s->mod->semantic(NULL);
+                semantic(s->mod, NULL);
             }
             impStdMath = s;
         }
@@ -7528,7 +7541,7 @@ public:
         result = exp;
     }
 
-    void visit(OrOrExp *exp)
+    void visit(LogicalExp *exp)
     {
         if (exp->type)
         {
@@ -7538,7 +7551,6 @@ public:
 
         setNoderefOperands(exp);
 
-        // same as for AndAnd
         Expression *e1x = semantic(exp->e1, sc);
 
         // for static alias this: https://issues.dlang.org/show_bug.cgi?id=17684
@@ -7554,87 +7566,9 @@ public:
             /* If in static if, don't evaluate e2 if we don't have to.
             */
             e1x = e1x->optimize(WANTvalue);
-            if (e1x->isBool(true))
+            if (e1x->isBool(exp->op == TOKoror))
             {
-                result = new IntegerExp(exp->loc, 1, Type::tbool);
-                return;
-            }
-        }
-
-        Expression *e2x = semantic(exp->e2, sc);
-        sc->mergeCallSuper(exp->loc, cs1);
-
-        // for static alias this: https://issues.dlang.org/show_bug.cgi?id=17684
-        if (e2x->op == TOKtype)
-            e2x = resolveAliasThis(sc, e2x);
-
-        e2x = resolveProperties(sc, e2x);
-
-        bool f1 = checkNonAssignmentArrayOp(e1x);
-        bool f2 = checkNonAssignmentArrayOp(e2x);
-        if (f1 || f2)
-            return setError();
-
-        // Unless the right operand is 'void', the expression is converted to 'bool'.
-        if (e2x->type->ty != Tvoid)
-            e2x = e2x->toBoolean(sc);
-
-        if (e2x->op == TOKtype || e2x->op == TOKscope)
-        {
-            exp->error("%s is not an expression", exp->e2->toChars());
-            return setError();
-        }
-        if (e1x->op == TOKerror)
-        {
-            result = e1x;
-            return;
-        }
-        if (e2x->op == TOKerror)
-        {
-            result = e2x;
-            return;
-        }
-
-        // The result type is 'bool', unless the right operand has type 'void'.
-        if (e2x->type->ty == Tvoid)
-            exp->type = Type::tvoid;
-        else
-            exp->type = Type::tbool;
-
-        exp->e1 = e1x;
-        exp->e2 = e2x;
-        result = exp;
-    }
-
-    void visit(AndAndExp *exp)
-    {
-        if (exp->type)
-        {
-            result = exp;
-            return;
-        }
-
-        setNoderefOperands(exp);
-
-        // same as for OrOr
-        Expression *e1x = semantic(exp->e1, sc);
-
-        // for static alias this: https://issues.dlang.org/show_bug.cgi?id=17684
-        if (e1x->op == TOKtype)
-            e1x = resolveAliasThis(sc, e1x);
-
-        e1x = resolveProperties(sc, e1x);
-        e1x = e1x->toBoolean(sc);
-        unsigned cs1 = sc->callSuper;
-
-        if (sc->flags & SCOPEcondition)
-        {
-            /* If in static if, don't evaluate e2 if we don't have to.
-            */
-            e1x = e1x->optimize(WANTvalue);
-            if (e1x->isBool(false))
-            {
-                result = new IntegerExp(exp->loc, 0, Type::tbool);
+                result = new IntegerExp(exp->loc, exp->op == TOKoror, Type::tbool);
                 return;
             }
         }
@@ -8745,7 +8679,7 @@ L1:
                 goto Lerr;
             if (exp->ti->needsTypeInference(sc))
                 return exp;
-            exp->ti->semantic(sc);
+            semantic(exp->ti, sc);
             if (!exp->ti->inst || exp->ti->errors)    // if template failed to expand
                 return new ErrorExp();
             Dsymbol *s = exp->ti->toAlias();
@@ -8753,7 +8687,7 @@ L1:
             if (v)
             {
                 if (v->type && !v->type->deco)
-                    v->type = v->type->semantic(v->loc, sc);
+                    v->type = semantic(v->type, v->loc, sc);
                 e = new DotVarExp(exp->loc, exp->e1, v);
                 e = semantic(e, sc);
                 return e;
@@ -8794,7 +8728,7 @@ L1:
             return new ErrorExp();
         if (exp->ti->needsTypeInference(sc))
             return exp;
-        exp->ti->semantic(sc);
+        semantic(exp->ti, sc);
         if (!exp->ti->inst || exp->ti->errors)    // if template failed to expand
             return new ErrorExp();
         Dsymbol *s = exp->ti->toAlias();
@@ -8843,7 +8777,7 @@ L1:
             }
             if (exp->ti->needsTypeInference(sc))
                 return exp;
-            exp->ti->semantic(sc);
+            semantic(exp->ti, sc);
             if (!exp->ti->inst || exp->ti->errors)    // if template failed to expand
                 return new ErrorExp();
             Dsymbol *s = exp->ti->toAlias();
@@ -8851,7 +8785,7 @@ L1:
             if (v)
             {
                 if (v->type && !v->type->deco)
-                    v->type = v->type->semantic(v->loc, sc);
+                    v->type = semantic(v->type, v->loc, sc);
                 e = new DotVarExp(exp->loc, exp->e1, v);
                 e = semantic(e, sc);
                 return e;

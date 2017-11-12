@@ -16,17 +16,16 @@
 #include "root.h"
 #include "aggregate.h"
 #include "scope.h"
-#include "mtype.h"
-#include "declaration.h"
-#include "module.h"
 #include "id.h"
-#include "expression.h"
 #include "statement.h"
 #include "init.h"
 #include "template.h"
-#include "tokens.h"
 
 Expression *semantic(Expression *e, Scope *sc);
+Type *semantic(Type *t, Loc loc, Scope *sc);
+Type *merge(Type *type);
+void semantic(Dsymbol *dsym, Scope *sc);
+void semantic2(Dsymbol *dsym, Scope *sc);
 
 /*******************************************
  * Merge function attributes pure, nothrow, @safe, @nogc, and @disable
@@ -330,8 +329,8 @@ FuncDeclaration *buildOpAssign(StructDeclaration *sd, Scope *sc)
     sc2->stc = 0;
     sc2->linkage = LINKd;
 
-    fop->semantic(sc2);
-    fop->semantic2(sc2);
+    semantic(fop, sc2);
+    semantic2(fop, sc2);
     // Bugzilla 15044: fop->semantic3 isn't run here for lazy forward reference resolution.
 
     sc2->pop();
@@ -510,7 +509,7 @@ FuncDeclaration *buildXopEquals(StructDeclaration *sd, Scope *sc)
                 parameters->push(new Parameter(STCref | STCconst, sd->type, NULL, NULL));
                 tfeqptr = new TypeFunction(parameters, Type::tbool, 0, LINKd);
                 tfeqptr->mod = MODconst;
-                tfeqptr = (TypeFunction *)tfeqptr->semantic(Loc(), &scx);
+                tfeqptr = (TypeFunction *)semantic(tfeqptr, Loc(), &scx);
             }
             fd = fd->overloadExactMatch(tfeqptr);
             if (fd)
@@ -553,8 +552,8 @@ FuncDeclaration *buildXopEquals(StructDeclaration *sd, Scope *sc)
     sc2->stc = 0;
     sc2->linkage = LINKd;
 
-    fop->semantic(sc2);
-    fop->semantic2(sc2);
+    semantic(fop, sc2);
+    semantic2(fop, sc2);
 
     sc2->pop();
     if (global.endGagging(errors))    // if errors happened
@@ -590,7 +589,7 @@ FuncDeclaration *buildXopCmp(StructDeclaration *sd, Scope *sc)
                 parameters->push(new Parameter(STCref | STCconst, sd->type, NULL, NULL));
                 tfcmpptr = new TypeFunction(parameters, Type::tint32, 0, LINKd);
                 tfcmpptr->mod = MODconst;
-                tfcmpptr = (TypeFunction *)tfcmpptr->semantic(Loc(), &scx);
+                tfcmpptr = (TypeFunction *)semantic(tfcmpptr, Loc(), &scx);
             }
             fd = fd->overloadExactMatch(tfcmpptr);
             if (fd)
@@ -677,8 +676,8 @@ FuncDeclaration *buildXopCmp(StructDeclaration *sd, Scope *sc)
     sc2->stc = 0;
     sc2->linkage = LINKd;
 
-    fop->semantic(sc2);
-    fop->semantic2(sc2);
+    semantic(fop, sc2);
+    semantic2(fop, sc2);
 
     sc2->pop();
     if (global.endGagging(errors))    // if errors happened
@@ -758,7 +757,7 @@ FuncDeclaration *buildXtoHash(StructDeclaration *sd, Scope *sc)
         {
             tftohash = new TypeFunction(NULL, Type::thash_t, 0, LINKd);
             tftohash->mod = MODconst;
-            tftohash = (TypeFunction *)tftohash->merge();
+            tftohash = (TypeFunction *)merge(tftohash);
         }
 
         if (FuncDeclaration *fd = s->isFuncDeclaration())
@@ -800,8 +799,8 @@ FuncDeclaration *buildXtoHash(StructDeclaration *sd, Scope *sc)
     sc2->stc = 0;
     sc2->linkage = LINKd;
 
-    fop->semantic(sc2);
-    fop->semantic2(sc2);
+    semantic(fop, sc2);
+    semantic2(fop, sc2);
 
     sc2->pop();
 
@@ -978,7 +977,7 @@ FuncDeclaration *buildPostBlit(StructDeclaration *sd, Scope *sc)
         dd->fbody = a ? new CompoundStatement(loc, a) : NULL;
         sd->postblits.shift(dd);
         sd->members->push(dd);
-        dd->semantic(sc);
+        semantic(dd, sc);
     }
 
     FuncDeclaration *xpostblit = NULL;
@@ -1012,7 +1011,7 @@ FuncDeclaration *buildPostBlit(StructDeclaration *sd, Scope *sc)
             dd->storage_class |= STCinference;
             dd->fbody = new ExpStatement(loc, e);
             sd->members->push(dd);
-            dd->semantic(sc);
+            semantic(dd, sc);
             xpostblit = dd;
             break;
     }
@@ -1020,7 +1019,7 @@ FuncDeclaration *buildPostBlit(StructDeclaration *sd, Scope *sc)
     if (xpostblit)
     {
         AliasDeclaration *alias = new AliasDeclaration(Loc(), Id::__xpostblit, xpostblit);
-        alias->semantic(sc);
+        semantic(alias, sc);
         sd->members->push(alias);
         alias->addMember(sc, sd); // add to symbol table
     }
@@ -1129,7 +1128,7 @@ FuncDeclaration *buildDtor(AggregateDeclaration *ad, Scope *sc)
         dd->fbody = new ExpStatement(loc, e);
         ad->dtors.shift(dd);
         ad->members->push(dd);
-        dd->semantic(sc);
+        semantic(dd, sc);
     }
 
     FuncDeclaration *xdtor = NULL;
@@ -1163,7 +1162,7 @@ FuncDeclaration *buildDtor(AggregateDeclaration *ad, Scope *sc)
             dd->storage_class |= STCinference;
             dd->fbody = new ExpStatement(loc, e);
             ad->members->push(dd);
-            dd->semantic(sc);
+            semantic(dd, sc);
             xdtor = dd;
             break;
     }
@@ -1171,7 +1170,7 @@ FuncDeclaration *buildDtor(AggregateDeclaration *ad, Scope *sc)
     if (xdtor)
     {
         AliasDeclaration *alias = new AliasDeclaration(Loc(), Id::__xdtor, xdtor);
-        alias->semantic(sc);
+        semantic(alias, sc);
         ad->members->push(alias);
         alias->addMember(sc, ad); // add to symbol table
     }
@@ -1229,7 +1228,7 @@ FuncDeclaration *buildInv(AggregateDeclaration *ad, Scope *sc)
             inv = new InvariantDeclaration(declLoc, Loc(), stc | stcx, Id::classInvariant);
             inv->fbody = new ExpStatement(loc, e);
             ad->members->push(inv);
-            inv->semantic(sc);
+            semantic(inv, sc);
             return inv;
     }
 }

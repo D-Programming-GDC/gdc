@@ -7889,7 +7889,7 @@ Expression *Parser::parseAndAndExp()
     {
         nextToken();
         e2 = parseOrExp();
-        e = new AndAndExp(loc, e, e2);
+        e = new LogicalExp(loc, TOKandand, e, e2);
     }
     return e;
 }
@@ -7905,7 +7905,7 @@ Expression *Parser::parseOrOrExp()
     {
         nextToken();
         e2 = parseAndAndExp();
-        e = new OrOrExp(loc, e, e2);
+        e = new LogicalExp(loc, TOKoror, e, e2);
     }
     return e;
 }
@@ -8265,6 +8265,8 @@ PrecedenceInitializer::PrecedenceInitializer()
     precedence[TOKaddass] = PREC_assign;
     precedence[TOKminass] = PREC_assign;
     precedence[TOKcatass] = PREC_assign;
+    precedence[TOKcatelemass] = PREC_assign;
+    precedence[TOKcatdcharass] = PREC_assign;
     precedence[TOKmulass] = PREC_assign;
     precedence[TOKdivass] = PREC_assign;
     precedence[TOKmodass] = PREC_assign;

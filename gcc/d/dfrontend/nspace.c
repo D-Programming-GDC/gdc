@@ -10,11 +10,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "mars.h"
-#include "dsymbol.h"
 #include "nspace.h"
 #include "identifier.h"
 #include "scope.h"
+
+void semantic(Dsymbol *dsym, Scope *sc);
 
 /* This implements namespaces.
  */
@@ -31,103 +31,6 @@ Dsymbol *Nspace::syntaxCopy(Dsymbol *s)
 {
     Nspace *ns = new Nspace(loc, ident, NULL);
     return ScopeDsymbol::syntaxCopy(ns);
-}
-
-void Nspace::semantic(Scope *sc)
-{
-    if (semanticRun >= PASSsemantic)
-        return;
-    semanticRun = PASSsemantic;
-#if LOG
-    printf("+Nspace::semantic('%s')\n", toChars());
-#endif
-    if (_scope)
-    {
-        sc = _scope;
-        _scope = NULL;
-    }
-    parent = sc->parent;
-    if (members)
-    {
-        if (!symtab)
-            symtab = new DsymbolTable();
-
-        // The namespace becomes 'imported' into the enclosing scope
-        for (Scope *sce = sc; 1; sce = sce->enclosing)
-        {
-            ScopeDsymbol *sds = (ScopeDsymbol *)sce->scopesym;
-            if (sds)
-            {
-                sds->importScope(this, Prot(PROTpublic));
-                break;
-            }
-        }
-
-        assert(sc);
-        sc = sc->push(this);
-        sc->linkage = LINKcpp;          // note that namespaces imply C++ linkage
-        sc->parent = this;
-
-        for (size_t i = 0; i < members->dim; i++)
-        {
-            Dsymbol *s = (*members)[i];
-            //printf("add %s to scope %s\n", s->toChars(), toChars());
-            s->addMember(sc, this);
-        }
-
-        for (size_t i = 0; i < members->dim; i++)
-        {
-            Dsymbol *s = (*members)[i];
-            s->setScope(sc);
-        }
-
-        for (size_t i = 0; i < members->dim; i++)
-        {
-            Dsymbol *s = (*members)[i];
-            s->importAll(sc);
-        }
-
-        for (size_t i = 0; i < members->dim; i++)
-        {
-            Dsymbol *s = (*members)[i];
-#if LOG
-            printf("\tmember '%s', kind = '%s'\n", s->toChars(), s->kind());
-#endif
-            s->semantic(sc);
-        }
-        sc->pop();
-    }
-#if LOG
-    printf("-Nspace::semantic('%s')\n", toChars());
-#endif
-}
-
-void Nspace::semantic2(Scope *sc)
-{
-    if (semanticRun >= PASSsemantic2)
-        return;
-    semanticRun = PASSsemantic2;
-#if LOG
-    printf("+Nspace::semantic2('%s')\n", toChars());
-#endif
-    if (members)
-    {
-        assert(sc);
-        sc = sc->push(this);
-        sc->linkage = LINKcpp;
-        for (size_t i = 0; i < members->dim; i++)
-        {
-            Dsymbol *s = (*members)[i];
-#if LOG
-            printf("\tmember '%s', kind = '%s'\n", s->toChars(), s->kind());
-#endif
-            s->semantic2(sc);
-        }
-        sc->pop();
-    }
-#if LOG
-    printf("-Nspace::semantic2('%s')\n", toChars());
-#endif
 }
 
 void Nspace::semantic3(Scope *sc)
@@ -165,7 +68,7 @@ Dsymbol *Nspace::search(Loc loc, Identifier *ident, int flags)
 {
     //printf("%s::Nspace::search('%s')\n", toChars(), ident->toChars());
     if (_scope && !symtab)
-        semantic(_scope);
+        semantic(this, _scope);
 
     if (!members || !symtab) // opaque or semantic() is not yet called
     {
@@ -216,7 +119,7 @@ void Nspace::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool is
 {
     //printf("Nspace::setFieldOffset() %s\n", toChars());
     if (_scope)                  // if fwd reference
-        semantic(NULL);         // try to resolve it
+        semantic(this, NULL);         // try to resolve it
     if (members)
     {
         for (size_t i = 0; i < members->dim; i++)

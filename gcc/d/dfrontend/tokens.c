@@ -448,6 +448,8 @@ TokenInitializer::TokenInitializer()
     Token::tochars[TOKandass]           = "&=";
     Token::tochars[TOKorass]            = "|=";
     Token::tochars[TOKcatass]           = "~=";
+    Token::tochars[TOKcatelemass]       = "~=";
+    Token::tochars[TOKcatdcharass]      = "~=";
     Token::tochars[TOKcat]              = "~";
     Token::tochars[TOKcall]             = "call";
     Token::tochars[TOKidentity]         = "is";

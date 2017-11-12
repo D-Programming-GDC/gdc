@@ -151,7 +151,7 @@ public:
 
                 assert(sc);
                 Initializer *iz = i->value[j];
-                iz = ::semantic(iz, sc, vd->type->addMod(t->mod), needInterpret);
+                iz = semantic(iz, sc, vd->type->addMod(t->mod), needInterpret);
                 Expression *ex = initializerToExpression(iz);
                 if (ex->op == TOKerror)
                 {
@@ -177,7 +177,7 @@ public:
             sle->type = t;
 
             ExpInitializer *ie = new ExpInitializer(i->loc, sle);
-            result = ::semantic(ie, sc, t, needInterpret);
+            result = semantic(ie, sc, t, needInterpret);
             return;
         }
         else if ((t->ty == Tdelegate || t->ty == Tpointer && t->nextOf()->ty == Tfunction) && i->value.dim == 0)
@@ -192,7 +192,7 @@ public:
             fd->endloc = i->loc;
             Expression *e = new FuncExp(i->loc, fd);
             ExpInitializer *ie = new ExpInitializer(i->loc, e);
-            result = ::semantic(ie, sc, t, needInterpret);
+            result = semantic(ie, sc, t, needInterpret);
             return;
         }
 
@@ -239,7 +239,7 @@ public:
                         goto Lerr;
                     }
                     ExpInitializer *ei = new ExpInitializer(e->loc, e);
-                    result = ::semantic(ei, sc, t, needInterpret);
+                    result = semantic(ei, sc, t, needInterpret);
                     return;
                 }
             case Tpointer:
@@ -260,7 +260,7 @@ public:
             if (idx)
             {
                 sc = sc->startCTFE();
-                idx = ::semantic(idx, sc);
+                idx = semantic(idx, sc);
                 sc = sc->endCTFE();
                 idx = idx->ctfeInterpret();
                 i->index[j] = idx;
@@ -279,7 +279,7 @@ public:
             ExpInitializer *ei = val->isExpInitializer();
             if (ei && !idx)
                 ei->expandTuples = true;
-            val = ::semantic(val, sc, t->nextOf(), needInterpret);
+            val = semantic(val, sc, t->nextOf(), needInterpret);
             if (val->isErrorInitializer())
                 errors = true;
 
@@ -347,7 +347,7 @@ public:
     {
         //printf("ExpInitializer::semantic(%s), type = %s\n", i->exp->toChars(), t->toChars());
         if (needInterpret) sc = sc->startCTFE();
-        i->exp = ::semantic(i->exp, sc);
+        i->exp = semantic(i->exp, sc);
         i->exp = resolveProperties(sc, i->exp);
         if (needInterpret) sc = sc->endCTFE();
         if (i->exp->op == TOKerror)
@@ -447,7 +447,7 @@ public:
                 e = new StructLiteralExp(i->loc, sd, NULL);
                 e = new DotIdExp(i->loc, e, Id::ctor);
                 e = new CallExp(i->loc, e, i->exp);
-                e = ::semantic(e, sc);
+                e = semantic(e, sc);
                 if (needInterpret)
                     i->exp = e->ctfeInterpret();
                 else
@@ -636,7 +636,7 @@ public:
     void visit(ExpInitializer *init)
     {
         //printf("ExpInitializer::inferType() %s\n", init->toChars());
-        init->exp = ::semantic(init->exp, sc);
+        init->exp = semantic(init->exp, sc);
         init->exp = resolveProperties(sc, init->exp);
 
         if (init->exp->op == TOKscope)

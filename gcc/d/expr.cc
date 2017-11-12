@@ -507,53 +507,34 @@ public:
     this->result_ = d_convert (build_ctype (e->type), result);
   }
 
-  /* Build an `and if' expression.  If the right operand expression is void,
-     then the resulting type is void.  Otherwise the result is bool.  */
+  /* Build an `and if' or `or if' expression.  If the right operand expression
+     is void, then the resulting type is void.  Otherwise the result is bool.  */
 
-  void visit (AndAndExp *e)
+  void visit (LogicalExp *e)
   {
     if (e->e2->type->toBasetype ()->ty != Tvoid)
       {
 	tree t1 = build_expr (e->e1);
 	tree t2 = build_expr (e->e2);
+	tree_code code = (e->op == TOKandand)
+	  ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
 
 	t1 = convert_for_condition (t1, e->e1->type);
 	t2 = convert_for_condition (t2, e->e2->type);
 
 	this->result_ = d_convert (build_ctype (e->type),
-				   build_boolop (TRUTH_ANDIF_EXPR, t1, t2));
+				   build_boolop (code, t1, t2));
       }
     else
       {
 	tree t1 = convert_for_condition (build_expr (e->e1), e->e1->type);
 	tree t2 = build_expr_dtor (e->e2);
+
+	if (e->op == TOKoror)
+	  t1 = build1 (TRUTH_NOT_EXPR, bool_type_node, t1);
 
 	this->result_ = build_condition (build_ctype (e->type),
 					 t1, t2, void_node);
-      }
-  }
-
-  /* Build an `or if' expression.  If the right operand expression is void,
-     then the resulting type is void.  Otherwise the result is bool.  */
-
-  void visit (OrOrExp *e)
-  {
-    if (e->e2->type->toBasetype ()->ty != Tvoid)
-      {
-	tree t1 = convert_for_condition (build_expr (e->e1), e->e1->type);
-	tree t2 = convert_for_condition (build_expr (e->e2), e->e2->type);
-
-	this->result_ = d_convert (build_ctype (e->type),
-				   build_boolop (TRUTH_ORIF_EXPR, t1, t2));
-      }
-    else
-      {
-	tree t1 = convert_for_condition (build_expr (e->e1), e->e1->type);
-	tree t2 = build_expr_dtor (e->e2);
-	tree cond = build1 (TRUTH_NOT_EXPR, bool_type_node, t1);
-
-	this->result_ = build_condition (build_ctype (e->type),
-					 cond, t2, void_node);
       }
   }
 
@@ -846,12 +827,15 @@ public:
   {
     Type *tb1 = e->e1->type->toBasetype ();
     Type *tb2 = e->e2->type->toBasetype ();
+    gcc_assert (tb1->ty == Tarray);
     Type *etype = tb1->nextOf ()->toBasetype ();
 
-    if (tb1->ty == Tarray && tb2->ty == Tdchar
-	&& (etype->ty == Tchar || etype->ty == Twchar))
+    if (e->op == TOKcatdcharass)
       {
-	/* Append a dchar to a char[] or wchar[]  */
+	/* Append a dchar to a char[] or wchar[].  */
+	gcc_assert (tb2->ty == Tdchar);
+	gcc_assert (etype->ty == Tchar || etype->ty == Twchar);
+
 	libcall_fn libcall = (etype->ty == Tchar)
 	  ? LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
 
@@ -859,51 +843,50 @@ public:
 				       build_address (build_expr (e->e1)),
 				       build_expr (e->e2));
       }
-    else
+    else if (e->op == TOKcatass)
       {
+	/* Append an array.  */
 	gcc_assert (tb1->ty == Tarray || tb2->ty == Tsarray);
+	gcc_assert (same_type_p (etype, tb2->nextOf ()->toBasetype ()));
 
-	tree tinfo = build_typeinfo (e->type);
-	tree ptr = build_address (build_expr (e->e1));
-
-	if ((tb2->ty == Tarray || tb2->ty == Tsarray)
-	    && same_type_p (etype, tb2->nextOf ()->toBasetype ()))
-	  {
-	    /* Append an array.  */
-	    this->result_ = build_libcall (LIBCALL_ARRAYAPPENDT, e->type, 3,
-					   tinfo, ptr, d_array_convert (e->e2));
-
-	  }
-	else if (same_type_p (etype, tb2))
-	  {
-	    /* Append an element.  */
-	    tree result = build_libcall (LIBCALL_ARRAYAPPENDCTX, e->type, 3,
-					 tinfo, ptr, size_one_node);
-	    result = d_save_expr (result);
-
-	    /* Assign e2 to last element.  */
-	    tree offexp = d_array_length (result);
-	    offexp = build2 (MINUS_EXPR, TREE_TYPE (offexp),
-			     offexp, size_one_node);
-	    offexp = d_save_expr (offexp);
-
-	    tree ptrexp = d_array_ptr (result);
-	    ptrexp = void_okay_p (ptrexp);
-	    ptrexp = build_array_index (ptrexp, offexp);
-
-	    /* Evaluate expression before appending.  */
-	    tree t2 = build_expr (e->e2);
-	    tree expr = stabilize_expr (&t2);
-
-	    t2 = d_save_expr (t2);
-	    result = modify_expr (build_deref (ptrexp), t2);
-	    result = compound_expr (t2, result);
-
-	    this->result_ = compound_expr (expr, result);
-	  }
-	else
-	  gcc_unreachable ();
+	this->result_ = build_libcall (LIBCALL_ARRAYAPPENDT, e->type, 3,
+				       build_typeinfo (e->type),
+				       build_address (build_expr (e->e1)),
+				       d_array_convert (e->e2));
       }
+    else if (e->op == TOKcatelemass)
+      {
+	/* Append an element.  */
+	gcc_assert (same_type_p (etype, tb2));
+
+	tree result = build_libcall (LIBCALL_ARRAYAPPENDCTX, e->type, 3,
+				     build_typeinfo (e->type),
+				     build_address (build_expr (e->e1)),
+				     size_one_node);
+	result = d_save_expr (result);
+
+	/* Assign e2 to last element.  */
+	tree offexp = d_array_length (result);
+	offexp = build2 (MINUS_EXPR, TREE_TYPE (offexp),
+			 offexp, size_one_node);
+	offexp = d_save_expr (offexp);
+
+	tree ptrexp = d_array_ptr (result);
+	ptrexp = void_okay_p (ptrexp);
+	ptrexp = build_array_index (ptrexp, offexp);
+
+	/* Evaluate expression before appending.  */
+	tree t2 = build_expr (e->e2);
+	tree expr = stabilize_expr (&t2);
+
+	t2 = d_save_expr (t2);
+	result = modify_expr (build_deref (ptrexp), t2);
+	result = compound_expr (t2, result);
+
+	this->result_ = compound_expr (expr, result);
+      }
+    else
+      gcc_unreachable ();
   }
 
   /* Build an assignment expression.  The right operand is implicitly

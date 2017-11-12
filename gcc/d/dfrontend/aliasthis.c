@@ -12,15 +12,9 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "mars.h"
-#include "identifier.h"
 #include "aliasthis.h"
 #include "scope.h"
 #include "aggregate.h"
-#include "dsymbol.h"
-#include "mtype.h"
-#include "declaration.h"
-#include "tokens.h"
 
 Expression *semantic(Expression *e, Scope *sc);
 
@@ -92,64 +86,6 @@ Dsymbol *AliasThis::syntaxCopy(Dsymbol *s)
      * we don't need to copy it.
      */
     return this;
-}
-
-void AliasThis::semantic(Scope *sc)
-{
-    Dsymbol *p = sc->parent->pastMixin();
-    AggregateDeclaration *ad = p->isAggregateDeclaration();
-    if (!ad)
-    {
-        ::error(loc, "alias this can only be a member of aggregate, not %s %s",
-            p->kind(), p->toChars());
-        return;
-    }
-
-    assert(ad->members);
-    Dsymbol *s = ad->search(loc, ident);
-    if (!s)
-    {
-        s = sc->search(loc, ident, NULL);
-        if (s)
-            ::error(loc, "%s is not a member of %s", s->toChars(), ad->toChars());
-        else
-            ::error(loc, "undefined identifier %s", ident->toChars());
-        return;
-    }
-    else if (ad->aliasthis && s != ad->aliasthis)
-    {
-        ::error(loc, "there can be only one alias this");
-        return;
-    }
-
-    if (ad->type->ty == Tstruct && ((TypeStruct *)ad->type)->sym != ad)
-    {
-        AggregateDeclaration *ad2 = ((TypeStruct *)ad->type)->sym;
-        assert(ad2->type == Type::terror);
-        ad->aliasthis = ad2->aliasthis;
-        return;
-    }
-
-    /* disable the alias this conversion so the implicit conversion check
-     * doesn't use it.
-     */
-    ad->aliasthis = NULL;
-
-    Dsymbol *sx = s;
-    if (sx->isAliasDeclaration())
-        sx = sx->toAlias();
-    Declaration *d = sx->isDeclaration();
-    if (d && !d->isTupleDeclaration())
-    {
-        Type *t = d->type;
-        assert(t);
-        if (ad->type->implicitConvTo(t) > MATCHnomatch)
-        {
-            ::error(loc, "alias this is not reachable as %s already converts to %s", ad->toChars(), t->toChars());
-        }
-    }
-
-    ad->aliasthis = s;
 }
 
 const char *AliasThis::kind()

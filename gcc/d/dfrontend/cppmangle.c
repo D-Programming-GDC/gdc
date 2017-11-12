@@ -13,23 +13,15 @@
 #include <string.h>
 #include <assert.h>
 
-#include "mars.h"
-#include "dsymbol.h"
-#include "mtype.h"
-#include "scope.h"
-#include "init.h"
-#include "expression.h"
-#include "attrib.h"
-#include "declaration.h"
 #include "template.h"
 #include "id.h"
 #include "enum.h"
-#include "import.h"
 #include "aggregate.h"
 #include "target.h"
 
 typedef int (*ForeachDg)(void *ctx, size_t paramidx, Parameter *param);
 int Parameter_foreach(Parameters *parameters, ForeachDg dg, void *ctx, size_t *pn = NULL);
+Type *merge(Type *type);
 
 /* Do mangling for C++ linkage.
  * No attempt is made to support mangling of templates, operator
@@ -511,7 +503,7 @@ class CppMangleVisitor : public Visitor
             // Mangle as delegate
             Type *td = new TypeFunction(NULL, t, 0, LINKd);
             td = new TypeDelegate(td);
-            t = t->merge();
+            t = merge(t);
         }
 #ifdef IN_GCC
         if (t->ty == Tsarray && Type::tvalist->ty == Tsarray)
@@ -1886,7 +1878,7 @@ private:
             // Mangle as delegate
             Type *td = new TypeFunction(NULL, t, 0, LINKd);
             td = new TypeDelegate(td);
-            t = t->merge();
+            t = merge(t);
         }
         if (t->ty == Tsarray)
         {

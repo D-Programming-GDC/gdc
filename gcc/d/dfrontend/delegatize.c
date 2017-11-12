@@ -12,16 +12,10 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "mars.h"
-#include "expression.h"
 #include "statement.h"
-#include "mtype.h"
-#include "utf.h"
-#include "declaration.h"
 #include "aggregate.h"
 #include "scope.h"
 #include "init.h"
-#include "tokens.h"
 
 
 bool walkPostorder(Expression *e, StoppableVisitor *v);

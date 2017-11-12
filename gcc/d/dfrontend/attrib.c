@@ -16,23 +16,18 @@
 
 #include "rmem.h"
 
-#include "init.h"
-#include "declaration.h"
 #include "attrib.h"
 #include "cond.h"
 #include "scope.h"
 #include "id.h"
-#include "expression.h"
-#include "dsymbol.h"
 #include "aggregate.h"
 #include "module.h"
 #include "parse.h"
 #include "target.h"
 #include "template.h"
 #include "utf.h"
-#include "mtype.h"
 
-bool definitelyValueParameter(Expression *e);
+void semantic(Dsymbol *dsym, Scope *sc);
 Expression *semantic(Expression *e, Scope *sc);
 
 /********************************* AttribDeclaration ****************************/
@@ -161,45 +156,6 @@ void AttribDeclaration::importAll(Scope *sc)
         {
             Dsymbol *s = (*d)[i];
             s->importAll(sc2);
-        }
-
-        if (sc2 != sc)
-            sc2->pop();
-    }
-}
-
-void AttribDeclaration::semantic(Scope *sc)
-{
-    Dsymbols *d = include(sc, NULL);
-
-    //printf("\tAttribDeclaration::semantic '%s', d = %p\n",toChars(), d);
-    if (d)
-    {
-        Scope *sc2 = newScope(sc);
-
-        for (size_t i = 0; i < d->dim; i++)
-        {
-            Dsymbol *s = (*d)[i];
-            s->semantic(sc2);
-        }
-
-        if (sc2 != sc)
-            sc2->pop();
-    }
-}
-
-void AttribDeclaration::semantic2(Scope *sc)
-{
-    Dsymbols *d = include(sc, NULL);
-
-    if (d)
-    {
-        Scope *sc2 = newScope(sc);
-
-        for (size_t i = 0; i < d->dim; i++)
-        {
-            Dsymbol *s = (*d)[i];
-            s->semantic2(sc2);
         }
 
         if (sc2 != sc)
@@ -469,22 +425,6 @@ void DeprecatedDeclaration::setScope(Scope *sc)
     return AttribDeclaration::setScope(sc);
 }
 
-/**
- * Run the DeprecatedDeclaration's semantic2 phase then its members.
- *
- * The message set via a `DeprecatedDeclaration` can be either of:
- * - a string literal
- * - an enum
- * - a static immutable
- * So we need to call ctfe to resolve it.
- * Afterward forwards to the members' semantic2.
- */
-void DeprecatedDeclaration::semantic2(Scope *sc)
-{
-    getMessage();
-    StorageClassDeclaration::semantic2(sc);
-}
-
 const char *DeprecatedDeclaration::getMessage()
 {
     if (Scope *sc = _scope)
@@ -492,7 +432,7 @@ const char *DeprecatedDeclaration::getMessage()
         _scope = NULL;
 
         sc = sc->startCTFE();
-        msg = ::semantic(msg, sc);
+        msg = semantic(msg, sc);
         msg = resolveProperties(sc, msg);
         sc = sc->endCTFE();
         msg = msg->ctfeInterpret();
@@ -608,7 +548,7 @@ Dsymbol *ProtDeclaration::syntaxCopy(Dsymbol *s)
 Scope *ProtDeclaration::newScope(Scope *sc)
 {
     if (pkg_identifiers)
-        semantic(sc);
+        semantic(this, sc);
     return createNewScope(sc, sc->stc, sc->linkage, sc->cppmangle,
         this->protection, 1, sc->aligndecl,
         sc->inlining);
@@ -684,12 +624,6 @@ void AlignDeclaration::setScope(Scope *sc)
     return AttribDeclaration::setScope(sc);
 }
 
-void AlignDeclaration::semantic2(Scope *sc)
-{
-    getAlignment();
-    AttribDeclaration::semantic2(sc);
-}
-
 static structalign_t errorPositiveInteger(Loc loc, Expression *ealign)
 {
     error(loc, "positive integer expected, not %s", ealign->toChars());
@@ -706,7 +640,7 @@ structalign_t AlignDeclaration::getAlignment()
         _scope = NULL;
 
         sc = sc->startCTFE();
-        ealign = ::semantic(ealign, sc);
+        ealign = semantic(ealign, sc);
         ealign = resolveProperties(sc, ealign);
         sc = sc->endCTFE();
 
@@ -764,37 +698,6 @@ void AnonDeclaration::setScope(Scope *sc)
     if (decl)
         Dsymbol::setScope(sc);
     AttribDeclaration::setScope(sc);
-}
-
-void AnonDeclaration::semantic(Scope *sc)
-{
-    //printf("\tAnonDeclaration::semantic %s %p\n", isunion ? "union" : "struct", this);
-
-    assert(sc->parent);
-
-    Dsymbol *p = sc->parent->pastMixin();
-    AggregateDeclaration *ad = p->isAggregateDeclaration();
-    if (!ad)
-    {
-        ::error(loc, "%s can only be a part of an aggregate, not %s %s",
-            kind(), p->kind(), p->toChars());
-        return;
-    }
-
-    if (decl)
-    {
-        sc = sc->push();
-        sc->stc &= ~(STCauto | STCscope | STCstatic | STCtls | STCgshared);
-        sc->inunion = isunion;
-        sc->flags = 0;
-
-        for (size_t i = 0; i < decl->dim; i++)
-        {
-            Dsymbol *s = (*decl)[i];
-            s->semantic(sc);
-        }
-        sc = sc->pop();
-    }
 }
 
 void AnonDeclaration::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion)
@@ -937,7 +840,7 @@ Scope *PragmaDeclaration::newScope(Scope *sc)
     return sc;
 }
 
-static unsigned setMangleOverride(Dsymbol *s, char *sym)
+unsigned setMangleOverride(Dsymbol *s, char *sym)
 {
     AttribDeclaration *ad = s->isAttribDeclaration();
 
@@ -959,266 +862,6 @@ static unsigned setMangleOverride(Dsymbol *s, char *sym)
     }
     else
         return 0;
-}
-
-void PragmaDeclaration::semantic(Scope *sc)
-{
-    // Should be merged with PragmaStatement
-
-    //printf("\tPragmaDeclaration::semantic '%s'\n",toChars());
-    if (ident == Id::msg)
-    {
-        if (args)
-        {
-            for (size_t i = 0; i < args->dim; i++)
-            {
-                Expression *e = (*args)[i];
-
-                sc = sc->startCTFE();
-                e = ::semantic(e, sc);
-                e = resolveProperties(sc, e);
-                sc = sc->endCTFE();
-
-                // pragma(msg) is allowed to contain types as well as expressions
-                e = ctfeInterpretForPragmaMsg(e);
-                if (e->op == TOKerror)
-                {
-                    errorSupplemental(loc, "while evaluating pragma(msg, %s)", (*args)[i]->toChars());
-                    return;
-                }
-                StringExp *se = e->toStringExp();
-                if (se)
-                {
-                    se = se->toUTF8(sc);
-                    fprintf(stderr, "%.*s", (int)se->len, (char *)se->string);
-                }
-                else
-                    fprintf(stderr, "%s", e->toChars());
-            }
-            fprintf(stderr, "\n");
-        }
-        goto Lnodecl;
-    }
-    else if (ident == Id::lib)
-    {
-        if (!args || args->dim != 1)
-            error("string expected for library name");
-        else
-        {
-            Expression *e = (*args)[0];
-
-            sc = sc->startCTFE();
-            e = ::semantic(e, sc);
-            e = resolveProperties(sc, e);
-            sc = sc->endCTFE();
-
-            e = e->ctfeInterpret();
-            (*args)[0] = e;
-            if (e->op == TOKerror)
-                goto Lnodecl;
-            StringExp *se = e->toStringExp();
-            if (!se)
-                error("string expected for library name, not '%s'", e->toChars());
-            else
-            {
-                char *name = (char *)mem.xmalloc(se->len + 1);
-                memcpy(name, se->string, se->len);
-                name[se->len] = 0;
-                if (global.params.verbose)
-                    fprintf(global.stdmsg, "library   %s\n", name);
-                if (global.params.moduleDeps && !global.params.moduleDepsFile)
-                {
-                    OutBuffer *ob = global.params.moduleDeps;
-                    Module *imod = sc->instantiatingModule();
-                    ob->writestring("depsLib ");
-                    ob->writestring(imod->toPrettyChars());
-                    ob->writestring(" (");
-                    escapePath(ob, imod->srcfile->toChars());
-                    ob->writestring(") : ");
-                    ob->writestring((char *) name);
-                    ob->writenl();
-                }
-                mem.xfree(name);
-            }
-        }
-        goto Lnodecl;
-    }
-    else if (ident == Id::startaddress)
-    {
-        if (!args || args->dim != 1)
-            error("function name expected for start address");
-        else
-        {
-            /* Bugzilla 11980:
-             * resolveProperties and ctfeInterpret call are not necessary.
-             */
-            Expression *e = (*args)[0];
-
-            sc = sc->startCTFE();
-            e = ::semantic(e, sc);
-            sc = sc->endCTFE();
-
-            (*args)[0] = e;
-            Dsymbol *sa = getDsymbol(e);
-            if (!sa || !sa->isFuncDeclaration())
-                error("function name expected for start address, not '%s'", e->toChars());
-        }
-        goto Lnodecl;
-    }
-    else if (ident == Id::Pinline)
-    {
-        goto Ldecl;
-    }
-    else if (ident == Id::mangle)
-    {
-        if (!args)
-            args = new Expressions();
-        if (args->dim != 1)
-        {
-            error("string expected for mangled name");
-            args->setDim(1);
-            (*args)[0] = new ErrorExp();    // error recovery
-            goto Ldecl;
-        }
-
-        Expression *e = (*args)[0];
-        e = ::semantic(e, sc);
-        e = e->ctfeInterpret();
-        (*args)[0] = e;
-        if (e->op == TOKerror)
-            goto Ldecl;
-
-        StringExp *se = e->toStringExp();
-        if (!se)
-        {
-            error("string expected for mangled name, not '%s'", e->toChars());
-            goto Ldecl;
-        }
-        if (!se->len)
-        {
-            error("zero-length string not allowed for mangled name");
-            goto Ldecl;
-        }
-        if (se->sz != 1)
-        {
-            error("mangled name characters can only be of type char");
-            goto Ldecl;
-        }
-
-#if 1
-        /* Note: D language specification should not have any assumption about backend
-         * implementation. Ideally pragma(mangle) can accept a string of any content.
-         *
-         * Therefore, this validation is compiler implementation specific.
-         */
-        for (size_t i = 0; i < se->len; )
-        {
-            utf8_t *p = (utf8_t *)se->string;
-            dchar_t c = p[i];
-            if (c < 0x80)
-            {
-                if (c >= 'A' && c <= 'Z' ||
-                    c >= 'a' && c <= 'z' ||
-                    c >= '0' && c <= '9' ||
-                    c != 0 && strchr("$%().:?@[]_", c))
-                {
-                    ++i;
-                    continue;
-                }
-                else
-                {
-                    error("char 0x%02x not allowed in mangled name", c);
-                    break;
-                }
-            }
-
-            if (const char* msg = utf_decodeChar((utf8_t *)se->string, se->len, &i, &c))
-            {
-                error("%s", msg);
-                break;
-            }
-
-            if (!isUniAlpha(c))
-            {
-                error("char 0x%04x not allowed in mangled name", c);
-                break;
-            }
-        }
-#endif
-    }
-    else if (global.params.ignoreUnsupportedPragmas)
-    {
-        if (global.params.verbose)
-        {
-            /* Print unrecognized pragmas
-             */
-            fprintf(global.stdmsg, "pragma    %s", ident->toChars());
-            if (args)
-            {
-                for (size_t i = 0; i < args->dim; i++)
-                {
-                    Expression *e = (*args)[i];
-
-                    sc = sc->startCTFE();
-                    e = ::semantic(e, sc);
-                    e = resolveProperties(sc, e);
-                    sc = sc->endCTFE();
-
-                    e = e->ctfeInterpret();
-                    if (i == 0)
-                        fprintf(global.stdmsg, " (");
-                    else
-                        fprintf(global.stdmsg, ",");
-                    fprintf(global.stdmsg, "%s", e->toChars());
-                }
-                if (args->dim)
-                    fprintf(global.stdmsg, ")");
-            }
-            fprintf(global.stdmsg, "\n");
-        }
-        goto Lnodecl;
-    }
-    else
-        error("unrecognized pragma(%s)", ident->toChars());
-
-Ldecl:
-    if (decl)
-    {
-        Scope *sc2 = newScope(sc);
-
-        for (size_t i = 0; i < decl->dim; i++)
-        {
-            Dsymbol *s = (*decl)[i];
-
-            s->semantic(sc2);
-
-            if (ident == Id::mangle)
-            {
-                assert(args && args->dim == 1);
-                if (StringExp *se = (*args)[0]->toStringExp())
-                {
-                    char *name = (char *)mem.xmalloc(se->len + 1);
-                    memcpy(name, se->string, se->len);
-                    name[se->len] = 0;
-
-                    unsigned cnt = setMangleOverride(s, name);
-                    if (cnt > 1)
-                        error("can only apply to a single declaration");
-                }
-            }
-        }
-
-        if (sc2 != sc)
-            sc2->pop();
-    }
-    return;
-
-Lnodecl:
-    if (decl)
-    {
-        error("pragma is missing closing ';'");
-        goto Ldecl; // do them anyway, to avoid segfaults.
-    }
 }
 
 const char *PragmaDeclaration::kind() const
@@ -1403,11 +1046,6 @@ void StaticIfDeclaration::setScope(Scope *sc)
     Dsymbol::setScope(sc);
 }
 
-void StaticIfDeclaration::semantic(Scope *sc)
-{
-    AttribDeclaration::semantic(sc);
-}
-
 const char *StaticIfDeclaration::kind() const
 {
     return "static if";
@@ -1448,7 +1086,7 @@ void CompileDeclaration::compileIt(Scope *sc)
 {
     //printf("CompileDeclaration::compileIt(loc = %d) %s\n", loc.linnum, exp->toChars());
     sc = sc->startCTFE();
-    exp = ::semantic(exp, sc);
+    exp = semantic(exp, sc);
     exp = resolveProperties(sc, exp);
     sc = sc->endCTFE();
 
@@ -1475,28 +1113,6 @@ void CompileDeclaration::compileIt(Scope *sc)
             }
         }
     }
-}
-
-void CompileDeclaration::semantic(Scope *sc)
-{
-    //printf("CompileDeclaration::semantic()\n");
-
-    if (!compiled)
-    {
-        compileIt(sc);
-        AttribDeclaration::addMember(sc, scopesym);
-        compiled = true;
-
-        if (_scope && decl)
-        {
-            for (size_t i = 0; i < decl->dim; i++)
-            {
-                Dsymbol *s = (*decl)[i];
-                s->setScope(_scope);
-            }
-        }
-    }
-    AttribDeclaration::semantic(sc);
 }
 
 const char *CompileDeclaration::kind() const
@@ -1541,46 +1157,6 @@ void UserAttributeDeclaration::setScope(Scope *sc)
         Dsymbol::setScope(sc);  // for forward reference of UDAs
 
     return AttribDeclaration::setScope(sc);
-}
-
-void UserAttributeDeclaration::semantic(Scope *sc)
-{
-    //printf("UserAttributeDeclaration::semantic() %p\n", this);
-    if (decl && !_scope)
-        Dsymbol::setScope(sc);  // for function local symbols
-
-    return AttribDeclaration::semantic(sc);
-}
-
-static void udaExpressionEval(Scope *sc, Expressions *exps)
-{
-    for (size_t i = 0; i < exps->dim; i++)
-    {
-        Expression *e = (*exps)[i];
-        if (e)
-        {
-            e = ::semantic(e, sc);
-            if (definitelyValueParameter(e))
-                e = e->ctfeInterpret();
-            if (e->op == TOKtuple)
-            {
-                TupleExp *te = (TupleExp *)e;
-                udaExpressionEval(sc, te->exps);
-            }
-            (*exps)[i] = e;
-        }
-    }
-}
-
-void UserAttributeDeclaration::semantic2(Scope *sc)
-{
-    if (decl && atts && atts->dim && _scope)
-    {
-        _scope = NULL;
-        udaExpressionEval(sc, atts);
-    }
-
-    AttribDeclaration::semantic2(sc);
 }
 
 Expressions *UserAttributeDeclaration::concat(Expressions *udas1, Expressions *udas2)

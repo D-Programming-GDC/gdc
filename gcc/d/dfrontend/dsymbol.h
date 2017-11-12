@@ -110,7 +110,6 @@ struct Prot
 
     Prot();
     Prot(PROTKIND kind);
-
     bool isMoreRestrictiveThan(const Prot other) const;
     bool operator==(const Prot& other) const;
     bool isSubsetOf(const Prot& other) const;
@@ -209,8 +208,6 @@ public:
     virtual void addMember(Scope *sc, ScopeDsymbol *sds);
     virtual void setScope(Scope *sc);
     virtual void importAll(Scope *sc);
-    virtual void semantic(Scope *sc);
-    virtual void semantic2(Scope *sc);
     virtual void semantic3(Scope *sc);
     virtual Dsymbol *search(Loc loc, Identifier *ident, int flags = IgnoreNone);
     Dsymbol *search_correct(Identifier *id);
@@ -328,7 +325,6 @@ public:
     static Dsymbol *getNth(Dsymbols *members, size_t nth, size_t *pn = NULL);
 
     ScopeDsymbol *isScopeDsymbol() { return this; }
-    void semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -388,7 +384,6 @@ class ForwardingScopeDsymbol : public ScopeDsymbol
     Dsymbol *symtabInsert(Dsymbol *s);
     Dsymbol *symtabLookup(Dsymbol *s, Identifier *id);
     void importScope(Dsymbol *s, Prot protection);
-    void semantic(Scope *sc);
     const char *kind();
 
     ForwardingScopeDsymbol *isForwardingScopeDsymbol() { return this; }
@@ -402,7 +397,6 @@ public:
     AA *tab;
 
     DsymbolTable();
-
     // Look up Identifier. Return Dsymbol if found, NULL if not.
     Dsymbol *lookup(Identifier const * const ident);
 

@@ -20,10 +20,7 @@
 #include "root.h"
 #include "port.h"
 
-#include "mtype.h"
-#include "expression.h"
 #include "aggregate.h"
-#include "declaration.h"
 #include "utf.h"
 #include "ctfe.h"
 #include "target.h"

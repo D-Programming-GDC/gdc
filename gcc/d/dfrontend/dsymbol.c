@@ -18,27 +18,21 @@
 #include "speller.h"
 #include "aav.h"
 
-#include "mars.h"
-#include "dsymbol.h"
 #include "aggregate.h"
-#include "identifier.h"
 #include "module.h"
-#include "mtype.h"
-#include "expression.h"
 #include "statement.h"
-#include "declaration.h"
 #include "id.h"
 #include "scope.h"
 #include "init.h"
 #include "import.h"
 #include "template.h"
 #include "attrib.h"
-#include "enum.h"
 #include "lexer.h"
 
 bool symbolIsVisible(Dsymbol *origin, Dsymbol *s);
 typedef int (*ForeachDg)(void *ctx, size_t idx, Dsymbol *s);
 int ScopeDsymbol_foreach(Scope *sc, Dsymbols *members, ForeachDg dg, void *ctx, size_t *pn = NULL);
+void semantic(Dsymbol *dsym, Scope *sc);
 Expression *semantic(Expression *e, Scope *sc);
 
 
@@ -437,24 +431,6 @@ void Dsymbol::importAll(Scope *sc)
 }
 
 /*************************************
- * Does semantic analysis on the public face of declarations.
- */
-
-void Dsymbol::semantic(Scope *sc)
-{
-    error("%p has no semantic routine", this);
-}
-
-/*************************************
- * Does semantic analysis on initializers and members of aggregates.
- */
-
-void Dsymbol::semantic2(Scope *sc)
-{
-    // Most Dsymbols have no further semantic analysis needed
-}
-
-/*************************************
  * Does semantic analysis on function bodies.
  */
 
@@ -563,7 +539,7 @@ Dsymbol *Dsymbol::searchX(Loc loc, Scope *sc, RootObject *id)
             }
             ti->tempdecl = td;
             if (!ti->semanticRun)
-                ti->semantic(sc);
+                semantic(ti, sc);
             sm = ti->toAlias();
             break;
         }
@@ -957,10 +933,6 @@ Dsymbol *ScopeDsymbol::syntaxCopy(Dsymbol *s)
     sds->members = arraySyntaxCopy(members);
     sds->endlinnum = endlinnum;
     return sds;
-}
-
-void ScopeDsymbol::semantic(Scope *)
-{
 }
 
 /*****************************************
@@ -1530,7 +1502,7 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
             Expression *e = new IntegerExp(Loc(), td->objects->dim, Type::tsize_t);
             v->_init = new ExpInitializer(Loc(), e);
             v->storage_class |= STCtemp | STCstatic | STCconst;
-            v->semantic(sc);
+            semantic(v, sc);
             return v;
         }
 
@@ -1542,7 +1514,7 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
             Expression *e = new IntegerExp(Loc(), type->arguments->dim, Type::tsize_t);
             v->_init = new ExpInitializer(Loc(), e);
             v->storage_class |= STCtemp | STCstatic | STCconst;
-            v->semantic(sc);
+            semantic(v, sc);
             return v;
         }
 
@@ -1646,7 +1618,7 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
 
                     Objects *tiargs = new Objects();
                     Expression *edim = new IntegerExp(Loc(), dim, Type::tsize_t);
-                    edim = ::semantic(edim, sc);
+                    edim = semantic(edim, sc);
                     tiargs->push(edim);
                     e = new DotTemplateInstanceExp(loc, ce, td->ident, tiargs);
                 }
@@ -1666,7 +1638,7 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
                     assert(d);
                     e = new DotVarExp(loc, ce, d);
                 }
-                e = ::semantic(e, sc);
+                e = semantic(e, sc);
                 if (!e->type)
                     exp->error("%s has no value", e->toChars());
                 t = e->type->toBasetype();
@@ -1689,7 +1661,7 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
             }
             *pvar = v;
         }
-        (*pvar)->semantic(sc);
+        semantic(*pvar, sc);
         return (*pvar);
     }
     return NULL;

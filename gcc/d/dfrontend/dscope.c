@@ -17,18 +17,12 @@
 #include "rmem.h"
 #include "speller.h"
 
-#include "mars.h"
-#include "init.h"
-#include "identifier.h"
 #include "scope.h"
 #include "attrib.h"
-#include "dsymbol.h"
-#include "declaration.h"
 #include "statement.h"
 #include "aggregate.h"
 #include "module.h"
 #include "id.h"
-#include "template.h"
 
 Scope *Scope::freelist = NULL;
 
@@ -729,7 +723,7 @@ void Scope::deprecation10378(Loc loc, Dsymbol *sold, Dsymbol *snew)
     else
         buf.writestring("nothing");
 
-    deprecation(loc, buf.peekString());
+    deprecation(loc, "%s", buf.peekString());
 }
 
 Dsymbol *Scope::search_correct(Identifier *ident)
