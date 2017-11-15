@@ -755,6 +755,9 @@ d_post_options (const char ** fn)
   /* Has no effect yet.  */
   global.params.pic = flag_pic != 0;
 
+  if (warn_return_type == -1)
+    warn_return_type = 0;
+
   return false;
 }
 
