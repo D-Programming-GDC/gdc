@@ -28,13 +28,14 @@ class FuncDeclaration;
 class StructDeclaration;
 class Type;
 class Module;
+class Initializer;
 struct OutBuffer;
 
 /* Used in typeinfo.cc.  */
 FuncDeclaration *search_toString (StructDeclaration *);
 
 /* Used in d-lang.cc.  */
-void gendocfile(Module *m);
+void gendocfile(Module *);
 
 /* Used in intrinsics.cc.  */
 void mangleToBuffer (Type *, OutBuffer *);
@@ -44,6 +45,6 @@ const char *toCppMangleItanium (Dsymbol *);
 const char *cppTypeInfoMangleItanium (Dsymbol *);
 
 /* Used in decl.cc.  */
-Expression *initializerToExpression (Initializer *i, Type *t = NULL);
+Expression *initializerToExpression (Initializer *, Type * = NULL);
 
 #endif  /* ! GCC_D_FRONTEND_H */

@@ -1,4 +1,4 @@
-// REQUIRED_ARGS: -o- -d
+// REQUIRED_ARGS: -o- -d -m64
 
 struct S1 { int v; }
 struct S2 { int* p; }
@@ -137,12 +137,12 @@ fail_compilation/fail13902.d(157): Error: returning `sa2[]` escapes a reference 
 fail_compilation/fail13902.d(161): Error: returning `cast(int[])s.sa` escapes a reference to local variable `s`
 fail_compilation/fail13902.d(162): Error: returning `cast(int[])s.sa` escapes a reference to local variable `s`
 fail_compilation/fail13902.d(163): Error: returning `s.sa[]` escapes a reference to local variable `s`
-fail_compilation/fail13902.d(166): Error: escaping reference to stack allocated value returned by makeSA()
-fail_compilation/fail13902.d(167): Error: escaping reference to stack allocated value returned by makeSA()
-fail_compilation/fail13902.d(168): Error: escaping reference to stack allocated value returned by makeSA()
-fail_compilation/fail13902.d(171): Error: escaping reference to stack allocated value returned by makeS()
-fail_compilation/fail13902.d(172): Error: escaping reference to stack allocated value returned by makeS()
-fail_compilation/fail13902.d(173): Error: escaping reference to stack allocated value returned by makeS()
+fail_compilation/fail13902.d(166): Error: escaping reference to stack allocated value returned by `makeSA()`
+fail_compilation/fail13902.d(167): Error: escaping reference to stack allocated value returned by `makeSA()`
+fail_compilation/fail13902.d(168): Error: escaping reference to stack allocated value returned by `makeSA()`
+fail_compilation/fail13902.d(171): Error: escaping reference to stack allocated value returned by `makeS()`
+fail_compilation/fail13902.d(172): Error: escaping reference to stack allocated value returned by `makeS()`
+fail_compilation/fail13902.d(173): Error: escaping reference to stack allocated value returned by `makeS()`
 ---
 */
 int[] testEscape4(int[3] sa1)       // Bugzilla 9279

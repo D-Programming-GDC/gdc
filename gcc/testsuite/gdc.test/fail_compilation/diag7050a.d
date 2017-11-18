@@ -5,10 +5,11 @@ fail_compilation/diag7050a.d(14): Error: @safe function 'diag7050a.foo' cannot c
 ---
 */
 
-#line 1
-struct Foo {
-  this (int a) {}
+struct Foo
+{
+    this (int a) {}
 }
-@safe void foo() {
-  auto f = Foo(3);
+@safe void foo()
+{
+    auto f = Foo(3);
 }

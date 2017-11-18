@@ -1,4 +1,3 @@
-#line 1
 module line;
 
 static assert(__LINE__ == 3);
@@ -7,13 +6,10 @@ int #line 10
 x;
 
 static assert(__LINE__ == 12);
-version(Windows)
-{
+version(Windows) {
     static assert(__FILE__ == "compilable\\line.d");
     static assert(__FILE_FULL_PATH__[1..3] == ":\\");
-}
-else
-{
+} else {
     static assert(__FILE__ == "compilable/line.d");
     static assert(__FILE_FULL_PATH__[0] == '/');
 }

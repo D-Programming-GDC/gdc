@@ -1,9 +1,9 @@
-/* REQUIRED_ARGS: -dip25 -transition=safe
+/* REQUIRED_ARGS: -dip1000
    PERMUTE_ARGS:
    TEST_OUTPUT:
 ---
-fail_compilation/test14238.d(21): Error: scope variable fn may not be returned
-fail_compilation/test14238.d(29): Error: escaping reference to stack allocated value returned by &baz
+fail_compilation/test14238.d(21): Error: scope variable `fn` may not be returned
+fail_compilation/test14238.d(29): Error: escaping reference to stack allocated value returned by `&baz`
 ---
 */
 // https://issues.dlang.org/show_bug.cgi?id=14238
