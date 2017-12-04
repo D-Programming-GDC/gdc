@@ -878,8 +878,8 @@ public:
       add_stmt (casebody);
     else
       {
-	tree switchexpr = build3 (SWITCH_EXPR, TREE_TYPE (condition),
-				  condition, casebody, NULL_TREE);
+	tree switchexpr = build2 (SWITCH_EXPR, TREE_TYPE (condition),
+				  condition, casebody);
 	add_stmt (switchexpr);
       }
 
