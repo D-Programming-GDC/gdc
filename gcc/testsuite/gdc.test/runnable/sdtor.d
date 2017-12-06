@@ -3482,6 +3482,7 @@ void test12686()
 
 struct S13089
 {
+    int foo;
     @disable this(this);    // non nothrow
 }
 
