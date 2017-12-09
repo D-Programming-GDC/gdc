@@ -1387,6 +1387,23 @@ void test210()
 
 /******************************************/
 
+// Bug 240
+
+void test240a(int a, int b)
+{
+    assert(a == 0);
+    assert(b == 0);
+}
+
+void test240()
+{
+    int a = 0;
+    test240a(a, a++);
+    assert(a == 1);
+}
+
+/******************************************/
+
 // Bug 242
 
 struct S242
@@ -1542,6 +1559,8 @@ void main()
     test198();
     test200();
     test210();
+    test240();
+    test242();
     test248();
     test250();
     test273();

@@ -799,8 +799,8 @@ empty_modify_p (tree type, tree op)
    Do gimplification of D specific expression trees in EXPR_P.  */
 
 int
-d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
-		gimple_seq *post_p ATTRIBUTE_UNUSED)
+d_gimplify_expr (tree *expr_p, gimple_seq *pre_p,
+		 gimple_seq *post_p ATTRIBUTE_UNUSED)
 {
   tree_code code = TREE_CODE (*expr_p);
   enum gimplify_status ret = GS_UNHANDLED;
@@ -852,6 +852,23 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 	{
 	  TREE_OPERAND (*expr_p, 0) = build_target_expr (op0);
 	  ret = GS_OK;
+	}
+      break;
+
+    case CALL_EXPR:
+      if (CALL_EXPR_ARGS_ORDERED (*expr_p))
+	{
+	  /* Evaluate all arguments from left to right before passing to the
+	     function, even if an argument itself doesn't have side effects, it
+	     might be altered by another argument.  */
+	  int nargs = call_expr_nargs (*expr_p);
+
+	  for (int i = 0; i < nargs; i++)
+	    {
+	      tree arg = CALL_EXPR_ARG (*expr_p, i);
+	      if (! really_constant_p (arg))
+		CALL_EXPR_ARG (*expr_p, i) = get_formal_tmp_var (arg, pre_p);
+	    }
 	}
       break;
 
