@@ -38,6 +38,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 #include "stringpool.h"
 #include "stor-layout.h"
+#include "output.h"
 #include "print-tree.h"
 #include "gimple-expr.h"
 #include "gimplify.h"
@@ -1137,6 +1138,15 @@ d_parse_file (void)
     goto had_errors;
 
   /* Generate output files.  */
+
+  if (Module::rootModule)
+    {
+      /* Declare the name of the root module as the first global name in order
+	 to make the middle-end fully deterministic.  */
+      OutBuffer buf;
+      mangleToBuffer (Module::rootModule, &buf);
+      first_global_object_name = buf.extractString ();
+    }
 
   /* Module dependencies (imports, file, version, debug, lib).  */
   if (global.params.moduleDeps)
