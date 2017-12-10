@@ -493,10 +493,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
-    case OPT_fmodule_filepath_:
+    case OPT_fmodule_file_:
       global.params.modFileAliasStrings->push (arg);
       if (!strchr (arg, '='))
-	error ("bad argument for -fmodule-filepath");
+	error ("bad argument for -fmodule-file");
       break;
 
     case OPT_fmoduleinfo:

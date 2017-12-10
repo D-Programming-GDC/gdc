@@ -81,7 +81,7 @@ proc gdc-convert-args { base args } {
             lappend out "-finline-functions"
 
         } elseif [regexp -- {^-mv=([\w+=./-]+)} $arg pattern value] {
-            lappend out "-fmodule-filepath=$value"
+            lappend out "-fmodule-file=$value"
 
         } elseif [string match "-O" $arg] {
             lappend out "-O2"

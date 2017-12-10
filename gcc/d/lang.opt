@@ -260,9 +260,9 @@ fmake-mdeps=
 D Joined RejectNegative
 Deprecated in favor of -MMD
 
-fmodule-filepath=
+fmodule-file=
 D Joined RejectNegative
--fmodule-filepath=<package.module>=<filespec>	use <filespec> as source file for <package.module>
+-fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
 
 fmoduleinfo
 D
