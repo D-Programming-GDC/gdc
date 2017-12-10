@@ -1666,11 +1666,13 @@ public:
 	StructLiteralExp *sle = ((StructLiteralExp *) e->e1)->origin;
 	gcc_assert (sle != NULL);
 
-	/* Build the reference symbol.  */
+	/* Build the reference symbol, the decl is built first as the
+	   initializer may have recursive references.  */
 	if (!sle->sym)
 	  {
 	    sle->sym = build_artificial_decl (build_ctype (sle->type),
-					      build_expr (sle, true), "S");
+					      NULL_TREE, "S");
+	    DECL_INITIAL (sle->sym) = build_expr (sle, true);
 	    d_pushdecl (sle->sym);
 	    rest_of_decl_compilation (sle->sym, 1, 0);
 	  }
