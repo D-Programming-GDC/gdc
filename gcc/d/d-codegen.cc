@@ -978,14 +978,16 @@ build_array_struct_comparison (tree_code code, StructDeclaration *sd,
    the alignment hole between OFFSET and FIELDPOS.  */
 
 static tree
-build_alignment_field (HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
+build_alignment_field (tree type, HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
 {
-  tree type = make_array_type (Type::tuns8, fieldpos - offset);
-  tree field = create_field_decl (type, NULL, 1, 1);
+  tree atype = make_array_type (Type::tuns8, fieldpos - offset);
+  tree field = create_field_decl (atype, NULL, 1, 1);
 
-  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (type));
+  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (atype));
   DECL_FIELD_OFFSET (field) = size_int (offset);
   DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+  DECL_FIELD_CONTEXT (field) = type;
+  DECL_PADDING_P (field) = 1;
 
   layout_decl (field, 0);
 
@@ -1063,8 +1065,8 @@ build_struct_literal (tree type, vec<constructor_elt, va_gc> *init)
 	     alignment holes in-place between fields.  */
 	  if (fillholes && offset < fieldpos)
 	    {
-	      tree pfield = build_alignment_field (offset, fieldpos);
-	      tree pvalue = build_constructor (TREE_TYPE (pfield), NULL);
+	      tree pfield = build_alignment_field (type, offset, fieldpos);
+	      tree pvalue = build_zero_cst (TREE_TYPE (pfield));
 	      CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
 	    }
 
@@ -1113,8 +1115,9 @@ build_struct_literal (tree type, vec<constructor_elt, va_gc> *init)
   /* Finally pad out the end of the record.  */
   if (fillholes && offset < int_size_in_bytes (type))
     {
-      tree pfield = build_alignment_field (offset, int_size_in_bytes (type));
-      tree pvalue = build_constructor (TREE_TYPE (pfield), NULL);
+      tree pfield = build_alignment_field (type, offset,
+					   int_size_in_bytes (type));
+      tree pvalue = build_zero_cst (TREE_TYPE (pfield));
       CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
     }
 

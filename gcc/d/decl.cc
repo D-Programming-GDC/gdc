@@ -2085,6 +2085,8 @@ build_type_decl (tree type, Dsymbol *dsym)
 
   tree decl = build_decl (get_linemap (dsym->loc), TYPE_DECL,
 			  get_identifier (dsym->ident->toChars ()), type);
+  SET_DECL_ASSEMBLER_NAME (decl, get_identifier (mangle_decl (dsym)));
+  TREE_PUBLIC (decl) = 1;
   DECL_ARTIFICIAL (decl) = 1;
   DECL_CONTEXT (decl) = d_decl_context (dsym);
 
