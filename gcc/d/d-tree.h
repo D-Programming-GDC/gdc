@@ -46,6 +46,7 @@ typedef Array<Expression *> Expressions;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
+   1: CALL_EXPR_ARGS_ORDERED (in CALL_EXPR).
 
    Usage of TYPE_LANG_FLAG_?:
    0: TYPE_SHARED
@@ -337,6 +338,11 @@ lang_tree_node
    but a literal function / method reference.  */
 #define METHOD_CALL_EXPR(NODE) \
   (TREE_LANG_FLAG_0 (NODE))
+
+/* True if all arguments in a call expression should be evaluated in the
+   order they are given (left to right).  */
+#define CALL_EXPR_ARGS_ORDERED(NODE) \
+  (TREE_LANG_FLAG_1 (CALL_EXPR_CHECK (NODE)))
 
 /* True if the type was declared 'shared'.  */
 #define TYPE_SHARED(NODE) \

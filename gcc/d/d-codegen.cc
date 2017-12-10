@@ -1979,56 +1979,19 @@ d_build_call (TypeFunction *tf, tree callable, tree object,
 	}
     }
 
-  /* Evaluate the argument before passing to the function.
-     Needed for left to right evaluation.  */
-  if (tf->linkage == LINKd)
-    {
-      size_t nsaved_args = 0;
-      unsigned int ix;
-      tree arg;
-
-      /* First, push left side of comma expressions into the saved args list,
-	 so that only the result is maybe made a temporary.  */
-      FOR_EACH_VEC_SAFE_ELT (args, ix, arg)
-	{
-	  if (TREE_SIDE_EFFECTS (arg))
-	    {
-	      tree expr = stabilize_expr (&arg);
-	      if (expr != NULL_TREE)
-		saved_args = compound_expr (saved_args, expr);
-
-	      /* Argument needs saving.  */
-	      if (TREE_SIDE_EFFECTS (arg))
-		nsaved_args++;
-
-	      (*args)[ix] = arg;
-	    }
-	}
-
-      /* If more than one argument needs saving, then we must enforce the
-	 order of evaluation.  */
-      if (nsaved_args > 1)
-	{
-	  FOR_EACH_VEC_SAFE_ELT (args, ix, arg)
-	    {
-	      if (TREE_SIDE_EFFECTS (arg))
-		{
-		  arg = d_save_expr (arg);
-		  saved_args = compound_expr (saved_args, arg);
-		  (*args)[ix] = arg;
-		}
-	    }
-	}
-    }
-
   /* Evaluate the callee before calling it.  */
-  if (saved_args != NULL_TREE && TREE_SIDE_EFFECTS (callee))
+  if (TREE_SIDE_EFFECTS (callee))
     {
       callee = d_save_expr (callee);
       saved_args = compound_expr (callee, saved_args);
     }
 
   tree result = build_call_vec (TREE_TYPE (ctype), callee, args);
+
+  /* Enforce left to right evaluation.  */
+  if (tf->linkage == LINKd)
+    CALL_EXPR_ARGS_ORDERED (result) = 1;
+
   result = maybe_expand_intrinsic (result);
 
   /* Return the value in a temporary slot so that it can be evaluated
