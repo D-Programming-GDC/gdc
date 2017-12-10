@@ -941,7 +941,8 @@ public:
 	FuncDeclaration *fd = t->sym->vtbl[i]->isFuncDeclaration ();
 	tree method = fd ? get_symbol_decl (fd) : NULL_TREE;
 
-	if (method && DECL_CONTEXT (method) == basetype)
+	if (method && DECL_CONTEXT (method) == basetype
+	    && !chain_member (method, TYPE_FIELDS (basetype)))
 	  TYPE_FIELDS (basetype) = chainon (TYPE_FIELDS (basetype), method);
       }
 
