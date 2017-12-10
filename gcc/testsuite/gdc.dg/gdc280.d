@@ -1,7 +1,29 @@
 // Bug 280
 
-void main()
+struct RBNode
 {
-    import std.container;
-    static immutable s = new RedBlackTree!int('h');
+    RBNode* _parent;
+
+    @property left(RBNode*)
+    {
+        _parent = &this;
+    }
 }
+
+class RedBlackTree
+{
+    RBNode* _end;
+    RBNode* _begin;
+
+    this(int[] elems...)
+    {
+        _end = new RBNode;
+
+        foreach (e; elems)
+        {
+            _end.left = _begin;
+        }
+    }
+}
+
+__gshared s = new RedBlackTree('h');
