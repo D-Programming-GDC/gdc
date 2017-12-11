@@ -19,6 +19,17 @@
 	functions with D linkage.
 	* d-lang.cc (d_gimplify_expr): Handle CALL_EXPR_ARGS_ORDERED.
 
+2017-12-09  Eugene Wissner  <belka@caraus.de>
+
+	* toir.cc (IRVisitor::visit(SwitchStatement)): Set SWITCH_ALL_CASES_P on
+	switch statements. Set SWITCH_BREAK_LABEL_P on the artificial label
+	created for break statements from a switch.
+
+2017-12-04  Eugene Wissner  <belka@caraus.de>
+
+	* toir.cc (IRVisitor::visit(SwitchStatement)): Build SWITCH_EXPR using build2 instead
+	of build3.
+
 2017-11-14  Eugene Wissner  <belka@caraus.de>
 
 	* decl.cc (finish_thunk): Drop frequency argument from

@@ -878,10 +878,13 @@ public:
       add_stmt (casebody);
     else
       {
-	tree switchexpr = build3 (SWITCH_EXPR, TREE_TYPE (condition),
-				  condition, casebody, NULL_TREE);
+	tree switchexpr = build2 (SWITCH_EXPR, TREE_TYPE (condition),
+				  condition, casebody);
 	add_stmt (switchexpr);
+	SWITCH_ALL_CASES_P (switchexpr) = 1;
       }
+
+    SWITCH_BREAK_LABEL_P (lbreak) = 1;
 
     /* If the switch had any 'break' statements, emit the label now.  */
     this->pop_break_label (lbreak);
