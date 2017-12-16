@@ -5162,6 +5162,15 @@ public:
             return true;
         else version(PPC_Any)
             return true;
+        else version(AArch64)
+        {
+            auto oldState = getControlState();
+            // If exceptions are not supported, we set the bit but read it back as zero
+            setControlState(oldState | (divByZeroException & allExceptions));
+            bool result = (getControlState() & allExceptions) != 0;
+            setControlState(oldState);
+            return result;
+        }
         else version(ARM)
         {
             auto oldState = getControlState();
@@ -5291,6 +5300,13 @@ private:
                     "fstcw %0;" : "=m" cont;
                 }
             }
+            else version (AArch64)
+            {
+                asm pure nothrow @nogc
+                {
+                    "mrs %0, FPCR;" : "=r" cont;
+                }
+            }
             else version (ARM)
             {
                 version (ARM_SoftFloat)
@@ -5304,7 +5320,8 @@ private:
                 }
             }
             else
-                assert(0, "Not yet supported");
+                static assert(0, "Not yet supported");
+
             return cont;
         }
         else
@@ -5377,6 +5394,13 @@ private:
                     {
                         "ldmxcsr %0" : : "m" mxcsr;
                     }
+                }
+            }
+            else version (AArch64)
+            {
+                asm pure nothrow @nogc
+                {
+                    "msr FPCR, %0;" : : "r" (newState);
                 }
             }
             else version (ARM)
