@@ -4509,7 +4509,7 @@ real round(real x) @trusted nothrow @nogc
     {
         auto old = FloatingPointControl.getControlState();
         FloatingPointControl.setControlState(
-            (old & ~FloatingPointControl.ROUNDING_MASK) | FloatingPointControl.roundToZero
+            (old & ~FloatingPointControl.roundingMask) | FloatingPointControl.roundToZero
         );
         x = rint((x >= 0) ? x + 0.5 : x - 0.5);
         FloatingPointControl.setControlState(old);
@@ -5037,11 +5037,14 @@ struct FloatingPointControl
         {
             /** IEEE rounding modes.
              * The default mode is roundToNearest.
+             *
+             *  roundingMask = A mask of all rounding modes.
              */
             roundToNearest,
             roundDown, /// ditto
             roundUp, /// ditto
-            roundToZero /// ditto
+            roundToZero, /// ditto
+            roundingMask, /// ditto
         }
     }
     else version (CRuntime_Microsoft)
@@ -5052,7 +5055,9 @@ struct FloatingPointControl
             roundToNearest = 0x0000,
             roundDown      = 0x0400,
             roundUp        = 0x0800,
-            roundToZero    = 0x0C00
+            roundToZero    = 0x0C00,
+            roundingMask   = roundToNearest | roundDown
+                             | roundUp | roundToZero,
         }
     }
     else
@@ -5063,6 +5068,8 @@ struct FloatingPointControl
             roundDown      = core.stdc.fenv.FE_DOWNWARD,
             roundUp        = core.stdc.fenv.FE_UPWARD,
             roundToZero    = core.stdc.fenv.FE_TOWARDZERO,
+            roundingMask   = roundToNearest | roundDown
+                             | roundUp | roundToZero,
         }
     }
 
@@ -5070,13 +5077,13 @@ struct FloatingPointControl
     @property void rounding(RoundingMode newMode) @nogc
     {
         initialize();
-        setControlState((getControlState() & (-1 - ROUNDING_MASK)) | (newMode & ROUNDING_MASK));
+        setControlState(cast(ushort)((getControlState() & (-1 - roundingMask)) | (newMode & roundingMask)));
     }
 
     /// Returns: the currently active rounding mode
     @property static RoundingMode rounding() @nogc
     {
-        return cast(RoundingMode)(getControlState() & ROUNDING_MASK);
+        return cast(RoundingMode)(getControlState() & roundingMask);
     }
 
     version(StdDdoc)
@@ -5146,26 +5153,6 @@ struct FloatingPointControl
                                  | inexactException | subnormalException,
         }
     }
-
-private:
-    version(ARM)
-    {
-        enum uint ROUNDING_MASK = 0xC00000;
-    }
-    else version(PPC_Any)
-    {
-        enum uint ROUNDING_MASK = 0x0003;
-    }
-    else version(X86)
-    {
-        enum ushort ROUNDING_MASK = 0xC00;
-    }
-    else version(X86_64)
-    {
-        enum ushort ROUNDING_MASK = 0xC00;
-    }
-    else
-        static assert(false, "Architecture not supported");
 
 public:
     /// Returns: true if the current FPU supports exception trapping
@@ -5343,8 +5330,8 @@ private:
 
                 /* In the FPU control register, rounding mode is in bits 10 and
                 11. In MXCSR it's in bits 13 and 14. */
-                enum ROUNDING_MASK_SSE = ROUNDING_MASK << 3;
-                immutable newRoundingModeSSE = (newState & ROUNDING_MASK) << 3;
+                enum ROUNDING_MASK_SSE = roundingMask << 3;
+                immutable newRoundingModeSSE = (newState & roundingMask) << 3;
                 mxcsr &= ~ROUNDING_MASK_SSE; // delete old rounding mode
                 mxcsr |= newRoundingModeSSE; // write new rounding mode
 
@@ -5378,8 +5365,8 @@ private:
 
                     /* In the FPU control register, rounding mode is in bits 10 and
                        11. In MXCSR it's in bits 13 and 14. */
-                    mxcsr &= ~(ROUNDING_MASK << 3);             // delete old rounding mode
-                    mxcsr |= (newState & ROUNDING_MASK) << 3;   // write new rounding mode
+                    mxcsr &= ~(roundingMask << 3);             // delete old rounding mode
+                    mxcsr |= (newState & roundingMask) << 3;   // write new rounding mode
 
                     /* In the FPU control register, masks are bits 0 through 5.
                        In MXCSR they're 7 through 12. */
