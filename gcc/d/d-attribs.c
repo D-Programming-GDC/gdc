@@ -52,7 +52,6 @@ static tree handle_type_generic_attribute (tree *, tree, tree, int, bool *);
 static tree handle_transaction_pure_attribute (tree *, tree, tree, int, bool *);
 static tree handle_returns_twice_attribute (tree *, tree, tree, int, bool *);
 static tree handle_fnspec_attribute (tree *, tree, tree, int, bool *);
-static tree handle_weakref_attribute (tree *, tree, tree, int, bool *);
 
 /* D attribute handlers for user defined attributes.  */
 static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
@@ -64,66 +63,104 @@ static tree d_handle_section_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_alias_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_weak_attribute (tree *, tree, tree, int, bool *) ;
 
+/* Helper to define attribute exclusions.  */
+#define ATTR_EXCL(name, function, type, variable)	\
+  { name, function, type, variable }
+
+/* Define attributes that are mutually exclusive with one another.  */
+static const struct attribute_spec::exclusions attr_noreturn_exclusions[] =
+{
+  ATTR_EXCL ("noreturn", true, true, true),
+  ATTR_EXCL ("const", true, true, true),
+  ATTR_EXCL ("malloc", true, true, true),
+  ATTR_EXCL ("pure", true, true, true),
+  ATTR_EXCL ("returns_twice", true, true, true),
+  ATTR_EXCL (NULL, false, false, false),
+};
+
+static const struct attribute_spec::exclusions attr_returns_twice_exclusions[] =
+{
+  ATTR_EXCL ("noreturn", true, true, true),
+  ATTR_EXCL (NULL, false, false, false),
+};
+
+static const struct attribute_spec::exclusions attr_const_pure_exclusions[] =
+{
+  ATTR_EXCL ("const", true, true, true),
+  ATTR_EXCL ("noreturn", true, true, true),
+  ATTR_EXCL ("pure", true, true, true),
+  ATTR_EXCL (NULL, false, false, false)
+};
+
+static const struct attribute_spec::exclusions attr_inline_exclusions[] =
+{
+  ATTR_EXCL ("noinline", true, true, true),
+  ATTR_EXCL (NULL, false, false, false),
+};
+
+static const struct attribute_spec::exclusions attr_noinline_exclusions[] =
+{
+  ATTR_EXCL ("forceinline", true, true, true),
+  ATTR_EXCL (NULL, false, false, false),
+};
+
+/* Helper to define an attribute.  */
+#define ATTR_SPEC(name, min_len, max_len, decl_req, type_req, fn_type_req,  \
+		  affects_type_identity, handler, exclude)		    \
+  { name, min_len, max_len, decl_req, type_req, fn_type_req,		    \
+    affects_type_identity, handler, exclude }
 
 /* Table of machine-independent attributes.
    For internal use (marking of builtins) only.  */
-
 const attribute_spec d_langhook_common_attribute_table[] =
 {
-  /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler,
-       affects_type_identity } */
-  { "noreturn",               0, 0, true,  false, false,
-			      handle_noreturn_attribute, false },
-  { "leaf",                   0, 0, true,  false, false,
-			      handle_leaf_attribute, false },
-  { "const",                  0, 0, true,  false, false,
-			      handle_const_attribute, false },
-  { "malloc",                 0, 0, true,  false, false,
-			      handle_malloc_attribute, false },
-  { "returns_twice",          0, 0, true,  false, false,
-			      handle_returns_twice_attribute, false },
-  { "pure",                   0, 0, true,  false, false,
-			      handle_pure_attribute, false },
-  { "nonnull",                0, -1, false, true, true,
-			      handle_nonnull_attribute, false },
-  { "nothrow",                0, 0, true,  false, false,
-			      handle_nothrow_attribute, false },
-  { "transaction_pure",       0, 0, false, true, true,
-			      handle_transaction_pure_attribute, false },
-  { "no vops",                0, 0, true,  false, false,
-			      handle_novops_attribute, false },
-  { "type generic",           0, 0, false, true, true,
-			      handle_type_generic_attribute, false },
-  { "fn spec",                1, 1, false, true, true,
-			      handle_fnspec_attribute, false },
-  { "weakref",                0, 1, true,  false, false,
-			      handle_weakref_attribute, false },
-  { NULL,                     0, 0, false, false, false, NULL, false }
+  ATTR_SPEC ("noreturn", 0, 0, true, false, false, false,
+	     handle_noreturn_attribute, attr_noreturn_exclusions),
+  ATTR_SPEC ("leaf", 0, 0, true, false, false, false,
+	     handle_leaf_attribute, NULL),
+  ATTR_SPEC ("const", 0, 0, true, false, false, false,
+	     handle_const_attribute, attr_const_pure_exclusions),
+  ATTR_SPEC ("malloc", 0, 0, true, false, false, false,
+	     handle_malloc_attribute, NULL),
+  ATTR_SPEC ("returns_twice", 0, 0, true, false, false, false,
+	     handle_returns_twice_attribute, attr_returns_twice_exclusions),
+  ATTR_SPEC ("pure", 0, 0, true, false, false, false,
+	     handle_pure_attribute, attr_const_pure_exclusions),
+  ATTR_SPEC ("nonnull", 0, -1, false, true, true, false,
+	     handle_nonnull_attribute, NULL),
+  ATTR_SPEC ("nothrow", 0, 0, true, false, false, false,
+	     handle_nothrow_attribute, NULL),
+  ATTR_SPEC ("transaction_pure", 0, 0, false, true, true, false,
+	     handle_transaction_pure_attribute, NULL),
+  ATTR_SPEC ("no vops", 0, 0, true, false, false, false,
+	     handle_novops_attribute, NULL),
+  ATTR_SPEC ("type generic", 0, 0, false, true, true, false,
+	     handle_type_generic_attribute, NULL),
+  ATTR_SPEC ("fn spec", 1, 1, false, true, true, false,
+	     handle_fnspec_attribute, NULL),
+  ATTR_SPEC (NULL, 0, 0, false, false, false, false, NULL, NULL),
 };
 
 /* Table of D language attributes exposed by `gcc.attribute' UDAs.  */
-
 const attribute_spec d_langhook_attribute_table[] =
 {
-  /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler,
-       affects_type_identity } */
-    { "noinline",               0, 0, true,  false, false,
-				d_handle_noinline_attribute, false },
-    { "forceinline",            0, 0, true,  false, false,
-				d_handle_forceinline_attribute, false },
-    { "flatten",                0, 0, true,  false, false,
-				d_handle_flatten_attribute, false },
-    { "target",                 1, -1, true, false, false,
-				d_handle_target_attribute, false },
-    { "noclone",                0, 0, true, false, false,
-				d_handle_noclone_attribute, false },
-    { "section",                1, 1, true,  false, false,
-				d_handle_section_attribute, false },
-    { "alias",                  1, 1, true,  false, false,
-				d_handle_alias_attribute, false },
-    { "weak",                   0, 0, true,  false, false,
-				d_handle_weak_attribute, false },
-    { NULL,                     0, 0, false, false, false, NULL, false }
+  ATTR_SPEC ("noinline", 0, 0, true, false, false, false,
+	     d_handle_noinline_attribute, attr_noinline_exclusions),
+  ATTR_SPEC ("forceinline", 0, 0, true, false, false, false,
+	     d_handle_forceinline_attribute, attr_inline_exclusions),
+  ATTR_SPEC ("flatten", 0, 0, true, false, false, false,
+	     d_handle_flatten_attribute, NULL),
+  ATTR_SPEC ("target", 1, -1, true, false, false, false,
+	     d_handle_target_attribute, NULL),
+  ATTR_SPEC ("noclone", 0, 0, true, false, false, false,
+	     d_handle_noclone_attribute, NULL),
+  ATTR_SPEC ("section", 1, 1, true, false, false, false,
+	     d_handle_section_attribute, NULL),
+  ATTR_SPEC ("alias", 1, 1, true, false, false, false,
+	     d_handle_alias_attribute, NULL),
+  ATTR_SPEC ("weak", 0, 0, true, false, false, false,
+	     d_handle_weak_attribute, NULL),
+  ATTR_SPEC (NULL, 0, 0, false, false, false, false, NULL, NULL),
 };
 
 
@@ -536,25 +573,6 @@ handle_fnspec_attribute (tree *node ATTRIBUTE_UNUSED, tree ARG_UNUSED (name),
   gcc_assert (args
 	      && TREE_CODE (TREE_VALUE (args)) == STRING_CST
 	      && !TREE_CHAIN (args));
-  return NULL_TREE;
-}
-
-/* Handle a "weakref" attribute; arguments as in struct
-   attribute_spec.handler.  */
-
-static tree
-handle_weakref_attribute (tree *node, tree ARG_UNUSED (name),
-			  tree ARG_UNUSED (args), int ARG_UNUSED (flags),
-			  bool *no_add_attrs ATTRIBUTE_UNUSED)
-{
-  gcc_assert (!decl_function_context (*node));
-  gcc_assert (!lookup_attribute ("alias", DECL_ATTRIBUTES (*node)));
-
-  /* Can't call declare_weak because it wants this to be TREE_PUBLIC,
-     and that isn't supported; and because it wants to add it to
-     the list of weak decls, which isn't helpful.  */
-  DECL_WEAK (*node) = 1;
-
   return NULL_TREE;
 }
 
