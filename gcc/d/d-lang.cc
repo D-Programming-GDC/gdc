@@ -851,7 +851,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p,
       /* Constructors are not lvalues, so make them one.  */
       if (TREE_CODE (op0) == CONSTRUCTOR)
 	{
-	  TREE_OPERAND (*expr_p, 0) = build_target_expr (op0);
+	  TREE_OPERAND (*expr_p, 0) = force_target_expr (op0);
 	  ret = GS_OK;
 	}
       break;

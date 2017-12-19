@@ -545,21 +545,20 @@ stabilize_expr (tree *valuep)
     }
 }
 
-/* Return a TARGET_EXPR using EXP to initialize a new temporary.  */
+/* Return a TARGET_EXPR, initializing the DECL with EXP.  */
 
 tree
-build_target_expr (tree exp)
+build_target_expr (tree decl, tree exp)
 {
-  tree type = TREE_TYPE (exp);
-  tree slot = create_temporary_var (type);
-  tree result = build4 (TARGET_EXPR, type, slot, exp, NULL_TREE, NULL_TREE);
+  tree type = TREE_TYPE (decl);
+  tree result = build4 (TARGET_EXPR, type, decl, exp, NULL_TREE, NULL_TREE);
 
   if (EXPR_HAS_LOCATION (exp))
     SET_EXPR_LOCATION (result, EXPR_LOCATION (exp));
 
-  /* If slot must always reside in memory.  */
+  /* If decl must always reside in memory.  */
   if (TREE_ADDRESSABLE (type))
-    d_mark_addressable (slot);
+    d_mark_addressable (decl);
 
   /* Always set TREE_SIDE_EFFECTS so that expand_expr does not ignore the
      TARGET_EXPR.  If there really turn out to be no side effects, then the
@@ -567,6 +566,16 @@ build_target_expr (tree exp)
   TREE_SIDE_EFFECTS (result) = 1;
 
   return result;
+}
+
+/* Like the above function, but initializes a new temporary.  */
+
+tree
+force_target_expr (tree exp)
+{
+  tree decl = create_temporary_var (TREE_TYPE (exp));
+
+  return build_target_expr (decl, exp);
 }
 
 /* Returns the address of the expression EXP.  */
@@ -606,7 +615,7 @@ build_address (tree exp)
   /* Some expression lowering may request an address of a compile-time constant.
      Make sure it is assigned to a location we can reference.  */
   if (CONSTANT_CLASS_P (exp) && TREE_CODE (exp) != STRING_CST)
-    exp = build_target_expr (exp);
+    exp = force_target_expr (exp);
 
   d_mark_addressable (exp);
   exp = build_fold_addr_expr_with_type_loc (input_location, exp, ptrtype);
@@ -2004,7 +2013,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object,
       && TREE_ADDRESSABLE (TREE_TYPE (result)))
     {
       CALL_EXPR_RETURN_SLOT_OPT (result) = true;
-      result = build_target_expr (result);
+      result = force_target_expr (result);
     }
 
   return compound_expr (saved_args, result);

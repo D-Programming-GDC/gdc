@@ -205,6 +205,11 @@ add_stmt (tree t)
     }
   else
     {
+      /* Force the type to be void so we don't need to create a temporary
+	 variable to hold the inner expression.  */
+      if (TREE_CODE (t) == CLEANUP_POINT_EXPR)
+	TREE_TYPE (t) = void_type_node;
+
       /* Append the expression to the statement list.
 	 Make sure it has a proper location.  */
       if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))

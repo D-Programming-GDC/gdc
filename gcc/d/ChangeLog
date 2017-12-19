@@ -1,5 +1,29 @@
 2017-12-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.cc (build_target_expr): Update signature.
+	(force_target_expr): New function.
+	(build_address): Use force_target_expr to store temporary.
+	(d_build_call): Likewise.
+	* d-lang.cc (d_gimplify_expr): Likewise.
+	* d-tree.h (language_function): Update type for vars_in_scope from
+	vec<VarDeclaration*> to vec<tree>.
+	(force_target_expr): Declare.
+	* decl.cc (DeclVisitor::visit(VarDeclaration)): Put vars with scope
+	destructors into a TARGET_EXPR, setting its cleanup.
+	(declare_local_var): Don't push vars with scope destructors into the
+	function binding level.
+	* expr.cc (ExprVisitor::visit(DeclarationExp)): Don't handle scope
+	destructors.
+	(ExprVisitor::visit(CallExp)): Handle calling constructors using
+	temporary objects.
+	(build_dtor_list): Remove function.
+	(build_expr_dtor): Put result into a CLEANUP_POINT_EXPR if any new
+	temporaries needing destruction were added to scope.
+	(build_return_dtor): Likewise.
+	* toir.cc (add_stmt): Set CLEANUP_POINT_EXPR type as void.
+
+2017-12-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-attribs.c (attr_noreturn_exclusions): New array.
 	(attr_returns_twice_exclusions, attr_const_pure_exclusions): Likewise.
 	(attr_inline_exclusions, attr_noinline_exclusions): Likewise.

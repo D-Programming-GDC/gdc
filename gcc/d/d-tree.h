@@ -233,7 +233,7 @@ struct GTY(()) language_function
   vec<tree, va_gc> *stmt_list;
 
   /* Variables that are in scope that will need destruction later.  */
-  vec<VarDeclaration *> GTY((skip)) vars_in_scope;
+  vec<tree, va_gc> *vars_in_scope;
 
   /* Table of all used or defined labels in the function.  */
   hash_map<Statement *, d_label_entry> *labels;
@@ -502,7 +502,8 @@ extern void extract_from_method_call (tree, tree &, tree &);
 extern tree build_vindex_ref (tree, tree, size_t);
 extern tree d_save_expr (tree);
 extern tree stabilize_expr (tree *);
-extern tree build_target_expr (tree);
+extern tree build_target_expr (tree, tree);
+extern tree force_target_expr (tree);
 extern tree build_address (tree);
 extern tree d_mark_addressable (tree);
 extern tree d_mark_used (tree);
