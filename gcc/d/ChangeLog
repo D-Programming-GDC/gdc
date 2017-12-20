@@ -1,3 +1,13 @@
+2017-12-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attribs.c (attr_noreturn_exclusions): New array.
+	(attr_returns_twice_exclusions, attr_const_pure_exclusions): Likewise.
+	(attr_inline_exclusions, attr_noinline_exclusions): Likewise.
+	(d_langhook_common_attribute_table): Swap affects_identity and handler
+	fields.  Initialize new member of struct attribute_spec.
+	(d_langhook_attribute_table): Likewise.
+	(handle_weakref_attribute): Remove function.
+
 2017-12-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_alignment_field): Set DECL_PADDING_P and
