@@ -1695,6 +1695,7 @@ public:
 
     tree callee = NULL_TREE;
     tree object = NULL_TREE;
+    tree cleanup = NULL_TREE;
     TypeFunction *tf = NULL;
 
     /* Calls to delegates can sometimes look like this.  */
@@ -1731,6 +1732,19 @@ public:
 	    else
 	      {
 		tree thisexp = build_expr (dve->e1);
+
+		/* When constructing temporaries, if the constructor throws,
+		   then the object is destructed even though it is not a fully
+		   constructed object yet.  And so this call will need to be
+		   moved inside the TARGET_EXPR_INITIAL slot.  */
+		if (fd->isCtorDeclaration ()
+		    && TREE_CODE (thisexp) == COMPOUND_EXPR
+		    && TREE_CODE (TREE_OPERAND (thisexp, 0)) == TARGET_EXPR
+		    && TARGET_EXPR_CLEANUP (TREE_OPERAND (thisexp, 0)))
+		  {
+		    cleanup = TREE_OPERAND (thisexp, 0);
+		    thisexp = TREE_OPERAND (thisexp, 1);
+		  }
 
 		/* Want reference to 'this' object.  */
 		if (!POINTER_TYPE_P (TREE_TYPE (thisexp)))
@@ -1819,6 +1833,20 @@ public:
        this->type is the real type we want to return.  */
     if (e->type->isTypeBasic ())
       exp = d_convert (build_ctype (e->type), exp);
+
+    /* If this call was found to be a constructor for a temporary with a
+       cleanup, then move the call inside the TARGET_EXPR.  The original
+       initializer is turned into an assignment, to keep its side effect.  */
+    if (cleanup != NULL_TREE)
+      {
+	tree init = TARGET_EXPR_INITIAL (cleanup);
+	tree slot = TARGET_EXPR_SLOT (cleanup);
+	d_mark_addressable (slot);
+	init = build_assign (INIT_EXPR, slot, init);
+
+	TARGET_EXPR_INITIAL (cleanup) = compound_expr (init, exp);
+	exp = cleanup;
+      }
 
     this->result_ = exp;
   }
@@ -2013,22 +2041,9 @@ public:
        can cause an empty STMT_LIST here.  This can causes problems
        during gimplification.  */
     if (TREE_CODE (result) == STATEMENT_LIST && !STATEMENT_LIST_HEAD (result))
-      this->result_ = build_empty_stmt (input_location);
-    else
-      this->result_ = result;
+      result = build_empty_stmt (input_location);
 
-    /* Maybe put variable on list of things needing destruction.  */
-    VarDeclaration *vd = e->declaration->isVarDeclaration ();
-    if (vd != NULL)
-      {
-	if (!vd->isStatic () && !(vd->storage_class & STCmanifest)
-	    && !(vd->storage_class & (STCextern | STCtls | STCgshared)))
-	  {
-	    if (vd->needsScopeDtor ())
-	      d_function_chain->vars_in_scope.safe_push (vd);
-	  }
-      }
-
+    this->result_ = result;
   }
 
   /* Build a typeid expression.  Returns an instance of class TypeInfo
@@ -3039,29 +3054,6 @@ build_expr (Expression *e, bool const_p)
   return expr;
 }
 
-/* Build an expression that calls the destructors on all the variables
-   going out of the scope between STARTI and ENDI. All destructors are
-   executed in reverse order.  */
-
-static tree
-build_dtor_list (size_t starti, size_t endi)
-{
-  tree dtors = NULL_TREE;
-
-  for (size_t i = starti; i != endi; ++i)
-    {
-      VarDeclaration *vd = d_function_chain->vars_in_scope[i];
-      if (vd)
-	{
-	  d_function_chain->vars_in_scope[i] = NULL;
-	  tree t = build_expr (vd->edtor);
-	  dtors = compound_expr (t, dtors);
-	}
-    }
-
-  return dtors;
-}
-
 /* Same as build_expr, but also calls destructors on any temporaries.  */
 
 tree
@@ -3069,56 +3061,13 @@ build_expr_dtor (Expression *e)
 {
   /* Codegen can be improved by determining if no exceptions can be thrown
      between the ctor and dtor, and eliminating the ctor and dtor.  */
-  size_t starti = d_function_chain->vars_in_scope.length ();
+  size_t saved_vars = vec_safe_length (d_function_chain->vars_in_scope);
   tree result = build_expr (e);
-  size_t endi = d_function_chain->vars_in_scope.length ();
 
-  tree dtors = build_dtor_list (starti, endi);
-
-  if (dtors != NULL_TREE)
+  if (saved_vars != vec_safe_length (d_function_chain->vars_in_scope))
     {
-      /* Split comma expressions, so that only the result is maybe saved.  */
-      tree expr = stabilize_expr (&result);
-
-      /* When constructing temporaries, if the constructor throws, then
-	 we don't want to run the destructor on the incomplete object.  */
-      CallExp *ce = (e->op == TOKcall) ? ((CallExp *) e) : NULL;
-      if (ce != NULL && ce->e1->op == TOKdotvar
-	  && ((DotVarExp *) ce->e1)->var->isCtorDeclaration ())
-	{
-	  /* Extract the object from the ctor call, as it will be the same
-	     value as the returned result, just maybe without the side effects.
-	     Rewriting: ctor (&e1) => (ctor (&e1), e1)  */
-	  expr = compound_expr (expr, result);
-
-	  if (INDIRECT_REF_P (result))
-	    result = build_deref (CALL_EXPR_ARG (TREE_OPERAND (result, 0), 0));
-	  else
-	    result = CALL_EXPR_ARG (result, 0);
-
-	  return compound_expr (compound_expr (expr, dtors), result);
-	}
-
-      /* Extract the LHS from the assignment expression.
-	 Rewriting: (e1 = e2) => ((e1 = e2), e1)  */
-      if (TREE_CODE (result) == INIT_EXPR || TREE_CODE (result) == MODIFY_EXPR)
-	{
-	  expr = compound_expr (expr, result);
-	  result = TREE_OPERAND (result, 0);
-	}
-
-      /* If the result has side-effects, save the entire expression.  */
-      if (TREE_SIDE_EFFECTS (result))
-	{
-	  /* Wrap expr and dtors in a try/finally expression.  */
-	  result = d_save_expr (result);
-	  expr = build2 (TRY_FINALLY_EXPR, void_type_node,
-			compound_expr (expr, result), dtors);
-	}
-      else
-	expr = compound_expr (expr, dtors);
-
-      return compound_expr (expr, result);
+      result = fold_build_cleanup_point_expr (TREE_TYPE (result), result);
+      vec_safe_truncate (d_function_chain->vars_in_scope, saved_vars);
     }
 
   return result;
@@ -3129,13 +3078,11 @@ build_expr_dtor (Expression *e)
 tree
 build_return_dtor (Expression *e, Type *type, TypeFunction *tf)
 {
-  size_t starti = d_function_chain->vars_in_scope.length ();
+  size_t saved_vars = vec_safe_length (d_function_chain->vars_in_scope);
   tree result = build_expr (e);
-  size_t endi = d_function_chain->vars_in_scope.length ();
 
   /* Convert for initialising the DECL_RESULT.  */
   result = convert_expr (result, e->type, type);
-  tree dtors = build_dtor_list (starti, endi);
 
   /* If we are returning a reference, take the address.  */
   if (tf->isref)
@@ -3149,9 +3096,12 @@ build_return_dtor (Expression *e, Type *type, TypeFunction *tf)
   result = build_assign (INIT_EXPR, decl, result);
   result = compound_expr (expr, return_expr (result));
 
-  /* Nest the return expression inside the try/finally expression.  */
-  if (dtors != NULL_TREE)
-    return build2 (TRY_FINALLY_EXPR, void_type_node, result, dtors);
+  /* May nest the return expression inside the try/finally expression.  */
+  if (saved_vars != vec_safe_length (d_function_chain->vars_in_scope))
+    {
+      result = fold_build_cleanup_point_expr (TREE_TYPE (result), result);
+      vec_safe_truncate (d_function_chain->vars_in_scope, saved_vars);
+    }
 
   return result;
 }

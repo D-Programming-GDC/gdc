@@ -627,6 +627,22 @@ public:
 		ExpInitializer *vinit = d->_init->isExpInitializer ();
 		Expression *ie = initializerToExpression (vinit);
 		tree exp = build_expr (ie);
+
+		/* Maybe put variable on list of things needing destruction.  */
+		if (d->needsScopeDtor ())
+		  {
+		    /* Its a temporary, add the corresponding cleanup.  */
+		    tree decl = get_symbol_decl (d);
+		    vec_safe_push (d_function_chain->vars_in_scope, decl);
+
+		    if (TREE_CODE (exp) == INIT_EXPR
+			|| TREE_CODE (exp) == MODIFY_EXPR)
+		      exp = TREE_OPERAND (exp, 1);
+
+		    exp = build_target_expr (decl, exp);
+		    TARGET_EXPR_CLEANUP (exp) = build_expr (d->edtor);
+		  }
+
 		add_stmt (exp);
 	      }
 	    else if (d->size (d->loc) != 0)
@@ -1295,7 +1311,12 @@ declare_local_var (VarDeclaration *var)
 
   gcc_assert (!TREE_STATIC (decl));
 
-  d_pushdecl (decl);
+  /* If this is a variable used for automatic scope dtor, don't add it to the
+     current binding level, as its really a temporary used in a TARGET_EXPR.
+     See build_decl_tree visitor for VarDeclaration.  */
+  if (!var->needsScopeDtor ())
+    d_pushdecl (decl);
+
   DECL_CONTEXT (decl) = current_function_decl;
 
   /* Compiler generated symbols.  */

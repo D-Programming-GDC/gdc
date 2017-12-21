@@ -75,7 +75,7 @@ void dtorsTest() {
         assert(0);
     } catch (Exception) {}
     assert(counter == 1);
-    //assert(StructWithDtor.numDtor == 1); // XGDC
+    assert(StructWithDtor.numDtor == 1);
 
     // TODO: test exception chaining with throwing dtors
 }
