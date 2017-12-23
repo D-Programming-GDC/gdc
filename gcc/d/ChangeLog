@@ -1,3 +1,7 @@
+2017-12-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* intrinsics.def (INTRINSIC_MULUI): Declare.
+
 2017-12-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_target_expr): Update signature.
