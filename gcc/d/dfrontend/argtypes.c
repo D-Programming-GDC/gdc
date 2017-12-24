@@ -13,21 +13,7 @@
 #include <assert.h>
 
 #include "checkedint.h"
-
-#include "mars.h"
-#include "dsymbol.h"
-#include "mtype.h"
-#include "scope.h"
-#include "init.h"
-#include "expression.h"
-#include "attrib.h"
-#include "declaration.h"
-#include "template.h"
-#include "id.h"
-#include "enum.h"
-#include "import.h"
 #include "aggregate.h"
-#include "hdrgen.h"
 
 /****************************************************
  * This breaks a type down into 'simpler' types that can be passed to a function

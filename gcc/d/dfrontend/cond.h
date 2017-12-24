@@ -37,7 +37,6 @@ public:
     int inc;
 
     Condition(Loc loc);
-
     virtual Condition *syntaxCopy() = 0;
     virtual int include(Scope *sc, ScopeDsymbol *sds) = 0;
     virtual DebugCondition *isDebugCondition() { return NULL; }
@@ -65,7 +64,6 @@ public:
     Module *mod;
 
     DVCondition(Module *mod, unsigned level, Identifier *ident);
-
     Condition *syntaxCopy();
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -77,7 +75,6 @@ public:
     static void addGlobalIdent(const char *ident);
 
     DebugCondition(Module *mod, unsigned level, Identifier *ident);
-
     int include(Scope *sc, ScopeDsymbol *sds);
     DebugCondition *isDebugCondition() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -91,7 +88,6 @@ public:
     static void addPredefinedGlobalIdent(const char *ident);
 
     VersionCondition(Module *mod, unsigned level, Identifier *ident);
-
     int include(Scope *sc, ScopeDsymbol *sds);
     void accept(Visitor *v) { v->visit(this); }
 };

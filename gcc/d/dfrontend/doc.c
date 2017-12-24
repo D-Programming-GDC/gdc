@@ -24,26 +24,22 @@
 
 #include "attrib.h"
 #include "cond.h"
-#include "mars.h"
-#include "dsymbol.h"
 #include "macro.h"
 #include "template.h"
 #include "lexer.h"
 #include "aggregate.h"
-#include "declaration.h"
-#include "statement.h"
 #include "enum.h"
 #include "id.h"
 #include "module.h"
 #include "scope.h"
 #include "hdrgen.h"
 #include "doc.h"
-#include "mtype.h"
 #include "utf.h"
 
 void emitMemberComments(ScopeDsymbol *sds, OutBuffer *buf, Scope *sc);
 void toDocBuffer(Dsymbol *s, OutBuffer *buf, Scope *sc);
 void emitComment(Dsymbol *s, OutBuffer *buf, Scope *sc);
+void semantic(Dsymbol *dsym, Scope *sc);
 
 struct Escape
 {
@@ -636,7 +632,7 @@ static size_t getCodeIndent(const char *src)
 /** Recursively expand template mixin member docs into the scope. */
 static void expandTemplateMixinComments(TemplateMixin *tm, OutBuffer *buf, Scope *sc)
 {
-    if (!tm->semanticRun) tm->semantic(sc);
+    if (!tm->semanticRun) semantic(tm, sc);
     TemplateDeclaration *td = (tm && tm->tempdecl) ?
         tm->tempdecl->isTemplateDeclaration() : NULL;
     if (td && td->members)

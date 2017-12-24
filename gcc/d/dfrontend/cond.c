@@ -14,19 +14,11 @@
 #include <string.h>                     // strcmp()
 
 #include "id.h"
-#include "init.h"
 #include "declaration.h"
-#include "identifier.h"
-#include "expression.h"
 #include "cond.h"
 #include "module.h"
-#include "template.h"
-#include "mtype.h"
 #include "scope.h"
-#include "arraytypes.h"
-#include "tokens.h"
 
-Expression *semantic(Expression *e, Scope *sc);
 bool evalStaticCondition(Scope *sc, Expression *exp, Expression *e, bool &errors);
 
 int findCondition(Strings *ids, Identifier *ident)

@@ -16,20 +16,14 @@
 
 #include "root.h"
 
-#include "init.h"
-#include "declaration.h"
 #include "aggregate.h"
-#include "mtype.h"
-#include "attrib.h"
 #include "target.h"
 #include "template.h"
 #include "id.h"
 #include "module.h"
 #include "enum.h"
-#include "expression.h"
 #include "utf.h"
 
-void mangleToBuffer(Type *t, OutBuffer *buf);
 typedef int (*ForeachDg)(void *ctx, size_t paramidx, Parameter *param);
 int Parameter_foreach(Parameters *parameters, ForeachDg dg, void *ctx, size_t *pn = NULL);
 

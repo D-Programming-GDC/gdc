@@ -14,22 +14,19 @@
 #include <assert.h>
 
 #include "rmem.h"
-
 #include "aav.h"
 
-#include "expression.h"
 #include "statement.h"
-#include "mtype.h"
 #include "declaration.h"
 #include "scope.h"
 #include "id.h"
 #include "module.h"
-#include "init.h"
-#include "tokens.h"
 
 void buildArrayIdent(Expression *e, OutBuffer *buf, Expressions *arguments);
 Expression *buildArrayLoop(Expression *e, Parameters *fparams);
 Expression *semantic(Expression *e, Scope *sc);
+void semantic(Dsymbol *dsym, Scope *sc);
+void semantic2(Dsymbol *dsym, Scope *sc);
 
 /**************************************
  * Hash table of array op functions already generated or known about.
@@ -84,8 +81,8 @@ FuncDeclaration *buildArrayOp(Identifier *ident, BinExp *exp, Scope *sc, Loc loc
     sc->parent = sc->_module->importedFrom;
     sc->stc = 0;
     sc->linkage = LINKc;
-    fd->semantic(sc);
-    fd->semantic2(sc);
+    semantic(fd, sc);
+    semantic2(fd, sc);
     unsigned errors = global.startGagging();
     fd->semantic3(sc);
     if (global.endGagging(errors))

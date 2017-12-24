@@ -33,6 +33,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
+#include "d-frontend.h"
 
 
 /* Implements the Global interface defined by the frontend.
@@ -513,8 +514,8 @@ genCmain (Scope *sc)
     {
       m->importedFrom = m;
       m->importAll (NULL);
-      m->semantic (NULL);
-      m->semantic2 (NULL);
+      semantic (m, NULL);
+      semantic2 (m, NULL);
       m->semantic3 (NULL);
       d_add_entrypoint_module (m, sc->_module);
     }

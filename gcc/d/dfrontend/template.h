@@ -86,7 +86,6 @@ public:
     TemplateDeclaration(Loc loc, Identifier *id, TemplateParameters *parameters,
         Expression *constraint, Dsymbols *decldefs, bool ismixin = false, bool literal = false);
     Dsymbol *syntaxCopy(Dsymbol *);
-    void semantic(Scope *sc);
     bool overloadInsert(Dsymbol *s);
     bool hasStaticCtorOrDtor();
     const char *kind();
@@ -142,7 +141,6 @@ public:
     bool dependent;
 
     TemplateParameter(Loc loc, Identifier *ident);
-
     virtual TemplateTypeParameter  *isTemplateTypeParameter();
     virtual TemplateValueParameter *isTemplateValueParameter();
     virtual TemplateAliasParameter *isTemplateAliasParameter();
@@ -151,7 +149,6 @@ public:
 
     virtual TemplateParameter *syntaxCopy() = 0;
     virtual bool declareParameter(Scope *sc) = 0;
-    virtual bool semantic(Scope *sc, TemplateParameters *parameters) = 0;
     virtual void print(RootObject *oarg, RootObject *oded) = 0;
     virtual RootObject *specialization() = 0;
     virtual RootObject *defaultArg(Loc instLoc, Scope *sc) = 0;
@@ -180,11 +177,9 @@ public:
     static Type *tdummy;
 
     TemplateTypeParameter(Loc loc, Identifier *ident, Type *specType, Type *defaultType);
-
     TemplateTypeParameter *isTemplateTypeParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
-    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
     RootObject *specialization();
     RootObject *defaultArg(Loc instLoc, Scope *sc);
@@ -201,7 +196,6 @@ class TemplateThisParameter : public TemplateTypeParameter
 {
 public:
     TemplateThisParameter(Loc loc, Identifier *ident, Type *specType, Type *defaultType);
-
     TemplateThisParameter *isTemplateThisParameter();
     TemplateParameter *syntaxCopy();
     void accept(Visitor *v) { v->visit(this); }
@@ -220,11 +214,9 @@ public:
     static AA *edummies;
 
     TemplateValueParameter(Loc loc, Identifier *ident, Type *valType, Expression *specValue, Expression *defaultValue);
-
     TemplateValueParameter *isTemplateValueParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
-    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
     RootObject *specialization();
     RootObject *defaultArg(Loc instLoc, Scope *sc);
@@ -247,11 +239,9 @@ public:
     static Dsymbol *sdummy;
 
     TemplateAliasParameter(Loc loc, Identifier *ident, Type *specType, RootObject *specAlias, RootObject *defaultAlias);
-
     TemplateAliasParameter *isTemplateAliasParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
-    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
     RootObject *specialization();
     RootObject *defaultArg(Loc instLoc, Scope *sc);
@@ -268,11 +258,9 @@ class TemplateTupleParameter : public TemplateParameter
 {
 public:
     TemplateTupleParameter(Loc loc, Identifier *ident);
-
     TemplateTupleParameter *isTemplateTupleParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
-    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
     RootObject *specialization();
     RootObject *defaultArg(Loc instLoc, Scope *sc);
@@ -329,9 +317,6 @@ public:
     TemplateInstance(Loc loc, TemplateDeclaration *tempdecl, Objects *tiargs);
     static Objects *arraySyntaxCopy(Objects *objs);
     Dsymbol *syntaxCopy(Dsymbol *);
-    void semantic(Scope *sc, Expressions *fargs);
-    void semantic(Scope *sc);
-    void semantic2(Scope *sc);
     void semantic3(Scope *sc);
     Dsymbol *toAlias();                 // resolve real symbol
     const char *kind();
@@ -371,8 +356,6 @@ public:
 
     TemplateMixin(Loc loc, Identifier *ident, TypeQualified *tqual, Objects *tiargs);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void semantic(Scope *sc);
-    void semantic2(Scope *sc);
     void semantic3(Scope *sc);
     const char *kind();
     bool oneMember(Dsymbol **ps, Identifier *ident);

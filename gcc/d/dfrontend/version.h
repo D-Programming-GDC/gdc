@@ -29,7 +29,6 @@ public:
 
     const char *toChars();
     void addMember(Scope *sc, ScopeDsymbol *sds);
-    void semantic(Scope *sc);
     const char *kind();
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -45,7 +44,6 @@ public:
 
     const char *toChars();
     void addMember(Scope *sc, ScopeDsymbol *sds);
-    void semantic(Scope *sc);
     const char *kind();
     void accept(Visitor *v) { v->visit(this); }
 };

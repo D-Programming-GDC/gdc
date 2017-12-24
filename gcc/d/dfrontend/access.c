@@ -15,16 +15,8 @@
 #include "root.h"
 #include "rmem.h"
 
-#include "enum.h"
 #include "aggregate.h"
-#include "init.h"
-#include "attrib.h"
 #include "scope.h"
-#include "id.h"
-#include "mtype.h"
-#include "declaration.h"
-#include "aggregate.h"
-#include "expression.h"
 #include "module.h"
 #include "template.h"
 

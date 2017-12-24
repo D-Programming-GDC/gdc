@@ -18,24 +18,16 @@
 #include "rmem.h"
 #include "root.h"
 
-#include "mtype.h"
 #include "init.h"
-#include "expression.h"
 #include "template.h"
 #include "utf.h"
 #include "enum.h"
 #include "scope.h"
-#include "statement.h"
-#include "declaration.h"
 #include "aggregate.h"
 #include "import.h"
 #include "id.h"
-#include "dsymbol.h"
 #include "module.h"
-#include "attrib.h"
 #include "hdrgen.h"
-#include "parse.h"
-#include "doc.h"
 #include "aav.h"
 #include "nspace.h"
 #include "ctfe.h"
@@ -43,18 +35,19 @@
 
 bool walkPostorder(Expression *e, StoppableVisitor *v);
 bool checkParamArgumentEscape(Scope *sc, FuncDeclaration *fdc, Identifier *par, Expression *arg, bool gag);
-bool checkAccess(AggregateDeclaration *ad, Loc loc, Scope *sc, Dsymbol *smember);
 VarDeclaration *copyToTemp(StorageClass stc, const char *name, Expression *e);
 Expression *extractSideEffect(Scope *sc, const char *name, Expression **e0, Expression *e, bool alwaysCopy = false);
 char *MODtoChars(MOD mod);
 bool MODimplicitConv(MOD modfrom, MOD modto);
 MOD MODmerge(MOD mod1, MOD mod2);
+Type *merge(Type *type);
 Expression *trySemantic(Expression *e, Scope *sc);
 Expression *semantic(Expression *e, Scope *sc);
 Expression *semanticX(DotIdExp *exp, Scope *sc);
 Expression *semanticY(DotIdExp *exp, Scope *sc, int flag);
 Expression *semanticY(DotTemplateInstanceExp *exp, Scope *sc, int flag);
 Expression *resolve(Loc loc, Scope *sc, Dsymbol *s, bool hasOverloads);
+void semantic(Dsymbol *dsym, Scope *sc);
 bool checkUnsafeAccess(Scope *sc, Expression *e, bool readonly, bool printmsg);
 
 #define LOGSEMANTIC     0
@@ -533,7 +526,7 @@ bool checkPropertyCall(Expression *e, Expression *emsg)
              */
             if (!tf->deco && ce->f->_scope)
             {
-                ce->f->semantic(ce->f->_scope);
+                semantic(ce->f, ce->f->_scope);
                 tf = (TypeFunction *)ce->f->type;
             }
         }
@@ -1388,7 +1381,7 @@ Expression *callCpCtor(Scope *sc, Expression *e)
              */
             VarDeclaration *tmp = copyToTemp(STCrvalue, "__copytmp", e);
             tmp->storage_class |= STCnodtor;
-            tmp->semantic(sc);
+            semantic(tmp, sc);
             Expression *de = new DeclarationExp(e->loc, tmp);
             Expression *ve = new VarExp(e->loc, tmp);
             de->type = Type::tvoid;
@@ -1897,7 +1890,7 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
             Identifier *idtmp = Identifier::generateId("__gate");
             gate = new VarDeclaration(loc, Type::tbool, idtmp, NULL);
             gate->storage_class |= STCtemp | STCctfe | STCvolatile;
-            gate->semantic(sc);
+            semantic(gate, sc);
 
             Expression *ae = new DeclarationExp(loc, gate);
             eprefix = semantic(ae, sc);
@@ -1931,7 +1924,7 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
                 VarDeclaration *tmp = tmp = copyToTemp(0,
                     needsDtor ? "__pfx" : "__pfy",
                     !isRef ? arg : arg->addressOf());
-                tmp->semantic(sc);
+                semantic(tmp, sc);
 
                 /* Modify the destructor so it only runs if gate==false, i.e.,
                  * only if there was a throw while constructing the args
@@ -1949,7 +1942,7 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
                     // edtor => (__gate || edtor)
                     assert(tmp->edtor);
                     Expression *e = tmp->edtor;
-                    e = new OrOrExp(e->loc, new VarExp(e->loc, gate), e);
+                    e = new LogicalExp(e->loc, TOKoror, new VarExp(e->loc, gate), e);
                     tmp->edtor = semantic(e, sc);
                     //printf("edtor: %s\n", tmp->edtor->toChars());
                 }
@@ -3399,7 +3392,7 @@ Lagain:
 
     if (TemplateInstance *ti = s->isTemplateInstance())
     {
-        ti->semantic(sc);
+        semantic(ti, sc);
         if (!ti->inst || ti->errors)
             return new ErrorExp();
         s = ti->toAlias();
@@ -4769,7 +4762,7 @@ MATCH FuncExp::matchType(Type *to, Scope *sc, FuncExp **presult, int flag)
 
         TemplateInstance *ti = new TemplateInstance(loc, td, tiargs);
         Expression *ex = new ScopeExp(loc, ti);
-        ex = ::semantic(ex, td->_scope);
+        ex = semantic(ex, td->_scope);
 
         // Reset inference target for the later re-semantic
         fd->treq = NULL;
@@ -4808,7 +4801,7 @@ MATCH FuncExp::matchType(Type *to, Scope *sc, FuncExp **presult, int flag)
         tfy->isproperty = tfx->isproperty;
         tfy->isref      = tfx->isref;
         tfy->iswild     = tfx->iswild;
-        tfy->deco = tfy->merge()->deco;
+        tfy->deco = merge(tfy)->deco;
 
         tfx = tfy;
     }
@@ -4820,7 +4813,7 @@ MATCH FuncExp::matchType(Type *to, Scope *sc, FuncExp **presult, int flag)
     {
         // Allow conversion from implicit function pointer to delegate
         tx = new TypeDelegate(tfx);
-        tx->deco = tx->merge()->deco;
+        tx->deco = merge(tx)->deco;
     }
     else
     {
@@ -6326,8 +6319,16 @@ MinAssignExp::MinAssignExp(Loc loc, Expression *e1, Expression *e2)
 {
 }
 
-/************************************************************/
-
+/************************************************************
+ * The ~= operator. It can have one of the following operators:
+ *
+ * TOKcatass      - appending T[] to T[]
+ * TOKcatelemass  - appending T to T[]
+ * TOKcatdcharass - appending dchar to T[]
+ *
+ * The parser initially sets it to TOKcatass, and semantic() later decides which
+ * of the three it will be set to.
+ */
 CatAssignExp::CatAssignExp(Loc loc, Expression *e1, Expression *e2)
         : BinAssignExp(loc, TOKcatass, sizeof(CatAssignExp), e1, e2)
 {
@@ -6496,28 +6497,12 @@ XorExp::XorExp(Loc loc, Expression *e1, Expression *e2)
 
 /************************************************************/
 
-OrOrExp::OrOrExp(Loc loc, Expression *e1, Expression *e2)
-        : BinExp(loc, TOKoror, sizeof(OrOrExp), e1, e2)
+LogicalExp::LogicalExp(Loc loc, TOK op, Expression *e1, Expression *e2)
+        : BinExp(loc, op, sizeof(LogicalExp), e1, e2)
 {
 }
 
-Expression *OrOrExp::toBoolean(Scope *sc)
-{
-    Expression *ex2 = e2->toBoolean(sc);
-    if (ex2->op == TOKerror)
-        return ex2;
-    e2 = ex2;
-    return this;
-}
-
-/************************************************************/
-
-AndAndExp::AndAndExp(Loc loc, Expression *e1, Expression *e2)
-        : BinExp(loc, TOKandand, sizeof(AndAndExp), e1, e2)
-{
-}
-
-Expression *AndAndExp::toBoolean(Scope *sc)
+Expression *LogicalExp::toBoolean(Scope *sc)
 {
     Expression *ex2 = e2->toBoolean(sc);
     if (ex2->op == TOKerror)
@@ -6618,7 +6603,7 @@ void CondExp::hookDtors(Scope *sc)
                     if (!vcond)
                     {
                         vcond = copyToTemp(STCvolatile, "__cond", ce->econd);
-                        vcond->semantic(sc);
+                        semantic(vcond, sc);
 
                         Expression *de = new DeclarationExp(ce->econd->loc, vcond);
                         de = semantic(de, sc);
@@ -6630,9 +6615,9 @@ void CondExp::hookDtors(Scope *sc)
                     //printf("\t++v = %s, v->edtor = %s\n", v->toChars(), v->edtor->toChars());
                     Expression *ve = new VarExp(vcond->loc, vcond);
                     if (isThen)
-                        v->edtor = new AndAndExp(v->edtor->loc, ve, v->edtor);
+                        v->edtor = new LogicalExp(v->edtor->loc, TOKandand, ve, v->edtor);
                     else
-                        v->edtor = new OrOrExp(v->edtor->loc, ve, v->edtor);
+                        v->edtor = new LogicalExp(v->edtor->loc, TOKoror, ve, v->edtor);
                     v->edtor = semantic(v->edtor, sc);
                     //printf("\t--v = %s, v->edtor = %s\n", v->toChars(), v->edtor->toChars());
                 }

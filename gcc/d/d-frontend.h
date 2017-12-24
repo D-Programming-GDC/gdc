@@ -34,7 +34,9 @@ struct OutBuffer;
 FuncDeclaration *search_toString (StructDeclaration *);
 
 /* Used in d-lang.cc.  */
-void gendocfile(Module *m);
+void gendocfile(Module *);
+void semantic (Dsymbol *, Scope *);
+void semantic2 (Dsymbol *, Scope *);
 
 /* Used in intrinsics.cc.  */
 void mangleToBuffer (Type *, OutBuffer *);
@@ -44,6 +46,9 @@ const char *toCppMangleItanium (Dsymbol *);
 const char *cppTypeInfoMangleItanium (Dsymbol *);
 
 /* Used in decl.cc.  */
-Expression *initializerToExpression (Initializer *i, Type *t = NULL);
+Expression *initializerToExpression (Initializer *, Type * = NULL);
+
+/* Used in d-builtins.cc.  */
+Type *merge (Type *);
 
 #endif  /* ! GCC_D_FRONTEND_H */

@@ -13,16 +13,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "mars.h"
 #include "module.h"
 #include "parse.h"
 #include "scope.h"
-#include "identifier.h"
 #include "id.h"
 #include "import.h"
-#include "dsymbol.h"
-#include "expression.h"
-#include "lexer.h"
 #include "attrib.h"
 #include "target.h"
 
@@ -46,6 +41,8 @@ Dsymbols Module::deferred3; // deferred Dsymbol's needing semantic3() run on the
 unsigned Module::dprogress;
 
 const char *lookForSourceFile(const char **path, const char *filename);
+void semantic(Dsymbol *dsym, Scope *sc);
+void semantic2(Dsymbol *dsym, Scope *sc);
 
 void Module::_init()
 {
@@ -66,6 +63,7 @@ Module::Module(const char *filename, Identifier *ident, int doDocComment, int do
     isDocFile = 0;
     isPackageFile = false;
     needmoduleinfo = 0;
+    unitTestCounter = 0;
     selfimports = 0;
     rootimports = 0;
     insearch = 0;
@@ -792,80 +790,6 @@ void Module::importAll(Scope *prevsc)
     sc->pop();          // 2 pops because Scope::createGlobal() created 2
 }
 
-void Module::semantic(Scope *)
-{
-    if (semanticRun != PASSinit)
-        return;
-
-    //printf("+Module::semantic(this = %p, '%s'): parent = %p\n", this, toChars(), parent);
-    semanticRun = PASSsemantic;
-
-    // Note that modules get their own scope, from scratch.
-    // This is so regardless of where in the syntax a module
-    // gets imported, it is unaffected by context.
-    Scope *sc = _scope;                  // see if already got one from importAll()
-    if (!sc)
-    {
-        Scope::createGlobal(this);      // create root scope
-    }
-
-    //printf("Module = %p, linkage = %d\n", sc->scopesym, sc->linkage);
-
-    // Pass 1 semantic routines: do public side of the definition
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-
-        //printf("\tModule('%s'): '%s'.semantic()\n", toChars(), s->toChars());
-        s->semantic(sc);
-        runDeferredSemantic();
-    }
-
-    if (userAttribDecl)
-    {
-        userAttribDecl->semantic(sc);
-    }
-
-    if (!_scope)
-    {
-        sc = sc->pop();
-        sc->pop();              // 2 pops because Scope::createGlobal() created 2
-    }
-    semanticRun = PASSsemanticdone;
-    //printf("-Module::semantic(this = %p, '%s'): parent = %p\n", this, toChars(), parent);
-}
-
-void Module::semantic2(Scope*)
-{
-    //printf("Module::semantic2('%s'): parent = %p\n", toChars(), parent);
-    if (semanticRun != PASSsemanticdone)       // semantic() not completed yet - could be recursive call
-        return;
-    semanticRun = PASSsemantic2;
-
-    // Note that modules get their own scope, from scratch.
-    // This is so regardless of where in the syntax a module
-    // gets imported, it is unaffected by context.
-    Scope *sc = Scope::createGlobal(this);      // create root scope
-    //printf("Module = %p\n", sc.scopesym);
-
-    // Pass 2 semantic routines: do initializers and function bodies
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->semantic2(sc);
-    }
-
-    if (userAttribDecl)
-    {
-        userAttribDecl->semantic2(sc);
-    }
-
-    sc = sc->pop();
-    sc->pop();
-    semanticRun = PASSsemantic2done;
-    //printf("-Module::semantic2('%s'): parent = %p\n", toChars(), parent);
-}
-
 void Module::semantic3(Scope*)
 {
     //printf("Module::semantic3('%s'): parent = %p\n", toChars(), parent);
@@ -1052,7 +976,7 @@ void Module::runDeferredSemantic()
         {
             Dsymbol *s = todo[i];
 
-            s->semantic(NULL);
+            semantic(s, NULL);
             //printf("deferred: %s, parent = %s\n", s->toChars(), s->parent->toChars());
         }
         //printf("\tdeferred.dim = %d, len = %d, dprogress = %d\n", deferred.dim, len, dprogress);
@@ -1072,7 +996,7 @@ void Module::runDeferredSemantic2()
     {
         Dsymbol *s = (*a)[i];
         //printf("[%d] %s semantic2a\n", i, s->toPrettyChars());
-        s->semantic2(NULL);
+        semantic2(s, NULL);
 
         if (global.errors)
             break;

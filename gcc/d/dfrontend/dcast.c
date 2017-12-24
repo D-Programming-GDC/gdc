@@ -15,21 +15,16 @@
 
 #include "rmem.h"
 
-#include "expression.h"
-#include "mtype.h"
 #include "utf.h"
-#include "declaration.h"
 #include "aggregate.h"
-#include "template.h"
 #include "scope.h"
-#include "id.h"
 #include "init.h"
-#include "tokens.h"
 
 FuncDeclaration *isFuncAddress(Expression *e, bool *hasOverloads = NULL);
 bool isCommutative(TOK op);
 MOD MODmerge(MOD mod1, MOD mod2);
 Expression *semantic(Expression *e, Scope *sc);
+Type *semantic(Type *t, Loc loc, Scope *sc);
 
 /* ==================== implicitCast ====================== */
 
@@ -1503,7 +1498,7 @@ Expression *castTo(Expression *e, Scope *sc, Type *t)
                 TypeVector *tv = (TypeVector *)tob;
                 result = new CastExp(e->loc, e, tv->elementType());
                 result = new VectorExp(e->loc, result, tob);
-                result = ::semantic(result, sc);
+                result = semantic(result, sc);
                 return;
             }
             else if (tob->ty != Tvector && t1b->ty == Tvector)
@@ -2002,7 +1997,7 @@ Expression *castTo(Expression *e, Scope *sc, Type *t)
                     {
                         f->tookAddressOf++;
                         SymOffExp *se = new SymOffExp(e->loc, f, 0, false);
-                        ::semantic(se, sc);
+                        semantic(se, sc);
                         // Let SymOffExp::castTo() do the heavy lifting
                         visit(se);
                         return;
@@ -2166,7 +2161,7 @@ Expression *castTo(Expression *e, Scope *sc, Type *t)
                     (*ae->elements)[i] = ex;
                 }
                 Expression *ev = new VectorExp(e->loc, ae, tb);
-                ev = ::semantic(ev, sc);
+                ev = semantic(ev, sc);
                 result = ev;
                 return;
             }
@@ -2243,12 +2238,12 @@ Expression *castTo(Expression *e, Scope *sc, Type *t)
                         if (f->needThis() && hasThis(sc))
                         {
                             result = new DelegateExp(e->loc, new ThisExp(e->loc), f, false);
-                            result = ::semantic(result, sc);
+                            result = semantic(result, sc);
                         }
                         else if (f->isNested())
                         {
                             result = new DelegateExp(e->loc, new IntegerExp(0), f, false);
-                            result = ::semantic(result, sc);
+                            result = semantic(result, sc);
                         }
                         else if (f->needThis())
                         {
@@ -2839,7 +2834,7 @@ Lagain:
             else
                 tx = d->pointerTo();
 
-            tx = tx->semantic(e1->loc, sc);
+            tx = semantic(tx, e1->loc, sc);
 
             if (t1->implicitConvTo(tx) && t2->implicitConvTo(tx))
             {

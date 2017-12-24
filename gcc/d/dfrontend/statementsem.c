@@ -46,6 +46,9 @@ void semantic(Catch *c, Scope *sc);
 Statement *semanticNoScope(Statement *s, Scope *sc);
 Statement *semanticScope(Statement *s, Scope *sc, Statement *sbreak, Statement *scontinue);
 int blockExit(Statement *s, FuncDeclaration *func, bool mustNotThrow);
+void semantic(Dsymbol *dsym, Scope *sc);
+void semantic2(Dsymbol *dsym, Scope *sc);
+Type *semantic(Type *t, Loc loc, Scope *sc);
 
 class StatementSemanticVisitor : public Visitor
 {
@@ -513,7 +516,7 @@ public:
         {
             // Bugzilla 14653: Extend the life of rvalue aggregate till the end of foreach.
             vinit = copyToTemp(STCrvalue, "__aggr", fs->aggr);
-            vinit->semantic(sc);
+            semantic(vinit, sc);
             fs->aggr = new VarExp(fs->aggr->loc, vinit);
         }
 
@@ -588,7 +591,7 @@ public:
             Type *paramtype = (*fs->parameters)[dim-1]->type;
             if (paramtype)
             {
-                paramtype = paramtype->semantic(loc, sc);
+                paramtype = semantic(paramtype, loc, sc);
                 if (paramtype->ty == Terror)
                     return setError();
             }
@@ -629,7 +632,7 @@ public:
                         fs->error("no storage class for key %s", p->ident->toChars());
                         return setError();
                     }
-                    p->type = p->type->semantic(loc, sc);
+                    p->type = semantic(p->type, loc, sc);
                     TY keyty = p->type->ty;
                     if (keyty != Tint32 && keyty != Tuns32)
                     {
@@ -784,7 +787,7 @@ public:
                     {
                         int i = (dim == 1) ? 0 : 1;     // index of value
                         Parameter *p = (*fs->parameters)[i];
-                        p->type = p->type->semantic(loc, sc);
+                        p->type = semantic(p->type, loc, sc);
                         p->type = p->type->addStorageClass(p->storageClass);
                         tnv = p->type->toBasetype();
                         if (tnv->ty != tn->ty &&
@@ -812,7 +815,7 @@ public:
                     {
                         // Declare parameterss
                         Parameter *p = (*fs->parameters)[i];
-                        p->type = p->type->semantic(loc, sc);
+                        p->type = semantic(p->type, loc, sc);
                         p->type = p->type->addStorageClass(p->storageClass);
                         VarDeclaration *var;
 
@@ -1115,7 +1118,7 @@ public:
 #endif
                             if (!p->type)
                                 p->type = exp->type;
-                            p->type = p->type->addStorageClass(p->storageClass)->semantic(loc, sc);
+                            p->type = semantic(p->type->addStorageClass(p->storageClass), loc, sc);
                             if (!exp->implicitConvTo(p->type))
                                 goto Lrangeerr;
 
@@ -1164,7 +1167,7 @@ public:
                         if (fdapply)
                         {
                             assert(fdapply->type && fdapply->type->ty == Tfunction);
-                            tfld = (TypeFunction *)fdapply->type->semantic(loc, sc);
+                            tfld = (TypeFunction *)semantic(fdapply->type, loc, sc);
                             goto Lget;
                         }
                         else if (tab->ty == Tdelegate)
@@ -1177,7 +1180,7 @@ public:
                                 Parameter *p = Parameter::getNth(tfld->parameters, 0);
                                 if (p->type && p->type->ty == Tdelegate)
                                 {
-                                    Type *t = p->type->semantic(loc, sc);
+                                    Type *t = semantic(p->type, loc, sc);
                                     assert(t->ty == Tdelegate);
                                     tfld = (TypeFunction *)t->nextOf();
                                 }
@@ -1195,7 +1198,7 @@ public:
                         StorageClass stc = STCref;
                         Identifier *id;
 
-                        p->type = p->type->semantic(loc, sc);
+                        p->type = semantic(p->type, loc, sc);
                         p->type = p->type->addStorageClass(p->storageClass);
                         if (tfld)
                         {
@@ -1510,7 +1513,7 @@ public:
 
         if (fs->prm->type)
         {
-            fs->prm->type = fs->prm->type->semantic(loc, sc);
+            fs->prm->type = semantic(fs->prm->type, loc, sc);
             fs->prm->type = fs->prm->type->addStorageClass(fs->prm->storageClass);
             fs->lwr = fs->lwr->implicitCastTo(sc, fs->prm->type);
 
@@ -1945,7 +1948,7 @@ public:
 
     void visit(StaticAssertStatement *s)
     {
-        s->sa->semantic2(sc);
+        semantic2(s->sa, sc);
     }
 
     void visit(SwitchStatement *ss)
@@ -2916,7 +2919,7 @@ public:
                 }
 
                 Type *t = ClassDeclaration::object->type;
-                t = t->semantic(Loc(), sc)->toBasetype();
+                t = semantic(t, Loc(), sc)->toBasetype();
                 assert(t->ty == Tclass);
 
                 ss->exp = new CastExp(ss->loc, ss->exp, t);
@@ -2973,7 +2976,7 @@ public:
              * Backend optimizer could remove this unused variable.
              */
             VarDeclaration *v = new VarDeclaration(ss->loc, Type::tvoidptr, Identifier::generateId("__sync"), NULL);
-            v->semantic(sc);
+            semantic(v, sc);
             cs->push(new ExpStatement(ss->loc, v));
 
             Parameters* args = new Parameters;
@@ -3058,7 +3061,7 @@ public:
             {
                 init = new ExpInitializer(ws->loc, ws->exp);
                 ws->wthis = new VarDeclaration(ws->loc, ws->exp->type, Id::withSym, init);
-                ws->wthis->semantic(sc);
+                semantic(ws->wthis, sc);
 
                 sym = new WithScopeSymbol(ws);
                 sym->parent = sc->scopesym;
@@ -3087,7 +3090,7 @@ public:
                 Expression *e = ws->exp->addressOf();
                 init = new ExpInitializer(ws->loc, e);
                 ws->wthis = new VarDeclaration(ws->loc, e->type, Id::withSym, init);
-                ws->wthis->semantic(sc);
+                semantic(ws->wthis, sc);
                 sym = new WithScopeSymbol(ws);
                 // Need to set the scope to make use of resolveAliasThis
                 sym->setScope(sc);
@@ -3500,7 +3503,7 @@ public:
                 s->aliasdecls.push(ad);
             }
 
-            s->semantic(sc);
+            semantic(s, sc);
             Module::addDeferredSemantic2(s);     // Bugzilla 14666
             sc->insert(s);
 
@@ -3556,7 +3559,7 @@ void semantic(Catch *c, Scope *sc)
         tid->addIdent(Id::Throwable);
         c->type = tid;
     }
-    c->type = c->type->semantic(c->loc, sc);
+    c->type = semantic(c->type, c->loc, sc);
     if (c->type == Type::terror)
         c->errors = true;
     else
@@ -3596,7 +3599,7 @@ void semantic(Catch *c, Scope *sc)
         if (c->ident)
         {
             c->var = new VarDeclaration(c->loc, c->type, c->ident, NULL);
-            c->var->semantic(sc);
+            semantic(c->var, sc);
             sc->insert(c->var);
         }
         c->handler = semantic(c->handler, sc);

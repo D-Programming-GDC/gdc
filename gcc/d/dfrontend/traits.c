@@ -47,6 +47,8 @@ Expression *resolve(Loc loc, Scope *sc, Dsymbol *s, bool hasOverloads);
 Expression *trySemantic(Expression *e, Scope *sc);
 Expression *semantic(Expression *e, Scope *sc);
 Expression *typeToExpression(Type *t);
+void semantic(Dsymbol *dsym, Scope *sc);
+Type *semantic(Type *t, Loc loc, Scope *sc);
 
 
 /************************************************
@@ -683,7 +685,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
             return new ErrorExp();
         }
         if (s->_scope)
-            s->semantic(s->_scope);
+            semantic(s, s->_scope);
 
         const char *protName = protectionToChars(s->prot().kind);   // TODO: How about package(names)
         assert(protName);
@@ -1255,7 +1257,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
         if (cd && e->ident == Id::allMembers)
         {
             if (cd->_scope)
-                cd->semantic(NULL);    // Bugzilla 13668: Try to resolve forward reference
+                semantic(cd, NULL);    // Bugzilla 13668: Try to resolve forward reference
 
             struct PushBaseMembers
             {
@@ -1318,7 +1320,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
                 t->resolve(e->loc, sc2, &ex, &t, &s);
                 if (t)
                 {
-                    t->semantic(e->loc, sc2);
+                    semantic(t, e->loc, sc2);
                     if (t->ty == Terror)
                         err = true;
                 }
