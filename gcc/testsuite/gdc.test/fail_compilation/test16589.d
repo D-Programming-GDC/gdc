@@ -1,5 +1,5 @@
-// REQUIRED_ARGS: -transition=safe
 /* PERMUTE_ARGS:
+REQUIRED_ARGS: -dip1000
 TEST_OUTPUT:
 ---
 fail_compilation/test16589.d(26): Error: returning `&this.data` escapes a reference to parameter `this`, perhaps annotate with `return`
@@ -61,4 +61,5 @@ class C
         return &data;
     }
 }
+
 

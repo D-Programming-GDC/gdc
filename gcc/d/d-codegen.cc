@@ -525,7 +525,8 @@ d_save_expr (tree exp)
 tree
 stabilize_expr (tree *valuep)
 {
-  const enum tree_code code = TREE_CODE (*valuep);
+  tree expr = *valuep;
+  const enum tree_code code = TREE_CODE (expr);
   tree lhs;
   tree rhs;
 
@@ -534,11 +535,20 @@ stabilize_expr (tree *valuep)
     case COMPOUND_EXPR:
       /* Given ((e1, ...), eN):
 	 Store the last RHS 'eN' expression in VALUEP.  */
-      lhs = TREE_OPERAND (*valuep, 0);
-      rhs = TREE_OPERAND (*valuep, 1);
+      lhs = TREE_OPERAND (expr, 0);
+      rhs = TREE_OPERAND (expr, 1);
       lhs = compound_expr (lhs, stabilize_expr (&rhs));
       *valuep = rhs;
       return lhs;
+
+    case MODIFY_EXPR:
+    case INIT_EXPR:
+      /* Given e1 = e2:
+	 Store the leftmost 'e1' expression in VALUEP.  */
+      lhs = TREE_OPERAND (expr, 0);
+      stabilize_expr (&lhs);
+      *valuep = lhs;
+      return expr;
 
     default:
       return NULL_TREE;
@@ -1761,7 +1771,7 @@ build_bounds_condition (const Loc& loc, tree index, tree len, bool inclusive)
 bool
 array_bounds_check (void)
 {
-  FuncDeclaration *func;
+  FuncDeclaration *fd;
 
   switch (global.params.useArrayBounds)
     {
@@ -1773,10 +1783,10 @@ array_bounds_check (void)
 
     case BOUNDSCHECKsafeonly:
       /* For D2 safe functions only.  */
-      func = d_function_chain->function;
-      if (func && func->type->ty == Tfunction)
+      fd = d_function_chain->function;
+      if (fd && fd->type->ty == Tfunction)
 	{
-	  TypeFunction *tf = (TypeFunction *) func->type;
+	  TypeFunction *tf = (TypeFunction *) fd->type;
 	  if (tf->trust == TRUSTsafe)
 	    return true;
 	}
@@ -2120,26 +2130,32 @@ build_vthis_function (tree basetype, tree type)
 tree
 get_frame_for_symbol (Dsymbol *sym)
 {
-  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
-  FuncDeclaration *thisfd = sym->isFuncDeclaration ();
-  FuncDeclaration *parentfd = NULL;
+  FuncDeclaration *thisfd
+    = d_function_chain ? d_function_chain->function : NULL;
+  FuncDeclaration *fd = sym->isFuncDeclaration ();
+  FuncDeclaration *fdparent = NULL;
+  FuncDeclaration *fdoverride = NULL;
 
-  if (thisfd != NULL)
+  if (fd != NULL)
     {
       /* Check that the nested function is properly defined.  */
-      if (!thisfd->fbody)
+      if (!fd->fbody)
 	{
-	  /* Should instead error on line that references 'thisfd'.  */
-	  thisfd->error ("nested function missing body");
+	  /* Should instead error on line that references 'fd'.  */
+	  fd->error ("nested function missing body");
 	  return null_pointer_node;
 	}
 
+      fdparent = fd->toParent2 ()->isFuncDeclaration ();
+
       /* Special case for __ensure and __require.  */
-      if (thisfd->ident == Identifier::idPool ("__ensure")
-	  || thisfd->ident == Identifier::idPool ("__require"))
-	parentfd = func;
-      else
-	parentfd = thisfd->toParent2 ()->isFuncDeclaration ();
+      if ((fd->ident == Identifier::idPool ("__ensure")
+	   || fd->ident == Identifier::idPool ("__require"))
+	  && fdparent != thisfd)
+	{
+	  fdoverride = fdparent;
+	  fdparent = thisfd;
+	}
     }
   else
     {
@@ -2148,33 +2164,33 @@ get_frame_for_symbol (Dsymbol *sym)
       while (sym && !sym->isFuncDeclaration ())
 	sym = sym->toParent2 ();
 
-      parentfd = (FuncDeclaration *) sym;
+      fdparent = (FuncDeclaration *) sym;
     }
 
-  gcc_assert (parentfd != NULL);
+  gcc_assert (fdparent != NULL);
 
-  if (func != parentfd)
+  if (thisfd != fdparent)
     {
       /* If no frame pointer for this function.  */
-      if (!func->vthis)
+      if (!thisfd->vthis)
 	{
 	  sym->error ("is a nested function and cannot be accessed from %s",
-		      func->toChars ());
+		      thisfd->toChars ());
 	  return null_pointer_node;
 	}
 
       /* Make sure we can get the frame pointer to the outer function.
 	 Go up each nesting level until we find the enclosing function.  */
-      Dsymbol *dsym = func;
+      Dsymbol *dsym = thisfd;
 
-      while (thisfd != dsym)
+      while (fd != dsym)
 	{
 	  /* Check if enclosing function is a function.  */
 	  FuncDeclaration *fd = dsym->isFuncDeclaration ();
 
 	  if (fd != NULL)
 	    {
-	      if (parentfd == fd->toParent2 ())
+	      if (fdparent == fd->toParent2 ())
 		break;
 
 	      gcc_assert (fd->isNested () || fd->vthis);
@@ -2188,16 +2204,16 @@ get_frame_for_symbol (Dsymbol *sym)
 
 	  if (ad == NULL)
 	    goto Lnoframe;
-	  if (ad->isClassDeclaration () && parentfd == ad->toParent2 ())
+	  if (ad->isClassDeclaration () && fdparent == ad->toParent2 ())
 	    break;
-	  if (ad->isStructDeclaration () && parentfd == ad->toParent2 ())
+	  if (ad->isStructDeclaration () && fdparent == ad->toParent2 ())
 	    break;
 
 	  if (!ad->isNested () || !ad->vthis)
 	    {
 	    Lnoframe:
-	      func->error ("cannot get frame pointer to %s",
-			   sym->toPrettyChars ());
+	      thisfd->error ("cannot get frame pointer to %s",
+			     sym->toPrettyChars ());
 	      return null_pointer_node;
 	    }
 
@@ -2205,9 +2221,53 @@ get_frame_for_symbol (Dsymbol *sym)
 	}
     }
 
-  tree ffo = get_frameinfo (parentfd);
+  tree ffo = get_frameinfo (fdparent);
   if (FRAMEINFO_CREATES_FRAME (ffo) || FRAMEINFO_STATIC_CHAIN (ffo))
-    return get_framedecl (func, parentfd);
+    {
+      tree frame_ref = get_framedecl (thisfd, fdparent);
+
+      /* If 'thisfd' is a derived member function, then 'fdparent' is the
+	 overridden member function in the base class.  Even if there's a
+	 closure environment, we should give the original stack data as the
+	 nested function frame.  */
+      if (fdoverride)
+	{
+	  ClassDeclaration *cdo = fdoverride->isThis ()->isClassDeclaration ();
+	  ClassDeclaration *cd = thisfd->isThis ()->isClassDeclaration ();
+	  gcc_assert (cdo && cd);
+
+	  int offset;
+	  if (cdo->isBaseOf (cd, &offset) && offset != 0)
+	    {
+	      /* Generate a new frame to pass to the overriden function that
+		 has the 'this' pointer adjusted.  */
+	      gcc_assert (offset != OFFSET_RUNTIME);
+
+	      tree type = FRAMEINFO_TYPE (get_frameinfo (fdoverride));
+	      tree fields = TYPE_FIELDS (type);
+	      /* The 'this' field comes immediately after the '__chain'.  */
+	      tree thisfield = chain_index (1, fields);
+	      vec<constructor_elt, va_gc> *ve = NULL;
+
+	      tree framefields = TYPE_FIELDS (FRAMEINFO_TYPE (ffo));
+	      frame_ref = build_deref (frame_ref);
+
+	      for (tree field = fields; field; field = DECL_CHAIN (field))
+		{
+		  tree value = component_ref (frame_ref, framefields);
+		  if (field == thisfield)
+		    value = build_offset (value, size_int (offset));
+
+		  CONSTRUCTOR_APPEND_ELT (ve, field, value);
+		  framefields = DECL_CHAIN (framefields);
+		}
+
+	      frame_ref = build_address (build_constructor (type, ve));
+	    }
+	}
+
+      return frame_ref;
+    }
 
   return null_pointer_node;
 }
@@ -2247,39 +2307,39 @@ d_nested_struct (StructDeclaration *sd)
 }
 
 
-/* Starting from the current function FUNC, try to find a suitable value of
+/* Starting from the current function FD, try to find a suitable value of
    'this' in nested function instances.  A suitable 'this' value is an
    instance of OCD or a class that has OCD as a base.  */
 
 static tree
 find_this_tree (ClassDeclaration *ocd)
 {
-  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
+  FuncDeclaration *fd = d_function_chain ? d_function_chain->function : NULL;
 
-  while (func)
+  while (fd)
     {
-      AggregateDeclaration *ad = func->isThis ();
+      AggregateDeclaration *ad = fd->isThis ();
       ClassDeclaration *cd = ad ? ad->isClassDeclaration () : NULL;
 
       if (cd != NULL)
 	{
 	  if (ocd == cd)
-	    return get_decl_tree (func->vthis);
+	    return get_decl_tree (fd->vthis);
 	  else if (ocd->isBaseOf (cd, NULL))
-	    return convert_expr (get_decl_tree (func->vthis),
+	    return convert_expr (get_decl_tree (fd->vthis),
 				 cd->type, ocd->type);
 
-	  func = d_nested_class (cd);
+	  fd = d_nested_class (cd);
 	}
       else
 	{
-	  if (func->isNested ())
+	  if (fd->isNested ())
 	    {
-	      func = func->toParent2 ()->isFuncDeclaration ();
+	      fd = fd->toParent2 ()->isFuncDeclaration ();
 	      continue;
 	    }
 
-	  func = NULL;
+	  fd = NULL;
 	}
     }
 

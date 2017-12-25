@@ -1,3 +1,4 @@
+// PERMUTE_ARGS: -unittest -O -release -inline -g
 
 import core.vararg;
 
@@ -2815,6 +2816,33 @@ void test9985()
 }
 
 /**********************************/
+
+// https://issues.dlang.org/show_bug.cgi?id=17457
+
+void delegate() dg17457;
+
+struct S17457 {
+    ulong[10] data;
+
+    this(int seconds) {
+        dg17457 = &mfunc;
+    }
+    void mfunc() {}
+}
+
+auto foo17457() {
+    pragma(inline, false);
+    return S17457(18);
+}
+
+void test17457()
+{
+    auto x = foo17457();
+    //printf("%p vs %p\n", &x, dg17457.ptr);
+    assert(&x == dg17457.ptr);
+}
+
+/**********************************/
 // 9994
 
 void test9994()
@@ -3482,8 +3510,8 @@ void test12686()
 
 struct S13089
 {
-    int foo;
     @disable this(this);    // non nothrow
+    int val;
 }
 
 void* p13089;
@@ -4067,6 +4095,50 @@ void test14264()
 }
 
 /**********************************/
+// 14686
+
+int test14686()
+{
+    string r;
+
+    struct S
+    {
+        int n;
+        this(this) { r ~= cast(char)('0' + n); }
+    }
+
+    S s1 = S(1);
+    S s2 = S(2);
+    S[] a1 = [S(1)];
+
+    S[2] sa1 = [s1, s2];
+    assert(r == "12", r);       // OK
+
+    r = "";
+    S[] a2 = a1 ~ s2;           // runtime concatenation
+    assert(r == "12", r);       // OK <- NG only in CTFE
+
+    r = "";
+    S[2] sa2a = [s1] ~ s2;
+    assert(r == "12", r);       // OK <- NG, s2 is not copied
+
+    r = "";
+    S[2] sa2b = s2 ~ [s1];
+    assert(r == "21", r);       // OK <- NG, s2 is not copied
+
+    r = "";
+    S[3] sa3a = ([s1] ~ [s1]) ~ s2;
+    assert(r == "112", r);      // OK <- NG, s2 is not copied
+
+    r = "";
+    S[3] sa3b = s2 ~ ([s1] ~ [s1]);
+    assert(r == "211", r);      // OK <- NG, s2 is not copied
+
+    return 1;
+}
+static assert(test14686());
+
+/**********************************/
 // 14815
 
 int test14815()
@@ -4108,6 +4180,25 @@ int test14815()
     return 1;
 }
 static assert(test14815());
+
+/**********************************/
+// https://issues.dlang.org/show_bug.cgi?id=16197
+
+struct Elem {
+    static string r;
+    int x = -1;
+    this(this) { r ~= 'p'; printf("POSTBLIT %d\n", x++); }
+    ~this()    { r ~= 'd'; printf("DTOR %d\n"    , x++); }
+}
+
+struct Ctr {
+    Elem[3] arr;
+}
+
+void test16197() {
+    { auto p = Ctr(); }
+    assert(Elem.r == "ddd");
+}
 
 /**********************************/
 // 14860
@@ -4350,6 +4441,44 @@ void test64()
 }
 
 /**********************************/
+
+struct S65
+{
+    static string t;
+
+    void bar(int a, int b)
+    {
+        t ~= "d";
+    }
+}
+
+S65 foo65a()
+{
+    S65.t ~= "a";
+    return S65();
+}
+
+int foo65b()
+{
+    S65.t ~= "b";
+    return 1;
+}
+
+int foo65c()
+{
+    S65.t ~= "c";
+    return 2;
+}
+
+void test65()
+{
+    import core.stdc.stdio;
+    foo65a().bar(foo65b(), foo65c());
+    printf("'%.*s'\n", cast(int)S65.t.length, S65.t.ptr);
+    assert(S65.t == "abcd");
+}
+
+/**********************************/
 // 15661
 
 struct X15661
@@ -4466,12 +4595,12 @@ int main()
     test7353();
     test61();
     test7506();
-    test7530();
     test7516a();
     test7516b();
     test7516c();
     test7516d();
     test7516e();
+    test7530();
     test62();
     test7579a();
     test7579b();
@@ -4483,6 +4612,7 @@ int main()
     test9899();
     test9907();
     test9985();
+    //test17457();    // XBUG: NRVO implementation differs
     test9994();
     test10094();
     test10244();
@@ -4510,12 +4640,15 @@ int main()
     test13669();
     test13095();
     test14264();
+    test14686();
     test14815();
+    test16197();
     test14860();
     test14696();
     test14838();
     test63();
     test64();
+    test65();
     test15661();
 
     printf("Success\n");

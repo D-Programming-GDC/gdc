@@ -174,15 +174,18 @@ class ExprVisitor : public Visitor
        lost during gimplification.  Stabilize lhs for assignment.  */
     tree lhs = build_expr (e1b);
     tree lexpr = stabilize_expr (&lhs);
-
     lhs = stabilize_reference (lhs);
 
+    /* Save RHS, to ensure that the expression is evaluated before LHS.  */
     tree rhs = build_expr (e2);
+    tree rexpr = d_save_expr (rhs);
+
     rhs = this->binary_op (code, build_ctype (e1->type),
-			   convert_expr (lhs, e1b->type, e1->type), rhs);
+			   convert_expr (lhs, e1b->type, e1->type), rexpr);
+    if (TREE_SIDE_EFFECTS (rhs))
+      rhs = compound_expr (rexpr, rhs);
 
     tree expr = modify_expr (lhs, convert_expr (rhs, e1->type, e1b->type));
-
     return compound_expr (lexpr, expr);
   }
 
@@ -1354,12 +1357,18 @@ public:
     if (e->lengthVar)
       e->lengthVar->csym = length;
 
-    /* Generate lower bound.  */
+    /* Generate upper and lower bounds.  */
     tree lwr_tree = d_save_expr (build_expr (e->lwr));
+    tree upr_tree = d_save_expr (build_expr (e->upr));
 
+    /* If the upper bound has any side effects, then the lower bound should be
+       copied to a temporary always.  */
+    if (TREE_CODE (upr_tree) == SAVE_EXPR && TREE_CODE (lwr_tree) != SAVE_EXPR)
+      lwr_tree = save_expr (lwr_tree);
+
+    /* Adjust the .ptr offset.  */
     if (!integer_zerop (lwr_tree))
       {
-	/* Adjust the .ptr offset.  */
 	tree ptrtype = TREE_TYPE (ptr);
 	ptr = build_array_index (void_okay_p (ptr), lwr_tree);
 	ptr = build_nop (ptrtype, ptr);
@@ -1367,7 +1376,8 @@ public:
     else
       lwr_tree = NULL_TREE;
 
-    /* Nothing more to do for static arrays.  */
+    /* Nothing more to do for static arrays, their bounds checking has been
+       done at compile-time.  */
     if (tb->ty == Tsarray)
       {
 	this->result_ = indirect_ref (build_ctype (e->type), ptr);
@@ -1376,8 +1386,7 @@ public:
     else
       gcc_assert (tb->ty == Tarray);
 
-    /* Generate upper bound with bounds checking.  */
-    tree upr_tree = d_save_expr (build_expr (e->upr));
+    /* Generate bounds checking code.  */
     tree newlength;
 
     if (!e->upperIsInBounds)

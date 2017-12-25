@@ -36,6 +36,23 @@
 	(d_langhook_attribute_table): Likewise.
 	(handle_weakref_attribute): Remove function.
 
+2017-12-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (stabilize_expr): Handle assignment expressions.
+	(get_frame_for_symbol): Adjust the 'this' field of frames of
+	overridden interface functions.
+	* d-diagnostic.cc (expand_format): Rewrite '%X' format as '%x'.
+	* decl.cc (DeclVisitor::visit(ClassDeclaration)): Handle future
+	attribute.
+	* expr.cc (ExprVisitor::binop_assignment): Ensure RHS is evaluated
+	before LHS.
+	(ExprVisitor::visit(SliceExp)): Always save lower bounds if upper has
+	any side effects.
+	* typeinfo.cc (TypeInfoVisitor::TypeInfoClassDeclaration): Use
+	ClassDeclaration::isAbstract.
+	(TypeInfoVisitor::visit(TypeInfoTupleDeclaration)): Mark internal
+	reference as public and hidden.
+
 2017-12-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_alignment_field): Set DECL_PADDING_P and

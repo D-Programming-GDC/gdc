@@ -1,5 +1,4 @@
-//#! blah
-#line 2
+#! blah
 
 static assert(__LINE__ == 3); // fails as __LINE__ is 2
 
@@ -325,6 +324,7 @@ const double d7 = 4;
 
 static assert(!is(typeof(bug7(cast(long)e7))));
 static assert(!is(typeof(bug7(cast(long)s7))));
+version (LDC) {} else // cast in LDC undefined result w/ x > long.max
 static assert(!is(typeof(bug7(cast(long)3.256679e30))));
 
 static assert(is(typeof(bug7(cast(long)d7))));
@@ -642,6 +642,14 @@ void test14459()
     const char* s16 = "hi16";
     assert(p0 == s0);           // ok <- fails
 }
+
+/************************************/
+// https://issues.dlang.org/show_bug.cgi?id=15607
+
+static immutable char[2][4] code_base = [ "??", 12 ];
+static assert(code_base[0] == "??");
+static assert(code_base[1] == [12, 12]);
+static assert(code_base[2] == typeof(code_base[2]).init);
 
 /************************************/
 
