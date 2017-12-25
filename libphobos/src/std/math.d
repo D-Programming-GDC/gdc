@@ -156,6 +156,8 @@ version (X86)    version = X86_Any;
 version (X86_64) version = X86_Any;
 version (PPC)    version = PPC_Any;
 version (PPC64)  version = PPC_Any;
+version (MIPS32) version = MIPS_Any;
+version (MIPS64) version = MIPS_Any;
 
 version(D_InlineAsm_X86)
 {
@@ -4684,21 +4686,7 @@ private:
 private:
     static uint getIeeeFlags()
     {
-        version(InlineAsm_X86_Any)
-        {
-            ushort sw;
-            asm pure nothrow @nogc { fstsw sw; }
-
-            // OR the result with the SSE2 status register (MXCSR).
-            if (haveSSE)
-            {
-                uint mxcsr;
-                asm pure nothrow @nogc { stmxcsr mxcsr; }
-                return (sw | mxcsr) & EXCEPTIONS_MASK;
-            }
-            else return sw & EXCEPTIONS_MASK;
-        }
-        else version (GNU)
+        version (GNU)
         {
             version (X86_Any)
             {
@@ -4737,6 +4725,21 @@ private:
             else
                 assert(0, "Not yet supported");
         }
+        else
+        version(InlineAsm_X86_Any)
+        {
+            ushort sw;
+            asm pure nothrow @nogc { fstsw sw; }
+
+            // OR the result with the SSE2 status register (MXCSR).
+            if (haveSSE)
+            {
+                uint mxcsr;
+                asm pure nothrow @nogc { stmxcsr mxcsr; }
+                return (sw | mxcsr) & EXCEPTIONS_MASK;
+            }
+            else return sw & EXCEPTIONS_MASK;
+        }
         else version (SPARC)
         {
            /*
@@ -4755,23 +4758,6 @@ private:
     }
     static void resetIeeeFlags() @nogc
     {
-        version(InlineAsm_X86_Any)
-        {
-            asm pure nothrow @nogc
-            {
-                fnclex;
-            }
-
-            // Also clear exception flags in MXCSR, SSE's control register.
-            if (haveSSE)
-            {
-                uint mxcsr;
-                asm nothrow @nogc { stmxcsr mxcsr; }
-                mxcsr &= ~EXCEPTIONS_MASK;
-                asm nothrow @nogc { ldmxcsr mxcsr; }
-            }
-        }
-        else
         version (GNU)
         {
             version (X86_Any)
@@ -4806,12 +4792,29 @@ private:
                     old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
                     asm pure nothrow @nogc
                     {
-                        "vmsr FPSCR, %0;" : : "r" (old);
+                        "vmsr FPSCR, %0" : : "r" (old);
                     }
                 }
             }
             else
                 assert(0, "Not yet supported");
+        }
+        else
+        version(InlineAsm_X86_Any)
+        {
+            asm pure nothrow @nogc
+            {
+                fnclex;
+            }
+
+            // Also clear exception flags in MXCSR, SSE's control register.
+            if (haveSSE)
+            {
+                uint mxcsr;
+                asm nothrow @nogc { stmxcsr mxcsr; }
+                mxcsr &= ~EXCEPTIONS_MASK;
+                asm nothrow @nogc { ldmxcsr mxcsr; }
+            }
         }
         else
         {
@@ -5086,9 +5089,11 @@ struct FloatingPointControl
         return cast(RoundingMode)(getControlState() & roundingMask);
     }
 
+    alias ExceptionMask = uint; ///
+
     version(StdDdoc)
     {
-        enum : uint
+        enum : ExceptionMask
         {
             /** IEEE hardware exceptions.
              *  By default, all exceptions are masked (disabled).
@@ -5106,11 +5111,10 @@ struct FloatingPointControl
             allExceptions, /// ditto
         }
     }
-    else version(ARM)
+    else version (AArch64)
     {
-        enum : uint
+        enum : ExceptionMask
         {
-            subnormalException    = 0x8000,
             inexactException      = 0x1000,
             underflowException    = 0x0800,
             overflowException     = 0x0400,
@@ -5119,27 +5123,72 @@ struct FloatingPointControl
             severeExceptions   = overflowException | divByZeroException
                                  | invalidException,
             allExceptions      = severeExceptions | underflowException
-                                 | inexactException | subnormalException,
+                                 | inexactException,
         }
     }
-    else version(PPC_Any)
+    else version (ARM)
     {
-        enum : uint
+        enum : ExceptionMask
         {
-            inexactException      = 0x0008,
-            divByZeroException    = 0x0010,
-            underflowException    = 0x0020,
-            overflowException     = 0x0040,
-            invalidException      = 0x0080,
+            inexactException      = 0x1000,
+            underflowException    = 0x0800,
+            overflowException     = 0x0400,
+            divByZeroException    = 0x0200,
+            invalidException      = 0x0100,
             severeExceptions   = overflowException | divByZeroException
                                  | invalidException,
             allExceptions      = severeExceptions | underflowException
                                  | inexactException,
         }
     }
-    else
+    else version (MIPS_Any)
     {
-        enum : uint
+        enum : ExceptionMask
+        {
+            inexactException      = 0x0080,
+            underflowException    = 0x0100,
+            overflowException     = 0x0200,
+            divByZeroException    = 0x0400,
+            invalidException      = 0x0800,
+            severeExceptions   = overflowException | divByZeroException
+                                 | invalidException,
+            allExceptions      = severeExceptions | underflowException
+                                 | inexactException,
+        }
+    }
+    else version (PPC_Any)
+    {
+        enum : ExceptionMask
+        {
+            inexactException      = 0x08,
+            divByZeroException    = 0x10,
+            underflowException    = 0x20,
+            overflowException     = 0x40,
+            invalidException      = 0x80,
+            severeExceptions   = overflowException | divByZeroException
+                                 | invalidException,
+            allExceptions      = severeExceptions | underflowException
+                                 | inexactException,
+        }
+    }
+    else version (SPARC64)
+    {
+        enum : ExceptionMask
+        {
+            invalidException      = 0x00800000,
+            divByZeroException    = 0x01000000,
+            underflowException    = 0x02000000,
+            overflowException     = 0x04000000,
+            inexactException      = 0x08000000,
+            severeExceptions   = overflowException | divByZeroException
+                                 | invalidException,
+            allExceptions      = severeExceptions | underflowException
+                                 | inexactException,
+        }
+    }
+    else version (X86_Any)
+    {
+        enum : ExceptionMask
         {
             inexactException      = 0x20,
             underflowException    = 0x10,
@@ -5153,6 +5202,8 @@ struct FloatingPointControl
                                  | inexactException | subnormalException,
         }
     }
+    else
+        static assert(false, "Not implemented for this architecture");
 
 public:
     /// Returns: true if the current FPU supports exception trapping
@@ -5182,11 +5233,11 @@ public:
             return result;
         }
         else
-            static assert(false, "Not implemented for this architecture");
+            assert(0, "Not yet supported");
     }
 
     /// Enable (unmask) specific hardware exceptions. Multiple exceptions may be ORed together.
-    void enableExceptions(uint exceptions) @nogc
+    void enableExceptions(ExceptionMask exceptions) @nogc
     {
         assert(hasExceptionTraps);
         initialize();
@@ -5197,7 +5248,7 @@ public:
     }
 
     /// Disable (mask) specific hardware exceptions. Multiple exceptions may be ORed together.
-    void disableExceptions(uint exceptions) @nogc
+    void disableExceptions(ExceptionMask exceptions) @nogc
     {
         assert(hasExceptionTraps);
         initialize();
@@ -5208,7 +5259,7 @@ public:
     }
 
     /// Returns: the exceptions which are currently enabled (unmasked)
-    @property static uint enabledExceptions() @nogc
+    @property static ExceptionMask enabledExceptions() @nogc
     {
         assert(hasExceptionTraps);
         version(X86_Any)
@@ -5230,18 +5281,32 @@ private:
 
     bool initialized = false;
 
-    version(ARM)
+    version (AArch64)
     {
         alias ControlState = uint;
     }
-    else version(PPC_Any)
+    else version (ARM)
     {
         alias ControlState = uint;
     }
-    else
+    else version (MIPS_Any)
+    {
+        alias ControlState = uint;
+    }
+    else version (PPC_Any)
+    {
+        alias ControlState = uint;
+    }
+    else version (SPARC64)
+    {
+        alias ControlState = uint;
+    }
+    else version (X86_Any)
     {
         alias ControlState = ushort;
     }
+    else
+        static assert(false, "Not implemented for this architecture");
 
     void initialize() @nogc
     {
@@ -5261,6 +5326,43 @@ private:
     // Read from the control register
     static ControlState getControlState() @trusted nothrow @nogc
     {
+        version (GNU)
+        {
+            version (X86_Any)
+            {
+                ControlState cont;
+                asm pure nothrow @nogc
+                {
+                    "fstcw %0" : "=m" cont;
+                }
+                return cont;
+            }
+            else version (AArch64)
+            {
+                asm pure nothrow @nogc
+                {
+                    "mrs %0, FPCR;" : "=r" cont;
+                }
+                return cont;
+            }
+            else version (ARM)
+            {
+                ControlState cont;
+                version (ARM_SoftFloat)
+                   cont = 0;
+                else
+                {
+                    asm pure nothrow @nogc
+                    {
+                        "vmrs %0, FPSCR" : "=r" cont;
+                    }
+                }
+                return cont;
+            }
+            else
+                static assert(0, "Not yet supported");
+        }
+        else
         version (D_InlineAsm_X86)
         {
             short cont;
@@ -5283,86 +5385,13 @@ private:
             return cont;
         }
         else
-        version (GNU)
-        {
-            ControlState cont;
-            version (X86)
-            {
-                asm pure nothrow @nogc
-                {
-                    "fstcw %0;" : "=m" cont;
-                }
-            }
-            else version (X86_64)
-            {
-                asm pure nothrow @nogc
-                {
-                    "fstcw %0;" : "=m" cont;
-                }
-            }
-            else version (AArch64)
-            {
-                asm pure nothrow @nogc
-                {
-                    "mrs %0, FPCR;" : "=r" cont;
-                }
-            }
-            else version (ARM)
-            {
-                version (ARM_SoftFloat)
-                   cont = 0;
-                else
-                {
-                    asm pure nothrow @nogc
-                    {
-                        "vmrs %0, FPSCR;" : "=r" cont;
-                    }
-                }
-            }
-            else
-                static assert(0, "Not yet supported");
-
-            return cont;
-        }
-        else
             assert(0, "Not yet supported");
     }
 
     // Set the control register
     static void setControlState(ControlState newState) @trusted nothrow @nogc
     {
-        version (InlineAsm_X86_Any)
-        {
-            asm nothrow @nogc
-            {
-                fclex;
-                fldcw newState;
-            }
-
-            // Also update MXCSR, SSE's control register.
-            if (haveSSE)
-            {
-                uint mxcsr;
-                asm nothrow @nogc { stmxcsr mxcsr; }
-
-                /* In the FPU control register, rounding mode is in bits 10 and
-                11. In MXCSR it's in bits 13 and 14. */
-                enum ROUNDING_MASK_SSE = roundingMask << 3;
-                immutable newRoundingModeSSE = (newState & roundingMask) << 3;
-                mxcsr &= ~ROUNDING_MASK_SSE; // delete old rounding mode
-                mxcsr |= newRoundingModeSSE; // write new rounding mode
-
-                /* In the FPU control register, masks are bits 0 through 5.
-                In MXCSR they're 7 through 12. */
-                enum EXCEPTION_MASK_SSE = allExceptions << 7;
-                immutable newExceptionMasks = (newState & allExceptions) << 7;
-                mxcsr &= ~EXCEPTION_MASK_SSE; // delete old masks
-                mxcsr |= newExceptionMasks; // write new exception masks
-
-                asm nothrow @nogc { ldmxcsr mxcsr; }
-            }
-        }
-        else version (GNU)
+        version (GNU)
         {
             version (X86_Any)
             {
@@ -5411,12 +5440,40 @@ private:
                 {
                     asm pure nothrow @nogc
                     {
-                        "vmsr FPSCR, %0;" : : "r" (newState);
+                        "vmsr FPSCR, %0" : : "r" (newState);
                     }
                 }
             }
             else
                 assert(0, "Not yet supported");
+        }
+        else
+        version (InlineAsm_X86_Any)
+        {
+            asm nothrow @nogc
+            {
+                fclex;
+                fldcw newState;
+            }
+
+            // Also update MXCSR, SSE's control register.
+            if (haveSSE)
+            {
+                uint mxcsr;
+                asm nothrow @nogc { stmxcsr mxcsr; }
+
+                /* In the FPU control register, rounding mode is in bits 10 and
+                11. In MXCSR it's in bits 13 and 14. */
+                mxcsr &= ~(roundingMask << 3);             // delete old rounding mode
+                mxcsr |= (newState & roundingMask) << 3;   // write new rounding mode
+
+                /* In the FPU control register, masks are bits 0 through 5.
+                In MXCSR they're 7 through 12. */
+                mxcsr &= ~(allExceptions << 7);            // delete old masks
+                mxcsr |= (newState & allExceptions) << 7;  // write new exception masks
+
+                asm nothrow @nogc { ldmxcsr mxcsr; }
+            }
         }
         else
             assert(0, "Not yet supported");
