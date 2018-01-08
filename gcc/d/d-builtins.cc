@@ -197,7 +197,8 @@ build_frontend_type (tree type)
       dtype = build_frontend_type (TREE_TYPE (type));
       if (dtype)
 	{
-	  dtype = dtype->sarrayOf (TYPE_VECTOR_SUBPARTS (type))->addMod (mod);
+	  poly_uint64 nunits = TYPE_VECTOR_SUBPARTS (type);
+	  dtype = dtype->sarrayOf (nunits.to_constant ())->addMod (mod);
 
 	  if (dtype->nextOf ()->isTypeBasic () == NULL)
 	    break;
@@ -337,7 +338,7 @@ d_eval_constant_expression (tree cst)
 	}
       else if (code == VECTOR_CST)
 	{
-	  dinteger_t nunits = VECTOR_CST_NELTS (cst);
+	  dinteger_t nunits = VECTOR_CST_NELTS (cst).to_constant ();
 	  Expressions *elements = new Expressions;
 	  elements->setDim (nunits);
 
