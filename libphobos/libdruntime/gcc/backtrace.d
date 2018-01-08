@@ -153,7 +153,7 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
     /*
      * The callback type used with the opApply overload which returns a SymbolOrError
      */
-    private alias scope int delegate(ref size_t, ref SymbolOrError) ApplyCallback;
+    private alias int delegate(ref size_t, ref SymbolOrError) ApplyCallback;
 
     /*
      * Passed to syminfoCallback, pcinfoCallback and pcinfoErrorCallback
@@ -228,7 +228,7 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 
         override int opApply(scope int delegate(ref const(char[])) dg) const
         {
-            return opApply((ref size_t, ref const(char[]) buf)
+            return opApply( (ref size_t, ref const(char[]) buf)
                             {
                                 return dg(buf);
                             });
@@ -236,12 +236,12 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 
         override int opApply(scope int delegate(ref size_t, ref const(char[])) dg) const
         {
-            return opApply((ref size_t i, ref SymbolOrError sym)
+            return opApply( (ref size_t i, ref SymbolOrError sym)
                             {
-                               char[512] buffer = '\0';
-                               char[] msg;
-                               if (sym.errnum != 0)
-                               {
+                                char[512] buffer = '\0';
+                                char[] msg;
+                                if (sym.errnum != 0)
+                                {
                                     auto retval = snprintf(buffer.ptr, buffer.length,
                                                            "libbacktrace error: '%s' errno: %d", sym.msg, sym.errnum);
                                     if (retval >= buffer.length)
@@ -257,7 +257,7 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
                             });
         }
 
-        int opApply(ApplyCallback dg) const
+        int opApply(scope ApplyCallback dg) const
         {
             //If backtrace_simple produced an error report it and exit
             if (!state || error != 0)
@@ -352,7 +352,7 @@ else
 
         override int opApply(scope int delegate(ref const(char[])) dg) const
         {
-            return opApply((ref size_t, ref const(char[]) buf)
+            return opApply( (ref size_t, ref const(char[]) buf)
                             {
                                 return dg(buf);
                             });
@@ -485,7 +485,7 @@ struct SymbolInfo
  * Format one output line for symbol sym.
  * Returns a slice of fixbuf.
  */
-char[] formatLine(const SymbolInfo sym, ref char[512] fixbuf)
+char[] formatLine(const SymbolInfo sym, return ref char[512] fixbuf)
 {
     import core.demangle, core.stdc.config;
     import core.stdc.stdio : snprintf, printf;
