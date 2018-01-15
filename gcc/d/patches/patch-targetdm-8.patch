@@ -1430,7 +1430,7 @@ The following OS versions are implemented:
  tm_p_include_list
  tm_p_file_list
  tm_defines
-@@ -11804,6 +11807,7 @@ fi
+@@ -11808,6 +11811,7 @@ fi
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -1438,7 +1438,7 @@ The following OS versions are implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -12173,6 +12177,21 @@ for f in $tm_p_file; do
+@@ -12177,6 +12181,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -1460,34 +1460,24 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -18442,7 +18461,7 @@ else
+@@ -18446,7 +18465,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18445 "configure"
-+#line 18464 "configure"
+-#line 18449 "configure"
++#line 18468 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18548,7 +18567,7 @@ else
+@@ -18552,7 +18571,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18551 "configure"
-+#line 18570 "configure"
+-#line 18555 "configure"
++#line 18574 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -29559,6 +29578,9 @@ fi
- 
- 
- 
-+
-+
-+
- 
- 
- 
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
 @@ -1724,6 +1724,7 @@ AC_SUBST(build_subdir)
