@@ -1,4 +1,4 @@
-module imports.gdc170a;
+module imports.gdc170;
 
 class bar(T)
 {

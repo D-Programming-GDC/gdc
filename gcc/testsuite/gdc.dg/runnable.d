@@ -1,9 +1,9 @@
-// { dg-additional-sources "imports/runnablea.d" }
+// { dg-additional-sources "imports/runnable.d" }
 // { dg-do run { target arm*-*-* i?86-*-* x86_64-*-* } }
 
 module runnable;
 
-import imports.runnablea;
+import imports.runnable;
 import core.stdc.stdio;
 import gcc.attribute;
 
@@ -384,7 +384,7 @@ void test36c()
 /**
  * empty is a (private) function which is nested in lightPostprocess.
  * At the same time it's a template instance, so it has to be declared as
- * weak or otherwise one-only. imports/runnablea.d creates another instance
+ * weak or otherwise one-only. imports/runnable.d creates another instance
  * of Regex!char to verify that.
  */
 struct Parser(R)
@@ -410,7 +410,7 @@ struct Regex(Char)
 void test36d()
 {
     auto parser = Parser!(char[])();
-    imports.runnablea.test36d_1;
+    imports.runnable.test36d_1;
 }
 
 void test36()
