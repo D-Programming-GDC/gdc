@@ -2159,7 +2159,7 @@ d_comdat_group (tree decl)
 void
 d_comdat_linkage (tree decl)
 {
-  /* Weak definitions have to be public.  */
+  /* COMDAT definitions have to be public.  */
   if (!TREE_PUBLIC (decl))
     return;
 
@@ -2167,7 +2167,7 @@ d_comdat_linkage (tree decl)
   if (TREE_CODE (decl) == FUNCTION_DECL)
     DECL_DECLARED_INLINE_P (decl) = 1;
 
-  if (supports_one_only ())
+  if (flag_weak)
     make_decl_one_only (decl, d_comdat_group (decl));
   else if (TREE_CODE (decl) == FUNCTION_DECL
 	   || (VAR_P (decl) && DECL_ARTIFICIAL (decl)))
@@ -2181,4 +2181,24 @@ d_comdat_linkage (tree decl)
 
   if (TREE_PUBLIC (decl))
     DECL_COMDAT (decl) = 1;
+}
+
+/* Set DECL up to have the closest approximation of "linkonce" linkage.  */
+
+void
+d_linkonce_linkage (tree decl)
+{
+  /* Weak definitions have to be public.  */
+  if (!TREE_PUBLIC (decl))
+    return;
+
+  /* Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined.  */
+  if (TREE_CODE (decl) == FUNCTION_DECL)
+    DECL_DECLARED_INLINE_P (decl) = 1;
+
+  /* No weak support, fallback to COMDAT linkage.  */
+  if (!flag_weak)
+   return d_comdat_linkage (decl);
+
+  make_decl_one_only (decl, d_comdat_group (decl));
 }

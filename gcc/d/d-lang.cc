@@ -38,6 +38,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 #include "stringpool.h"
 #include "stor-layout.h"
+#include "varasm.h"
 #include "output.h"
 #include "print-tree.h"
 #include "gimple-expr.h"
@@ -360,6 +361,9 @@ d_init (void)
 
   if (flag_exceptions)
     using_eh_for_cleanups ();
+
+  if (!supports_one_only ())
+    flag_weak = 0;
 
   /* This is the C main, not the D main.  */
   main_identifier_node = get_identifier ("main");

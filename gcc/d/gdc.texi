@@ -329,6 +329,14 @@ is compiled into the program.
 Turns on compilation of @code{version} code identified by @var{ident}.
 @end table
 
+@item -fno-weak
+@cindex @option{-fweak}
+@cindex @option{-fno-weak}
+Turns off emission of instantiated declarations that can be defined in multiple
+objects as weak or one-only symbols.  The default is to emit all public symbols
+as weak, unless there lacks target support.  Disabling this options means that
+common symbols are instead put in COMDAT or become private.
+
 @end table
 
 @node Directory Options
