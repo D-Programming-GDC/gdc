@@ -26,6 +26,10 @@
 
 2018-01-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* decls.cc (get_symbol_decl): Handle pragma(inline) attributes.
+
+2018-01-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* decl.cc (DeclVisitor::visit(StructDeclaration)): Mark compiler
 	generated symbols as DECL_ONE_ONLY instead of DECL_COMDAT.
 	(DeclVisitor::visit(ClassDeclaration)): Likewise.
