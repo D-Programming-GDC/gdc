@@ -83,9 +83,7 @@ am__aclocal_m4_deps = $(top_srcdir)/../config/lead-dot.m4 \
 	$(top_srcdir)/../lt~obsolete.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/m4/gcc_support.m4 $(top_srcdir)/m4/autoconf.m4 \
 	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/gdc.m4 \
-	$(top_srcdir)/m4/druntime.m4 \
-	$(top_srcdir)/m4/druntime/libbacktrace.m4 \
-	$(top_srcdir)/m4/druntime/cpu.m4 \
+	$(top_srcdir)/m4/druntime.m4 $(top_srcdir)/m4/druntime/cpu.m4 \
 	$(top_srcdir)/m4/druntime/os.m4 \
 	$(top_srcdir)/m4/druntime/libraries.m4 \
 	$(top_srcdir)/configure.ac
@@ -165,7 +163,6 @@ EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 GDC = @GDC@
 GREP = @GREP@
-HAVE_DLADDR = @HAVE_DLADDR@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@

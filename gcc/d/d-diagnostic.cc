@@ -1,5 +1,5 @@
 /* d-diagnostics.cc -- D frontend interface to gcc diagnostics.
-   Copyright (C) 2017 Free Software Foundation, Inc.
+   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ expand_format (const char *format)
       buf.writeByte (*p);
       p++;
 
+    Lagain:
       switch (*p)
 	{
 	case '\0':
@@ -80,7 +81,13 @@ expand_format (const char *format)
 	  /* Remove zero padding from format string.  */
 	  while (ISDIGIT (*p))
 	    p++;
-	  continue;
+	  goto Lagain;
+
+	case 'X':
+	  /* Hex format only supports lower-case.  */
+	  buf.writeByte ('x');
+	  p++;
+	  break;
 
 	default:
 	  break;

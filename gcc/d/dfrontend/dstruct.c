@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -811,10 +811,10 @@ void AggregateDeclaration::alignmember(
  *
  * nextoffset:    next location in aggregate
  * memsize:       size of member
- * memalignsize:  size of member for alignment purposes
+ * memalignsize:  natural alignment of member
  * alignment:     alignment in effect for this member
  * paggsize:      size of aggregate (updated)
- * paggalignsize: size of aggregate for alignment purposes (updated)
+ * paggalignsize: alignment of aggregate (updated)
  * isunion:       the aggregate is a union
  */
 unsigned AggregateDeclaration::placeField(
@@ -828,6 +828,10 @@ unsigned AggregateDeclaration::placeField(
         )
 {
     unsigned ofs = *nextoffset;
+
+    const unsigned actualAlignment =
+        alignment == STRUCTALIGN_DEFAULT ? memalignsize : alignment;
+
     alignmember(alignment, memalignsize, &ofs);
     unsigned memoffset = ofs;
     ofs += memsize;
@@ -836,14 +840,8 @@ unsigned AggregateDeclaration::placeField(
     if (!isunion)
         *nextoffset = ofs;
 
-    if (alignment != STRUCTALIGN_DEFAULT)
-    {
-        if (memalignsize < alignment)
-            memalignsize = alignment;
-    }
-
-    if (*paggalignsize < memalignsize)
-        *paggalignsize = memalignsize;
+    if (*paggalignsize < actualAlignment)
+        *paggalignsize = actualAlignment;
 
     return memoffset;
 }

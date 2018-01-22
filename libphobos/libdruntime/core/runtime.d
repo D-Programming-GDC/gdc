@@ -491,7 +491,7 @@ extern (C) bool runModuleUnitTests()
             // First frame is LibBacktrace ctor. Second is signal handler, but include that for now
             bt.__ctor(1);
 
-            foreach(size_t i, const(char[]) msg; bt)
+            foreach (size_t i, const(char[]) msg; bt)
                 fprintf(stderr, "%s\n", msg.ptr ? msg.ptr : "???");
         }
 

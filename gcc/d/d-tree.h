@@ -1,5 +1,5 @@
 /* d-tree.h -- Definitions and declarations for code generation.
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@ typedef Array<Expression *> Expressions;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
+   1: CALL_EXPR_ARGS_ORDERED (in CALL_EXPR).
 
    Usage of TYPE_LANG_FLAG_?:
    0: TYPE_SHARED
@@ -232,7 +233,7 @@ struct GTY(()) language_function
   vec<tree, va_gc> *stmt_list;
 
   /* Variables that are in scope that will need destruction later.  */
-  vec<VarDeclaration *> GTY((skip)) vars_in_scope;
+  vec<tree, va_gc> *vars_in_scope;
 
   /* Table of all used or defined labels in the function.  */
   hash_map<Statement *, d_label_entry> *labels;
@@ -337,6 +338,11 @@ lang_tree_node
    but a literal function / method reference.  */
 #define METHOD_CALL_EXPR(NODE) \
   (TREE_LANG_FLAG_0 (NODE))
+
+/* True if all arguments in a call expression should be evaluated in the
+   order they are given (left to right).  */
+#define CALL_EXPR_ARGS_ORDERED(NODE) \
+  (TREE_LANG_FLAG_1 (CALL_EXPR_CHECK (NODE)))
 
 /* True if the type was declared 'shared'.  */
 #define TYPE_SHARED(NODE) \
@@ -496,7 +502,8 @@ extern void extract_from_method_call (tree, tree &, tree &);
 extern tree build_vindex_ref (tree, tree, size_t);
 extern tree d_save_expr (tree);
 extern tree stabilize_expr (tree *);
-extern tree build_target_expr (tree);
+extern tree build_target_expr (tree, tree);
+extern tree force_target_expr (tree);
 extern tree build_address (tree);
 extern tree d_mark_addressable (tree);
 extern tree d_mark_used (tree);

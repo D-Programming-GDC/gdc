@@ -40,7 +40,7 @@ bool printAll()
         if (m.unitTest)
         {
             string name = m.name;
-            printf("%.*s\n", cast(uint)name.length, cast(uint)name.ptr);
+            printf("%.*s\n", cast(int)name.length, name.ptr);
         }
     }
     return true;

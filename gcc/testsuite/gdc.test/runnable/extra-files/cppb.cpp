@@ -34,6 +34,7 @@ headers.
 #include <stdio.h>
 #include <assert.h>
 #include <exception>
+#include <cstdarg>
 
 /**************************************/
 
@@ -403,7 +404,7 @@ wchar_t f13289_cpp_wchar_t(wchar_t ch)
     }
 }
 
-#if __linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun
+#if __linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun || __NetBSD__
 unsigned short f13289_d_wchar(unsigned short ch);
 wchar_t f13289_d_dchar(wchar_t ch);
 #elif _WIN32
@@ -413,7 +414,7 @@ unsigned int f13289_d_dchar(unsigned int ch);
 
 bool f13289_cpp_test()
 {
-#if __linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun
+#if __linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun || __NetBSD__
     if (!(f13289_d_wchar((unsigned short)'c') == (unsigned short)'C')) return false;
     if (!(f13289_d_wchar((unsigned short)'D') == (unsigned short)'D')) return false;
     if (!(f13289_d_dchar(L'e') == L'E')) return false;
@@ -513,6 +514,17 @@ void test14200a(int a) {};
 void test14200b(float a, int b, double c) {};
 
 /******************************************/
+// 14956
+
+namespace std {
+    namespace N14956 {
+	struct S14956 { };
+    }
+}
+
+void test14956(std::N14956::S14956 s) { }
+
+/******************************************/
 // check order of overloads in vtable
 
 class Statement;
@@ -573,7 +585,7 @@ void fuzz2_cppvararg(unsigned longlong arg10, unsigned longlong arg11, bool arg1
     fuzz2_checkValues(arg10, arg11, arg12);
 }
 
-#if __linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun
+#if __linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun || __NetBSD__
 #define wchar unsigned short
 #elif _WIN32
 #define wchar wchar_t
@@ -608,6 +620,9 @@ void throwle()
 }
 
 #endif
+
+/******************************************/
+// 15579
 
 /******************************************/
 // 15579
@@ -738,6 +753,51 @@ void test15455b(X8 s)
     assert(s.b.b == 3);
     assert(s.b.c == 4);
     assert(s.b.d == 5);
+}
+
+/******************************************/
+// 15372
+
+template <typename T>
+int foo15372(int value)
+{
+    return value;
+}
+
+void test15372b()
+{
+	int t = foo15372<int>(1);
+}
+
+/****************************************/
+// 15576
+
+namespace ns15576
+{
+    int global15576;
+
+    namespace ns
+    {
+        int n_global15576;
+    }
+}
+
+/****************************************/
+// 15802
+
+template <typename T>
+class Foo15802
+{
+public:
+    static int boo(int value)
+    {
+        return value;
+    }
+};
+
+void test15802b()
+{
+	int t = Foo15802<int>::boo(1);
 }
 
 

@@ -60,6 +60,9 @@ proc gdc-convert-args { base args } {
         } elseif [string match "-debug" $arg] {
             lappend out "-fdebug"
 
+        } elseif [regexp -- {^-debug=(\w+)} $arg pattern value] {
+            lappend out "-fdebug=$value"
+
         } elseif [string match "-dip1000" $arg] {
             lappend out "-ftransition=safe"
 
@@ -81,7 +84,7 @@ proc gdc-convert-args { base args } {
             lappend out "-finline-functions"
 
         } elseif [regexp -- {^-mv=([\w+=./-]+)} $arg pattern value] {
-            lappend out "-fmodule-filepath=$value"
+            lappend out "-fmodule-file=$value"
 
         } elseif [string match "-O" $arg] {
             lappend out "-O2"
@@ -106,6 +109,9 @@ proc gdc-convert-args { base args } {
 
         } elseif [regexp -- {^-version=(\w+)} $arg pattern value] {
             lappend out "-fversion=$value"
+
+        } elseif [string match "-vtls" $arg] {
+            lappend out "-ftransition=tls"
 
         } elseif [string match "-w" $arg] {
             lappend out "-Wall"
