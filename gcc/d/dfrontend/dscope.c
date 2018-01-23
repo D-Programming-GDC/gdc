@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -655,7 +655,7 @@ void Scope::setNoFree()
 structalign_t Scope::alignment()
 {
     if (aligndecl)
-        return aligndecl->getAlignment();
+        return aligndecl->getAlignment(this);
     else
         return STRUCTALIGN_DEFAULT;
 }
@@ -738,4 +738,28 @@ Dsymbol *Scope::search_correct(Identifier *ident)
         return NULL;            // don't do it for speculative compiles; too time consuming
 
     return (Dsymbol *)speller(ident->toChars(), &scope_search_fp, this, idchars);
+}
+
+/************************************
+ * Maybe `ident` was a C or C++ name. Check for that,
+ * and suggest the D equivalent.
+ * Params:
+ *  ident = unknown identifier
+ * Returns:
+ *  D identifier string if found, null if not
+ */
+const char *Scope::search_correct_C(Identifier *ident)
+{
+    TOK tok;
+    if (ident == Id::_NULL)
+        tok = TOKnull;
+    else if (ident == Id::_TRUE)
+        tok = TOKtrue;
+    else if (ident == Id::_FALSE)
+        tok = TOKfalse;
+    else if (ident == Id::_unsigned)
+        tok = TOKuns32;
+    else
+        return NULL;
+    return Token::toChars(tok);
 }

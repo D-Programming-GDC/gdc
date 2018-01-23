@@ -1515,7 +1515,7 @@ alias void delegate() dg_t;
 
 void Y(dg_t delegate (dg_t) y)
 {
-    struct F { void delegate(F) f; };
+    struct F { void delegate(F) f; }
 
   version (all)
   { // generates error
@@ -2362,8 +2362,32 @@ void xreduce(alias f)()
     f(4);
 }
 
-void test11297() {
+void test11297()
+{
     xreduce!foo11297();
+}
+
+/*******************************************/
+// 11886
+
+struct Lambda11886(alias fun)
+{
+    auto opCall(A...)(A args) { return fun(args); }
+}
+void test11886()
+{
+    int n = 10;
+    Lambda11886!(x => x + n) f;
+    assert(f(1) == 11); // Line 9
+
+    struct NS
+    {
+        auto foo(T)(T t) { return t * n; }
+    }
+    static assert(NS.tupleof.length == 1);
+    static assert(NS.sizeof == (void*).sizeof);
+    NS ns;
+    assert(ns.foo(2) == 20);
 }
 
 /*******************************************/
@@ -2640,7 +2664,47 @@ void test15422b()
     }
 }
 
-/*******************************************/
+/***************************************************/
+// 15757
+
+template map15757(fun...)
+{
+    auto map15757(R)(R r)
+    {
+        return MapResult15757!(fun, R)(r);
+    }
+}
+
+struct MapResult15757(alias fun, R)
+{
+    R _input;
+
+    this(R input)
+    {
+        _input = input;
+    }
+}
+
+void wrap15757(R)(R r)
+{
+    struct M(R)
+    {
+        this(R r)
+        {
+            payload = r;
+        }
+        R payload;
+    }
+
+    M!R m = M!R(r);
+}
+
+void test15757() @safe
+{
+    [1,2,3].map15757!(x => x*x).wrap15757;
+}
+
+/***************************************************/
 
 int main()
 {
@@ -2728,14 +2792,15 @@ int main()
     test9244();
     test11385();
     test11297();
+    test11886();
     test12234();
     test13861();
     test14398();
     test14846();
     test15422a();
     test15422b();
+    test15757();
 
     printf("Success\n");
     return 0;
 }
-

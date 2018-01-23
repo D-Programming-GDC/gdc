@@ -29,3 +29,4 @@ void test2() @safe
     const(ubyte)[] a;
     auto b = cast(const(uint[])) a;
 }
+

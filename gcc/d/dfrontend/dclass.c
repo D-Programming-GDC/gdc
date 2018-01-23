@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -607,7 +607,8 @@ void ClassDeclaration::semantic(Scope *sc)
                 com = true;
             if (cpp && !b->sym->isCPPinterface())
             {
-                ::error(loc, "C++ class '%s' cannot implement D interface '%s'", toPrettyChars(), b->sym->toPrettyChars());
+                ::error(loc, "C++ class '%s' cannot implement D interface '%s'",
+                    toPrettyChars(), b->sym->toPrettyChars());
             }
         }
 
@@ -802,12 +803,15 @@ Lancestorsdone:
     //    this() { }
     if (!ctor && baseClass && baseClass->ctor)
     {
-        FuncDeclaration *fd = resolveFuncCall(loc, sc2, baseClass->ctor, NULL, NULL, NULL, 1);
+        FuncDeclaration *fd = resolveFuncCall(loc, sc2, baseClass->ctor, NULL, type, NULL, 1);
+        if (!fd) // try shared base ctor instead
+            fd = resolveFuncCall(loc, sc2, baseClass->ctor, NULL, type->sharedOf(), NULL, 1);
         if (fd && !fd->errors)
         {
             //printf("Creating default this(){} for class %s\n", toChars());
             TypeFunction *btf = (TypeFunction *)fd->type;
             TypeFunction *tf = new TypeFunction(NULL, NULL, 0, LINKd, fd->storage_class);
+            tf->mod = btf->mod;
             tf->purity = btf->purity;
             tf->isnothrow = btf->isnothrow;
             tf->isnogc = btf->isnogc;
@@ -825,7 +829,8 @@ Lancestorsdone:
         }
         else
         {
-            error("cannot implicitly generate a default ctor when base class %s is missing a default ctor", baseClass->toPrettyChars());
+            error("cannot implicitly generate a default ctor when base class %s is missing a default ctor",
+                baseClass->toPrettyChars());
         }
     }
 
@@ -846,7 +851,7 @@ Lancestorsdone:
 
     sc2->pop();
 
-    if (type->ty != Tclass || ((TypeClass *)type)->sym != this)
+    if (type->ty == Tclass && ((TypeClass *)type)->sym != this)
     {
         // https://issues.dlang.org/show_bug.cgi?id=17492
         ClassDeclaration *cd = ((TypeClass *)type)->sym;
@@ -1254,7 +1259,8 @@ FuncDeclaration *ClassDeclaration::findFunc(Identifier *ident, TypeFunction *tf)
                 continue;
 
             Lfd:
-                fdmatch = fd, fdambig = NULL;
+                fdmatch = fd;
+                fdambig = NULL;
                 //printf("Lfd fdmatch = %s %s [%s]\n", fdmatch->toChars(), fdmatch->type->toChars(), fdmatch->loc.toChars());
                 continue;
 
