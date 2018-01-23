@@ -1,5 +1,5 @@
 /* d-frontend.h -- D frontend interface to the gcc backend.
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,13 +28,14 @@ class FuncDeclaration;
 class StructDeclaration;
 class Type;
 class Module;
+class Initializer;
 struct OutBuffer;
 
 /* Used in typeinfo.cc.  */
 FuncDeclaration *search_toString (StructDeclaration *);
 
 /* Used in d-lang.cc.  */
-void gendocfile(Module *m);
+void gendocfile(Module *);
 
 /* Used in intrinsics.cc.  */
 void mangleToBuffer (Type *, OutBuffer *);
@@ -44,6 +45,6 @@ const char *toCppMangleItanium (Dsymbol *);
 const char *cppTypeInfoMangleItanium (Dsymbol *);
 
 /* Used in decl.cc.  */
-Expression *initializerToExpression (Initializer *i, Type *t = NULL);
+Expression *initializerToExpression (Initializer *, Type * = NULL);
 
 #endif  /* ! GCC_D_FRONTEND_H */

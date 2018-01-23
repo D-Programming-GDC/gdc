@@ -8,7 +8,7 @@ class Foo
 {
         this ()
         {
-                Primes.lookup(2);       
+                Primes.lookup(2);
         }
 }
 

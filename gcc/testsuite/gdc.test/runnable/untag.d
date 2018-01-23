@@ -1,4 +1,3 @@
-//#!/home/aalexandre/dmd2/linux/bin/rdmd
 // PERMUTE_ARGS:
 // EXTRA_FILES: extra-files/untag.html
 

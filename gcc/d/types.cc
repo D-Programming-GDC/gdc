@@ -1,5 +1,5 @@
 /* types.cc -- Lower D frontend types to GCC trees.
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -941,7 +941,8 @@ public:
 	FuncDeclaration *fd = t->sym->vtbl[i]->isFuncDeclaration ();
 	tree method = fd ? get_symbol_decl (fd) : NULL_TREE;
 
-	if (method && DECL_CONTEXT (method) == basetype)
+	if (method && DECL_CONTEXT (method) == basetype
+	    && !chain_member (method, TYPE_FIELDS (basetype)))
 	  {
 	    DECL_CHAIN (method) = TYPE_METHODS (basetype);
 	    TYPE_METHODS (basetype) = method;

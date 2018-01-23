@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -70,7 +70,7 @@ FuncDeclaration *buildArrayOp(Identifier *ident, BinExp *exp, Scope *sc, Loc loc
 
     /* Construct the function
      */
-    TypeFunction *ftype = new TypeFunction(fparams, exp->type, 0, LINKc, stc);
+    TypeFunction *ftype = new TypeFunction(fparams, exp->e1->type, 0, LINKc, stc);
     //printf("fd: %s %s\n", ident->toChars(), ftype->toChars());
     FuncDeclaration *fd = new FuncDeclaration(Loc(), Loc(), ident, STCundefined, ftype);
     fd->fbody = fbody;
