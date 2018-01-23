@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 2009-2014 by Digital Mars
+ * Copyright (C) 2009-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -88,14 +88,25 @@ AliasThis::AliasThis(Loc loc, Identifier *ident)
 Dsymbol *AliasThis::syntaxCopy(Dsymbol *s)
 {
     assert(!s);
-    /* Since there is no semantic information stored here,
-     * we don't need to copy it.
-     */
-    return this;
+    return new AliasThis(loc, ident);
 }
 
 void AliasThis::semantic(Scope *sc)
 {
+    if (semanticRun != PASSinit)
+        return;
+
+    if (_scope)
+    {
+        sc = _scope;
+        _scope = NULL;
+    }
+
+    if (!sc)
+        return;
+
+    semanticRun = PASSsemantic;
+
     Dsymbol *p = sc->parent->pastMixin();
     AggregateDeclaration *ad = p->isAggregateDeclaration();
     if (!ad)
@@ -150,6 +161,7 @@ void AliasThis::semantic(Scope *sc)
     }
 
     ad->aliasthis = s;
+    semanticRun = PASSsemanticdone;
 }
 
 const char *AliasThis::kind()

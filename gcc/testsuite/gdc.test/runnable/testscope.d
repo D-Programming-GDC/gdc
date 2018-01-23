@@ -1,4 +1,5 @@
 // PERMUTE_ARGS:
+// REQUIRED_ARGS: -d -dip1000
 
 extern(C) int printf(const char*, ...);
 
@@ -241,6 +242,22 @@ void test7435() {
 
 /********************************************/
 
+char[] dup12()(char[] a) // although inferred pure, don't infer a is 'return'
+{
+    char[] res;
+    foreach (ref e; a)
+    {}
+    return res;
+}
+
+char[] foo12()
+{
+    char[10] buf;
+    return dup12(buf);
+}
+
+/********************************************/
+
 void test7049() @safe
 {
     int count = 0;
@@ -268,11 +285,24 @@ void test16747() @safe
 }
 
 /********************************************/
+
+void bar11(int*, int*) { }
+
+void test11()
+{
+    static int* p;
+    static int i;
+    bar11(p, &i);
+
+    bar11((i,p), &i);  // comma expressions are deprecated, but need to test them
+}
+
+/********************************************/
 // https://issues.dlang.org/show_bug.cgi?id=17432
 
 int test17432(scope int delegate() dg)
 {
-        return dg();
+	return dg();
 }
 
 // stripped down version of std.traits.Parameters
@@ -328,6 +358,7 @@ void main()
     test7435();
     test7049();
     test16747();
+    test11();
 
     printf("Success\n");
 }

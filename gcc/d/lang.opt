@@ -1,5 +1,5 @@
 ; lang.opt -- Options for the D front end.
-; Copyright (C) 2006-2017 Free Software Foundation, Inc.
+; Copyright (C) 2006-2018 Free Software Foundation, Inc.
 ;
 ; GCC is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -260,9 +260,9 @@ fmake-mdeps=
 D Joined RejectNegative
 Deprecated in favor of -MMD
 
-fmodule-filepath=
+fmodule-file=
 D Joined RejectNegative
--fmodule-filepath=<package.module>=<filespec>	use <filespec> as source file for <package.module>
+-fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
 
 fmoduleinfo
 D

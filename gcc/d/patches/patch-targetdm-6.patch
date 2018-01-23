@@ -323,7 +323,7 @@ The following OS versions are implemented:
  		out_file=rs6000/rs6000.c
  		c_target_objs="${c_target_objs} rs6000-c.o"
  		cxx_target_objs="${cxx_target_objs} rs6000-c.o"
-+		d_target_objs="${d_target_objs} rs6000-d.o"
++		d_target_objs="${d_target_objs} ${cpu_type}-d.o"
  		tmake_file="rs6000/t-rs6000 ${tmake_file}"
  		;;
  
@@ -474,12 +474,22 @@ The following OS versions are implemented:
  /* Which processor to schedule for. The cpu attribute defines a list that
 --- a/gcc/config/alpha/linux.h
 +++ b/gcc/config/alpha/linux.h
-@@ -33,6 +33,9 @@ along with GCC; see the file COPYING3.  If not see
+@@ -33,6 +33,19 @@ along with GCC; see the file COPYING3.  If not see
  	  builtin_define ("_GNU_SOURCE");			\
      } while (0)
  
 +#define GNU_USER_TARGET_D_OS_VERSIONS()				\
-+  builtin_version ("linux")
++    do {							\
++	builtin_version ("linux");				\
++	if (OPTION_GLIBC)					\
++	  builtin_version ("CRuntime_Glibc");			\
++	else if (OPTION_UCLIBC)					\
++	  d_add_builtin_version ("CRuntime_UClibc");		\
++	else if (OPTION_BIONIC)					\
++	  d_add_builtin_version ("CRuntime_Bionic");		\
++	else if (OPTION_MUSL)					\
++	  d_add_builtin_version ("CRuntime_Musl");		\
++    } while (0)
 +
  #undef LIB_SPEC
  #define LIB_SPEC \
@@ -640,7 +650,7 @@ The following OS versions are implemented:
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- /dev/null
 +++ b/gcc/config/glibc-d.c
-@@ -0,0 +1,72 @@
+@@ -0,0 +1,63 @@
 +/* Glibc support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -671,15 +681,6 @@ The following OS versions are implemented:
 +static void
 +glibc_d_os_builtins (void)
 +{
-+  if (OPTION_GLIBC)
-+    d_add_builtin_version ("CRuntime_Glibc");
-+  else if (OPTION_UCLIBC)
-+    d_add_builtin_version ("CRuntime_UClibc");
-+  else if (OPTION_BIONIC)
-+    d_add_builtin_version ("CRuntime_Bionic");
-+  else if (OPTION_MUSL)
-+    d_add_builtin_version ("CRuntime_Musl");
-+
 +  d_add_builtin_version ("Posix");
 +
 +#define builtin_version(TXT) d_add_builtin_version (TXT)
@@ -715,14 +716,16 @@ The following OS versions are implemented:
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/gnu.h
 +++ b/gcc/config/gnu.h
-@@ -31,3 +31,6 @@ along with GCC.  If not, see <http://www.gnu.org/licenses/>.
+@@ -31,3 +31,9 @@ along with GCC.  If not, see <http://www
  	builtin_assert ("system=unix");		\
  	builtin_assert ("system=posix");	\
      } while (0)
 +
 +#define GNU_USER_TARGET_D_OS_VERSIONS()		\
-+  builtin_version ("Hurd")
---- /dev/null
++    do {					\
++	builtin_version ("Hurd");		\
++	builtin_version ("CRuntime_Glibc");	\
++    } while (0)--- /dev/null
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,44 @@
 +/* Subroutines for the D front end on the x86 architecture.
@@ -823,24 +826,30 @@ The following OS versions are implemented:
  i386-builtin-types.inc: s-i386-bt ; @true
 --- a/gcc/config/kfreebsd-gnu.h
 +++ b/gcc/config/kfreebsd-gnu.h
-@@ -29,6 +29,9 @@ along with GCC; see the file COPYING3.  If not see
+@@ -29,6 +29,12 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
  
 +#define GNU_USER_TARGET_D_OS_VERSIONS()		\
-+  builtin_version ("FreeBSD")
++    do {					\
++	builtin_version ("FreeBSD");		\
++	builtin_version ("CRuntime_Glibc");	\
++    } while (0)
 +
  #define GNU_USER_DYNAMIC_LINKER        GLIBC_DYNAMIC_LINKER
  #define GNU_USER_DYNAMIC_LINKER32      GLIBC_DYNAMIC_LINKER32
  #define GNU_USER_DYNAMIC_LINKER64      GLIBC_DYNAMIC_LINKER64
 --- a/gcc/config/kopensolaris-gnu.h
 +++ b/gcc/config/kopensolaris-gnu.h
-@@ -30,5 +30,8 @@ along with GCC; see the file COPYING3.  If not see
+@@ -30,5 +30,11 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
  
 +#define GNU_USER_TARGET_D_OS_VERSIONS()		\
-+  builtin_version ("Solaris")
++    do {					\
++	builtin_version ("Solaris");		\
++	builtin_version ("CRuntime_Glibc");	\
++    } while (0)
 +
  #undef GNU_USER_DYNAMIC_LINKER
  #define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
@@ -861,12 +870,22 @@ The following OS versions are implemented:
  #else
 --- a/gcc/config/linux.h
 +++ b/gcc/config/linux.h
-@@ -53,6 +53,9 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+@@ -53,6 +53,19 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
  	builtin_assert ("system=posix");			\
      } while (0)
  
 +#define GNU_USER_TARGET_D_OS_VERSIONS()				\
-+  builtin_version ("linux")
++    do {							\
++	builtin_version ("linux");				\
++	if (OPTION_GLIBC)					\
++	  builtin_version ("CRuntime_Glibc");			\
++	else if (OPTION_UCLIBC)					\
++	  d_add_builtin_version ("CRuntime_UClibc");		\
++	else if (OPTION_BIONIC)					\
++	  d_add_builtin_version ("CRuntime_Bionic");		\
++	else if (OPTION_MUSL)					\
++	  d_add_builtin_version ("CRuntime_Musl");		\
++    } while (0)
 +
  /* Determine which dynamic linker to use depending on whether GLIBC or
     uClibc or Bionic or musl is the default C library and whether
@@ -976,24 +995,44 @@ The following OS versions are implemented:
 +	$(POSTCOMPILE)
 --- a/gcc/config/rs6000/linux.h
 +++ b/gcc/config/rs6000/linux.h
-@@ -57,6 +57,9 @@
+@@ -57,6 +57,19 @@
      }						\
    while (0)
  
-+#define GNU_USER_TARGET_D_OS_VERSIONS()		\
-+  builtin_version ("linux")
++#define GNU_USER_TARGET_D_OS_VERSIONS()			\
++    do {						\
++	builtin_version ("linux");			\
++	if (OPTION_GLIBC)				\
++	  builtin_version ("CRuntime_Glibc");		\
++	else if (OPTION_UCLIBC)				\
++	  d_add_builtin_version ("CRuntime_UClibc");	\
++	else if (OPTION_BIONIC)				\
++	  d_add_builtin_version ("CRuntime_Bionic");	\
++	else if (OPTION_MUSL)				\
++	  d_add_builtin_version ("CRuntime_Musl");	\
++    } while (0)
 +
  #undef	CPP_OS_DEFAULT_SPEC
  #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux)"
  
 --- a/gcc/config/rs6000/linux64.h
 +++ b/gcc/config/rs6000/linux64.h
-@@ -391,6 +391,9 @@ extern int dot_symbols;
+@@ -391,6 +391,19 @@ extern int dot_symbols;
      }							\
    while (0)
  
 +#define GNU_USER_TARGET_D_OS_VERSIONS()			\
-+  builtin_version ("linux")
++    do {						\
++	builtin_version ("linux");			\
++	if (OPTION_GLIBC)				\
++	  builtin_version ("CRuntime_Glibc");		\
++	else if (OPTION_UCLIBC)				\
++	  d_add_builtin_version ("CRuntime_UClibc");	\
++	else if (OPTION_BIONIC)				\
++	  d_add_builtin_version ("CRuntime_Bionic");	\
++	else if (OPTION_MUSL)				\
++	  d_add_builtin_version ("CRuntime_Musl");	\
++    } while (0)
 +
  #undef  CPP_OS_DEFAULT_SPEC
  #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux) %(include_extra)"

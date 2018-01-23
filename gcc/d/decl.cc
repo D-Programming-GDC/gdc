@@ -1,5 +1,5 @@
 /* decl.cc -- Lower D frontend declarations to GCC trees.
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -358,6 +358,60 @@ public:
 	member->accept (this);
       }
 
+    /* Finish semantic analysis of functions in vtbl[].  */
+    for (size_t i = d->vtblOffset (); i < d->vtbl.dim; i++)
+      {
+	FuncDeclaration *fd = d->vtbl[i]->isFuncDeclaration ();
+
+	if (!fd || (!fd->fbody && d->isAbstract ()))
+	  continue;
+
+	fd->functionSemantic ();
+
+	/* No name hiding to check for.  */
+	if (!d->isFuncHidden (fd) || fd->isFuture ())
+	  continue;
+
+	/* The function fd is hidden from the view of the class.
+	   If it overlaps with any function in the vtbl[], then
+	   issue an error.  */
+	for (size_t j = 1; j < d->vtbl.dim; j++)
+	  {
+	    if (j == i)
+	      continue;
+
+	    FuncDeclaration *fd2 = d->vtbl[j]->isFuncDeclaration ();
+	    if (!fd2->ident->equals (fd->ident))
+	      continue;
+
+	    /* The function is marked as @__future, a deprecation has
+	       already been given by the frontend.  */
+	    if (fd2->isFuture ())
+	      continue;
+
+	    if (fd->leastAsSpecialized (fd2) || fd2->leastAsSpecialized (fd))
+	      {
+		TypeFunction *tf = (TypeFunction *) fd->type;
+		if (tf->ty == Tfunction)
+		  {
+		    d->error ("use of %s%s is hidden by %s; "
+			      "use 'alias %s = %s.%s;' "
+			      "to introduce base class overload set.",
+			      fd->toPrettyChars (),
+			      parametersTypeToChars (tf->parameters, tf->varargs),
+			      d->toChars (), fd->toChars (),
+			      fd->parent->toChars (), fd->toChars ());
+		  }
+		else
+		  {
+		    error ("use of %s is hidden by %s",
+			   fd->toPrettyChars (), d->toChars ());
+		  }
+		break;
+	      }
+	  }
+      }
+
     /* Generate C symbols.  */
     d->csym = get_classinfo_decl (d);
     d->vtblsym = get_vtable_decl (d);
@@ -385,51 +439,11 @@ public:
       {
 	FuncDeclaration *fd = d->vtbl[i]->isFuncDeclaration ();
 
-	if (!fd || (!fd->fbody && d->isAbstract ()))
-	  continue;
-
-	fd->functionSemantic ();
-
-	if (d->isFuncHidden (fd))
+	if (fd && (fd->fbody || !d->isAbstract()))
 	  {
-	    /* The function fd is hidden from the view of the class.
-	       If it overlaps with any function in the vtbl[], then
-	       issue an error.  */
-	    for (size_t j = 1; j < d->vtbl.dim; j++)
-	      {
-		if (j == i)
-		  continue;
-
-		FuncDeclaration *fd2 = d->vtbl[j]->isFuncDeclaration ();
-		if (!fd2->ident->equals (fd->ident))
-		  continue;
-
-		if (fd->leastAsSpecialized (fd2) || fd2->leastAsSpecialized (fd))
-		  {
-		    TypeFunction *tf = (TypeFunction *) fd->type;
-		    if (tf->ty == Tfunction)
-		      {
-			d->error ("use of %s%s is hidden by %s; "
-				  "use 'alias %s = %s.%s;' "
-				  "to introduce base class overload set.",
-				  fd->toPrettyChars (),
-				  parametersTypeToChars (tf->parameters, tf->varargs),
-				  d->toChars (), fd->toChars (),
-				  fd->parent->toChars (), fd->toChars ());
-		      }
-		    else
-		      {
-			error ("use of %s is hidden by %s",
-			       fd->toPrettyChars (), d->toChars ());
-		      }
-
-		    break;
-		  }
-	      }
+	    CONSTRUCTOR_APPEND_ELT (elms, size_int (i),
+				    build_address (get_symbol_decl (fd)));
 	  }
-
-	CONSTRUCTOR_APPEND_ELT (elms, size_int (i),
-				build_address (get_symbol_decl (fd)));
       }
 
     DECL_INITIAL (d->vtblsym)
@@ -626,6 +640,22 @@ public:
 		ExpInitializer *vinit = d->_init->isExpInitializer ();
 		Expression *ie = initializerToExpression (vinit);
 		tree exp = build_expr (ie);
+
+		/* Maybe put variable on list of things needing destruction.  */
+		if (d->needsScopeDtor ())
+		  {
+		    /* Its a temporary, add the corresponding cleanup.  */
+		    tree decl = get_symbol_decl (d);
+		    vec_safe_push (d_function_chain->vars_in_scope, decl);
+
+		    if (TREE_CODE (exp) == INIT_EXPR
+			|| TREE_CODE (exp) == MODIFY_EXPR)
+		      exp = TREE_OPERAND (exp, 1);
+
+		    exp = build_target_expr (decl, exp);
+		    TARGET_EXPR_CLEANUP (exp) = build_expr (d->edtor);
+		  }
+
 		add_stmt (exp);
 	      }
 	    else if (d->size (d->loc) != 0)
@@ -814,7 +844,7 @@ public:
     if (d->v_argptr)
       push_stmt_list ();
 
-    /* The fabled D named return value optimisation.
+    /* Named return value optimisation support for D.
        Implemented by overriding all the RETURN_EXPRs and replacing all
        occurrences of VAR with the RESULT_DECL for the function.
        This is only worth doing for functions that can return in memory.  */
@@ -856,6 +886,7 @@ public:
 
     build_function_body (d);
 
+    /* Initialize the _argptr variable.  */
     if (d->v_argptr)
       {
 	tree body = pop_stmt_list ();
@@ -1294,7 +1325,12 @@ declare_local_var (VarDeclaration *var)
 
   gcc_assert (!TREE_STATIC (decl));
 
-  d_pushdecl (decl);
+  /* If this is a variable used for automatic scope dtor, don't add it to the
+     current binding level, as its really a temporary used in a TARGET_EXPR.
+     See build_decl_tree visitor for VarDeclaration.  */
+  if (!var->needsScopeDtor ())
+    d_pushdecl (decl);
+
   DECL_CONTEXT (decl) = current_function_decl;
 
   /* Compiler generated symbols.  */
@@ -2106,6 +2142,8 @@ build_type_decl (tree type, Dsymbol *dsym)
 
   tree decl = build_decl (get_linemap (dsym->loc), TYPE_DECL,
 			  get_identifier (dsym->ident->toChars ()), type);
+  SET_DECL_ASSEMBLER_NAME (decl, get_identifier (mangle_decl (dsym)));
+  TREE_PUBLIC (decl) = 1;
   DECL_ARTIFICIAL (decl) = 1;
   DECL_CONTEXT (decl) = d_decl_context (dsym);
 

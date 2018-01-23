@@ -225,7 +225,6 @@ void BYTE()
             break;
         }
     }
-
     typ[] c;
     c = a[0..ITERS/2] ~ b[ITERS/2..$];
 
@@ -304,7 +303,6 @@ void SHORT()
         }
     }
 
-
     typ[] b = a[];
 
     if(b.length != ITERS) printf("Length Error: %d\n",b.length);
@@ -348,7 +346,6 @@ void USHORT()
             break;
         }
     }
-
 
     typ[] b = a[];
 
@@ -484,7 +481,6 @@ void LONG()
         }
     }
 
-
     typ[] b = a[];
 
     if(b.length != ITERS) printf("Length Error: %d\n",b.length);
@@ -528,7 +524,6 @@ void ULONG()
             break;
         }
     }
-
 
     typ[] b = a[];
 
@@ -574,7 +569,6 @@ void FLOAT()
         }
     }
 
-
     typ[] b = a[];
 
     if(b.length != ITERS) printf("Length Error: %d\n",b.length);
@@ -619,7 +613,6 @@ void DOUBLE()
         }
     }
 
-
     typ[] b = a[];
 
     if(b.length != ITERS) printf("Length Error: %d\n",b.length);
@@ -663,7 +656,6 @@ void REAL()
             break;
         }
     }
-
 
     typ[] b = a[];
 

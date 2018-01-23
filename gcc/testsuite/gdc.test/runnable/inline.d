@@ -1,5 +1,5 @@
 
-import std.stdio;
+import core.stdc.stdio;
 
 // Test function inlining
 
@@ -584,6 +584,32 @@ void test14267()
 }
 
 /**********************************/
+// 13244
+
+struct MapResult13244(alias fun)
+{
+    int[] input;
+    @property front() { return fun(input[0]); }
+}
+
+int[] array13244(R)(R r)
+{
+    int[] a;
+    a ~= r.front;
+    return a;
+}
+
+void test13244()
+{
+    auto arr = [[cast(ubyte)1]];
+    foreach (ref x; arr)
+    {
+        auto m = MapResult13244!(c => x[c])([0]);
+        array13244(m);
+    }
+}
+
+/**********************************/
 // 14306
 
 struct MapResult(alias fun)
@@ -710,18 +736,21 @@ void test14753(string) { }
 
 /**********************************/
 
-struct S14975 {
+struct S14975
+{
     int bar;
 
-    pragma(inline, true) this(int bar) {
+    pragma(inline, true) this(int bar)
+    {
         this.bar = bar;
     }
 }
 
-void test14975() {
+void test14975()
+{
     S14975 baz = 1;
     if (baz.bar != 1)
-       assert(0);
+        assert(0);
 }
 
 /**********************************/
@@ -748,6 +777,105 @@ void test15210()
     auto x = X();
 
     cache[BigInt15210()] = x;
+}
+
+/**********************************/
+
+int foo7625(int v)
+{
+    return bar7625(2 * v);
+}
+
+int bar7625(int a)
+{
+    ++a;
+    if (a > 0)
+        return 1;
+    return baz(a);
+}
+
+int baz(int a)
+{
+    if (a > 0)
+        throw new Exception("a > 0");
+    return a - 1;
+}
+
+void test7625()
+{
+    int x = foo7625(1);
+    if (x != 1)
+        assert(0);
+}
+
+/**********************************/
+// 9785 partial fix
+
+void test9785()
+{
+        int j = 3;
+
+        void loop(scope const void function(int x) dg) {
+            pragma(inline, true);
+            dg(++j);
+        }
+
+        loop((x) {
+                pragma(inline, true);
+                printf("%d\n", x);
+                assert(x == 4);
+        });
+}
+
+
+/**********************************/
+// 9785 partial fix
+
+void test9785_2() {
+        int j = 3;
+
+        void loop(scope const void function(int x) dg) {
+            pragma(inline, true);
+            dg(++j);
+        }
+
+        static void func(int x) {
+                pragma(inline, true);
+                printf("%d\n", x);
+                assert(x == 4);
+        }
+
+        loop(&func);
+}
+
+/**********************************/
+// 9785 partial fix
+
+void test9785_3() @nogc
+{
+    int j = 3;
+
+    void loop(scope const void delegate(int x) @nogc dg) @nogc {
+        pragma(inline, true);
+        dg(++j);
+    }
+
+    loop((x) @nogc {
+            pragma(inline, true);
+            //printf("%d\n", x + j * 2);
+            assert(x == 4);
+            assert(j == 4);
+    });
+
+    j = 3;
+    void func(int x) @nogc {
+            pragma(inline, true);
+            //printf("%d\n", x + j * 2);
+            assert(x == 4);
+            assert(j == 4);
+    }
+
+    loop(&func);
 }
 
 /**********************************/
@@ -989,18 +1117,22 @@ int main()
     test11322();
     test11394();
     test13503();
+    test13244();
     test14306();
     test14754();
     test14606();
     test14975();
     test15210();
+    test7625();
+    test9785();
+    test9785_2();
+    test9785_3();
     test15207();
     test15296();
     test15296b();
     test15296c();
-
     test17676();
-
+    
     printf("Success\n");
     return 0;
 }

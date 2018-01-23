@@ -2355,7 +2355,7 @@ static assert(!is(typeof(Compileable!(bug10840(1)))));
 **************************************************/
 
 // Four-pointer relations. Return true if [p1 .. p2] points inside [q1 .. q2]
-// (where the end points dont coincide).
+// (where the end points don't coincide).
 bool ptr4cmp(void* p1, void* p2, void* q1, void* q2)
 {
 // Each compare can be written with <, <=, >, or >=.
@@ -6481,11 +6481,26 @@ label:
 static assert(bug8865());
 
 /******************************************************/
+// 15450 labeled foreach + continue/break
+
+static assert({
+  L1:
+    foreach (l; [0])
+        continue L1;
+
+  L2:
+    foreach (l; [0])
+        break L2;
+
+    return true;
+}());
 
 struct Test75
 {
     this(int) pure {}
 }
+
+/******************************************************/
 
 static assert( __traits(compiles, { static shared(Test75*)   t75 = new shared(Test75)(0);    return t75; }));
 static assert( __traits(compiles, { static shared(Test75)*   t75 = new shared(Test75)(0);    return t75; }));
@@ -7330,7 +7345,7 @@ string getStr12495()
     s ~= 'a';                               // this should allocate.
     assert(buf.ptr != s.ptr);
     return s.idup;                          // this should allocate again, and
-                                            // definitly point immutable memory.
+                                            // definitely point immutable memory.
 }
 auto indexOf12495(string s)
 {
@@ -7641,6 +7656,17 @@ auto structInCaseScope()
 }
 
 static assert(!structInCaseScope());
+
+/**************************************************
+    15233 - ICE in TupleExp, Copy On Write bug
+**************************************************/
+
+alias TT15233(stuff ...) = stuff;
+
+struct Tok15233 {}
+enum tup15233 = TT15233!(Tok15233(), "foo");
+static assert(tup15233[0] == Tok15233());
+static assert(tup15233[1] == "foo");
 
 /**************************************************
     15251 - void cast in ForStatement.increment
