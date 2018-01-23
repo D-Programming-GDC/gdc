@@ -1475,22 +1475,11 @@ d_getdecls (void)
 static alias_set_type
 d_get_alias_set (tree t)
 {
-  /* Permit type-punning when accessing a union, provided the access
-     is directly through the union.  */
-  for (tree u = t; handled_component_p (u); u = TREE_OPERAND (u, 0))
-    {
-      if (TREE_CODE (u) == COMPONENT_REF
-	  && TREE_CODE (TREE_TYPE (TREE_OPERAND (u, 0))) == UNION_TYPE)
-	return 0;
-    }
+  /* For dynamic arrays, use the same alias type as .ptr type.  */
+  if (TREE_CODE (t) == RECORD_TYPE && TYPE_DYNAMIC_ARRAY (t))
+    return get_alias_set (TREE_TYPE (TREE_CHAIN (TYPE_FIELDS (t))));
 
-  /* That's all the expressions we handle.  */
-  if (!TYPE_P (t))
-    return get_alias_set (TREE_TYPE (t));
-
-  /* For now in D, assume everything aliases everything else,
-     until we define some solid rules.  */
-  return 0;
+  return -1;
 }
 
 /* Implements the lang_hooks.types_compatible_p routine for language D.
