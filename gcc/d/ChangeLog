@@ -1,3 +1,8 @@
+2018-01-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_get_alias_set): Use alias set of pointer type for
+	dynamic arrays.  Return unhandled for all other cases.
+
 2018-01-08  Eugene Wissner  <belka@caraus.de>
 
 	* d-builtins.cc (d_eval_constant_expression): Handle polynomial
