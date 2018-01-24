@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014 by Digital Mars
+/* Copyright (C) 2011-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved, written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -98,7 +98,13 @@ struct Array
                 memcpy(data, &smallarray[0], dim * sizeof(*data));
             }
             else
-            {   allocdim = dim + nentries;
+            {
+                /* Increase size by 1.5x to avoid excessive memory fragmentation
+                 */
+                d_size_t increment = dim / 2;
+                if (nentries > increment)       // if 1.5 is not enough
+                    increment = nentries;
+                allocdim = dim + increment;
                 data = (TYPE *)mem.xrealloc(data, allocdim * sizeof(*data));
             }
         }

@@ -1,5 +1,5 @@
 /* d-codegen.cc --  Code generation and routines for manipulation of GCC trees.
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -272,10 +272,6 @@ build_float_cst (const real_t& value, Type *totype)
 
   tree type_node = build_ctype (tb);
   real_convert (&new_value.rv (), TYPE_MODE (type_node), &value.rv ());
-
-  /* Use original if the value grew as a result of the conversion.  */
-  if (new_value > value)
-    new_value = value;
 
   return build_real (type_node, new_value.rv ());
 }
@@ -556,7 +552,8 @@ d_save_expr (tree exp)
 tree
 stabilize_expr (tree *valuep)
 {
-  const enum tree_code code = TREE_CODE (*valuep);
+  tree expr = *valuep;
+  const enum tree_code code = TREE_CODE (expr);
   tree lhs;
   tree rhs;
 
@@ -565,32 +562,40 @@ stabilize_expr (tree *valuep)
     case COMPOUND_EXPR:
       /* Given ((e1, ...), eN):
 	 Store the last RHS 'eN' expression in VALUEP.  */
-      lhs = TREE_OPERAND (*valuep, 0);
-      rhs = TREE_OPERAND (*valuep, 1);
+      lhs = TREE_OPERAND (expr, 0);
+      rhs = TREE_OPERAND (expr, 1);
       lhs = compound_expr (lhs, stabilize_expr (&rhs));
       *valuep = rhs;
       return lhs;
+
+    case MODIFY_EXPR:
+    case INIT_EXPR:
+      /* Given e1 = e2:
+	 Store the leftmost 'e1' expression in VALUEP.  */
+      lhs = TREE_OPERAND (expr, 0);
+      stabilize_expr (&lhs);
+      *valuep = lhs;
+      return expr;
 
     default:
       return NULL_TREE;
     }
 }
 
-/* Return a TARGET_EXPR using EXP to initialize a new temporary.  */
+/* Return a TARGET_EXPR, initializing the DECL with EXP.  */
 
 tree
-build_target_expr (tree exp)
+build_target_expr (tree decl, tree exp)
 {
-  tree type = TREE_TYPE (exp);
-  tree slot = create_temporary_var (type);
-  tree result = build4 (TARGET_EXPR, type, slot, exp, NULL_TREE, NULL_TREE);
+  tree type = TREE_TYPE (decl);
+  tree result = build4 (TARGET_EXPR, type, decl, exp, NULL_TREE, NULL_TREE);
 
   if (EXPR_HAS_LOCATION (exp))
     SET_EXPR_LOCATION (result, EXPR_LOCATION (exp));
 
-  /* If slot must always reside in memory.  */
+  /* If decl must always reside in memory.  */
   if (TREE_ADDRESSABLE (type))
-    d_mark_addressable (slot);
+    d_mark_addressable (decl);
 
   /* Always set TREE_SIDE_EFFECTS so that expand_expr does not ignore the
      TARGET_EXPR.  If there really turn out to be no side effects, then the
@@ -598,6 +603,16 @@ build_target_expr (tree exp)
   TREE_SIDE_EFFECTS (result) = 1;
 
   return result;
+}
+
+/* Like the above function, but initializes a new temporary.  */
+
+tree
+force_target_expr (tree exp)
+{
+  tree decl = create_temporary_var (TREE_TYPE (exp));
+
+  return build_target_expr (decl, exp);
 }
 
 /* Returns the address of the expression EXP.  */
@@ -633,6 +648,11 @@ build_address (tree exp)
   /* Can't take the address of a manifest constant, instead use its value.  */
   if (TREE_CODE (exp) == CONST_DECL)
     exp = DECL_INITIAL (exp);
+
+  /* Some expression lowering may request an address of a compile-time constant.
+     Make sure it is assigned to a location we can reference.  */
+  if (CONSTANT_CLASS_P (exp) && TREE_CODE (exp) != STRING_CST)
+    exp = force_target_expr (exp);
 
   d_mark_addressable (exp);
   exp = build_fold_addr_expr_with_type_loc (input_location, exp, ptrtype);
@@ -1004,14 +1024,15 @@ build_array_struct_comparison (tree_code code, StructDeclaration *sd,
    the alignment hole between OFFSET and FIELDPOS.  */
 
 static tree
-build_alignment_field (HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
+build_alignment_field (tree type, HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
 {
-  tree type = make_array_type (Type::tuns8, fieldpos - offset);
-  tree field = create_field_decl (type, NULL, 1, 1);
+  tree atype = make_array_type (Type::tuns8, fieldpos - offset);
+  tree field = create_field_decl (atype, NULL, 1, 1);
 
-  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (type));
+  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (atype));
   DECL_FIELD_OFFSET (field) = size_int (offset);
   DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+  DECL_FIELD_CONTEXT (field) = type;
 
   layout_decl (field, 0);
 
@@ -1089,8 +1110,8 @@ build_struct_literal (tree type, vec<constructor_elt, va_gc> *init)
 	     alignment holes in-place between fields.  */
 	  if (fillholes && offset < fieldpos)
 	    {
-	      tree pfield = build_alignment_field (offset, fieldpos);
-	      tree pvalue = build_constructor (TREE_TYPE (pfield), NULL);
+	      tree pfield = build_alignment_field (type, offset, fieldpos);
+	      tree pvalue = build_zero_cst (TREE_TYPE (pfield));
 	      CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
 	    }
 
@@ -1139,8 +1160,9 @@ build_struct_literal (tree type, vec<constructor_elt, va_gc> *init)
   /* Finally pad out the end of the record.  */
   if (fillholes && offset < int_size_in_bytes (type))
     {
-      tree pfield = build_alignment_field (offset, int_size_in_bytes (type));
-      tree pvalue = build_constructor (TREE_TYPE (pfield), NULL);
+      tree pfield = build_alignment_field (type, offset,
+					   int_size_in_bytes (type));
+      tree pvalue = build_zero_cst (TREE_TYPE (pfield));
       CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
     }
 
@@ -1777,7 +1799,7 @@ build_bounds_condition (const Loc& loc, tree index, tree len, bool inclusive)
 bool
 array_bounds_check (void)
 {
-  FuncDeclaration *func;
+  FuncDeclaration *fd;
 
   switch (global.params.useArrayBounds)
     {
@@ -1789,10 +1811,10 @@ array_bounds_check (void)
 
     case BOUNDSCHECKsafeonly:
       /* For D2 safe functions only.  */
-      func = d_function_chain->function;
-      if (func && func->type->ty == Tfunction)
+      fd = d_function_chain->function;
+      if (fd && fd->type->ty == Tfunction)
 	{
-	  TypeFunction *tf = (TypeFunction *) func->type;
+	  TypeFunction *tf = (TypeFunction *) fd->type;
 	  if (tf->trust == TRUSTsafe)
 	    return true;
 	}
@@ -2007,56 +2029,19 @@ d_build_call (TypeFunction *tf, tree callable, tree object,
 	}
     }
 
-  /* Evaluate the argument before passing to the function.
-     Needed for left to right evaluation.  */
-  if (tf->linkage == LINKd)
-    {
-      size_t nsaved_args = 0;
-      unsigned int ix;
-      tree arg;
-
-      /* First, push left side of comma expressions into the saved args list,
-	 so that only the result is maybe made a temporary.  */
-      FOR_EACH_VEC_SAFE_ELT (args, ix, arg)
-	{
-	  if (TREE_SIDE_EFFECTS (arg))
-	    {
-	      tree expr = stabilize_expr (&arg);
-	      if (expr != NULL_TREE)
-		saved_args = compound_expr (saved_args, expr);
-
-	      /* Argument needs saving.  */
-	      if (TREE_SIDE_EFFECTS (arg))
-		nsaved_args++;
-
-	      (*args)[ix] = arg;
-	    }
-	}
-
-      /* If more than one argument needs saving, then we must enforce the
-	 order of evaluation.  */
-      if (nsaved_args > 1)
-	{
-	  FOR_EACH_VEC_SAFE_ELT (args, ix, arg)
-	    {
-	      if (TREE_SIDE_EFFECTS (arg))
-		{
-		  arg = d_save_expr (arg);
-		  saved_args = compound_expr (saved_args, arg);
-		  (*args)[ix] = arg;
-		}
-	    }
-	}
-    }
-
   /* Evaluate the callee before calling it.  */
-  if (saved_args != NULL_TREE && TREE_SIDE_EFFECTS (callee))
+  if (TREE_SIDE_EFFECTS (callee))
     {
       callee = d_save_expr (callee);
       saved_args = compound_expr (callee, saved_args);
     }
 
   tree result = build_call_vec (TREE_TYPE (ctype), callee, args);
+
+  /* Enforce left to right evaluation.  */
+  if (tf->linkage == LINKd)
+    CALL_EXPR_ARGS_ORDERED (result) = 1;
+
   result = maybe_expand_intrinsic (result);
 
   /* Return the value in a temporary slot so that it can be evaluated
@@ -2066,7 +2051,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object,
       && TREE_ADDRESSABLE (TREE_TYPE (result)))
     {
       CALL_EXPR_RETURN_SLOT_OPT (result) = true;
-      result = build_target_expr (result);
+      result = force_target_expr (result);
     }
 
   return compound_expr (saved_args, result);
@@ -2173,26 +2158,32 @@ build_vthis_function (tree basetype, tree type)
 tree
 get_frame_for_symbol (Dsymbol *sym)
 {
-  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
-  FuncDeclaration *thisfd = sym->isFuncDeclaration ();
-  FuncDeclaration *parentfd = NULL;
+  FuncDeclaration *thisfd
+    = d_function_chain ? d_function_chain->function : NULL;
+  FuncDeclaration *fd = sym->isFuncDeclaration ();
+  FuncDeclaration *fdparent = NULL;
+  FuncDeclaration *fdoverride = NULL;
 
-  if (thisfd != NULL)
+  if (fd != NULL)
     {
       /* Check that the nested function is properly defined.  */
-      if (!thisfd->fbody)
+      if (!fd->fbody)
 	{
-	  /* Should instead error on line that references 'thisfd'.  */
-	  thisfd->error ("nested function missing body");
+	  /* Should instead error on line that references 'fd'.  */
+	  fd->error ("nested function missing body");
 	  return null_pointer_node;
 	}
 
+      fdparent = fd->toParent2 ()->isFuncDeclaration ();
+
       /* Special case for __ensure and __require.  */
-      if (thisfd->ident == Identifier::idPool ("__ensure")
-	  || thisfd->ident == Identifier::idPool ("__require"))
-	parentfd = func;
-      else
-	parentfd = thisfd->toParent2 ()->isFuncDeclaration ();
+      if ((fd->ident == Identifier::idPool ("__ensure")
+	   || fd->ident == Identifier::idPool ("__require"))
+	  && fdparent != thisfd)
+	{
+	  fdoverride = fdparent;
+	  fdparent = thisfd;
+	}
     }
   else
     {
@@ -2201,33 +2192,33 @@ get_frame_for_symbol (Dsymbol *sym)
       while (sym && !sym->isFuncDeclaration ())
 	sym = sym->toParent2 ();
 
-      parentfd = (FuncDeclaration *) sym;
+      fdparent = (FuncDeclaration *) sym;
     }
 
-  gcc_assert (parentfd != NULL);
+  gcc_assert (fdparent != NULL);
 
-  if (func != parentfd)
+  if (thisfd != fdparent)
     {
       /* If no frame pointer for this function.  */
-      if (!func->vthis)
+      if (!thisfd->vthis)
 	{
 	  sym->error ("is a nested function and cannot be accessed from %s",
-		      func->toChars ());
+		      thisfd->toChars ());
 	  return null_pointer_node;
 	}
 
       /* Make sure we can get the frame pointer to the outer function.
 	 Go up each nesting level until we find the enclosing function.  */
-      Dsymbol *dsym = func;
+      Dsymbol *dsym = thisfd;
 
-      while (thisfd != dsym)
+      while (fd != dsym)
 	{
 	  /* Check if enclosing function is a function.  */
 	  FuncDeclaration *fd = dsym->isFuncDeclaration ();
 
 	  if (fd != NULL)
 	    {
-	      if (parentfd == fd->toParent2 ())
+	      if (fdparent == fd->toParent2 ())
 		break;
 
 	      gcc_assert (fd->isNested () || fd->vthis);
@@ -2241,16 +2232,16 @@ get_frame_for_symbol (Dsymbol *sym)
 
 	  if (ad == NULL)
 	    goto Lnoframe;
-	  if (ad->isClassDeclaration () && parentfd == ad->toParent2 ())
+	  if (ad->isClassDeclaration () && fdparent == ad->toParent2 ())
 	    break;
-	  if (ad->isStructDeclaration () && parentfd == ad->toParent2 ())
+	  if (ad->isStructDeclaration () && fdparent == ad->toParent2 ())
 	    break;
 
 	  if (!ad->isNested () || !ad->vthis)
 	    {
 	    Lnoframe:
-	      func->error ("cannot get frame pointer to %s",
-			   sym->toPrettyChars ());
+	      thisfd->error ("cannot get frame pointer to %s",
+			     sym->toPrettyChars ());
 	      return null_pointer_node;
 	    }
 
@@ -2258,9 +2249,53 @@ get_frame_for_symbol (Dsymbol *sym)
 	}
     }
 
-  tree ffo = get_frameinfo (parentfd);
+  tree ffo = get_frameinfo (fdparent);
   if (FRAMEINFO_CREATES_FRAME (ffo) || FRAMEINFO_STATIC_CHAIN (ffo))
-    return get_framedecl (func, parentfd);
+    {
+      tree frame_ref = get_framedecl (thisfd, fdparent);
+
+      /* If 'thisfd' is a derived member function, then 'fdparent' is the
+	 overridden member function in the base class.  Even if there's a
+	 closure environment, we should give the original stack data as the
+	 nested function frame.  */
+      if (fdoverride)
+	{
+	  ClassDeclaration *cdo = fdoverride->isThis ()->isClassDeclaration ();
+	  ClassDeclaration *cd = thisfd->isThis ()->isClassDeclaration ();
+	  gcc_assert (cdo && cd);
+
+	  int offset;
+	  if (cdo->isBaseOf (cd, &offset) && offset != 0)
+	    {
+	      /* Generate a new frame to pass to the overriden function that
+		 has the 'this' pointer adjusted.  */
+	      gcc_assert (offset != OFFSET_RUNTIME);
+
+	      tree type = FRAMEINFO_TYPE (get_frameinfo (fdoverride));
+	      tree fields = TYPE_FIELDS (type);
+	      /* The 'this' field comes immediately after the '__chain'.  */
+	      tree thisfield = chain_index (1, fields);
+	      vec<constructor_elt, va_gc> *ve = NULL;
+
+	      tree framefields = TYPE_FIELDS (FRAMEINFO_TYPE (ffo));
+	      frame_ref = build_deref (frame_ref);
+
+	      for (tree field = fields; field; field = DECL_CHAIN (field))
+		{
+		  tree value = component_ref (frame_ref, framefields);
+		  if (field == thisfield)
+		    value = build_offset (value, size_int (offset));
+
+		  CONSTRUCTOR_APPEND_ELT (ve, field, value);
+		  framefields = DECL_CHAIN (framefields);
+		}
+
+	      frame_ref = build_address (build_constructor (type, ve));
+	    }
+	}
+
+      return frame_ref;
+    }
 
   return null_pointer_node;
 }
@@ -2300,39 +2335,39 @@ d_nested_struct (StructDeclaration *sd)
 }
 
 
-/* Starting from the current function FUNC, try to find a suitable value of
+/* Starting from the current function FD, try to find a suitable value of
    'this' in nested function instances.  A suitable 'this' value is an
    instance of OCD or a class that has OCD as a base.  */
 
 static tree
 find_this_tree (ClassDeclaration *ocd)
 {
-  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
+  FuncDeclaration *fd = d_function_chain ? d_function_chain->function : NULL;
 
-  while (func)
+  while (fd)
     {
-      AggregateDeclaration *ad = func->isThis ();
+      AggregateDeclaration *ad = fd->isThis ();
       ClassDeclaration *cd = ad ? ad->isClassDeclaration () : NULL;
 
       if (cd != NULL)
 	{
 	  if (ocd == cd)
-	    return get_decl_tree (func->vthis);
+	    return get_decl_tree (fd->vthis);
 	  else if (ocd->isBaseOf (cd, NULL))
-	    return convert_expr (get_decl_tree (func->vthis),
+	    return convert_expr (get_decl_tree (fd->vthis),
 				 cd->type, ocd->type);
 
-	  func = d_nested_class (cd);
+	  fd = d_nested_class (cd);
 	}
       else
 	{
-	  if (func->isNested ())
+	  if (fd->isNested ())
 	    {
-	      func = func->toParent2 ()->isFuncDeclaration ();
+	      fd = fd->toParent2 ()->isFuncDeclaration ();
 	      continue;
 	    }
 
-	  func = NULL;
+	  fd = NULL;
 	}
     }
 

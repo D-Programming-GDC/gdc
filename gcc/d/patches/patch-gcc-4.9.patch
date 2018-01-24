@@ -4,16 +4,19 @@ relevant documentation about the GDC front end.
 
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -25254,7 +25254,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -25250,10 +25250,11 @@ rs6000_output_function_epilogue (FILE *f
+ 	 use language_string.
+ 	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
+ 	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
+-	 a number, so for now use 9.  LTO and Go aren't assigned numbers
++	 a number, so for now use 9.  LTO, D and Go aren't assigned numbers
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
--	  || ! strcmp (language_string, "GNU Go"))
-+	  || ! strcmp (language_string, "GNU Go")
-+	  || ! strcmp (language_string, "GNU D"))
++	  || ! strcmp (language_string, "GNU D")
+ 	  || ! strcmp (language_string, "GNU Go"))
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
- 	       || ! strcmp (language_string, "GNU Fortran"))
 --- a/gcc/doc/frontends.texi
 +++ b/gcc/doc/frontends.texi
 @@ -9,6 +9,7 @@
@@ -35,7 +38,19 @@ relevant documentation about the GDC front end.
  current official meaning is ``GNU Compiler Collection'', which refers
 --- a/gcc/doc/install.texi
 +++ b/gcc/doc/install.texi
-@@ -1423,12 +1423,12 @@ their runtime libraries should be built.  For a list of valid values for
+@@ -939,8 +939,9 @@ only for the listed packages.  For other
+ will be built.  Package names currently recognized in the GCC tree are
+ @samp{libgcc} (also known as @samp{gcc}), @samp{libstdc++} (not
+ @samp{libstdc++-v3}), @samp{libffi}, @samp{zlib}, @samp{boehm-gc},
+-@samp{ada}, @samp{libada}, @samp{libjava}, @samp{libgo}, and @samp{libobjc}.
+-Note @samp{libiberty} does not support shared libraries at all.
++@samp{ada}, @samp{libada}, @samp{libjava}, @samp{libgo}, @samp{libobjc}, and
++@samp{libphobos}. Note @samp{libiberty} does not support shared libraries at
++all.
+ 
+ Use @option{--disable-shared} to build only static libraries.  Note that
+ @option{--disable-shared} does not accept a list of package names as
+@@ -1423,12 +1424,12 @@ their runtime libraries should be built.
  grep language= */config-lang.in
  @end smallexample
  Currently, you can use any of the following:

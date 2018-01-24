@@ -102,9 +102,9 @@ void test6()
 
 enum
 {
-    foo7 = 1,
-    long bar7 = 2,
-    abc7,
+        foo7 = 1,
+        long bar7 = 2,
+        abc7,
 }
 
 enum x7 = 3;

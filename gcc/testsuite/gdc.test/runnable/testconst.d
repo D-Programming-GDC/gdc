@@ -1176,7 +1176,7 @@ void test72()
 {
     int a;
     const int b;
-    enum { int c = 0 };
+    enum { int c = 0 }
     immutable int d = 0;
 
     assert(__traits(isSame, a, a));
@@ -2675,6 +2675,25 @@ struct PathParser11966
 void test11966()
 {
     auto a = PathParser11966().pop();
+}
+
+/************************************/
+// 14788
+
+auto make14788(K, V)(inout V[K] aa)
+{
+    static struct Result
+    {
+        V[K] aa;
+        ref front() inout { return aa[1]; }
+    }
+    return inout Result(aa);
+}
+
+void test14788()
+{
+    int[int] aa = [1:1];
+    make14788(aa).front();
 }
 
 /************************************/

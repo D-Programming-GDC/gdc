@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -91,6 +91,7 @@ Msgtable msgtable[] =
     { "cpp_type_info_ptr", "__cpp_type_info_ptr" },
     { "_assert", "assert" },
     { "_unittest", "unittest" },
+    { "_body", "body" },
 
     { "TypeInfo" },
     { "TypeInfo_Class" },
@@ -158,6 +159,7 @@ Msgtable msgtable[] =
     { "values" },
     { "rehash" },
 
+    { "future", "__future" },
     { "property" },
     { "nogc" },
     { "safe" },
@@ -369,6 +371,12 @@ Msgtable msgtable[] =
 
     // Compiler recognized UDA's
     { "udaSelector", "selector" },
+
+    // C names, for undefined identifier error messages
+    { "_NULL", "NULL" },
+    { "_TRUE", "TRUE" },
+    { "_FALSE", "FALSE" },
+    { "_unsigned", "unsigned" },
 };
 
 

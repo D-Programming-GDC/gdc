@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -142,7 +142,7 @@ public:
     void checkParens(TOK value, Expression *e);
     bool isDeclaration(Token *t, int needId, TOK endtok, Token **pt);
     bool isBasicType(Token **pt);
-    bool isDeclarator(Token **pt, int *haveId, int *haveTpl, TOK endtok);
+    bool isDeclarator(Token **pt, int *haveId, int *haveTpl, TOK endtok, bool allowAltSyntax = true);
     bool isParameters(Token **pt);
     bool isExpression(Token **pt);
     bool skipParens(Token *t, Token **pt);

@@ -1,5 +1,4 @@
 module imports.ice15200a;
-
 import imports.ice15200b;
 
 auto f() // not void

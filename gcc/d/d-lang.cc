@@ -1,5 +1,5 @@
 /* d-lang.cc -- Language-dependent hooks for D.
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "options.h"
 #include "d-system.h"
-#include "cppdefault.h"
+#include "output.h"
 #include "debug.h"
 
 #include "d-tree.h"
@@ -481,10 +481,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
-    case OPT_fmodule_filepath_:
+    case OPT_fmodule_file_:
       global.params.modFileAliasStrings->push (arg);
       if (!strchr (arg, '='))
-	error ("bad argument for -fmodule-filepath");
+	error ("bad argument for -fmodule-file");
       break;
 
     case OPT_fmoduleinfo:
@@ -743,6 +743,9 @@ d_post_options (const char ** fn)
   /* Has no effect yet.  */
   global.params.pic = flag_pic != 0;
 
+  if (warn_return_type == -1)
+    warn_return_type = 0;
+
   return false;
 }
 
@@ -784,8 +787,8 @@ empty_modify_p (tree type, tree op)
    Do gimplification of D specific expression trees in EXPR_P.  */
 
 int
-d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
-		gimple_seq *post_p ATTRIBUTE_UNUSED)
+d_gimplify_expr (tree *expr_p, gimple_seq *pre_p,
+		 gimple_seq *post_p ATTRIBUTE_UNUSED)
 {
   tree_code code = TREE_CODE (*expr_p);
   enum gimplify_status ret = GS_UNHANDLED;
@@ -835,8 +838,25 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
       /* Constructors are not lvalues, so make them one.  */
       if (TREE_CODE (op0) == CONSTRUCTOR)
 	{
-	  TREE_OPERAND (*expr_p, 0) = build_target_expr (op0);
+	  TREE_OPERAND (*expr_p, 0) = force_target_expr (op0);
 	  ret = GS_OK;
+	}
+      break;
+
+    case CALL_EXPR:
+      if (CALL_EXPR_ARGS_ORDERED (*expr_p))
+	{
+	  /* Evaluate all arguments from left to right before passing to the
+	     function, even if an argument itself doesn't have side effects, it
+	     might be altered by another argument.  */
+	  int nargs = call_expr_nargs (*expr_p);
+
+	  for (int i = 0; i < nargs; i++)
+	    {
+	      tree arg = CALL_EXPR_ARG (*expr_p, i);
+	      if (! really_constant_p (arg))
+		CALL_EXPR_ARG (*expr_p, i) = get_formal_tmp_var (arg, pre_p);
+	    }
 	}
       break;
 
@@ -1114,6 +1134,15 @@ d_parse_file (void)
     goto had_errors;
 
   /* Generate output files.  */
+
+  if (Module::rootModule)
+    {
+      /* Declare the name of the root module as the first global name in order
+	 to make the middle-end fully deterministic.  */
+      OutBuffer buf;
+      mangleToBuffer (Module::rootModule, &buf);
+      first_global_object_name = buf.extractString ();
+    }
 
   /* Module dependencies (imports, file, version, debug, lib).  */
   if (global.params.moduleDeps)

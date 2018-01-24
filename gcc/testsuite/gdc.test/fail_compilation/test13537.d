@@ -1,5 +1,5 @@
-// PERMUTE_ARGS:
 /*
+PERMUTE_ARGS:
 TEST_OUTPUT:
 ---
 fail_compilation/test13537.d(32): Error: field U.y cannot modify fields in @safe code that overlap fields with other storage classes

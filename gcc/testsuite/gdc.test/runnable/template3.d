@@ -122,7 +122,7 @@ template TValue(int i:1)
 }
 
 template TValue(int i)
-{       
+{
         pragma(msg,"instantiating...");
         const int TValue = i * TValue!(i-1);
 }
