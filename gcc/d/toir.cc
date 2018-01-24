@@ -1,5 +1,5 @@
 /* toir.cc -- Lower D frontend statements to GCC trees.
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -196,6 +196,11 @@ add_stmt (tree t)
     }
   else
     {
+      /* Force the type to be void so we don't need to create a temporary
+	 variable to hold the inner expression.  */
+      if (TREE_CODE (t) == CLEANUP_POINT_EXPR)
+	TREE_TYPE (t) = void_type_node;
+
       /* Append the expression to the statement list.
 	 Make sure it has a proper location.  */
       if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))

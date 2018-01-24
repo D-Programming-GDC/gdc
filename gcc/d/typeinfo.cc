@@ -1,5 +1,5 @@
 /* typeinfo.cc -- D runtime type identification.
-   Copyright (C) 2013-2017 Free Software Foundation, Inc.
+   Copyright (C) 2013-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -799,7 +799,7 @@ public:
 	      }
 	  }
 
-	if (cd->isabstract)
+	if (cd->isAbstract ())
 	  flags |= ClassFlags::isAbstract;
 
 	for (ClassDeclaration *bcd = cd; bcd; bcd = bcd->baseClass)
@@ -1064,6 +1064,12 @@ public:
       }
     tree ctor = build_constructor (build_ctype (satype), elms);
     tree decl = build_artificial_decl (TREE_TYPE (ctor), ctor);
+
+    /* Internal reference should be public, but not visible outside the
+       compilation unit, as itself is referencing public COMDATs.  */
+    TREE_PUBLIC (decl) = 1;
+    DECL_VISIBILITY (decl) = VISIBILITY_INTERNAL;
+    DECL_COMDAT (decl) = 1;
 
     tree length = size_int (ti->arguments->dim);
     tree ptr = build_address (decl);
@@ -1342,7 +1348,7 @@ get_cpp_typeinfo_decl (ClassDeclaration *decl)
 static bool
 builtin_typeinfo_p (Type *type)
 {
-  if (type->isTypeBasic () || type->ty == Tclass)
+  if (type->isTypeBasic () || type->ty == Tclass || type->ty == Tnull)
     return !type->mod;
 
   if (type->ty == Tarray)

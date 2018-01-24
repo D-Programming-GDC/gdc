@@ -1,5 +1,5 @@
 // REQUIRED_ARGS:
-#line 2
+//
 
 module test42;
 
@@ -52,7 +52,7 @@ void test3()
 {
     auto i = mixin("__LINE__");
     writefln("%d", i);
-    assert(i == 52);
+    assert(i == 53);
 }
 
 /***************************************************/
@@ -698,7 +698,7 @@ void test46()
 
 void test47()
 {
-    enum { _P_WAIT, _P_NOWAIT, _P_OVERLAY };
+    enum { _P_WAIT, _P_NOWAIT, _P_OVERLAY }
 
     alias _P_WAIT P_WAIT;
     alias _P_NOWAIT P_NOWAIT;
@@ -1653,26 +1653,22 @@ void test99()
 
 void test100()
 {
-  {
-    real r = ulong.max;
-    printf("r = %Lg, ulong.max = %llu\n", r, ulong.max);
-    ulong d = cast(ulong)r;
-    printf("d = %llx, ulong.max = %llx\n", d, ulong.max);
-    assert(d == ulong.max);
-  }
-  static if(real.mant_dig == 64)
-  {
-    real r = ulong.max - 1;
-    printf("r = %Lg, ulong.max = %llu\n", r, ulong.max);
-    ulong d = cast(ulong)r;
-    printf("d = %llx, ulong.max = %llx\n", d, ulong.max);
-    assert(d == ulong.max - 1);
-  }
-  else static if(real.mant_dig == 53)
-  { //can't store ulong.max-1 in double
-  }
-  else
-     static assert(false, "Test not implemented for this platform");
+    static void check(ulong value)
+    {
+        real r = value;
+        ulong d = cast(ulong)r;
+        printf("ulong: %llu => real: %Lg => ulong: %llu\n", value, r, d);
+        assert(d == value);
+    }
+
+    // check biggest power of 2 representable in ulong: 2^63
+    check(1L << 63);
+
+    // check biggest representable uneven number
+    static if (real.mant_dig >= 64) // > 64: limited by ulong precision
+        check(ulong.max); // 2^64-1
+    else
+        check((1L << real.mant_dig) - 1);
 }
 
 /***************************************************/
@@ -5652,22 +5648,25 @@ void testdbl_to_ulong()
     //writeln(u);
     assert(u == 12345);
 
-    real adjust = 1.0L/real.epsilon;
-    u = d2ulong(adjust);
-    //writefln("%s %s", adjust, u);
-    static if(real.mant_dig == 64)
-        assert(u == 9223372036854775808UL);
-    else static if(real.mant_dig == 53)
-        assert(u == 4503599627370496UL);
-    else
-        static assert(false, "Test not implemented for this architecture");
+    static if (real.mant_dig <= 64)
+    {
+        real adjust = 1.0L/real.epsilon;
+        u = d2ulong(adjust);
+        //writefln("%s %s", adjust, u);
+        static if(real.mant_dig == 64)
+            assert(u == 9223372036854775808UL);
+        else static if(real.mant_dig == 53)
+            assert(u == 4503599627370496UL);
+        else
+            static assert(false, "Test not implemented for this architecture");
 
-    auto v = d2ulong(adjust * 1.1);
-    //writefln("%s %s %s", adjust, v, u + u/10);
+        auto v = d2ulong(adjust * 1.1);
+        //writefln("%s %s %s", adjust, v, u + u/10);
 
-    // The following can vary in the last bits with different optimization settings,
-    // i.e. the conversion from real to double may not happen.
-    //assert(v == 10145709240540254208UL);
+        // The following can vary in the last bits with different optimization settings,
+        // i.e. the conversion from real to double may not happen.
+        //assert(v == 10145709240540254208UL);
+    }
 }
 
 /***************************************************/
@@ -6042,8 +6041,46 @@ void test10642()
     test(Date(1999, 1, 1), 1, MonthDay(1,1));
 }
 
+/***************************************************/
+// 11581
+
+alias TT11581(T...) = T;
+
+void test11581()
+{
+    static class A {}
+
+    static class C { alias Types = TT11581!(4, int); }
+    static C makeC() { return null; }
+
+    alias T = TT11581!(A);
+
+    // edim == IntergerExp(0)
+    auto a1 = new T[0];
+    static assert(is(typeof(a1) == A));
+
+    enum d2 = 0;
+
+    // edim == TypeIdentifier('d2') --> IdentifierExp
+    auto a2 = new T[d2];
+    static assert(is(typeof(a2) == A));
+
+    alias U = int;
+    int d3 = 3;
+
+    // edim == TypeIdentifier('d3') --> IdentifierExp
+    auto a3 = new U[d3];
+    static assert(is(typeof(a3) == U[]));
+    assert(a3.length == d3);
+
+    // edim == IndexExp(DotIdExp(CallExp(makeC, []), 'Types'), 0)
+    auto a4 = new U[makeC().Types[0]];
+    static assert(is(typeof(a4) == U[]));
+    assert(a4.length == C.Types[0]);
+}
 
 /***************************************************/
+// 7436
 
 void test7436()
 {
@@ -6112,6 +6149,42 @@ void test16027()
     value = 1.0;
     value = value * -1.0;
     assert(value == -1.0);
+}
+
+/***************************************************/
+// https://issues.dlang.org/show_bug.cgi?id=16530
+
+double entropy2(double[] probs)
+{
+    double result = 0;
+    foreach (p; probs)
+    {
+        __gshared int x;
+        ++x;
+        if (!p) continue;
+        import std.math : log2;
+        result -= p * log2(p);
+    }
+    return result;
+}
+
+void test16530()
+{
+    import std.stdio;
+    if (entropy2([1.0, 0, 0]) != 0.0)
+       assert(0);
+}
+
+/***************************************************/
+
+void test252()
+{
+    __gshared int x = 7;
+    __gshared long y = 217;
+    if ((-1 - x) != ~x)
+        assert(0);
+    if ((-1 - y) != ~y)
+        assert(0);
 }
 
 /***************************************************/
@@ -6406,11 +6479,14 @@ int main()
     test11265();
     test10633();
     test10642();
+    test11581();
     test7436();
     test12138();
     test14430();
     test14510();
     test16027();
+    test16530();
+    test252();
 
     writefln("Success");
     return 0;

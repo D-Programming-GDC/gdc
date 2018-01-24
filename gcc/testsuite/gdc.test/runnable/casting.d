@@ -213,7 +213,7 @@ void test14218()
 
     version (DigitalMars)
     {
-        // Questionable but currently accepted
+        // Questionable but currently accepted by DMD (but not GDC).
         foreach (To; Seq!( float,  double,  real,
                            ifloat, idouble, ireal))
         {

@@ -5,6 +5,7 @@ fail_compilation/ice11553.d(22): Error: recursive template expansion while looki
 ---
 */
 
+
 template A(alias T)
 {
     template A()
