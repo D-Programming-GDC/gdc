@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 2003-2014 by Digital Mars
+ * Copyright (C) 2003-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -116,12 +116,15 @@ bool isUniAlpha(dchar_t c)
 
 int utf_codeLengthChar(dchar_t c)
 {
-    return
-        c <= 0x7F ? 1
-        : c <= 0x7FF ? 2
-        : c <= 0xFFFF ? 3
-        : c <= 0x10FFFF ? 4
-        : (assert(false), 6);
+  if (c <= 0x7F)
+      return 1;
+  if (c <= 0x7FF)
+      return 2;
+  if (c <= 0xFFFF)
+      return 3;
+  if (c <= 0x10FFFF)
+      return 4;
+  assert(false);
 }
 
 int utf_codeLengthWchar(dchar_t c)

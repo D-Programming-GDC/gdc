@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -1349,7 +1349,9 @@ void DocComment::parseSections(const utf8_t *comment)
                 const utf8_t *q = p + utfStride(p);
                 while (isIdTail(q))
                     q += utfStride(q);
-                if (*q == ':')  // identifier: ends it
+                // Detected tag ends it
+                if (*q == ':' && isupper(*p)
+                        && (isspace(q[1]) || q[1] == 0))
                 {
                     idlen = q - p;
                     idstart = p;

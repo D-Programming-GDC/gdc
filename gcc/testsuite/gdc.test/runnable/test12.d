@@ -1,3 +1,4 @@
+// PERMUTE_ARGS: -unittest -O -release -inline -fPIC -g
 
 extern(C) int printf(const char*, ...);
 extern(C) int sprintf(char*, const char*, ...);
@@ -1150,8 +1151,6 @@ void writefln(string s)
 {
     printf("%.*s\n", s.length, s.ptr);
 }
-
-/**************************************/
 
 void test58()
 {

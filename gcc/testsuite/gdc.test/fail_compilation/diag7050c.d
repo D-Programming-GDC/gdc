@@ -5,7 +5,6 @@ fail_compilation/diag7050c.d(13): Error: @safe destructor 'diag7050c.B.~this' ca
 ---
 */
 
-#line 1
 struct A
 {
     ~this(){}

@@ -12,7 +12,7 @@
 @include gcc-common.texi
 
 @c Copyright years for this manual.
-@set copyrights-d 2006-2017
+@set copyrights-d 2006-2018
 
 @copying
 @c man begin COPYRIGHT
@@ -364,8 +364,8 @@ When linking, specify a library search directory, as with @command{gcc}.
 This option specifies where to find the executables, libraries,
 source files, and data files of the compiler itself, as with @command{gcc}.
 
-@item -fmodule-filepath=@var{module}=@var{spec}
-@cindex @option{-fmodule-filepath}
+@item -fmodule-file=@var{module}=@var{spec}
+@cindex @option{-fmodule-file}
 This option manipulates file paths of imported modules, such that if an
 imported module matches all or the leftmost part of @var{module}, the file
 path in @var{spec} is used as the location to search for D sources.
@@ -373,7 +373,7 @@ This is used when the source file path and names are not the same as the
 package and module hierachy.  Consider the following examples:
 
 @example
-gdc test.d -fmodule-filepath=A.B=foo.d -fmodule-filepath=C=bar
+gdc test.d -fmodule-file=A.B=foo.d -fmodule-file=C=bar
 @end example
 
 This will tell the compiler to search in all import paths for the source

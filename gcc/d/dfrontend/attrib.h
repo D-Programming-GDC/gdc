@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2016 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -24,6 +24,7 @@ class LabelDsymbol;
 class Initializer;
 class Module;
 class Condition;
+class StaticForeach;
 
 /**************************************************************/
 
@@ -67,6 +68,7 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
     bool oneMember(Dsymbol **ps, Identifier *ident);
+    void addMember(Scope *sc, ScopeDsymbol *sds);
     StorageClassDeclaration *isStorageClassDeclaration() { return this; }
 
     void accept(Visitor *v) { v->visit(this); }
@@ -138,9 +140,8 @@ public:
     AlignDeclaration(Loc loc, Expression *ealign, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
-    void setScope(Scope *sc);
     void semantic2(Scope *sc);
-    structalign_t getAlignment();
+    structalign_t getAlignment(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -211,12 +212,16 @@ public:
 class StaticForeachDeclaration : public ConditionalDeclaration
 {
 public:
+    StaticForeach *sfe;
     ScopeDsymbol *scopesym;
-    bool addisdone;
+    bool cached;
+    Dsymbols *cache;
 
     Dsymbol *syntaxCopy(Dsymbol *s);
+    bool oneMember(Dsymbol *ps, Identifier *ident);
     Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
     void addMember(Scope *sc, ScopeDsymbol *sds);
+    void addComment(const char *comment);
     void setScope(Scope *sc);
     void importAll(Scope *sc);
     void semantic(Scope *sc);
@@ -224,14 +229,14 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 };
 
-class ForwardingAttribDeclaration: AttribDeclaration
+class ForwardingAttribDeclaration : AttribDeclaration
 {
 public:
-        ForwardingScopeDsymbol *sym;
+    ForwardingScopeDsymbol *sym;
 
-        Scope* newScope(Scope *sc);
-        void addMember(Scope *sc, ScopeDsymbol *sds);
-        ForwardingAttribDeclaration *isForwardingAttribDeclaration() { return this; }
+    Scope *newScope(Scope *sc);
+    void addMember(Scope *sc, ScopeDsymbol *sds);
+    ForwardingAttribDeclaration *isForwardingAttribDeclaration() { return this; }
 };
 
 // Mixin declarations

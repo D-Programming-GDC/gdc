@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -170,6 +170,9 @@ void AttribDeclaration::importAll(Scope *sc)
 
 void AttribDeclaration::semantic(Scope *sc)
 {
+    if (semanticRun != PASSinit)
+        return;
+    semanticRun = PASSsemantic;
     Dsymbols *d = include(sc, NULL);
 
     //printf("\tAttribDeclaration::semantic '%s', d = %p\n",toChars(), d);
@@ -186,6 +189,7 @@ void AttribDeclaration::semantic(Scope *sc)
         if (sc2 != sc)
             sc2->pop();
     }
+    semanticRun = PASSsemanticdone;
 }
 
 void AttribDeclaration::semantic2(Scope *sc)
@@ -374,6 +378,32 @@ bool StorageClassDeclaration::oneMember(Dsymbol **ps, Identifier *ident)
         }
     }
     return t;
+}
+
+void StorageClassDeclaration::addMember(Scope *sc, ScopeDsymbol *sds)
+{
+    Dsymbols *d = include(sc, sds);
+    if (d)
+    {
+        Scope *sc2 = newScope(sc);
+        for (size_t i = 0; i < d->dim; i++)
+        {
+            Dsymbol *s = (*d)[i];
+            //printf("\taddMember %s to %s\n", s->toChars(), sds->toChars());
+            // STClocal needs to be attached before the member is added to the scope (because it influences the parent symbol)
+            if (Declaration *decl = s->isDeclaration())
+            {
+                decl->storage_class |= stc & STClocal;
+                if (StorageClassDeclaration *sdecl = s->isStorageClassDeclaration())
+                {
+                    sdecl->stc |= stc & STClocal;
+                }
+            }
+            s->addMember(sc2, sds);
+        }
+        if (sc2 != sc)
+            sc2->pop();
+    }
 }
 
 Scope *StorageClassDeclaration::newScope(Scope *sc)
@@ -633,7 +663,7 @@ AlignDeclaration::AlignDeclaration(Loc loc, Expression *ealign, Dsymbols *decl)
 {
     this->loc = loc;
     this->ealign = ealign;
-    this->salign = STRUCTALIGN_DEFAULT;
+    this->salign = 0;
 }
 
 Dsymbol *AlignDeclaration::syntaxCopy(Dsymbol *s)
@@ -650,17 +680,9 @@ Scope *AlignDeclaration::newScope(Scope *sc)
         sc->inlining);
 }
 
-void AlignDeclaration::setScope(Scope *sc)
-{
-    //printf("AlignDeclaration::setScope() %p\n", this);
-    if (ealign && decl)
-        Dsymbol::setScope(sc); // for forward reference
-    return AttribDeclaration::setScope(sc);
-}
-
 void AlignDeclaration::semantic2(Scope *sc)
 {
-    getAlignment();
+    getAlignment(sc);
     AttribDeclaration::semantic2(sc);
 }
 
@@ -670,47 +692,33 @@ static structalign_t errorPositiveInteger(Loc loc, Expression *ealign)
     return STRUCTALIGN_DEFAULT;
 }
 
-structalign_t AlignDeclaration::getAlignment()
+structalign_t AlignDeclaration::getAlignment(Scope *sc)
 {
+    if (salign != 0)
+        return salign;
+
     if (!ealign)
-        return STRUCTALIGN_DEFAULT;
+        return salign = STRUCTALIGN_DEFAULT;
 
-    if (Scope *sc = _scope)
+    sc = sc->startCTFE();
+    ealign = ::semantic(ealign, sc);
+    ealign = resolveProperties(sc, ealign);
+    sc = sc->endCTFE();
+    ealign = ealign->ctfeInterpret();
+
+    if (ealign->op == TOKerror)
+        return salign = STRUCTALIGN_DEFAULT;
+
+    Type *tb = ealign->type->toBasetype();
+    sinteger_t n = ealign->toInteger();
+
+    if (n < 1 || n & (n - 1) || STRUCTALIGN_DEFAULT < n || !tb->isintegral())
     {
-        _scope = NULL;
-
-        sc = sc->startCTFE();
-        ealign = ::semantic(ealign, sc);
-        ealign = resolveProperties(sc, ealign);
-        sc = sc->endCTFE();
-
-        if (ealign->op == TOKerror)
-            return STRUCTALIGN_DEFAULT;
-        if (!ealign->type)
-            return errorPositiveInteger(loc, ealign);
-        Type *tb = ealign->type->toBasetype();
-        if (!tb->isintegral())
-            return errorPositiveInteger(loc, ealign);
-        if (tb->ty == Tchar || tb->ty == Twchar || tb->ty == Tdchar || tb->ty == Tbool)
-            return errorPositiveInteger(loc, ealign);
-
-        ealign = ealign->ctfeInterpret();
-        if (ealign->op == TOKerror)
-            return STRUCTALIGN_DEFAULT;
-
-        sinteger_t n = ealign->toInteger();
-        if (n < 1 || STRUCTALIGN_DEFAULT < n)
-            return errorPositiveInteger(loc, ealign);
-
-        if (n & (n - 1))
-        {
-            ::error(loc, "alignment must be a power of 2, not %u", (structalign_t)n);
-            return STRUCTALIGN_DEFAULT;
-        }
-
-        salign = (structalign_t)n;
+        ::error(loc, "alignment must be an integer positive power of 2, not %s", ealign->toChars());
+        return salign = STRUCTALIGN_DEFAULT;
     }
-    return salign;
+
+    return salign = (structalign_t)n;
 }
 
 /********************************* AnonDeclaration ****************************/
@@ -1429,6 +1437,8 @@ void CompileDeclaration::compileIt(Scope *sc)
     if (exp->op != TOKerror)
     {
         Expression *e = exp->ctfeInterpret();
+        if (e->op == TOKerror) // Bugzilla 15974
+            return;
         StringExp *se = e->toStringExp();
         if (!se)
             exp->error("argument to mixin must be a string, not (%s) of type %s", exp->toChars(), exp->type->toChars());

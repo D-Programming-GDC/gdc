@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -123,10 +123,9 @@ UnionExp Bool(Type *type, Expression *e1)
     return ue;
 }
 
-UnionExp Add(Type *type, Expression *e1, Expression *e2)
+UnionExp Add(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
 
 #if LOG
     printf("Add(e1 = %s, e2 = %s)\n", e1->toChars(), e2->toChars());
@@ -237,10 +236,9 @@ UnionExp Add(Type *type, Expression *e1, Expression *e2)
 }
 
 
-UnionExp Min(Type *type, Expression *e1, Expression *e2)
+UnionExp Min(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
 
     if (type->isreal())
     {
@@ -343,10 +341,9 @@ UnionExp Min(Type *type, Expression *e1, Expression *e2)
     return ue;
 }
 
-UnionExp Mul(Type *type, Expression *e1, Expression *e2)
+UnionExp Mul(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
 
     if (type->isfloating())
     {
@@ -396,10 +393,9 @@ UnionExp Mul(Type *type, Expression *e1, Expression *e2)
     return ue;
 }
 
-UnionExp Div(Type *type, Expression *e1, Expression *e2)
+UnionExp Div(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
 
     if (type->isfloating())
     {
@@ -478,10 +474,9 @@ UnionExp Div(Type *type, Expression *e1, Expression *e2)
     return ue;
 }
 
-UnionExp Mod(Type *type, Expression *e1, Expression *e2)
+UnionExp Mod(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
 
     if (type->isfloating())
     {
@@ -550,10 +545,9 @@ UnionExp Mod(Type *type, Expression *e1, Expression *e2)
     return ue;
 }
 
-UnionExp Pow(Type *type, Expression *e1, Expression *e2)
+UnionExp Pow(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
 
     // Handle integer power operations.
     if (e2->type->isintegral())
@@ -600,11 +594,11 @@ UnionExp Pow(Type *type, Expression *e1, Expression *e2)
             if (n & 1)
             {
                 // v = v * r;
-                uv = Mul(v->type, v, r);
+                uv = Mul(loc, v->type, v, r);
             }
             n >>= 1;
             // r = r * r
-            ur = Mul(r->type, r, r);
+            ur = Mul(loc, r->type, r, r);
         }
 
         if (neg)
@@ -612,7 +606,7 @@ UnionExp Pow(Type *type, Expression *e1, Expression *e2)
             // ue = 1.0 / v
             UnionExp one;
             new(&one) RealExp(loc, CTFloat::one, v->type);
-            uv = Div(v->type, one.exp(), v);
+            uv = Div(loc, v->type, one.exp(), v);
         }
 
         if (type->iscomplex())
@@ -638,20 +632,16 @@ UnionExp Pow(Type *type, Expression *e1, Expression *e2)
     return ue;
 }
 
-UnionExp Shl(Type *type, Expression *e1, Expression *e2)
+UnionExp Shl(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
-
     new(&ue) IntegerExp(loc, e1->toInteger() << e2->toInteger(), type);
     return ue;
 }
 
-UnionExp Shr(Type *type, Expression *e1, Expression *e2)
+UnionExp Shr(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
-
     dinteger_t value = e1->toInteger();
     dinteger_t dcount = e2->toInteger();
     assert(dcount <= 0xFFFFFFFF);
@@ -704,11 +694,9 @@ UnionExp Shr(Type *type, Expression *e1, Expression *e2)
     return ue;
 }
 
-UnionExp Ushr(Type *type, Expression *e1, Expression *e2)
+UnionExp Ushr(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
-
     dinteger_t value = e1->toInteger();
     dinteger_t dcount = e2->toInteger();
     assert(dcount <= 0xFFFFFFFF);
@@ -751,33 +739,32 @@ UnionExp Ushr(Type *type, Expression *e1, Expression *e2)
     return ue;
 }
 
-UnionExp And(Type *type, Expression *e1, Expression *e2)
+UnionExp And(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    new(&ue) IntegerExp(e1->loc, e1->toInteger() & e2->toInteger(), type);
+    new(&ue) IntegerExp(loc, e1->toInteger() & e2->toInteger(), type);
     return ue;
 }
 
-UnionExp Or(Type *type, Expression *e1, Expression *e2)
+UnionExp Or(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    new(&ue) IntegerExp(e1->loc, e1->toInteger() | e2->toInteger(), type);
+    new(&ue) IntegerExp(loc, e1->toInteger() | e2->toInteger(), type);
     return ue;
 }
 
-UnionExp Xor(Type *type, Expression *e1, Expression *e2)
+UnionExp Xor(Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    new(&ue) IntegerExp(e1->loc, e1->toInteger() ^ e2->toInteger(), type);
+    new(&ue) IntegerExp(loc, e1->toInteger() ^ e2->toInteger(), type);
     return ue;
 }
 
 /* Also returns TOKcantexp if cannot be computed.
  */
-UnionExp Equal(TOK op, Type *type, Expression *e1, Expression *e2)
+UnionExp Equal(TOK op, Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
     int cmp = 0;
     real_t r1;
     real_t r2;
@@ -859,7 +846,7 @@ UnionExp Equal(TOK op, Type *type, Expression *e1, Expression *e2)
             {
                 Expression *ee1 = es1->getElement(i);
                 Expression *ee2 = es2->getElement(i);
-                ue = Equal(TOKequal, Type::tint32, ee1, ee2);
+                ue = Equal(TOKequal, loc, Type::tint32, ee1, ee2);
                 if (CTFEExp::isCantExp(ue.exp()))
                     return ue;
                 cmp = (int)ue.exp()->toInteger();
@@ -932,7 +919,7 @@ UnionExp Equal(TOK op, Type *type, Expression *e1, Expression *e2)
                     cmp = 0;
                     break;
                 }
-                ue = Equal(TOKequal, Type::tint32, ee1, ee2);
+                ue = Equal(TOKequal, loc, Type::tint32, ee1, ee2);
                 if (ue.exp()->op == TOKcantexp)
                     return ue;
                 cmp = (int)ue.exp()->toInteger();
@@ -986,10 +973,9 @@ UnionExp Equal(TOK op, Type *type, Expression *e1, Expression *e2)
     return ue;
 }
 
-UnionExp Identity(TOK op, Type *type, Expression *e1, Expression *e2)
+UnionExp Identity(TOK op, Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
     int cmp;
 
     if (e1->op == TOKnull)
@@ -1026,8 +1012,7 @@ UnionExp Identity(TOK op, Type *type, Expression *e1, Expression *e2)
         }
         else
         {
-           ue = Equal((op == TOKidentity) ? TOKequal : TOKnotequal,
-                   type, e1, e2);
+           ue = Equal((op == TOKidentity) ? TOKequal : TOKnotequal, loc, type, e1, e2);
            return ue;
         }
     }
@@ -1038,10 +1023,9 @@ UnionExp Identity(TOK op, Type *type, Expression *e1, Expression *e2)
 }
 
 
-UnionExp Cmp(TOK op, Type *type, Expression *e1, Expression *e2)
+UnionExp Cmp(TOK op, Loc loc, Type *type, Expression *e1, Expression *e2)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
     dinteger_t n;
     real_t r1;
     real_t r2;
@@ -1107,11 +1091,9 @@ UnionExp Cmp(TOK op, Type *type, Expression *e1, Expression *e2)
  *  type: type to paint the result
  */
 
-UnionExp Cast(Type *type, Type *to, Expression *e1)
+UnionExp Cast(Loc loc, Type *type, Type *to, Expression *e1)
 {
     UnionExp ue;
-    Loc loc = e1->loc;
-
     Type *tb = to->toBasetype();
     Type *typeb = type->toBasetype();
 
@@ -1256,7 +1238,7 @@ L1:
             VarDeclaration *v = sd->fields[i];
             UnionExp zero;
             new(&zero) IntegerExp(0);
-            ue = Cast(v->type, v->type, zero.exp());
+            ue = Cast(loc, v->type, v->type, zero.exp());
             if (ue.exp()->op == TOKcantexp)
                 return ue;
             elements->push(ue.exp()->copy());
@@ -1397,7 +1379,7 @@ UnionExp Index(Type *type, Expression *e1, Expression *e2)
         {
             i--;
             Expression *ekey = (*ae->keys)[i];
-            ue = Equal(TOKequal, Type::tbool, ekey, e2);
+            ue = Equal(TOKequal, loc, Type::tbool, ekey, e2);
             if (CTFEExp::isCantExp(ue.exp()))
                 return ue;
             if (ue.exp()->isBool(true))

@@ -74,7 +74,7 @@ void test2()
     int delegate(int) dg5 = delegate    (int a){ return a*2; };     assert(dg5(2) == 4);
     int delegate(int) dg6 = delegate int(int a){ return a*2; };     assert(dg6(2) == 4);
 
-    // funciton/delegate mismatching always raises an error
+    // function/delegate mismatching always raises an error
     static assert(!__traits(compiles, { int function(int) xfg3 = delegate    (    a){ return a*2; }; }));
     static assert(!__traits(compiles, { int function(int) xfg4 = delegate int(    a){ return a*2; }; }));
     static assert(!__traits(compiles, { int function(int) xfg5 = delegate    (int a){ return a*2; }; }));
@@ -1125,7 +1125,7 @@ void test12421()
     // This is problematic case, and should be disallowed in the future.
     alias f = x => y;
     int y = 10;
-    assert(f(1) == 10);;
+    assert(f(1) == 10);
 }
 
 /***************************************************/
@@ -1175,6 +1175,28 @@ void test13879()
     funcs1[0] = x => true;                          // OK
     bool function(int)[2] funcs2 = x => true;       // OK <- Error
     assert(funcs2[0] is funcs2[1]);
+}
+
+/***************************************************/
+// 14745
+
+void test14745()
+{
+    // qualified nested functions
+    auto foo1() pure immutable { return 0; }
+    auto foo2() pure const { return 0; }
+
+    // qualified lambdas (== implicitly marked as delegate literals)
+    auto lambda1 = () pure immutable { return 0; };
+    auto lambda2 = () pure const { return 0; };
+    static assert(is(typeof(lambda1) : typeof(&foo1)));
+    static assert(is(typeof(lambda2) : typeof(&foo2)));
+
+    // qualified delegate literals
+    auto dg1 = delegate () pure immutable { return 0; };
+    auto dg2 = delegate () pure const { return 0; };
+    static assert(is(typeof(dg1) : typeof(&foo1)));
+    static assert(is(typeof(dg2) : typeof(&foo2)));
 }
 
 /***************************************************/
@@ -1259,6 +1281,7 @@ int main()
     test12421();
     test12508();
     test13879();
+    test14745();
     test15794();
 
     printf("Success\n");
