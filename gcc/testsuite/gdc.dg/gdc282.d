@@ -1,4 +1,4 @@
-// Bug 282
+// { dg-shouldfail "conflicting methods in class" }
 
 class C282a
 {
