@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -83,6 +83,15 @@ Expression *checkAssignmentAsCondition(Expression *e)
         return new ErrorExp();
     }
     return e;
+}
+
+/// Return a type identifier reference to 'object.Throwable'
+TypeIdentifier *getThrowable()
+{
+    TypeIdentifier *tid = new TypeIdentifier(Loc(), Id::empty);
+    tid->addIdent(Id::object);
+    tid->addIdent(Id::Throwable);
+    return tid;
 }
 
 /******************************** Statement ***************************/
@@ -503,6 +512,8 @@ Statements *CompileStatement::flatten(Scope *sc)
     if (exp->op != TOKerror)
     {
         Expression *e = exp->ctfeInterpret();
+        if (e->op == TOKerror) // Bugzilla 15974
+            goto Lerror;
         StringExp *se = e->toStringExp();
         if (!se)
            error("argument to mixin must be a string, not (%s) of type %s", exp->toChars(), exp->type->toChars());
@@ -988,6 +999,7 @@ SwitchStatement::SwitchStatement(Loc loc, Expression *c, Statement *b, bool isFi
     cases = NULL;
     hasNoDefault = 0;
     hasVars = 0;
+    lastVar = NULL;
 }
 
 Statement *SwitchStatement::syntaxCopy()
@@ -1057,6 +1069,7 @@ CaseStatement::CaseStatement(Loc loc, Expression *exp, Statement *s)
     this->exp = exp;
     this->statement = s;
     index = 0;
+    lastVar = NULL;
 }
 
 Statement *CaseStatement::syntaxCopy()
@@ -1100,6 +1113,7 @@ DefaultStatement::DefaultStatement(Loc loc, Statement *s)
     : Statement(loc)
 {
     this->statement = s;
+    this->lastVar = NULL;
 }
 
 Statement *DefaultStatement::syntaxCopy()
@@ -1268,7 +1282,7 @@ Catch::Catch(Loc loc, Type *t, Identifier *id, Statement *handler)
 Catch *Catch::syntaxCopy()
 {
     Catch *c = new Catch(loc,
-        type ? type->syntaxCopy() : NULL,
+        type ? type->syntaxCopy() : getThrowable(),
         ident,
         (handler ? handler->syntaxCopy() : NULL));
     c->internalCatch = internalCatch;

@@ -1,5 +1,5 @@
 /* intrinsics.def -- Definitions for D compiler intrinsics.
-   Copyright (C) 2014-2017 Free Software Foundation, Inc.
+   Copyright (C) 2014-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -79,6 +79,7 @@ DEF_D_BUILTIN (SUBUL, SUBS, "subu", "core.checkedint", "FNaNbNiNfmmKbZm")
 DEF_D_BUILTIN (MULS, MULS, "muls", "core.checkedint", "FNaNbNiNfiiKbZi")
 DEF_D_BUILTIN (MULSL, MULS, "muls", "core.checkedint", "FNaNbNiNfllKbZl")
 DEF_D_BUILTIN (MULU, MULS, "mulu", "core.checkedint", "FNaNbNiNfkkKbZk")
+DEF_D_BUILTIN (MULUI, MULS, "mulu", "core.checkedint", "FNaNbNiNfmkKbZm")
 DEF_D_BUILTIN (MULUL, MULS, "mulu", "core.checkedint", "FNaNbNiNfmmKbZm")
 DEF_D_BUILTIN (NEGS, NEGS, "negs", "core.checkedint", "FNaNbNiNfiKbZi")
 DEF_D_BUILTIN (NEGSL, NEGS, "negs", "core.checkedint", "FNaNbNiNflKbZl")

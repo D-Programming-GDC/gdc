@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2016 by Digital Mars
+ * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -238,9 +238,16 @@ public:
 
 class ForwardingStatement : public Statement
 {
-    Statement *statement;
     ForwardingScopeDsymbol *sym;
+    Statement *statement;
 
+    Statement *syntaxCopy();
+    Statement *getRelatedLabeled();
+    bool hasBreak();
+    bool hasContinue();
+    Statement *scopeCode(Scope *sc, Statement **sentry, Statement **sexception, Statement **sfinally);
+    Statement *last();
+    Statements *flatten(Scope *sc);
     ForwardingStatement *isForwardingStatement() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 };

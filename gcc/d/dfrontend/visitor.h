@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 2013-2014 by Digital Mars
+ * Copyright (C) 2013-2018 by The D Language Foundation, All Rights Reserved
  * All Rights Reserved
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -399,8 +399,8 @@ public:
     virtual void visit(PragmaDeclaration *s) { visit((AttribDeclaration *)s); }
     virtual void visit(ConditionalDeclaration *s) { visit((AttribDeclaration *)s); }
     virtual void visit(StaticIfDeclaration *s) { visit((ConditionalDeclaration *)s); }
-    virtual void visit(CompileDeclaration *s) { visit((AttribDeclaration *)s); }
     virtual void visit(StaticForeachDeclaration *s) { visit((AttribDeclaration *)s); }
+    virtual void visit(CompileDeclaration *s) { visit((AttribDeclaration *)s); }
     virtual void visit(UserAttributeDeclaration *s) { visit((AttribDeclaration *)s); }
 
     virtual void visit(ScopeDsymbol *s) { visit((Dsymbol *)s); }

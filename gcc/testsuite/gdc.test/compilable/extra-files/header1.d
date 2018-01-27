@@ -93,7 +93,7 @@ template Foo(T, int V)
         break;
     }
 
-        enum Label { A, B, C };
+        enum Label { A, B, C }
         void fswitch(Label l)
         {
             final switch (l)
@@ -131,6 +131,13 @@ template Foo(T, int V)
     {
         x--;
     }
+
+    try
+	    bar(1, 2);
+    catch(Object o)
+	    x++;
+    finally
+	    x--;
 
     Object o;
     synchronized (o)
