@@ -1,3 +1,7 @@
+2018-01-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* toir.cc (build_function_body): Set input_location.
+
 2018-01-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_frame_type): Don't add chain field for
