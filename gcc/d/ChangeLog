@@ -1,3 +1,7 @@
+2018-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* gdc.texi (Runtime Options): Remove deprecated -fproperty option.
+
 2018-01-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (d_gimplify_expr): Gimplify all CALL_EXPR_ARGS_ORDERED
