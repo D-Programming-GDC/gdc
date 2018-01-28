@@ -1143,8 +1143,8 @@ get_symbol_decl (Declaration *decl)
       /* Function was declared 'naked'.  */
       if (fd->naked)
 	{
+	  insert_decl_attribute (decl->csym, "naked");
 	  DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (decl->csym) = 1;
-	  DECL_UNINLINABLE (decl->csym) = 1;
 	}
 
       /* Vector array operations are always compiler generated.  */
