@@ -344,6 +344,10 @@ fversion=
 D Joined RejectNegative
 -fversion=<level|ident>	Compile in version code >= <level> or identified by <ident>.
 
+fweak
+D Var(flag_weak) Init(1)
+Emit common-like symbols as weak symbols.
+
 fXf=
 D Joined RejectNegative Alias(Xf)
 ; Deprecated in favor of -Xf
