@@ -582,11 +582,11 @@ public:
       }
     else if (d->isDataseg () && !(d->storage_class & STCextern))
       {
-	tree t = get_symbol_decl (d);
+	tree decl = get_symbol_decl (d);
 
 	/* Duplicated VarDeclarations map to the same symbol. Check if this
 	   is the one declaration which will be emitted.  */
-	tree ident = DECL_ASSEMBLER_NAME (t);
+	tree ident = DECL_ASSEMBLER_NAME (decl);
 	if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != d)
 	  return;
 
@@ -602,19 +602,19 @@ public:
 	if (d->_init && !d->_init->isVoidInitializer ())
 	  {
 	    Expression *e = initializerToExpression (d->_init, d->type);
-	    DECL_INITIAL (t) = build_expr (e, true);
+	    DECL_INITIAL (decl) = build_expr (e, true);
 	  }
 	else
 	  {
 	    if (d->type->ty == Tstruct)
 	      {
 		StructDeclaration *sd = ((TypeStruct *) d->type)->sym;
-		DECL_INITIAL (t) = layout_struct_initializer (sd);
+		DECL_INITIAL (decl) = layout_struct_initializer (sd);
 	      }
 	    else
 	      {
 		Expression *e = d->type->defaultInitLiteral (d->loc);
-		DECL_INITIAL (t) = build_expr (e, true);
+		DECL_INITIAL (decl) = build_expr (e, true);
 	      }
 	  }
 
@@ -622,7 +622,7 @@ public:
 	gcc_assert (!integer_zerop (size)
 		    || d->type->toBasetype ()->ty == Tsarray);
 
-	d_finish_decl (t);
+	d_finish_decl (decl);
 
 	/* Maybe record the var against the current module.  */
 	register_module_decl (d);
@@ -636,6 +636,8 @@ public:
 
 	if (d->_init)
 	  {
+	    tree decl = get_symbol_decl (d);
+
 	    if (!d->_init->isVoidInitializer ())
 	      {
 		ExpInitializer *vinit = d->_init->isExpInitializer ();
@@ -645,15 +647,9 @@ public:
 		/* Maybe put variable on list of things needing destruction.  */
 		if (d->needsScopeDtor ())
 		  {
-		    /* Its a temporary, add the corresponding cleanup.  */
-		    tree decl = get_symbol_decl (d);
 		    vec_safe_push (d_function_chain->vars_in_scope, decl);
-
-		    if (TREE_CODE (exp) == INIT_EXPR
-			|| TREE_CODE (exp) == MODIFY_EXPR)
-		      exp = TREE_OPERAND (exp, 1);
-
-		    exp = build_target_expr (decl, exp);
+		    /* Force a TARGET_EXPR to add the corresponding cleanup.  */
+		    exp = force_target_expr (compound_expr (exp, decl));
 		    TARGET_EXPR_CLEANUP (exp) = build_expr (d->edtor);
 		  }
 
@@ -1325,13 +1321,7 @@ declare_local_var (VarDeclaration *var)
   tree decl = get_symbol_decl (var);
 
   gcc_assert (!TREE_STATIC (decl));
-
-  /* If this is a variable used for automatic scope dtor, don't add it to the
-     current binding level, as its really a temporary used in a TARGET_EXPR.
-     See build_decl_tree visitor for VarDeclaration.  */
-  if (!var->needsScopeDtor ())
-    d_pushdecl (decl);
-
+  d_pushdecl (decl);
   DECL_CONTEXT (decl) = current_function_decl;
 
   /* Compiler generated symbols.  */
