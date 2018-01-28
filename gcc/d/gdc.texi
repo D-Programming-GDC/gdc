@@ -607,11 +607,6 @@ Limits the maximum number of error messages to @var{n}, at which point
 source code.  If @var{n} is 0 (the default), there is no limit on the
 number of error messages produced.
 
-@item -fproperty
-@cindex @option{-fproperty}
-@cindex @option{-fno-property}
-Enforces the @code{@@property} syntax in D.
-
 @item -fsyntax-only
 @cindex @option{-fsyntax-only}
 @cindex @option{-fno-syntax-only}
