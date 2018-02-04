@@ -1294,7 +1294,7 @@ class TypeInfo_Struct : TypeInfo
         return m_init;
     }
 
-    override @property uint flags() nothrow pure const { return m_flags; }
+    override @property uint flags() nothrow pure const { return cast(uint)m_flags; }
 
     override @property size_t talign() nothrow pure const { return m_align; }
 
@@ -1325,7 +1325,7 @@ class TypeInfo_Struct : TypeInfo
     int      function(in void*, in void*) xopCmp;
     string   function(in void*)           xtoString;
 
-    enum StructFlags : uint
+    enum StructFlags : size_t
     {
         hasPointers = 0x1,
         isDynamicType = 0x2, // built at runtime, needs type info in xdtor
@@ -1339,7 +1339,7 @@ class TypeInfo_Struct : TypeInfo
     }
     void function(void*)                    xpostblit;
 
-    uint m_align;
+    size_t m_align;
 
     override @property immutable(void)* rtInfo() const { return m_RTInfo; }
 
