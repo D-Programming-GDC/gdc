@@ -200,6 +200,195 @@ version( GNU )
             parmn[0..tsize] = p[0..tsize];
         }
     }
+    else version( AArch64 )
+    {
+        // Note: SoftFloat support is not in the ARM documents but apparently
+        // supported in some GCC versions. Not tested!
+
+        private pure @property bool inGeneralRegister(const TypeInfo ti)
+        {
+            // Float types and HAs are always in SIMD register (or stack in SoftFloat)
+            // Integers, pointers and composite types up to 64 byte are
+            // passed in registers
+            if (ti.argTypes.isFloat)
+                return false;
+            else if (ti.argTypes.isHA)
+                return false;
+            else
+                return ti.tsize <= 64;
+        }
+
+        private pure @property bool inFloatRegister(const TypeInfo ti)
+        {
+            version (D_SoftFloat)
+                return false;
+            else
+                return ti.argTypes.isFloat;
+        }
+
+        private pure @property bool isHA(const TypeInfo ti)
+        {
+            version (D_SoftFloat)
+                return false;
+            else
+                return ti.argTypes.isHA;
+        }
+
+        private pure @property bool passByReference(const TypeInfo ti)
+        {
+            // See aarch64_pass_by_reference
+            if (ti.inFloatRegister || ti.isHA)
+                return false;
+            else
+                return ti.tsize > 16;
+        }
+
+        /// Layout of this struct must match __builtin_va_list for C ABI compatibility
+        struct __va_list
+        {
+            void* __stack;
+            void* __gr_top;
+            void* __vr_top;
+            int __gr_offs;
+            int __vr_offs;
+        }
+
+        ///
+        // This code is based on the pseudo code in 'Procedure call standard
+        // for the ARM 64-bit architecture' release 1.0, 22.05.13
+        void va_arg()(ref va_list apx, TypeInfo ti, void* parmn)
+        {
+            import core.stdc.stdint : intptr_t;
+
+            __va_list* ap = cast(__va_list*)&apx;
+            auto uparmn = cast(ubyte*) parmn;
+
+            void assignValue(void* pFrom)
+            {
+                auto len = ti.tsize;
+                uparmn[0 .. len] = (cast(ubyte*) pFrom)[0 .. len];
+            }
+
+            void readFromStack()
+            {
+                intptr_t arg = cast(intptr_t) ap.__stack;
+                // round up
+                if (ti.talign > 8)
+                    arg = (arg + 15) & -16;
+
+                ap.__stack = cast(void*)((arg + ti.tsize + 7) & -8);
+                version (BigEndian)
+                {
+                    if (!ti.argTypes.isAggregate && ti.tsize < 8)
+                        arg += 8 - ti.tsize;
+                }
+                return assignValue(cast(void*) arg);
+            }
+
+            void readReferenceFromStack()
+            {
+                intptr_t arg = cast(intptr_t) ap.__stack;
+
+                ap.__stack = cast(void*)((arg + 8 + 7) & -8);
+                auto len = ti.tsize;
+                uparmn[0 .. len] = (*cast(ubyte**)(arg))[0 .. len];
+            }
+
+            // Note: This code is missing in the AArch64 PCS pseudo code
+            if (ti.passByReference)
+            {
+                // Passed as a reference => always a 8 byte pointer
+                auto offs = ap.__gr_offs;
+                // reg save area empty
+                if (offs >= 0)
+                    return readReferenceFromStack();
+
+                ap.__gr_offs = offs + 8;
+                // overflowed reg save area
+                if (ap.__gr_offs > 0)
+                    return readReferenceFromStack();
+
+                auto len = ti.tsize;
+                uparmn[0 .. len] = (*cast(ubyte**)(ap.__gr_top + offs))[0 .. len];
+            }
+            else if (ti.inGeneralRegister)
+            {
+                auto offs = ap.__gr_offs;
+                // reg save area empty
+                if (offs >= 0)
+                    return readFromStack();
+                // round up
+                if (ti.talign > 8)
+                    offs = (offs + 15) & -16;
+
+                auto nreg = cast(int)((ti.tsize + 7) / 8);
+                ap.__gr_offs = offs + (nreg * 8);
+                // overflowed reg save area
+                if (ap.__gr_offs > 0)
+                    return readFromStack();
+
+                version (BigEndian)
+                {
+                    if (!ti.argTypes.isAggregate && ti.tsize < 8)
+                        offs += 8 - ti.tsize;
+                }
+                return assignValue(ap.__gr_top + offs);
+            }
+            else if (ti.isHA)
+            {
+                auto offs = ap.__vr_offs;
+                // reg save area empty
+                if (offs >= 0)
+                    return readFromStack();
+
+                auto nreg = ti.argTypes.haFieldNum;
+                ap.__vr_offs = offs + (nreg * 16);
+                // overflowed reg save area
+                if (ap.__vr_offs > 0)
+                    return readFromStack();
+
+                version (BigEndian)
+                {
+                    if (ti.argTypes.haFieldSize < 16)
+                        offs += 16 - ti.argTypes.haFieldSize;
+                }
+
+                size_t pos = 0;
+                for (size_t i = 0; i < nreg; i++)
+                {
+                    uparmn[pos .. pos + ti.argTypes.haFieldSize] = (
+                            cast(ubyte*)(ap.__vr_top + offs))[0 .. ti.argTypes.haFieldSize];
+
+                    pos += ti.argTypes.haFieldSize;
+                    offs += 16;
+                }
+            }
+            else if (ti.inFloatRegister)
+            {
+                auto offs = ap.__vr_offs;
+                // reg save area empty
+                if (offs >= 0)
+                    return readFromStack();
+
+                auto nreg = cast(int)((ti.tsize + 15) / 16);
+                ap.__vr_offs = offs + (nreg * 16);
+                // overflowed reg save area
+                if (ap.__vr_offs > 0)
+                    return readFromStack();
+
+                version (BigEndian)
+                {
+                    if (!ti.argTypes.isAggregate && ti.tsize < 16)
+                        offs += 16 - ti.tsize;
+                }
+                return assignValue(ap.__vr_top + offs);
+            }
+            else
+            {
+                return readFromStack();
+            }
+        }
+    }
     else
     {
         ///
@@ -209,12 +398,10 @@ version( GNU )
         }
     }
 
-
     /***********************
      * End use of ap.
      */
     alias __builtin_va_end va_end;
-
 
     /***********************
      * Make a copy of ap.

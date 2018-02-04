@@ -195,6 +195,70 @@ struct OffsetTypeInfo
     TypeInfo ti;        /// TypeInfo for this member
 }
 
+version (AArch64)
+{
+    enum AArch64ArgFlag : ubyte
+    {
+        none = 0,
+        isAggregate = 0x1,
+        isHA = 0x2
+    }
+
+    /**
+     * AArch64 ABI specific extended type information.
+     * This is required to implement the va_arg function.
+     */
+    struct AArch64ArgInfo
+    {
+        private AArch64ArgFlag arg_flags;
+        /**
+         * Type is passed in one floating point register.
+         * True for half float, float, double, quad and short vector
+         * types.
+         */
+        public bool isFloat;
+
+        /**
+         * For HFA or HVA: size of the field base type.
+         */
+        public ubyte haFieldSize;
+
+        /**
+         * For HFA or HVA: size of the field base type.
+         */
+        public ubyte haFieldNum;
+
+        public this(bool isFloat) @safe pure nothrow @nogc
+        {
+            this.isFloat = isFloat;
+        }
+
+        public this(AArch64ArgFlag arg_flags, bool isFloat, ubyte haFieldSize, ubyte haFieldNum) @safe pure nothrow @nogc
+        {
+            this.arg_flags = arg_flags;
+            this.isFloat = isFloat;
+            this.haFieldSize = haFieldSize;
+            this.haFieldNum = haFieldNum;
+        }
+
+        /**
+         * Type is an aggregate according to AArch64 ABI requirements.
+         */
+        @property bool isAggregate() @safe pure nothrow @nogc const
+        {
+            return (arg_flags & AArch64ArgFlag.isAggregate) != 0;
+        }
+
+        /**
+         * Type is a HFA or HVA type.
+         */
+        @property bool isHA() @safe pure nothrow @nogc const
+        {
+            return (arg_flags & AArch64ArgFlag.isHA) != 0;
+        }
+    }
+}
+
 /**
  * Runtime type information about a type.
  * Can be retrieved for any type using a
@@ -308,6 +372,12 @@ class TypeInfo
         arg1 = this;
         return 0;
     }
+    /** Return internal info on arguments for AArch64 ABI.
+     */
+    version (AArch64) AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+    {
+        return AArch64ArgInfo(false);
+    }
 
     /** Return info used by the garbage collector to do precise collection.
      */
@@ -346,6 +416,10 @@ class TypeInfo_Enum : TypeInfo
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
     {
         return base.argTypes(arg1, arg2);
+    }
+    version (AArch64) override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+    {
+        return base.argTypes();
     }
 
     override @property immutable(void)* rtInfo() const { return base.rtInfo; }
@@ -621,6 +695,12 @@ class TypeInfo_StaticArray : TypeInfo
 
     TypeInfo value;
     size_t   len;
+    version (AArch64)
+    {
+        AArch64ArgFlag arg_flags;
+        ubyte haFieldSize;
+        ubyte haFieldNum;
+    }
 
     override @property size_t talign() nothrow pure const
     {
@@ -631,6 +711,11 @@ class TypeInfo_StaticArray : TypeInfo
     {
         arg1 = typeid(void*);
         return 0;
+    }
+
+    version (AArch64) override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+    {
+        return AArch64ArgInfo(arg_flags, false, haFieldSize, haFieldNum);
     }
 }
 
@@ -722,8 +807,18 @@ class TypeInfo_Vector : TypeInfo
     {
         return base.argTypes(arg1, arg2);
     }
-
     TypeInfo base;
+
+    version (AArch64)
+    {
+        override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+        {
+            return AArch64ArgInfo(arg_flags, false, haFieldSize, haFieldNum);
+        }
+        AArch64ArgFlag arg_flags;
+        ubyte haFieldSize;
+        ubyte haFieldNum;
+    }
 }
 
 class TypeInfo_Function : TypeInfo
@@ -1259,6 +1354,16 @@ class TypeInfo_Struct : TypeInfo
         TypeInfo m_arg1;
         TypeInfo m_arg2;
     }
+    version (AArch64)
+    {
+        override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+        {
+            return AArch64ArgInfo(arg_flags, false, haFieldSize, haFieldNum);
+        }
+        AArch64ArgFlag arg_flags;
+        ubyte haFieldSize;
+        ubyte haFieldNum;
+    }
     immutable(void)* m_RTInfo;                // data for precise GC
 }
 
@@ -1359,6 +1464,10 @@ class TypeInfo_Tuple : TypeInfo
     {
         assert(0);
     }
+    version (AArch64) override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+    {
+        assert(0);
+    }
 }
 
 class TypeInfo_Const : TypeInfo
@@ -1400,6 +1509,10 @@ class TypeInfo_Const : TypeInfo
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
     {
         return base.argTypes(arg1, arg2);
+    }
+    version (AArch64) override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+    {
+        return base.argTypes();
     }
 
     TypeInfo base;
