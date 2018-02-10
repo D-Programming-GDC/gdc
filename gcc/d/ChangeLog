@@ -1,3 +1,13 @@
+2018-02-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* runtime.def (NEWCLASS): Mark as ECF_PURE.
+	(NEWITEMT, NEWITEMIT): Likewise.
+	(NEWARRAYT, NEWARRAYIT): Likewise.
+	(NEWARRAYMTX, NEWARRAYMITX): Likewise.
+	(ARRAYLITERALTX): Likewise.
+	(ALLOCMEMORY): Likewise.
+	(ASSOCARRAYLITERALTX): Likewise.
+
 2018-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* gdc.texi (Runtime Options): Remove deprecated -fproperty option.
