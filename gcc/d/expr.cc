@@ -36,6 +36,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "function.h"
 #include "toplev.h"
 #include "varasm.h"
+#include "predict.h"
 #include "stor-layout.h"
 
 #include "d-tree.h"
@@ -1555,13 +1556,13 @@ public:
 
   /* Build an unary not expression.  */
 
-  void visit(NotExp *e)
+  void visit (NotExp *e)
   {
-    tree result = convert_for_condition(build_expr(e->e1), e->e1->type);
+    tree result = convert_for_condition (build_expr (e->e1), e->e1->type);
     /* Need to convert to boolean type or this will fail.  */
-    result = fold_build1(TRUTH_NOT_EXPR, bool_type_node, result);
+    result = fold_build1 (TRUTH_NOT_EXPR, bool_type_node, result);
 
-    this->result_ = d_convert(build_ctype(e->type), result);
+    this->result_ = d_convert (build_ctype (e->type), result);
   }
 
   /* Build a compliment expression, where all the bits in the value are
@@ -1967,74 +1968,84 @@ public:
 
   void visit (AssertExp *e)
   {
-    /* Do nothing if not compiling in assert contracts.  */
-    if (!global.params.useAssert)
-      {
-	this->result_ = void_node;
-	return;
-      }
-
-    /* Build _d_assert() call.  */
     Type *tb1 = e->e1->type->toBasetype ();
+    tree arg = build_expr (e->e1);
     tree tmsg = NULL_TREE;
-    libcall_fn libcall;
+    tree assert_pass = void_node;
+    tree assert_fail;
 
-    if (d_function_chain->function->isUnitTestDeclaration ())
+    if (global.params.useAssert)
       {
+	/* Generate: ((bool) e1  ? (void)0 : _d_assert (...))
+		 or: (e1 != null ? e1._invariant() : _d_assert (...))  */
+	bool unittest_p = d_function_chain->function->isUnitTestDeclaration ();
+	libcall_fn libcall;
+
 	if (e->msg)
 	  {
 	    tmsg = build_expr_dtor (e->msg);
-	    libcall = LIBCALL_UNITTEST_MSG;
+	    libcall = unittest_p ? LIBCALL_UNITTEST_MSG : LIBCALL_ASSERT_MSG;
 	  }
 	else
-	  libcall = LIBCALL_UNITTEST;
+	  libcall = unittest_p ? LIBCALL_UNITTEST : LIBCALL_ASSERT;
+
+	/* Build a call to _d_assert().  */
+	assert_fail = d_assert_call (e->loc, libcall, tmsg);
+
+	if (global.params.useInvariants)
+	  {
+	    /* If the condition is a D class or struct object with an invariant,
+	       call it if the condition result is true.  */
+	    if (tb1->ty == Tclass)
+	      {
+		ClassDeclaration *cd = tb1->isClassHandle ();
+		if (!cd->isInterfaceDeclaration () && !cd->isCPPclass ())
+		  {
+		    arg = d_save_expr (arg);
+		    assert_pass = build_libcall (LIBCALL_INVARIANT,
+						 Type::tvoid, 1, arg);
+		  }
+	      }
+	    else if (tb1->ty == Tpointer && tb1->nextOf ()->ty == Tstruct)
+	      {
+		StructDeclaration *sd = ((TypeStruct *) tb1->nextOf ())->sym;
+		if (sd->inv != NULL)
+		  {
+		    Expressions args;
+		    arg = d_save_expr (arg);
+		    assert_pass = d_build_call_expr (sd->inv, arg, &args);
+		  }
+	      }
+	  }
       }
     else
       {
-	if (e->msg)
+	/* Assert contracts are turned off, if the contract condition has no
+	   side effects can still use it as a predicate for the optimizer.  */
+	if (TREE_SIDE_EFFECTS (arg))
 	  {
-	    tmsg = build_expr_dtor (e->msg);
-	    libcall = LIBCALL_ASSERT_MSG;
+	    this->result_ = void_node;
+	    return;
 	  }
-	else
-	  libcall = LIBCALL_ASSERT;
-      }
 
-    tree assert_call = d_assert_call (e->loc, libcall, tmsg);
-    tree inv_call = void_node;
-    tree arg = build_expr (e->e1);
+	assert_fail = build_predict_expr (PRED_NORETURN, NOT_TAKEN);
+      }
 
     /* Build condition that we are asserting in this contract.  */
-    if (global.params.useInvariants)
-      {
-	/* If the condition is a D class or struct object with an invariant,
-	   call it if the condition result is true.  */
-	if (tb1->ty == Tclass)
-	  {
-	    ClassDeclaration *cd = tb1->isClassHandle ();
-	    if (!cd->isInterfaceDeclaration () && !cd->isCPPclass ())
-	      {
-		arg = d_save_expr (arg);
-		inv_call = build_libcall (LIBCALL_INVARIANT,
-					  Type::tvoid, 1, arg);
-	      }
-	  }
-	else if (tb1->ty == Tpointer && tb1->nextOf ()->ty == Tstruct)
-	  {
-	    FuncDeclaration *inv = ((TypeStruct *) tb1->nextOf ())->sym->inv;
-	    if (inv != NULL)
-	      {
-		Expressions args;
-		arg = d_save_expr (arg);
-		inv_call = d_build_call_expr (inv, arg, &args);
-	      }
-	  }
-      }
+    tree condition = convert_for_condition (arg, e->e1->type);
 
-    /* Generate: ((bool) e1  ? (void)0 : _d_assert (...))
-	     or: (e1 != null ? e1._invariant() : _d_assert (...))  */
-    tree cond = convert_for_condition (arg, e->e1->type);
-    this->result_ = build_vcondition (cond, inv_call, assert_call);
+    /* We expect the condition to always be true, as what happens if an assert
+       contract is false is undefined behaviour.  */
+    tree fn = builtin_decl_explicit (BUILT_IN_EXPECT);
+    tree arg_types = TYPE_ARG_TYPES (TREE_TYPE (fn));
+    tree pred_type = TREE_VALUE (arg_types);
+    tree expected_type = TREE_VALUE (TREE_CHAIN (arg_types));
+
+    condition = build_call_expr (fn, 2, d_convert (pred_type, condition),
+				 build_int_cst (expected_type, 1));
+    condition = d_truthvalue_conversion (condition);
+
+    this->result_ = build_vcondition (condition, assert_pass, assert_fail);
   }
 
   /* Build a declaration expression.  */
@@ -2923,7 +2934,7 @@ public:
 
   void visit (NullExp *e)
   {
-    Type *tb = e->type->toBasetype();
+    Type *tb = e->type->toBasetype ();
     tree value;
 
     /* Handle certain special case conversions, where the underlying type is an
