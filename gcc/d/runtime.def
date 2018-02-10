@@ -49,7 +49,8 @@ DEF_D_RUNTIME (ARRAY_BOUNDS, "_d_arraybounds", RT(VOID), P2(STRING, UINT),
 	       ECF_NORETURN)
 
 /* Used when calling new on a class.  */
-DEF_D_RUNTIME (NEWCLASS, "_d_newclass", RT(OBJECT), P1(CONST_CLASSINFO), 0)
+DEF_D_RUNTIME (NEWCLASS, "_d_newclass", RT(OBJECT), P1(CONST_CLASSINFO),
+	       ECF_PURE)
 
 /* Used when calling delete on a class or interface.  */
 DEF_D_RUNTIME (DELCLASS, "_d_delclass", RT(VOID), P1(VOIDPTR), 0)
@@ -68,8 +69,10 @@ DEF_D_RUNTIME (INTERFACE_CAST, "_d_interface_cast", RT(OBJECT),
 
 /* Used when calling new on a pointer.  The `i' variant is for when the
    initialiser is non-zero.  */
-DEF_D_RUNTIME (NEWITEMT, "_d_newitemT", RT(VOIDPTR), P1(CONST_TYPEINFO), 0)
-DEF_D_RUNTIME (NEWITEMIT, "_d_newitemiT", RT(VOIDPTR), P1(CONST_TYPEINFO), 0)
+DEF_D_RUNTIME (NEWITEMT, "_d_newitemT", RT(VOIDPTR), P1(CONST_TYPEINFO),
+	       ECF_PURE)
+DEF_D_RUNTIME (NEWITEMIT, "_d_newitemiT", RT(VOIDPTR), P1(CONST_TYPEINFO),
+	       ECF_PURE)
 
 /* Used when calling delete on a pointer.  */
 DEF_D_RUNTIME (DELMEMORY, "_d_delmemory", RT(VOID), P1(POINTER_VOIDPTR), 0)
@@ -80,17 +83,17 @@ DEF_D_RUNTIME (DELSTRUCT, "_d_delstruct", RT(VOID),
    initialiser is non-zero, and the `m' variant is when initialising a
    multi-dimensional array.  */
 DEF_D_RUNTIME (NEWARRAYT, "_d_newarrayT", RT(ARRAY_VOID),
-	       P2(CONST_TYPEINFO, SIZE_T), 0)
+	       P2(CONST_TYPEINFO, SIZE_T), ECF_PURE)
 DEF_D_RUNTIME (NEWARRAYIT, "_d_newarrayiT", RT(ARRAY_VOID),
-	       P2(CONST_TYPEINFO, SIZE_T), 0)
+	       P2(CONST_TYPEINFO, SIZE_T), ECF_PURE)
 DEF_D_RUNTIME (NEWARRAYMTX, "_d_newarraymTX", RT(ARRAY_VOID),
-	       P2(CONST_TYPEINFO, ARRAY_SIZE_T), 0)
+	       P2(CONST_TYPEINFO, ARRAY_SIZE_T), ECF_PURE)
 DEF_D_RUNTIME (NEWARRAYMITX, "_d_newarraymiTX", RT(ARRAY_VOID),
-	       P2(CONST_TYPEINFO, ARRAY_SIZE_T), 0)
+	       P2(CONST_TYPEINFO, ARRAY_SIZE_T), ECF_PURE)
 
 /* Used for allocating an array literal on the GC heap.  */
 DEF_D_RUNTIME (ARRAYLITERALTX, "_d_arrayliteralTX", RT(VOIDPTR),
-	       P2(CONST_TYPEINFO, SIZE_T), 0)
+	       P2(CONST_TYPEINFO, SIZE_T), ECF_PURE)
 
 /* Used when calling delete on an array.  */
 DEF_D_RUNTIME (DELARRAYT, "_d_delarray_t", RT(VOID),
@@ -117,7 +120,7 @@ DEF_D_RUNTIME (ARRAYSETLENGTHIT, "_d_arraysetlengthiT", RT(ARRAY_VOID),
 
 /* Used for allocating closures on the GC heap.  */
 DEF_D_RUNTIME (ALLOCMEMORY, "_d_allocmemory", RT(VOIDPTR), P1(SIZE_T),
-	       ECF_MALLOC)
+	       ECF_MALLOC|ECF_PURE)
 
 /* Used for copying an array into a slice, adds an enforcment that the source
    and destination are equal in size and do not overlap.  */
@@ -166,7 +169,7 @@ DEF_D_RUNTIME (ARRAYAPPENDT, "_d_arrayappendT", RT(ARRAY_VOID),
 
 /* Used for allocating a new associative array.  */
 DEF_D_RUNTIME (ASSOCARRAYLITERALTX, "_d_assocarrayliteralTX", RT(VOIDPTR),
-	       P3(CONST_TYPEINFO, ARRAY_VOID, ARRAY_VOID), 0)
+	       P3(CONST_TYPEINFO, ARRAY_VOID, ARRAY_VOID), ECF_PURE)
 
 /* Used for value equality of two associative arrays.  */
 DEF_D_RUNTIME (AAEQUAL, "_aaEqual", RT(INT),
