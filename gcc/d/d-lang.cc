@@ -620,12 +620,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_MMD:
-    case OPT_fmake_mdeps_:
       d_option.deps_skip_system = true;
       /* fall through */
 
     case OPT_MD:
-    case OPT_fmake_deps_:
       d_option.deps = true;
       d_option.deps_filename = arg;
       break;

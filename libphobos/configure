@@ -4581,7 +4581,7 @@ fi
 
 
   gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
+  DFLAGS="-fno-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
 
   ac_ext=d
 ac_compile='$GDC -c $DFLAGS conftest.$ac_ext >&5'
@@ -11918,7 +11918,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
   gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
+  DFLAGS="-fno-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
 
 
 # Source file extension for D test sources.
@@ -14084,7 +14084,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
   gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime -nophoboslib $DFLAGS"
+  DFLAGS="-fno-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime -nophoboslib $DFLAGS"
 
   ac_ext=d
 ac_compile='$GDC -c $DFLAGS conftest.$ac_ext >&5'
