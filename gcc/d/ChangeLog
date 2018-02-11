@@ -1,5 +1,10 @@
 2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.cc (d_save_expr): Always stabilize CALL_EXPR.
+	* runtime.def (ALLOCMEMORY): Set ECF_PURE.
+
+2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* runtime.def (ASSERT, ASSERT_MSG): Set ECF_COLD and ECF_LEAF flags.
 	(UNITTEST, UNITTEST_MSG): Likewise.
 	(ARRAY_BOUNDS, SWITCH_ERROR): Likewise.

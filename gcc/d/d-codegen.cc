@@ -506,9 +506,14 @@ lvalue_p (tree exp)
 tree
 d_save_expr (tree exp)
 {
-  if (TREE_SIDE_EFFECTS (exp))
+  /* Always consider call expressions as a side effect, even if the function
+     being called is pure.  */
+  tree t = exp;
+  STRIP_NOPS (t);
+
+  if (TREE_SIDE_EFFECTS (t) || TREE_CODE (t) == CALL_EXPR)
     {
-      if (lvalue_p (exp))
+      if (lvalue_p (t))
 	return stabilize_reference (exp);
 
       return save_expr (exp);

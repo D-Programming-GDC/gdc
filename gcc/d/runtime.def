@@ -118,7 +118,7 @@ DEF_D_RUNTIME (ARRAYSETLENGTHIT, "_d_arraysetlengthiT", RT(ARRAY_VOID),
 
 /* Used for allocating closures on the GC heap.  */
 DEF_D_RUNTIME (ALLOCMEMORY, "_d_allocmemory", RT(VOIDPTR), P1(SIZE_T),
-	       ECF_MALLOC)
+	       ECF_MALLOC | ECF_PURE)
 
 /* Used for copying an array into a slice, adds an enforcment that the source
    and destination are equal in size and do not overlap.  */
