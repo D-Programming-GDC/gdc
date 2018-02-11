@@ -1,5 +1,18 @@
 2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* runtime.def (NEWCLASS): Set ECF_LEAF.
+	(DYNAMIC_CAST, INTERFACE_CAST): Likewise.
+	(NEWITEMT, NEWITEMIT, DELMEMORY): Likewise.
+	(NEWARRAYT, NEWARRAYIT): Likewise.
+	(NEWARRAYMTX, NEWARRAYMITX): Likewise.
+	(ARRAYLITERALTX, ARRAYCAST): Likewise.
+	(ALLOCMEMORY, ARRAYCOPY): Likewise.
+	(ARRAYAPPENDCD, ARRAYAPPENDWD): Likewise.
+	(AAINX, AAGETRVALUEX, AADELX): Likewise.
+	(SWITCH_STRING, SWITCH_USTRING, SWITCH_DSTRING): Likewise.
+
+2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.cc (d_save_expr): Always stabilize CALL_EXPR.
 	* runtime.def (ALLOCMEMORY): Set ECF_PURE.
 
