@@ -1,7 +1,8 @@
-2018-02-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-	* expr.cc (ExprVisitor::AssertExp): Use builtin expect to mark assert
-	condition as being likely true.
+	* runtime.def (ASSERT, ASSERT_MSG): Set ECF_COLD and ECF_LEAF flags.
+	(UNITTEST, UNITTEST_MSG): Likewise.
+	(ARRAY_BOUNDS, SWITCH_ERROR): Likewise.
 
 2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
@@ -9,6 +10,11 @@
 	(femit-moduleinfo, femit-templates): Likewise.
 	(fmake-deps, fmake-mdeps): Likewise.
 	(fin, fout, fXf): Likewise.
+
+2018-02-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::AssertExp): Use builtin expect to mark assert
+	condition as being likely true.
 
 2018-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
