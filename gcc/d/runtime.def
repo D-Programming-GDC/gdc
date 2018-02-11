@@ -195,7 +195,8 @@ DEF_D_RUNTIME (AADELX, "_aaDelX", RT(BOOL),
 
 /* Used for throw() expressions.  */
 DEF_D_RUNTIME (THROW, "_d_throw", RT(VOID), P1(OBJECT), ECF_NORETURN)
-DEF_D_RUNTIME (BEGIN_CATCH, "__gdc_begin_catch", RT(VOIDPTR), P1(VOIDPTR), 0)
+DEF_D_RUNTIME (BEGIN_CATCH, "__gdc_begin_catch", RT(VOIDPTR), P1(VOIDPTR),
+	       ECF_NOTHROW)
 
 /* C++ exception handlers.  */
 DEF_D_RUNTIME (CXA_BEGIN_CATCH, "__cxa_begin_catch", RT(VOIDPTR), P1(VOIDPTR),
