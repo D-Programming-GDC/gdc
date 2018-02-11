@@ -1,5 +1,11 @@
 2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* runtime.def (DYNAMIC_CAST, INTERFACE_CAST): Set ECF_CONST.
+	(ARRAYCAST, AAINX, AAGETRVALUEX): Likewise.
+	(SWITCH_STRING, SWITCH_USTRING, SWITCH_DSTRING): Likewise.
+
+2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* runtime.def (BEGIN_CATCH): Set ECF_NOTHROW.
 
 2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>

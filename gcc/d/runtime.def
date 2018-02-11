@@ -64,9 +64,9 @@ DEF_D_RUNTIME (CALLINTERFACEFINALIZER, "_d_callinterfacefinalizer", RT(VOID),
 
 /* Used for casting to a class or interface.  */
 DEF_D_RUNTIME (DYNAMIC_CAST, "_d_dynamic_cast", RT(OBJECT),
-	       P2(OBJECT, CLASSINFO), ECF_LEAF)
+	       P2(OBJECT, CLASSINFO), ECF_CONST | ECF_LEAF)
 DEF_D_RUNTIME (INTERFACE_CAST, "_d_interface_cast", RT(OBJECT),
-	       P2(OBJECT, CLASSINFO), ECF_LEAF)
+	       P2(OBJECT, CLASSINFO), ECF_CONST | ECF_LEAF)
 
 /* Used when calling new on a pointer.  The `i' variant is for when the
    initialiser is non-zero.  */
@@ -111,7 +111,7 @@ DEF_D_RUNTIME (ADCMP2, "_adCmp2", RT(INT),
 /* Used when casting from one array type to another where the index type
    sizes differ.  Such as from int[] to short[].  */
 DEF_D_RUNTIME (ARRAYCAST, "_d_arraycast", RT(ARRAY_VOID),
-	       P3(SIZE_T, SIZE_T, ARRAY_VOID), ECF_LEAF)
+	       P3(SIZE_T, SIZE_T, ARRAY_VOID), ECF_CONST | ECF_LEAF)
 
 /* Used for (array.length = n) expressions.  The `i' variant is for when the
    initialiser is non-zero.  */
@@ -179,7 +179,7 @@ DEF_D_RUNTIME (AAEQUAL, "_aaEqual", RT(INT),
 
 /* Used to determine is a key exists in an associative array.  */
 DEF_D_RUNTIME (AAINX, "_aaInX", RT(VOIDPTR),
-	       P3(ASSOCARRAY, CONST_TYPEINFO, VOIDPTR), ECF_LEAF)
+	       P3(ASSOCARRAY, CONST_TYPEINFO, VOIDPTR), ECF_CONST | ECF_LEAF)
 
 /* Used to retrieve a value from an associative array index by a key.  The
    `Rvalue' variant returns null if the key is not found, where as aaGetY
@@ -187,7 +187,8 @@ DEF_D_RUNTIME (AAINX, "_aaInX", RT(VOIDPTR),
 DEF_D_RUNTIME (AAGETY, "_aaGetY", RT(VOIDPTR),
 	       P4(POINTER_ASSOCARRAY, CONST_TYPEINFO, SIZE_T, VOIDPTR), 0)
 DEF_D_RUNTIME (AAGETRVALUEX, "_aaGetRvalueX", RT(VOIDPTR),
-	       P4(ASSOCARRAY, CONST_TYPEINFO, SIZE_T, VOIDPTR), ECF_LEAF)
+	       P4(ASSOCARRAY, CONST_TYPEINFO, SIZE_T, VOIDPTR),
+	       ECF_CONST | ECF_LEAF)
 
 /* Used when calling delete on a key entry in an associative array.  */
 DEF_D_RUNTIME (AADELX, "_aaDelX", RT(BOOL),
@@ -211,11 +212,11 @@ DEF_D_RUNTIME (INVARIANT, "_D9invariant12_d_invariantFC6ObjectZv", RT(VOID),
 /* Used when performing a switch/cases on a string.  The `u' and `d' variants
    are for UTF-16 and UTF-32 strings respectively.  */
 DEF_D_RUNTIME (SWITCH_STRING, "_d_switch_string", RT(INT),
-	       P2(ARRAY_STRING, STRING), ECF_LEAF)
+	       P2(ARRAY_STRING, STRING), ECF_CONST | ECF_LEAF)
 DEF_D_RUNTIME (SWITCH_USTRING, "_d_switch_ustring", RT(INT),
-	       P2(ARRAY_WSTRING, WSTRING), ECF_LEAF)
+	       P2(ARRAY_WSTRING, WSTRING), ECF_CONST | ECF_LEAF)
 DEF_D_RUNTIME (SWITCH_DSTRING, "_d_switch_dstring", RT(INT),
-	       P2(ARRAY_DSTRING, DSTRING), ECF_LEAF)
+	       P2(ARRAY_DSTRING, DSTRING), ECF_CONST | ECF_LEAF)
 
 /* Used when throwing an error that a switch statement has no default case,
    and yet none of the existing cases matched.  */
