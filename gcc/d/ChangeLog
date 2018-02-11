@@ -1,3 +1,10 @@
+2018-02-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* runtime.cc (build_libcall_decl): Update signature, handle "fn spec"
+	attribute.
+	* runtime.def (DEF_D_RUNTIME): Add fnspec argument. All callers
+	updated.
+
 2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* runtime.def (DYNAMIC_CAST, INTERFACE_CAST): Set ECF_CONST.

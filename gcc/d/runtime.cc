@@ -25,6 +25,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree.h"
 #include "fold-const.h"
 #include "stringpool.h"
+#include "attribs.h"
 
 #include "d-tree.h"
 #include "d-frontend.h"
@@ -214,7 +215,7 @@ get_libcall_type (libcall_type type)
 
 static tree
 build_libcall_decl (const char *name, libcall_type return_type,
-		    int flags, int nparams, ...)
+		    int flags, const char *fnspec, int nparams, ...)
 {
   tree *args = XALLOCAVEC (tree, nparams);
   bool varargs = false;
@@ -248,6 +249,15 @@ build_libcall_decl (const char *name, libcall_type return_type,
   else
     fntype = build_function_type_array (tret, nparams, args);
 
+  if (fnspec)
+    {
+      tree attr_args = build_tree_list (NULL_TREE,
+					build_string (strlen (fnspec), fnspec));
+      tree attrs = tree_cons (get_identifier ("fn spec"),
+			      attr_args, TYPE_ATTRIBUTES (fntype));
+      fntype = build_type_attribute_variant (fntype, attrs);
+    }
+
   tree decl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
 			  get_identifier (name), fntype);
   DECL_EXTERNAL (decl) = 1;
@@ -276,9 +286,10 @@ get_libcall (libcall_fn libcall)
 
   switch (libcall)
     {
-#define DEF_D_RUNTIME(CODE, NAME, TYPE, PARAMS, FLAGS) \
+#define DEF_D_RUNTIME(CODE, NAME, TYPE, PARAMS, FLAGS, FNSPEC) \
     case LIBCALL_ ## CODE:	\
-      libcall_decls[libcall] = build_libcall_decl (NAME, TYPE, FLAGS, PARAMS); \
+      libcall_decls[libcall] = build_libcall_decl (NAME, TYPE, FLAGS, FNSPEC, \
+						   PARAMS); \
       break;
 
 #include "runtime.def"

@@ -453,7 +453,7 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 
 enum libcall_fn
 {
-#define DEF_D_RUNTIME(CODE, N, T, P, F) LIBCALL_ ## CODE,
+#define DEF_D_RUNTIME(CODE, N, T, P, F, S) LIBCALL_ ## CODE,
 
 #include "runtime.def"
 
