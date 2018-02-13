@@ -1,3 +1,10 @@
+2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang.opt (fd-vgc, fd-verbose, fd-vtls): Remove options.
+	(femit-moduleinfo, femit-templates): Likewise.
+	(fmake-deps, fmake-mdeps): Likewise.
+	(fin, fout, fXf): Likewise.
+
 2018-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* gdc.texi (Runtime Options): Remove deprecated -fproperty option.

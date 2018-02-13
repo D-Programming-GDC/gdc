@@ -201,33 +201,9 @@ fdump-d-original
 D
 Display the frontend AST after parsing and semantic passes.
 
-fd-vgc
-D Alias(ftransition=nogc)
-; Deprecated in favor of -ftransition=nogc
-
-fd-verbose
-D Alias(v)
-; Deprecated in favor of --verbose
-
-fd-vtls
-D Alias(ftransition=tls)
-; Deprecated in favor of -ftransition=tls.
-
-femit-moduleinfo
-D Alias(fmoduleinfo)
-; Deprecated in favor of -fmoduleinfo.
-
-femit-templates
-D Alias(fall-instantiations)
-; Deprecated in favor of -fall-instantiations.
-
 fignore-unknown-pragmas
 D
 Ignore unsupported pragmas.
-
-fin
-D Alias(fpreconditions)
-; Deprecated in favor of -fpreconditions.
 
 fintfc
 Generate D interface files.
@@ -244,22 +220,6 @@ finvariants
 D Var(flag_invariants)
 Generate code for class invariant contracts.
 
-fmake-deps
-D Alias(M)
-; Deprecated in favor of -M
-
-fmake-deps=
-D Joined RejectNegative
-Deprecated in favor of -MD
-
-fmake-mdeps
-D Alias(MM)
-; Deprecated in favor of -MM
-
-fmake-mdeps=
-D Joined RejectNegative
-Deprecated in favor of -MMD
-
 fmodule-file=
 D Joined RejectNegative
 -fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
@@ -271,10 +231,6 @@ Generate ModuleInfo struct for output module.
 fonly=
 D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument.
-
-fout
-D Alias(fpostconditions)
-; Deprecated in favor of -fpostconditions.
 
 fpostconditions
 D Var(flag_postconditions)
@@ -347,10 +303,6 @@ D Joined RejectNegative
 fweak
 D Var(flag_weak) Init(1)
 Emit common-like symbols as weak symbols.
-
-fXf=
-D Joined RejectNegative Alias(Xf)
-; Deprecated in favor of -Xf
 
 imultilib
 D Joined Separate
