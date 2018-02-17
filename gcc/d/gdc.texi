@@ -136,7 +136,6 @@ the options specific to @command{gdc}.
 * Warnings::                Options controlling warnings specific to gdc
 * Linking::                 Options influceing the linking step
 * Developer Options::       Options you won't use
-* Environment Variables::   Environment variables that affect @command{gdc}.
 @end menu
 
 @c man begin OPTIONS
@@ -737,36 +736,6 @@ processed through the @code{parse}, @code{semantic}, @code{semantic2}, and
 and all @code{function} bodies that are being compiled.
 
 @end table
-
-@c man end
-
-@node Environment Variables
-@section Environment variables affecting @command{gdc}
-@cindex environment variable
-
-@c man begin ENVIRONMENT
-
-In addition to the many @command{gcc} environment variables that control
-its operation, @command{gdc} has a few environment variables specific to
-itself.
-
-@vtable @env
-
-@item D_IMPORT_PATH
-@findex D_IMPORT_PATH
-The value of @env{D_IMPORT_PATH} is a list of directories separated by a
-special character, much like @env{PATH}, in which to look for imports.
-The special character, @code{PATH_SEPARATOR}, is target-dependent and
-determined at GCC build time.  For Microsoft Windows-based targets it is a
-semicolon, and for almost all other targets it is a colon.
-
-@item DDOCFILE
-@findex DDOCFILE
-If @env{DDOCFILE} is set, it specifies a text file of macro definitions
-to be read and used by the Ddoc generator.  This overrides any macros
-defined in other @file{.ddoc} files.
-
-@end vtable
 
 @c man end
 
