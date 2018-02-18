@@ -3,6 +3,11 @@
 	* Make-lang.in (DMD_WARN_CXXFLAGS): Only filter out
 	-Wmissing-format-attribute from WARN_CXXFLAGS.
 
+2018-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_frontend_type): Set alignment of structs in
+	frontend.
+
 2018-02-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::AssertExp): Use builtin expect to mark assert
