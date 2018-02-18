@@ -1375,7 +1375,7 @@ public:
                             "wc","cc","wd",
                             "dc","dw","dd"
                         };
-                        const size_t BUFFER_LEN = 7+1+2+ sizeof(dim)*3 + 1;
+                        const int BUFFER_LEN = 7+1+2+ sizeof(dim)*3 + 1;
                         char fdname[BUFFER_LEN];
                         int flag;
 

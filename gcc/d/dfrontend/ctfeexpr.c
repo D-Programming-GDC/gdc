@@ -860,7 +860,7 @@ UnionExp pointerArithmetic(Loc loc, TOK op, Type *type,
         goto Lcant;
     }
 
-    if (indx < 0 || len < indx)
+    if (indx < 0 || len < (dinteger_t)indx)
     {
         error(loc, "cannot assign pointer to index %lld inside memory block [0..%lld]", indx, len);
         goto Lcant;

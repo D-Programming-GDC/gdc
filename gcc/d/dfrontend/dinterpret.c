@@ -170,7 +170,7 @@ bool CtfeStack::isInCurrentFrame(VarDeclaration *v)
 {
     if (v->isDataseg() && !v->isCTFE())
         return false;   // It's a global
-    return v->ctfeAdrOnStack >= framepointer;
+    return v->ctfeAdrOnStack >= (int)framepointer;
 }
 
 Expression *CtfeStack::getValue(VarDeclaration *v)
@@ -178,25 +178,25 @@ Expression *CtfeStack::getValue(VarDeclaration *v)
     if ((v->isDataseg() || v->storage_class & STCmanifest) && !v->isCTFE())
     {
         assert(v->ctfeAdrOnStack >= 0 &&
-        v->ctfeAdrOnStack < globalValues.dim);
+        v->ctfeAdrOnStack < (int)globalValues.dim);
         return globalValues[v->ctfeAdrOnStack];
     }
-    assert(v->ctfeAdrOnStack >= 0 && v->ctfeAdrOnStack < stackPointer());
+    assert(v->ctfeAdrOnStack >= 0 && v->ctfeAdrOnStack < (int)stackPointer());
     return values[v->ctfeAdrOnStack];
 }
 
 void CtfeStack::setValue(VarDeclaration *v, Expression *e)
 {
     assert(!v->isDataseg() || v->isCTFE());
-    assert(v->ctfeAdrOnStack >= 0 && v->ctfeAdrOnStack < stackPointer());
+    assert(v->ctfeAdrOnStack >= 0 && v->ctfeAdrOnStack < (int)stackPointer());
     values[v->ctfeAdrOnStack] = e;
 }
 
 void CtfeStack::push(VarDeclaration *v)
 {
     assert(!v->isDataseg() || v->isCTFE());
-    if (v->ctfeAdrOnStack != (size_t)-1 &&
-        v->ctfeAdrOnStack >= framepointer)
+    if (v->ctfeAdrOnStack != -1 &&
+        v->ctfeAdrOnStack >= (int)framepointer)
     {
         // Already exists in this frame, reuse it.
         values[v->ctfeAdrOnStack] = NULL;
@@ -214,7 +214,7 @@ void CtfeStack::pop(VarDeclaration *v)
     assert(!(v->storage_class & (STCref | STCout)));
     int oldid = v->ctfeAdrOnStack;
     v->ctfeAdrOnStack = (int)(size_t)(savedId[oldid]);
-    if (v->ctfeAdrOnStack == values.dim - 1)
+    if (v->ctfeAdrOnStack == (int)values.dim - 1)
     {
         values.pop();
         vars.pop();
@@ -2945,7 +2945,7 @@ public:
             return lenExpr;
         size_t len = (size_t)(lenExpr->toInteger());
         Type *elemType = ((TypeArray *)newtype)->next;
-        if (elemType->ty == Tarray && argnum < arguments->dim - 1)
+        if (elemType->ty == Tarray && argnum < (int)arguments->dim - 1)
         {
             Expression *elem = recursivelyCreateArrayLiteral(loc, elemType, istate,
                 arguments, argnum + 1);
@@ -2961,7 +2961,7 @@ public:
             ae->ownedByCtfe = OWNEDctfe;
             return ae;
         }
-        assert(argnum == arguments->dim - 1);
+        assert(argnum == (int)arguments->dim - 1);
         if (elemType->ty == Tchar || elemType->ty == Twchar || elemType->ty == Tdchar)
         {
             const unsigned ch = (unsigned)elemType->defaultInitLiteral(loc)->toInteger();
@@ -3252,7 +3252,7 @@ public:
         {
             sinteger_t i2 = e2->toInteger();
             d_uns64 sz = e1->type->size() * 8;
-            if (i2 < 0 || i2 >= sz)
+            if (i2 < 0 || (d_uns64)i2 >= sz)
             {
                 e->error("shift by %lld is outside the range 0..%llu", i2, (ulonglong)sz - 1);
                 result = CTFEExp::cantexp;
@@ -3903,7 +3903,7 @@ public:
                 e->error("CTFE internal error: cannot find field %s in %s", v->toChars(), ex->toChars());
                 return CTFEExp::cantexp;
             }
-            assert(0 <= fieldi && fieldi < sle->elements->dim);
+            assert(0 <= fieldi && fieldi < (int)sle->elements->dim);
 
             // If it's a union, set all other members of this union to void
             stompOverlappedFields(sle, v);
@@ -4056,11 +4056,11 @@ public:
     Expression *interpretAssignToSlice(BinExp *e,
         Expression *e1, Expression *newval, bool isBlockAssignment)
     {
-        int lowerbound;
-        size_t upperbound;
+        dinteger_t lowerbound;
+        dinteger_t upperbound;
 
         Expression *aggregate;
-        sinteger_t firstIndex;
+        dinteger_t firstIndex;
 
         if (e1->op == TOKvector)
             e1 = ((VectorExp *)e1)->e1;
@@ -7075,7 +7075,7 @@ Expression *evaluateDtor(InterState *istate, Expression *e)
  */
 bool hasValue(VarDeclaration *vd)
 {
-    if (vd->ctfeAdrOnStack == (size_t)-1)
+    if (vd->ctfeAdrOnStack == -1)
         return false;
     return NULL != getValue(vd);
 }

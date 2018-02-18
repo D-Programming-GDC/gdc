@@ -1268,7 +1268,7 @@ Type *Type::aliasthisOf()
                     t = fd->type->nextOf();
                     if (!t) // issue 14185
                         return Type::terror;
-                    t = t->substWildTo(mod == 0 ? MODmutable : mod);
+                    t = t->substWildTo(mod == 0 ? MODmutable : (MODFlags)mod);
                 }
                 else
                     return Type::terror;
@@ -1291,7 +1291,7 @@ Type *Type::aliasthisOf()
             if (fd && fd->functionSemantic())
             {
                 Type *t = fd->type->nextOf();
-                t = t->substWildTo(mod == 0 ? MODmutable : mod);
+                t = t->substWildTo(mod == 0 ? MODmutable : (MODFlags)mod);
                 return t;
             }
             else
@@ -4701,6 +4701,7 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
         case Tnone:
         case Ttuple:
             error(loc, "can't have associative array key of %s", index->toBasetype()->toChars());
+            /* fall through */
         case Terror:
             return Type::terror;
         default:
@@ -4798,10 +4799,10 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
         if (!fhash) fhash = search_function(ClassDeclaration::object, Id::tohash)->isFuncDeclaration();
         assert(fcmp && feq && fhash);
 
-        if (feq ->vtblIndex < cd->vtbl.dim && cd->vtbl[feq ->vtblIndex] == feq)
+        if (feq->vtblIndex < (int)cd->vtbl.dim && cd->vtbl[feq ->vtblIndex] == feq)
         {
         #if 1
-            if (fcmp->vtblIndex < cd->vtbl.dim && cd->vtbl[fcmp->vtblIndex] != fcmp)
+            if (fcmp->vtblIndex < (int)cd->vtbl.dim && cd->vtbl[fcmp->vtblIndex] != fcmp)
             {
                 const char *s = (index->toBasetype()->ty != Tclass) ? "bottom of " : "";
                 error(loc, "%sAA key type %s now requires equality rather than comparison",
@@ -4821,6 +4822,7 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
         case Tnone:
         case Ttuple:
             error(loc, "can't have associative array of %s", next->toChars());
+            /* fall through */
         case Terror:
             return Type::terror;
     }
@@ -4989,6 +4991,7 @@ Type *TypePointer::semantic(Loc loc, Scope *sc)
     {
         case Ttuple:
             error(loc, "can't have pointer to %s", n->toChars());
+            /* fall through */
         case Terror:
             return Type::terror;
         default:
@@ -6227,6 +6230,7 @@ MATCH TypeFunction::callMatch(Type *tthis, Expressions *args, int flag)
                     sz = tsa->dim->toInteger();
                     if (sz != nargs - u)
                         goto Nomatch;
+                    /* fall through */
                 case Tarray:
                     {
                         TypeArray *ta = (TypeArray *)tb;
@@ -8123,7 +8127,7 @@ Expression *TypeStruct::defaultInitLiteral(Loc loc)
     /* Copy from the initializer symbol for larger symbols,
      * otherwise the literals expressed as code get excessively large.
      */
-    if (size(loc) > Target::ptrsize * 4 && !needsNested())
+    if (size(loc) > Target::ptrsize * 4U && !needsNested())
         structinit->useStaticInit = true;
 
     structinit->type = this;

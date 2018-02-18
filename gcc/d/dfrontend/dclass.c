@@ -344,7 +344,7 @@ void ClassDeclaration::semantic(Scope *sc)
 
     if (semanticRun >= PASSsemanticdone)
         return;
-    int errors = global.errors;
+    unsigned errors = global.errors;
 
     //printf("+ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
 
@@ -1443,7 +1443,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     //printf("InterfaceDeclaration::semantic(%s), type = %p\n", toChars(), type);
     if (semanticRun >= PASSsemanticdone)
         return;
-    int errors = global.errors;
+    unsigned errors = global.errors;
 
     //printf("+InterfaceDeclaration.semantic(%s), type = %p\n", toChars(), type);
 

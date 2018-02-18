@@ -952,7 +952,7 @@ static void escapeByValue(Expression *e, EscapeByResults *er)
                 /* j=1 if _arguments[] is first argument,
                  * skip it because it is not passed by ref
                  */
-                int j = (tf->linkage == LINKd && tf->varargs == 1);
+                size_t j = (tf->linkage == LINKd && tf->varargs == 1);
                 for (size_t i = j; i < e->arguments->dim; ++i)
                 {
                     Expression *arg = (*e->arguments)[i];
@@ -1148,7 +1148,7 @@ static void escapeByRef(Expression *e, EscapeByResults *er)
                     /* j=1 if _arguments[] is first argument,
                      * skip it because it is not passed by ref
                      */
-                    int j = (tf->linkage == LINKd && tf->varargs == 1);
+                    size_t j = (tf->linkage == LINKd && tf->varargs == 1);
 
                     for (size_t i = j; i < e->arguments->dim; ++i)
                     {

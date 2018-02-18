@@ -113,7 +113,7 @@ bool File::read()
     }
 
     numread = ::read(fd, buffer, size);
-    if (numread != size)
+    if (numread != (ssize_t)size)
     {
         printf("\tread error, errno = %d\n",errno);
         goto err2;
@@ -207,7 +207,7 @@ bool File::write()
         goto err;
 
     numwritten = ::write(fd, buffer, len);
-    if (len != numwritten)
+    if ((ssize_t)len != numwritten)
         goto err2;
 
     if (close(fd) == -1)

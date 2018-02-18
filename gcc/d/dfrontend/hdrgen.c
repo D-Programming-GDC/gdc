@@ -2304,6 +2304,7 @@ public:
                         buf->printf("'\\U%08x'", v);
                         break;
                     }
+                    /* fall through */
                 case Tchar:
                 {
                     size_t o = buf->offset;
@@ -2494,6 +2495,7 @@ public:
                 case '"':
                 case '\\':
                     buf->writeByte('\\');
+                    /* fall through */
                 default:
                     if (c <= 0xFF)
                     {
@@ -3271,29 +3273,29 @@ const char *stcToChars(StorageClass& stc)
 
     static SCstring table[] =
     {
-        { STCauto,         TOKauto },
-        { STCscope,        TOKscope },
-        { STCstatic,       TOKstatic },
-        { STCextern,       TOKextern },
-        { STCconst,        TOKconst },
-        { STCfinal,        TOKfinal },
-        { STCabstract,     TOKabstract },
-        { STCsynchronized, TOKsynchronized },
-        { STCdeprecated,   TOKdeprecated },
-        { STCoverride,     TOKoverride },
-        { STClazy,         TOKlazy },
-        { STCalias,        TOKalias },
-        { STCout,          TOKout },
-        { STCin,           TOKin },
-        { STCmanifest,     TOKenum },
-        { STCimmutable,    TOKimmutable },
-        { STCshared,       TOKshared },
-        { STCnothrow,      TOKnothrow },
-        { STCwild,         TOKwild },
-        { STCpure,         TOKpure },
-        { STCref,          TOKref },
-        { STCtls },
-        { STCgshared,      TOKgshared },
+        { STCauto,         TOKauto,     NULL },
+        { STCscope,        TOKscope,    NULL },
+        { STCstatic,       TOKstatic,   NULL },
+        { STCextern,       TOKextern,   NULL },
+        { STCconst,        TOKconst,    NULL },
+        { STCfinal,        TOKfinal,    NULL },
+        { STCabstract,     TOKabstract, NULL },
+        { STCsynchronized, TOKsynchronized, NULL },
+        { STCdeprecated,   TOKdeprecated, NULL },
+        { STCoverride,     TOKoverride, NULL },
+        { STClazy,         TOKlazy,     NULL },
+        { STCalias,        TOKalias,    NULL },
+        { STCout,          TOKout,      NULL },
+        { STCin,           TOKin,       NULL },
+        { STCmanifest,     TOKenum,     NULL },
+        { STCimmutable,    TOKimmutable, NULL },
+        { STCshared,       TOKshared,   NULL },
+        { STCnothrow,      TOKnothrow,  NULL },
+        { STCwild,         TOKwild,     NULL },
+        { STCpure,         TOKpure,     NULL },
+        { STCref,          TOKref,      NULL },
+        { STCtls,          TOKreserved, NULL },
+        { STCgshared,      TOKgshared,  NULL },
         { STCnogc,         TOKat,       "@nogc" },
         { STCproperty,     TOKat,       "@property" },
         { STCsafe,         TOKat,       "@safe" },
@@ -3301,7 +3303,7 @@ const char *stcToChars(StorageClass& stc)
         { STCsystem,       TOKat,       "@system" },
         { STCdisable,      TOKat,       "@disable" },
         { STCfuture,       TOKat,       "@__future" },
-        { 0,               TOKreserved }
+        { 0,               TOKreserved, NULL }
     };
 
     for (int i = 0; table[i].stc; i++)

@@ -107,7 +107,7 @@ size_t extractArgN(const utf8_t *p, size_t end, const utf8_t **pmarg, size_t *pm
     unsigned incomment = 0;
     unsigned intag = 0;
     unsigned inexp = 0;
-    unsigned argn = 0;
+    int argn = 0;
 
     size_t v = 0;
 

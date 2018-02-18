@@ -135,12 +135,10 @@ public:
                     errors = true;
                     continue;
                 }
-                for (size_t j = 0; j < nfields; j++)
+                for (size_t k = 0; k < nfields; k++)
                 {
-                    VarDeclaration *v2 = sd->fields[j];
-                    bool overlap = (vd->offset < v2->offset + v2->type->size() &&
-                                    v2->offset < vd->offset + vd->type->size());
-                    if (overlap && (*elements)[j])
+                    VarDeclaration *v2 = sd->fields[k];
+                    if (vd->isOverlappedWith(v2) && (*elements)[k])
                     {
                         error(i->loc, "overlapping initialization for field %s and %s",
                               v2->toChars(), vd->toChars());
@@ -245,6 +243,7 @@ public:
             case Tpointer:
                 if (t->nextOf()->ty != Tfunction)
                     break;
+                /* fall through */
 
             default:
                 error(i->loc, "cannot use array to initialize %s", t->toChars());

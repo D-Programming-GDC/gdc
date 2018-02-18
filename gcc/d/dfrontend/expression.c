@@ -1877,7 +1877,7 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
                 lastthrow = i;
             if (firstdtor == -1 && arg->type->needsDestruction())
             {
-                Parameter *p = (i >= nparams ? NULL : Parameter::getNth(tf->parameters, i));
+                Parameter *p = (i >= (ptrdiff_t)nparams ? NULL : Parameter::getNth(tf->parameters, i));
                 if (!(p && (p->storageClass & (STClazy | STCref | STCout))))
                     firstdtor = i;
             }
@@ -1907,7 +1907,7 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
         {
             Expression *arg = (*arguments)[i];
 
-            Parameter *parameter = (i >= nparams ? NULL : Parameter::getNth(tf->parameters, i));
+            Parameter *parameter = (i >= (ptrdiff_t)nparams ? NULL : Parameter::getNth(tf->parameters, i));
             const bool isRef = (parameter && (parameter->storageClass & (STCref | STCout)));
             const bool isLazy = (parameter && (parameter->storageClass & STClazy));
 
@@ -3737,6 +3737,7 @@ int StringExp::compare(RootObject *obj)
                         return s1[u] - s2[u];
                 }
             }
+            break;
 
             case 4:
             {
@@ -4135,10 +4136,10 @@ Expression *StructLiteralExp::getField(Type *type, unsigned offset)
     if (i != -1)
     {
         //printf("\ti = %d\n", i);
-        if (i == sd->fields.dim - 1 && sd->isNested())
+        if (i == (int)sd->fields.dim - 1 && sd->isNested())
             return NULL;
 
-        assert(i < elements->dim);
+        assert(i < (int)elements->dim);
         e = (*elements)[i];
         if (e)
         {

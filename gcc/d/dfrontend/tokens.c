@@ -122,6 +122,7 @@ const char *Token::toChars() const
                     case '"':
                     case '\\':
                         buf.writeByte('\\');
+                        /* fall through */
                     default:
                         if (c <= 0x7F)
                         {

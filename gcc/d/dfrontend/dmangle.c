@@ -697,6 +697,7 @@ public:
                     case '0':
                         if (i < 2)
                             break;          // skip leading 0X
+                        /* fall through */
                     default:
                         buf->writeByte(c);
                         break;

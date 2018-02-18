@@ -1847,7 +1847,6 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(
             // 6764 fix - TypeAArray may be TypeSArray have not yet run semantic().
             case Tsarray:
             case Taarray:
-            {
                 // Perhaps we can do better with this, see TypeFunction::callMatch()
                 if (tb->ty == Tsarray)
                 {
@@ -1919,7 +1918,6 @@ MATCH TemplateDeclaration::deduceFunctionTemplateMatch(
                     }
                 }
                 /* fall through */
-            }
             case Tarray:
             {
                 TypeArray *ta = (TypeArray *)tb;
@@ -8125,8 +8123,8 @@ void TemplateInstance::printInstantiationTrace()
     const char format[] = "instantiated from here: %s";
 
     // determine instantiation depth and number of recursive instantiations
-    int n_instantiations = 1;
-    int n_totalrecursions = 0;
+    unsigned n_instantiations = 1;
+    unsigned n_totalrecursions = 0;
     for (TemplateInstance *cur = this; cur; cur = cur->tinst)
     {
         ++n_instantiations;

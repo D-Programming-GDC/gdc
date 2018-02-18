@@ -307,6 +307,7 @@ void Lexer::scan(Token *t)
                 if (p[1] != '"')
                     goto case_ident;
                 p++;
+                /* fall through */
             case '`':
                 t->value = wysiwygStringConstant(t, *p);
                 return;
@@ -1023,7 +1024,7 @@ unsigned Lexer::escapeSequence()
                     {
                         case ';':
                             c = HtmlNamedEntity(idstart, p - idstart);
-                            if (c == ~0)
+                            if (c == ~0U)
                             {   error("unnamed character entity &%.*s;", (int)(p - idstart), idstart);
                                 c = ' ';
                             }
@@ -1073,7 +1074,7 @@ unsigned Lexer::escapeSequence()
 
 TOK Lexer::wysiwygStringConstant(Token *t, int tc)
 {
-    unsigned c;
+    int c;
     Loc start = loc();
 
     p++;
@@ -1160,6 +1161,7 @@ TOK Lexer::hexStringConstant(Token *t)
                 if (*p == '\n')
                     continue;                   // ignore
                 // Treat isolated '\r' as if it were a '\n'
+                /* fall through */
             case '\n':
                 endOfLine();
                 continue;
@@ -1537,6 +1539,7 @@ TOK Lexer::charConstant(Token *t, int wide)
         case '\n':
         L1:
             endOfLine();
+            /* fall through */
         case '\r':
         case 0:
         case 0x1A:
@@ -2019,6 +2022,7 @@ TOK Lexer::inreal(Token *t)
 
         case 'l':
             error("use 'L' suffix instead of 'l'");
+            /* fall through */
         case 'L':
             result = TOKfloat80v;
             p++;
@@ -2084,7 +2088,7 @@ void Lexer::poundLine()
     if (tok.value == TOKint32v || tok.value == TOKint64v)
     {
         int lin = (int)(tok.uns64value - 1);
-        if (lin != tok.uns64value - 1)
+        if ((unsigned)lin != tok.uns64value - 1)
             error("line number %lld out of range", (unsigned long long)tok.uns64value);
         else
             linnum = lin;
@@ -2331,6 +2335,7 @@ void Lexer::getDocComment(Token *t, unsigned lineComment)
 
             Lnewline:
                 c = '\n';               // replace all newlines with \n
+                /* fall through */
             case '\n':
                 linestart = 1;
 

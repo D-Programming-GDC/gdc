@@ -369,13 +369,14 @@ MATCH implicitConvTo(Expression *e, Type *t)
                 case Tint8:
                     if (ty == Tuns64 && value & ~0x7FUL)
                         return;
-                    else if ((signed char)value != value)
+                    else if ((signed char)value != (sinteger_t)value)
                         return;
                     break;
 
                 case Tchar:
                     if ((oldty == Twchar || oldty == Tdchar) && value > 0x7F)
                         return;
+                    /* fall through */
                 case Tuns8:
                     //printf("value = %llu %llu\n", (dinteger_t)(unsigned char)value, value);
                     if ((unsigned char)value != value)
@@ -385,13 +386,14 @@ MATCH implicitConvTo(Expression *e, Type *t)
                 case Tint16:
                     if (ty == Tuns64 && value & ~0x7FFFUL)
                         return;
-                    else if ((short)value != value)
+                    else if ((short)value != (sinteger_t)value)
                         return;
                     break;
 
                 case Twchar:
                     if (oldty == Tdchar && value > 0xD7FF && value < 0xE000)
                         return;
+                    /* fall through */
                 case Tuns16:
                     if ((unsigned short)value != value)
                         return;
@@ -403,7 +405,7 @@ MATCH implicitConvTo(Expression *e, Type *t)
                     }
                     else if (ty == Tuns64 && value & ~0x7FFFFFFFUL)
                         return;
-                    else if ((int)value != value)
+                    else if ((int)value != (sinteger_t)value)
                         return;
                     break;
 
@@ -486,6 +488,7 @@ MATCH implicitConvTo(Expression *e, Type *t)
                          */
                         break;
                     }
+                    /* fall through */
 
                 default:
                     visit((Expression *)e);

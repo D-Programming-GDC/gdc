@@ -914,7 +914,7 @@ void FuncDeclaration::semantic(Scope *sc)
                     {
                         // with dmc, overloaded functions are grouped and in reverse order
                         vtblIndex = (int)cd->vtbl.dim;
-                        for (size_t i = 0; i < cd->vtbl.dim; i++)
+                        for (int i = 0; i < (int)cd->vtbl.dim; i++)
                         {
                             if (cd->vtbl[i]->ident == ident && cd->vtbl[i]->parent == parent)
                             {
@@ -923,7 +923,7 @@ void FuncDeclaration::semantic(Scope *sc)
                             }
                         }
                         // shift all existing functions back
-                        for (size_t i = cd->vtbl.dim; i > vtblIndex; i--)
+                        for (int i = (int)cd->vtbl.dim; i > vtblIndex; i--)
                         {
                             FuncDeclaration *fd = cd->vtbl[i-1]->isFuncDeclaration();
                             assert(fd);

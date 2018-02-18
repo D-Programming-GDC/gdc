@@ -1017,7 +1017,7 @@ void StructDeclaration::semantic(Scope *sc)
 
     if (semanticRun >= PASSsemanticdone)
         return;
-    int errors = global.errors;
+    unsigned errors = global.errors;
 
     //printf("+StructDeclaration::semantic(this=%p, %s '%s', sizeok = %d)\n", this, parent->toChars(), toChars(), sizeok);
     Scope *scx = NULL;

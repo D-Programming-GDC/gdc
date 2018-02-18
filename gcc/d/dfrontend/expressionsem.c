@@ -644,6 +644,8 @@ public:
 
             case 'c':
                 e->committed = 1;
+                /* fall through */
+
             default:
                 e->type = new TypeDArray(Type::tchar->immutableOf());
                 break;
@@ -3920,6 +3922,8 @@ public:
 
             default:
                 exp->error("can only * a pointer, not a '%s'", exp->e1->type->toChars());
+                /* fall through */
+
             case Terror:
                 return setError();
         }

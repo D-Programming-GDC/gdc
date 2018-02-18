@@ -4175,7 +4175,7 @@ Dsymbol *Parser::parseFunctionLiteral()
                 // delegate { statements... }
                 break;
             }
-            /* fall through to TOKlparen */
+            /* fall through */
 
         case TOKlparen:
         {
@@ -4782,8 +4782,8 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
                 s = new LabelStatement(loc, ident, s);
                 break;
             }
-            // fallthrough to TOKdot
         }
+        /* fall through */
         case TOKdot:
         case TOKtypeof:
         case TOKvector:
@@ -4900,6 +4900,8 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
                 goto Lexp;
             if (peekNext() == TOKlparen)
                 goto Lexp;
+            /* fall through */
+
         case TOKalias:
         case TOKconst:
         case TOKauto:
@@ -5783,8 +5785,8 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
                             statements->push(s);
                             continue;
                         }
-                        // ...else, drop through.
 #endif
+                        /* fall through */
 
                     default:
                     Ldefault:
@@ -7635,6 +7637,8 @@ Expression *Parser::parseUnaryExp()
                         tk = peek(tk);
                         if (tk->value == TOKis || tk->value == TOKin)   // !is or !in
                             break;
+                        /* fall through */
+
                     case TOKdot:
                     case TOKplusplus:
                     case TOKminusminus:
