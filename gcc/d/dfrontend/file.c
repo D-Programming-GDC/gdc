@@ -252,7 +252,7 @@ err:
 void File::remove()
 {
 #if POSIX
-    int dummy = ::remove(this->name->toChars());
+    ::remove(this->name->toChars());
 #elif _WIN32
     DeleteFileA(this->name->toChars());
 #else

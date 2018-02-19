@@ -78,7 +78,7 @@ Lexer::Lexer(const char *filename,
     scanloc = Loc(filename, 1, 1);
     //printf("Lexer::Lexer(%p,%d)\n",base,length);
     //printf("lexer.filename = %s\n", filename);
-    memset(&token,0,sizeof(token));
+    this->token = {};
     this->base = base;
     this->end  = base + endoffset;
     p = base + begoffset;
@@ -300,7 +300,7 @@ void Lexer::scan(Token *t)
                 return;
 
             case '\'':
-                t->value = charConstant(t,0);
+                t->value = charConstant(t);
                 return;
 
             case 'r':
@@ -336,7 +336,7 @@ void Lexer::scan(Token *t)
                     goto case_ident;
 
             case '"':
-                t->value = escapeStringConstant(t,0);
+                t->value = escapeStringConstant(t);
                 return;
 
             case 'a':   case 'b':   case 'c':   case 'd':   case 'e':
@@ -1430,7 +1430,7 @@ TOK Lexer::tokenStringConstant(Token *t)
 /**************************************
  */
 
-TOK Lexer::escapeStringConstant(Token *t, int wide)
+TOK Lexer::escapeStringConstant(Token *t)
 {
     unsigned c;
     Loc start = loc();
@@ -1507,7 +1507,7 @@ TOK Lexer::escapeStringConstant(Token *t, int wide)
 /**************************************
  */
 
-TOK Lexer::charConstant(Token *t, int wide)
+TOK Lexer::charConstant(Token *t)
 {
     unsigned c;
     TOK tk = TOKcharv;
@@ -1778,7 +1778,7 @@ Ldone:
         FLAGS_long     = 4,             // L suffix
     };
 
-    FLAGS flags = (base == 10) ? FLAGS_decimal : FLAGS_none;
+    unsigned flags = (base == 10) ? FLAGS_decimal : FLAGS_none;
 
     // Parse trailing 'u', 'U', 'l' or 'L' in any combination
     const utf8_t *psuffix = p;

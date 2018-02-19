@@ -286,7 +286,7 @@ TraitsInitializer::TraitsInitializer()
     }
 }
 
-void *trait_search_fp(void *arg, const char *seed, int* cost)
+void *trait_search_fp(void *, const char *seed, int* cost)
 {
     //printf("trait_search_fp('%s')\n", seed);
     size_t len = strlen(seed);
@@ -298,7 +298,7 @@ void *trait_search_fp(void *arg, const char *seed, int* cost)
     return sv ? (void*)sv->ptrvalue : NULL;
 }
 
-static int fpisTemplate(void *param, Dsymbol *s)
+static int fpisTemplate(void *, Dsymbol *s)
 {
     if (s->isTemplateDeclaration())
         return 1;
@@ -391,14 +391,14 @@ Expression *pointerBitmap(TraitsExp *e)
                 tb->accept(this);
         }
         virtual void visit(TypeError *t) { visit((Type *)t); }
-        virtual void visit(TypeNext *t) { assert(0); }
+        virtual void visit(TypeNext *) { assert(0); }
         virtual void visit(TypeBasic *t)
         {
             if (t->ty == Tvoid)
                 setpointer(offset);
         }
-        virtual void visit(TypeVector *t) { }
-        virtual void visit(TypeArray *t) { assert(0); }
+        virtual void visit(TypeVector *) { }
+        virtual void visit(TypeArray *) { assert(0); }
         virtual void visit(TypeSArray *t)
         {
             d_uns64 arrayoff = offset;
@@ -413,26 +413,26 @@ Expression *pointerBitmap(TraitsExp *e)
             }
             offset = arrayoff;
         }
-        virtual void visit(TypeDArray *t) { setpointer(offset + sz_size_t); } // dynamic array is {length,ptr}
-        virtual void visit(TypeAArray *t) { setpointer(offset); }
+        virtual void visit(TypeDArray *) { setpointer(offset + sz_size_t); } // dynamic array is {length,ptr}
+        virtual void visit(TypeAArray *) { setpointer(offset); }
         virtual void visit(TypePointer *t)
         {
             if (t->nextOf()->ty != Tfunction) // don't mark function pointers
                 setpointer(offset);
         }
-        virtual void visit(TypeReference *t) { setpointer(offset); }
-        virtual void visit(TypeClass *t) { setpointer(offset); }
-        virtual void visit(TypeFunction *t) { }
-        virtual void visit(TypeDelegate *t) { setpointer(offset); } // delegate is {context, function}
-        virtual void visit(TypeQualified *t) { assert(0); } // assume resolved
-        virtual void visit(TypeIdentifier *t) { assert(0); }
-        virtual void visit(TypeInstance *t) { assert(0); }
-        virtual void visit(TypeTypeof *t) { assert(0); }
-        virtual void visit(TypeReturn *t) { assert(0); }
+        virtual void visit(TypeReference *) { setpointer(offset); }
+        virtual void visit(TypeClass *) { setpointer(offset); }
+        virtual void visit(TypeFunction *) { }
+        virtual void visit(TypeDelegate *) { setpointer(offset); } // delegate is {context, function}
+        virtual void visit(TypeQualified *) { assert(0); } // assume resolved
+        virtual void visit(TypeIdentifier *) { assert(0); }
+        virtual void visit(TypeInstance *) { assert(0); }
+        virtual void visit(TypeTypeof *) { assert(0); }
+        virtual void visit(TypeReturn *) { assert(0); }
         virtual void visit(TypeEnum *t) { visit((Type *)t); }
         virtual void visit(TypeTuple *t) { visit((Type *)t); }
-        virtual void visit(TypeSlice *t) { assert(0); }
-        virtual void visit(TypeNull *t) { } // always a null pointer
+        virtual void visit(TypeSlice *) { assert(0); }
+        virtual void visit(TypeNull *) { } // always a null pointer
 
         virtual void visit(TypeStruct *t)
         {
@@ -786,7 +786,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
         {
             if (sym)
             {
-                if (Dsymbol *sm = sym->search(e->loc, id))
+                if (sym->search(e->loc, id))
                     return True(e);
             }
 
@@ -1197,7 +1197,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
             ScopeDsymbol *sds;
             Identifiers *idents;
 
-            static int dg(void *ctx, size_t n, Dsymbol *sm)
+            static int dg(void *ctx, size_t, Dsymbol *sm)
             {
                 if (!sm)
                     return 1;
@@ -1479,7 +1479,6 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
         e->error("unrecognized trait '%s'", e->ident->toChars());
     return new ErrorExp();
 
-Ldimerror:
     e->error("wrong number of arguments %d", (int)dim);
     return new ErrorExp();
 }

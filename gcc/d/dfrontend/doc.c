@@ -96,7 +96,7 @@ struct DocComment
        summary(NULL), copyright(NULL), macros(NULL), pmacrotable(NULL), pescapetable(NULL)
     { }
 
-    static DocComment *parse(Scope *sc, Dsymbol *s, const utf8_t *comment);
+    static DocComment *parse(Dsymbol *s, const utf8_t *comment);
     static void parseMacros(Escape **pescapetable, Macro **pmacrotable, const utf8_t *m, size_t mlen);
     static void parseEscapes(Escape **pescapetable, const utf8_t *textstart, size_t textlen);
 
@@ -148,7 +148,7 @@ static Dsymbol *getEponymousMember(TemplateDeclaration *td)
         return ad;
     if (FuncDeclaration *fd = td->onemember->isFuncDeclaration())
         return fd;
-    if (EnumMember *em = td->onemember->isEnumMember())
+    if (td->onemember->isEnumMember())
         return NULL;    // Keep backward compatibility. See compilable/ddoc9.d
     if (VarDeclaration *vd = td->onemember->isVarDeclaration())
         return td->constraint ? NULL : vd;
@@ -308,7 +308,7 @@ void gendocfile(Module *m)
 
     Scope *sc = Scope::createGlobal(m);      // create root scope
 
-    DocComment *dc = DocComment::parse(sc, m, m->comment);
+    DocComment *dc = DocComment::parse(m, m->comment);
     dc->pmacrotable = &m->macrotable;
     dc->pescapetable = &m->escapetable;
     sc->lastdc = dc;
@@ -782,7 +782,7 @@ void emitComment(Dsymbol *s, OutBuffer *buf, Scope *sc)
 
             if (s)
             {
-                DocComment *dc = DocComment::parse(sc, s, com);
+                DocComment *dc = DocComment::parse(s, com);
                 dc->pmacrotable = &sc->_module->macrotable;
                 sc->lastdc = dc;
             }
@@ -1260,7 +1260,7 @@ void toDocBuffer(Dsymbol *s, OutBuffer *buf, Scope *sc)
 
 /********************************* DocComment *********************************/
 
-DocComment *DocComment::parse(Scope *sc, Dsymbol *s, const utf8_t *comment)
+DocComment *DocComment::parse(Dsymbol *s, const utf8_t *comment)
 {
     //printf("parse(%s): '%s'\n", s->toChars(), comment);
     DocComment *dc = new DocComment();
@@ -1508,7 +1508,7 @@ void DocComment::writeSections(Scope *sc, Dsymbols *a, OutBuffer *buf)
 /***************************************************
  */
 
-void Section::write(Loc loc, DocComment *dc, Scope *sc, Dsymbols *a, OutBuffer *buf)
+void Section::write(Loc loc, DocComment *, Scope *sc, Dsymbols *a, OutBuffer *buf)
 {
     assert(a->dim);
 
@@ -1559,7 +1559,7 @@ void Section::write(Loc loc, DocComment *dc, Scope *sc, Dsymbols *a, OutBuffer *
 /***************************************************
  */
 
-void ParamSection::write(Loc loc, DocComment *dc, Scope *sc, Dsymbols *a, OutBuffer *buf)
+void ParamSection::write(Loc loc, DocComment *, Scope *sc, Dsymbols *a, OutBuffer *buf)
 {
     assert(a->dim);
     Dsymbol *s = (*a)[0];   // test
@@ -1657,7 +1657,7 @@ void ParamSection::write(Loc loc, DocComment *dc, Scope *sc, Dsymbols *a, OutBuf
                         }
                         else if (!fparam)
                         {
-                            warning(s->loc, "Ddoc: function declaration has no parameter '%.*s'", namelen, namestart);
+                            warning(s->loc, "Ddoc: function declaration has no parameter '%.*s'", (int)namelen, namestart);
                         }
                         buf->write(namestart, namelen);
                     }
@@ -1720,7 +1720,7 @@ void ParamSection::write(Loc loc, DocComment *dc, Scope *sc, Dsymbols *a, OutBuf
 /***************************************************
  */
 
-void MacroSection::write(Loc loc, DocComment *dc, Scope *sc, Dsymbols *a, OutBuffer *buf)
+void MacroSection::write(Loc, DocComment *dc, Scope *, Dsymbols *, OutBuffer *)
 {
     //printf("MacroSection::write()\n");
     DocComment::parseMacros(dc->pescapetable, dc->pmacrotable, body, bodylen);

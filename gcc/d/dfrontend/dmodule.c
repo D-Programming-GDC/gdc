@@ -722,7 +722,7 @@ Module *Module::parse()
     return this;
 }
 
-void Module::importAll(Scope *prevsc)
+void Module::importAll(Scope *)
 {
     //printf("+Module::importAll(this = %p, '%s'): parent = %p\n", this, toChars(), parent);
 
@@ -1262,7 +1262,7 @@ bool Package::isAncestorPackageOf(const Package * const pkg) const
     return isAncestorPackageOf(pkg->parent->isPackage());
 }
 
-void Package::semantic(Scope *sc)
+void Package::semantic(Scope *)
 {
     if (semanticRun < PASSsemanticdone)
         semanticRun = PASSsemanticdone;

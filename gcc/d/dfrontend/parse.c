@@ -385,7 +385,7 @@ Dsymbols *Parser::parseDeclDefs(int once, Dsymbol **pLastDecl, PrefixAttributes 
             case TOKinvariant:
             {
                 Token *t = peek(&token);
-                if (t->value == TOKlparen && peek(t)->value == TOKrparen ||
+                if ((t->value == TOKlparen && peek(t)->value == TOKrparen) ||
                     t->value == TOKlcurly)
                 {
                     // invariant {}
@@ -1272,12 +1272,11 @@ TypeQualified *Parser::parseTypeof()
 
 Type *Parser::parseVector()
 {
-    Loc loc = token.loc;
     nextToken();
     check(TOKlparen);
     Type *tb = parseType();
     check(TOKrparen);
-    return new TypeVector(loc, tb);
+    return new TypeVector(tb);
 }
 
 /***********************************
@@ -3766,12 +3765,11 @@ Dsymbols *Parser::parseDeclarations(bool autodecl, PrefixAttributes *pAttrs, con
                 Declaration *v;
                 if (token.value == TOKfunction ||
                     token.value == TOKdelegate ||
-                    token.value == TOKlparen &&
-                        skipAttributes(peekPastParen(&token), &tk) &&
-                        (tk->value == TOKgoesto || tk->value == TOKlcurly) ||
+                    (token.value == TOKlparen &&
+                     skipAttributes(peekPastParen(&token), &tk) &&
+                     (tk->value == TOKgoesto || tk->value == TOKlcurly)) ||
                     token.value == TOKlcurly ||
-                    token.value == TOKidentifier && peekNext() == TOKgoesto
-                   )
+                    (token.value == TOKidentifier && peekNext() == TOKgoesto))
                 {
                     // function (parameters) { statements... }
                     // delegate (parameters) { statements... }
@@ -7218,14 +7216,14 @@ Expression *Parser::parsePrimaryExp()
                          token.value == TOKinterface ||
                          token.value == TOKargTypes ||
                          token.value == TOKparameters ||
-                         token.value == TOKconst && peek(&token)->value == TOKrparen ||
-                         token.value == TOKimmutable && peek(&token)->value == TOKrparen ||
-                         token.value == TOKshared && peek(&token)->value == TOKrparen ||
-                         token.value == TOKwild && peek(&token)->value == TOKrparen ||
+                         (token.value == TOKconst && peek(&token)->value == TOKrparen) ||
+                         (token.value == TOKimmutable && peek(&token)->value == TOKrparen) ||
+                         (token.value == TOKshared && peek(&token)->value == TOKrparen) ||
+                         (token.value == TOKwild && peek(&token)->value == TOKrparen) ||
                          token.value == TOKfunction ||
                          token.value == TOKdelegate ||
                          token.value == TOKreturn ||
-                         token.value == TOKvector && peek(&token)->value == TOKrparen))
+                         (token.value == TOKvector && peek(&token)->value == TOKrparen)))
                     {
                         tok2 = token.value;
                         nextToken();

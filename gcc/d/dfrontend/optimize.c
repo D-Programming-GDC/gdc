@@ -232,7 +232,7 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             return ret->op == TOKerror;
         }
 
-        void visit(Expression *e)
+        void visit(Expression *)
         {
             //printf("Expression::optimize(result = x%x) %s\n", result, e->toChars());
         }

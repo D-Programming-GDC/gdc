@@ -178,7 +178,7 @@ public:
             result = ::semantic(ie, sc, t, needInterpret);
             return;
         }
-        else if ((t->ty == Tdelegate || t->ty == Tpointer && t->nextOf()->ty == Tfunction) && i->value.dim == 0)
+        else if ((t->ty == Tdelegate || (t->ty == Tpointer && t->nextOf()->ty == Tfunction)) && i->value.dim == 0)
         {
             TOK tok = (t->ty == Tdelegate) ? TOKdelegate : TOKfunction;
             /* Rewrite as empty delegate literal { }
@@ -266,7 +266,7 @@ public:
                 const uinteger_t idxvalue = idx->toInteger();
                 if (idxvalue >= amax)
                 {
-                    error(i->loc, "array index %llu overflow", idxvalue);
+                    error(i->loc, "array index %llu overflow", (ulonglong)idxvalue);
                     errors = true;
                 }
                 length = (unsigned)idx->toInteger();
@@ -318,7 +318,7 @@ public:
             uinteger_t edim = ((TypeSArray *)t)->dim->toInteger();
             if (i->dim > edim)
             {
-                error(i->loc, "array initializer has %u elements, but array length is %llu", i->dim, edim);
+                error(i->loc, "array initializer has %u elements, but array length is %llu", i->dim, (ulonglong)edim);
                 goto Lerr;
             }
         }
@@ -331,7 +331,7 @@ public:
             const d_uns64 max = mulu((d_uns64)i->dim, sz, overflow);
             if (overflow || max > amax)
             {
-                error(i->loc, "array dimension %llu exceeds max of %llu", i->dim, (amax / sz));
+                error(i->loc, "array dimension %llu exceeds max of %llu", (ulonglong)i->dim, (ulonglong)(amax / sz));
                 goto Lerr;
             }
             result = i;
@@ -406,7 +406,7 @@ public:
         Type *tb = t->toBasetype();
         Type *ti = i->exp->type->toBasetype();
 
-        if (i->exp->op == TOKtuple && expandTuples && !i->exp->implicitConvTo(t))
+        if (i->exp->op == TOKtuple && i->expandTuples && !i->exp->implicitConvTo(t))
         {
             result = new ExpInitializer(i->loc, i->exp);
             return;

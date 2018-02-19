@@ -86,14 +86,14 @@ public:
     {
     }
 
-    void visit(Statement *s)
+    void visit(Statement *)
     {
         buf->printf("Statement::toCBuffer()");
         buf->writenl();
         assert(0);
     }
 
-    void visit(ErrorStatement *s)
+    void visit(ErrorStatement *)
     {
         buf->printf("__error__");
         buf->writenl();
@@ -466,7 +466,7 @@ public:
         s->statement->accept(this);
     }
 
-    void visit(GotoDefaultStatement *s)
+    void visit(GotoDefaultStatement *)
     {
         buf->writestring("goto default;");
         buf->writenl();
@@ -484,7 +484,7 @@ public:
         buf->writenl();
     }
 
-    void visit(SwitchErrorStatement *s)
+    void visit(SwitchErrorStatement *)
     {
         buf->writestring("SwitchErrorStatement::toCBuffer()");
         buf->writenl();
@@ -753,7 +753,7 @@ public:
     {
         if (t->ty == Tfunction)
         {
-            visitFuncIdentWithPrefix((TypeFunction *)t, ident, NULL, true);
+            visitFuncIdentWithPrefix((TypeFunction *)t, ident, NULL);
             return;
         }
 
@@ -811,7 +811,7 @@ public:
         assert(0);
     }
 
-    void visit(TypeError *t)
+    void visit(TypeError *)
     {
         buf->writestring("_error_");
     }
@@ -956,7 +956,7 @@ public:
 
         t->inuse--;
     }
-    void visitFuncIdentWithPrefix(TypeFunction *t, Identifier *ident, TemplateDeclaration *td, bool isPostfixStyle)
+    void visitFuncIdentWithPrefix(TypeFunction *t, Identifier *ident, TemplateDeclaration *td)
     {
         if (t->inuse)
         {
@@ -1124,7 +1124,7 @@ public:
         buf->writeByte(']');
     }
 
-    void visit(TypeNull *t)
+    void visit(TypeNull *)
     {
         buf->writestring("typeof(null)");
     }
@@ -1632,9 +1632,9 @@ public:
                 if (t->equals(Type::tstring) ||
                     t->equals(Type::twstring) ||
                     t->equals(Type::tdstring) ||
-                    t->mod == 0 &&
-                    (t->isTypeBasic() ||
-                     t->ty == Tident && ((TypeIdentifier *)t)->idents.dim == 0))
+                    (t->mod == 0 &&
+                     (t->isTypeBasic() ||
+                      (t->ty == Tident && ((TypeIdentifier *)t)->idents.dim == 0))))
                 {
                     buf->writestring(t->toChars());
                     return;
@@ -2129,12 +2129,12 @@ public:
 
     ////////////////////////////////////////////////////////////////////////////
 
-    void visit(ErrorInitializer *iz)
+    void visit(ErrorInitializer *)
     {
         buf->writestring("__error__");
     }
 
-    void visit(VoidInitializer *iz)
+    void visit(VoidInitializer *)
     {
         buf->writestring("void");
     }
@@ -2389,7 +2389,7 @@ public:
             buf->printf("%lld", v);
     }
 
-    void visit(ErrorExp *e)
+    void visit(ErrorExp *)
     {
         buf->writestring("__error");
     }
@@ -2468,17 +2468,17 @@ public:
         buf->writestring(e->s->toChars());
     }
 
-    void visit(ThisExp *e)
+    void visit(ThisExp *)
     {
         buf->writestring("this");
     }
 
-    void visit(SuperExp *e)
+    void visit(SuperExp *)
     {
         buf->writestring("super");
     }
 
-    void visit(NullExp *e)
+    void visit(NullExp *)
     {
         buf->writestring("null");
     }
@@ -2734,7 +2734,7 @@ public:
         buf->writeByte(')');
     }
 
-    void visit(HaltExp *e)
+    void visit(HaltExp *)
     {
         buf->writestring("halt");
     }
@@ -3411,7 +3411,7 @@ void functionToBufferFull(TypeFunction *tf, OutBuffer *buf, Identifier *ident,
 {
     //printf("TypeFunction::toCBuffer() this = %p\n", this);
     PrettyPrintVisitor v(buf, hgs);
-    v.visitFuncIdentWithPrefix(tf, ident, td, true);
+    v.visitFuncIdentWithPrefix(tf, ident, td);
 }
 
 // ident is inserted before the argument list and will be "function" or "delegate" for a type

@@ -475,9 +475,9 @@ public:
 
         sc->pop();
 
-        if (fs->condition && fs->condition->op == TOKerror ||
-            fs->increment && fs->increment->op == TOKerror ||
-            fs->_body && fs->_body->isErrorStatement())
+        if ((fs->condition && fs->condition->op == TOKerror) ||
+            (fs->increment && fs->increment->op == TOKerror) ||
+            (fs->_body && fs->_body->isErrorStatement()))
             return setError();
 
         result = fs;
@@ -656,7 +656,7 @@ public:
                 }
                 // Declare value
                 if (p->storageClass & (STCout | STClazy) ||
-                    p->storageClass & STCref && !te)
+                    (p->storageClass & STCref && !te))
                 {
                     fs->error("no storage class for value %s", p->ident->toChars());
                     return setError();
@@ -2561,7 +2561,7 @@ public:
             /* Void-return function can have void typed expression
              * on return statement.
              */
-            if (tbret && tbret->ty == Tvoid || rs->exp->type->ty == Tvoid)
+            if ((tbret && tbret->ty == Tvoid) || rs->exp->type->ty == Tvoid)
             {
                 if (rs->exp->type->ty != Tvoid)
                 {

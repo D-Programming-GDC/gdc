@@ -296,7 +296,7 @@ struct CompiledCtfeFunction
         numVars = 0;
     }
 
-    void onDeclaration(VarDeclaration *v)
+    void onDeclaration(VarDeclaration *)
     {
         //printf("%s CTFE declare %s\n", v->loc.toChars(), v->toChars());
         ++numVars;
@@ -314,7 +314,7 @@ struct CompiledCtfeFunction
             {
             }
 
-            void visit(Expression *e)
+            void visit(Expression *)
             {
             }
 
@@ -394,7 +394,7 @@ public:
     {
     }
 
-    void visit(Statement *s)
+    void visit(Statement *)
     {
     #if LOGCOMPILE
         printf("%s Statement::ctfeCompile %s\n", s->loc.toChars(), s->toChars());
@@ -459,7 +459,7 @@ public:
             ctfeCompile(s->statement);
     }
 
-    void visit(OnScopeStatement *s)
+    void visit(OnScopeStatement *)
     {
     #if LOGCOMPILE
         printf("%s OnScopeStatement::ctfeCompile\n", s->loc.toChars());
@@ -478,7 +478,7 @@ public:
             ctfeCompile(s->_body);
     }
 
-    void visit(WhileStatement *s)
+    void visit(WhileStatement *)
     {
     #if LOGCOMPILE
         printf("%s WhileStatement::ctfeCompile\n", s->loc.toChars());
@@ -503,7 +503,7 @@ public:
             ctfeCompile(s->_body);
     }
 
-    void visit(ForeachStatement *s)
+    void visit(ForeachStatement *)
     {
     #if LOGCOMPILE
         printf("%s ForeachStatement::ctfeCompile\n", s->loc.toChars());
@@ -546,21 +546,21 @@ public:
             ctfeCompile(s->statement);
     }
 
-    void visit(GotoDefaultStatement *s)
+    void visit(GotoDefaultStatement *)
     {
     #if LOGCOMPILE
         printf("%s GotoDefaultStatement::ctfeCompile\n", s->loc.toChars());
     #endif
     }
 
-    void visit(GotoCaseStatement *s)
+    void visit(GotoCaseStatement *)
     {
     #if LOGCOMPILE
         printf("%s GotoCaseStatement::ctfeCompile\n", s->loc.toChars());
     #endif
     }
 
-    void visit(SwitchErrorStatement *s)
+    void visit(SwitchErrorStatement *)
     {
     #if LOGCOMPILE
         printf("%s SwitchErrorStatement::ctfeCompile\n", s->loc.toChars());
@@ -576,14 +576,14 @@ public:
             ccf->onExpression(s->exp);
     }
 
-    void visit(BreakStatement *s)
+    void visit(BreakStatement *)
     {
     #if LOGCOMPILE
         printf("%s BreakStatement::ctfeCompile\n", s->loc.toChars());
     #endif
     }
 
-    void visit(ContinueStatement *s)
+    void visit(ContinueStatement *)
     {
     #if LOGCOMPILE
         printf("%s ContinueStatement::ctfeCompile\n", s->loc.toChars());
@@ -644,7 +644,7 @@ public:
         ccf->onExpression(s->exp);
     }
 
-    void visit(GotoStatement *s)
+    void visit(GotoStatement *)
     {
     #if LOGCOMPILE
         printf("%s GotoStatement::ctfeCompile\n", s->loc.toChars());
@@ -660,7 +660,7 @@ public:
             ctfeCompile(s->statement);
     }
 
-    void visit(ImportStatement *s)
+    void visit(ImportStatement *)
     {
     #if LOGCOMPILE
         printf("%s ImportStatement::ctfeCompile\n", s->loc.toChars());
@@ -668,7 +668,7 @@ public:
         // Contains no variables or executable code
     }
 
-    void visit(ForeachRangeStatement *s)
+    void visit(ForeachRangeStatement *)
     {
     #if LOGCOMPILE
         printf("%s ForeachRangeStatement::ctfeCompile\n", s->loc.toChars());
@@ -677,7 +677,7 @@ public:
         assert(0);
     }
 
-    void visit(AsmStatement *s)
+    void visit(AsmStatement *)
     {
     #if LOGCOMPILE
         printf("%s AsmStatement::ctfeCompile\n", s->loc.toChars());
@@ -686,7 +686,7 @@ public:
     }
 
 #ifdef IN_GCC
-    void visit(ExtAsmStatement *s)
+    void visit(ExtAsmStatement *)
     {
     #if LOGCOMPILE
         printf("%s ExtAsmStatement::ctfeCompile\n", s->loc.toChars());
@@ -1431,7 +1431,7 @@ public:
         result = CTFEExp::continueexp;
     }
 
-    void visit(WhileStatement *s)
+    void visit(WhileStatement *)
     {
     #if LOG
         printf("WhileStatement::interpret()\n");
@@ -1562,12 +1562,12 @@ public:
         assert(result == NULL);
     }
 
-    void visit(ForeachStatement *s)
+    void visit(ForeachStatement *)
     {
         assert(0);                  // rewritten to ForStatement
     }
 
-    void visit(ForeachRangeStatement *s)
+    void visit(ForeachRangeStatement *)
     {
         assert(0);                  // rewritten to ForStatement
     }
@@ -1910,7 +1910,7 @@ public:
         result = new ThrownExceptionExp(s->loc, (ClassReferenceExp *)e);
     }
 
-    void visit(OnScopeStatement *s)
+    void visit(OnScopeStatement *)
     {
         assert(0);
     }
@@ -2614,7 +2614,7 @@ public:
     #if LOG
         printf("%s TypeidExp::interpret() %s\n", e->loc.toChars(), e->toChars());
     #endif
-        if (Type *t = isType(e->obj))
+        if (isType(e->obj))
         {
             result = e;
             return;
@@ -3282,7 +3282,7 @@ public:
             Expression *agg1 = getAggregateFromPointer(e1, &ofs1);
             Expression *agg2 = getAggregateFromPointer(e2, &ofs2);
             //printf("agg1 = %p %s, agg2 = %p %s\n", agg1, agg1->toChars(), agg2, agg2->toChars());
-            int cmp = comparePointers(e->loc, e->op, e->type, agg1, ofs1, agg2, ofs2);
+            int cmp = comparePointers(e->op, agg1, ofs1, agg2, ofs2);
             if (cmp == -1)
             {
                 char dir = (e->op == TOKgt || e->op == TOKge) ? '<' : '>';
@@ -3804,7 +3804,7 @@ public:
             e1->op == TOKvector ||
             e1->op == TOKarrayliteral ||
             e1->op == TOKstring ||
-            e1->op == TOKnull && e1->type->toBasetype()->ty == Tarray)
+            (e1->op == TOKnull && e1->type->toBasetype()->ty == Tarray))
         {
             // Note that slice assignments don't support things like ++, so
             // we don't need to remember 'returnValue'.
@@ -4675,11 +4675,11 @@ public:
         TOK cmpop = ex->op;
         if (nott)
             cmpop = reverseRelation(cmpop);
-        int cmp = comparePointers(e->loc, cmpop, e->e1->type, agg1, ofs1, agg2, ofs2);
+        int cmp = comparePointers(cmpop, agg1, ofs1, agg2, ofs2);
         // We already know this is a valid comparison.
         assert(cmp >= 0);
-        if (e->op == TOKandand && cmp == 1 ||
-            e->op == TOKoror   && cmp == 0)
+        if ((e->op == TOKandand && cmp == 1) ||
+            (e->op == TOKoror   && cmp == 0))
         {
             result = interpret(e->e2, istate);
             return;
