@@ -99,7 +99,7 @@ VoidInitExp::VoidInitExp(VarDeclaration *var, Type *)
 
 const char *VoidInitExp::toChars()
 {
-    return (char *)"void";
+    return "void";
 }
 
 // Return index of the field, or -1 if not found
@@ -124,7 +124,7 @@ ThrownExceptionExp::ThrownExceptionExp(Loc loc, ClassReferenceExp *victim) : Exp
 
 const char *ThrownExceptionExp::toChars()
 {
-    return (char *)"CTFE ThrownException";
+    return "CTFE ThrownException";
 }
 
 // Generate an error message when this exception is not caught
@@ -166,11 +166,11 @@ const char *CTFEExp::toChars()
 {
     switch (op)
     {
-        case TOKcantexp:    return (char *)"<cant>";
-        case TOKvoidexp:    return (char *)"<void>";
-        case TOKbreak:      return (char *)"<break>";
-        case TOKcontinue:   return (char *)"<continue>";
-        case TOKgoto:       return (char *)"<goto>";
+        case TOKcantexp:    return "<cant>";
+        case TOKvoidexp:    return "<void>";
+        case TOKbreak:      return "<break>";
+        case TOKcontinue:   return "<continue>";
+        case TOKgoto:       return "<goto>";
         default:            assert(0);  return NULL;
     }
 }

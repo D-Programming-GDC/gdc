@@ -79,7 +79,7 @@ void DebugCondition::addGlobalIdent(const char *ident)
 {
     if (!global.params.debugids)
         global.params.debugids = new Strings();
-    global.params.debugids->push((char *)ident);
+    global.params.debugids->push(ident);
 }
 
 
@@ -267,7 +267,7 @@ void VersionCondition::addPredefinedGlobalIdent(const char *ident)
 {
     if (!global.params.versionids)
         global.params.versionids = new Strings();
-    global.params.versionids->push((char *)ident);
+    global.params.versionids->push(ident);
 }
 
 

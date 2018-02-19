@@ -5181,7 +5181,7 @@ public:
             if (agg->op == TOKsymoff)
             {
                 e->error("mutable variable %s cannot be %s at compile time, even through a pointer",
-                    (char *)(modify ? "modified" : "read"), ((SymOffExp *)agg)->var->toChars());
+                    (modify ? "modified" : "read"), ((SymOffExp *)agg)->var->toChars());
                 return false;
             }
 

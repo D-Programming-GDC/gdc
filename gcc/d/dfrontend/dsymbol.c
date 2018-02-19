@@ -214,7 +214,7 @@ Identifier *Dsymbol::getIdent()
 
 const char *Dsymbol::toChars()
 {
-    return ident ? ident->toChars() : (char *)"__anonymous";
+    return ident ? ident->toChars() : "__anonymous";
 }
 
 const char *Dsymbol::toPrettyCharsHelper()
@@ -225,14 +225,14 @@ const char *Dsymbol::toPrettyCharsHelper()
 const char *Dsymbol::toPrettyChars(bool QualifyTypes)
 {
     if (prettystring && !QualifyTypes)
-        return (char *)prettystring;
+        return (const char *)prettystring;
 
     //printf("Dsymbol::toPrettyChars() '%s'\n", toChars());
     if (!parent)
     {
         const char *s = toChars();
         if (!QualifyTypes)
-            prettystring = (utf8_t *)s;
+            prettystring = (const utf8_t *)s;
         return s;
     }
 
@@ -875,7 +875,7 @@ void Dsymbol::addComment(const utf8_t *comment)
 
     if (!this->comment)
         this->comment = comment;
-    else if (comment && strcmp((char *)comment, (char *)this->comment) != 0)
+    else if (comment && strcmp((const char *)comment, (const char *)this->comment) != 0)
     {   // Concatenate the two
         this->comment = Lexer::combineComments(this->comment, comment);
     }
@@ -1706,7 +1706,7 @@ DsymbolTable::DsymbolTable()
 Dsymbol *DsymbolTable::lookup(Identifier const * const ident)
 {
     //printf("DsymbolTable::lookup(%s)\n", (char*)ident->string);
-    return (Dsymbol *)dmd_aaGetRvalue(tab, (void *)ident);
+    return (Dsymbol *)dmd_aaGetRvalue(tab, const_cast<void *>((const void *)ident));
 }
 
 Dsymbol *DsymbolTable::insert(Dsymbol *s)
@@ -1723,7 +1723,7 @@ Dsymbol *DsymbolTable::insert(Dsymbol *s)
 Dsymbol *DsymbolTable::insert(Identifier const * const ident, Dsymbol *s)
 {
     //printf("DsymbolTable::insert()\n");
-    Dsymbol **ps = (Dsymbol **)dmd_aaGet(&tab, (void *)ident);
+    Dsymbol **ps = (Dsymbol **)dmd_aaGet(&tab, const_cast<void *>((const void *)ident));
     if (*ps)
         return NULL;            // already in table
     *ps = s;

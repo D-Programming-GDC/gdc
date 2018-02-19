@@ -371,7 +371,7 @@ void Lexer::scan(Token *t)
                     break;
                 }
 
-                Identifier *id = Identifier::idPool((char *)t->ptr, p - t->ptr);
+                Identifier *id = Identifier::idPool((const char *)t->ptr, p - t->ptr);
                 t->ident = id;
                 t->value = (TOK) id->getValue();
                 anyToken = 1;
@@ -406,7 +406,7 @@ void Lexer::scan(Token *t)
                     }
                     else if (id == Id::VENDOR)
                     {
-                        t->ustring = (utf8_t *)global.compiler.vendor;
+                        t->ustring = (utf8_t *)const_cast<char *>(global.compiler.vendor);
                         goto Lstr;
                     }
                     else if (id == Id::TIMESTAMP)
@@ -1098,7 +1098,7 @@ TOK Lexer::wysiwygStringConstant(Token *t, int tc)
             case 0:
             case 0x1A:
                 error("unterminated string constant starting at %s", start.toChars());
-                t->ustring = (utf8_t *)"";
+                t->ustring = (utf8_t *)const_cast<char *>("");
                 t->len = 0;
                 t->postfix = 0;
                 return TOKstring;
@@ -1169,7 +1169,7 @@ TOK Lexer::hexStringConstant(Token *t)
             case 0:
             case 0x1A:
                 error("unterminated string constant starting at %s", start.toChars());
-                t->ustring = (utf8_t *)"";
+                t->ustring = (utf8_t *)const_cast<char *>("");
                 t->len = 0;
                 t->postfix = 0;
                 return TOKxstring;
@@ -1273,7 +1273,7 @@ TOK Lexer::delimitedStringConstant(Token *t)
             case 0:
             case 0x1A:
                 error("unterminated delimited string constant starting at %s", start.toChars());
-                t->ustring = (utf8_t *)"";
+                t->ustring = (utf8_t *)const_cast<char *>("");
                 t->len = 0;
                 t->postfix = 0;
                 return TOKstring;
@@ -1414,7 +1414,7 @@ TOK Lexer::tokenStringConstant(Token *t)
 
             case TOKeof:
                 error("unterminated token string constant starting at %s", start.toChars());
-                t->ustring = (utf8_t *)"";
+                t->ustring = (utf8_t *)const_cast<char *>("");
                 t->len = 0;
                 t->postfix = 0;
                 return TOKstring;
@@ -1480,7 +1480,7 @@ TOK Lexer::escapeStringConstant(Token *t)
             case 0x1A:
                 p--;
                 error("unterminated string constant starting at %s", start.toChars());
-                t->ustring = (utf8_t *)"";
+                t->ustring = (utf8_t *)const_cast<char *>("");
                 t->len = 0;
                 t->postfix = 0;
                 return TOKstring;
@@ -2392,8 +2392,8 @@ const utf8_t *Lexer::combineComments(const utf8_t *c1, const utf8_t *c2)
         c = c1;
         if (c2)
         {
-            size_t len1 = strlen((char *)c1);
-            size_t len2 = strlen((char *)c2);
+            size_t len1 = strlen((const char *)c1);
+            size_t len2 = strlen((const char *)c2);
 
             int insertNewLine = 0;
             if (len1 && c1[len1 - 1] != '\n')

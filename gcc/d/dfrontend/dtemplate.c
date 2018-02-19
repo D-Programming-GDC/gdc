@@ -719,7 +719,7 @@ const char *TemplateDeclaration::kind()
 {
     return (onemember && onemember->isAggregateDeclaration())
                 ? onemember->kind()
-                : (char *)"template";
+                : "template";
 }
 
 /**********************************

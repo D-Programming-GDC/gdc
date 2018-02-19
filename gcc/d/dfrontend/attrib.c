@@ -538,7 +538,7 @@ Scope *LinkDeclaration::newScope(Scope *sc)
 
 const char *LinkDeclaration::toChars()
 {
-    return (char *)"extern ()";
+    return "extern ()";
 }
 
 /********************************* CPPMangleDeclaration ****************************/
@@ -565,7 +565,7 @@ Scope *CPPMangleDeclaration::newScope(Scope *sc)
 
 const char *CPPMangleDeclaration::toChars()
 {
-    return (char *)"extern ()";
+    return "extern ()";
 }
 
 /********************************* ProtDeclaration ****************************/

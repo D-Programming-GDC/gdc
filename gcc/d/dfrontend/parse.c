@@ -6989,7 +6989,7 @@ Expression *Parser::parsePrimaryExp()
         case TOKfile:
         {
             const char *s = loc.filename ? loc.filename : mod->ident->toChars();
-            e = new StringExp(loc, (char *)s, strlen(s), 0);
+            e = new StringExp(loc, const_cast<char *>(s), strlen(s), 0);
             nextToken();
             break;
         }
@@ -7002,7 +7002,7 @@ Expression *Parser::parsePrimaryExp()
                 s = loc.filename;
             else
                 s = FileName::combine(mod->srcfilePath, srcfile);
-            e = new StringExp(loc, (char *)s, strlen(s), 0);
+            e = new StringExp(loc, const_cast<char *>(s), strlen(s), 0);
             nextToken();
             break;
         }
@@ -7015,7 +7015,7 @@ Expression *Parser::parsePrimaryExp()
         case TOKmodulestring:
         {
             const char *s = md ? md->toChars() : mod->toChars();
-            e = new StringExp(loc, (char *)s, strlen(s), 0);
+            e = new StringExp(loc, const_cast<char *>(s), strlen(s), 0);
             nextToken();
             break;
         }

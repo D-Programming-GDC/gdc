@@ -199,7 +199,7 @@ Objects *opToArg(Scope *sc, TOK op)
         case TOKpowass: op = TOKpow; break;
         default:                     break;
     }
-    Expression *e = new StringExp(Loc(), (char *)Token::toChars(op));
+    Expression *e = new StringExp(Loc(), const_cast<char *>(Token::toChars(op)));
     e = semantic(e, sc);
     Objects *tiargs = new Objects();
     tiargs->push(e);

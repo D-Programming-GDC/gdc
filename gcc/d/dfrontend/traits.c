@@ -212,7 +212,7 @@ struct PushAttributes
     static int fp(void *param, const char *str)
     {
         PushAttributes *p = (PushAttributes *)param;
-        p->mods->push(new StringExp(Loc(), (char *)str));
+        p->mods->push(new StringExp(Loc(), const_cast<char *>(str)));
         return 0;
     }
 };
@@ -281,7 +281,7 @@ TraitsInitializer::TraitsInitializer()
     {
         const char *s = traits[idx];
         if (!s) break;
-        StringValue *sv = traitsStringTable.insert(s, strlen(s), (void *)s);
+        StringValue *sv = traitsStringTable.insert(s, strlen(s), const_cast<char *>(s));
         assert(sv);
     }
 }
@@ -659,7 +659,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
             id = s->ident;
         }
 
-        StringExp *se = new StringExp(e->loc, (char *)id->toChars());
+        StringExp *se = new StringExp(e->loc, const_cast<char *>(id->toChars()));
         return semantic(se, sc);
     }
     else if (e->ident == Id::getProtection)
@@ -687,7 +687,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
 
         const char *protName = protectionToChars(s->prot().kind);   // TODO: How about package(names)
         assert(protName);
-        StringExp *se = new StringExp(e->loc, (char *) protName);
+        StringExp *se = new StringExp(e->loc, const_cast<char *>(protName));
         return semantic(se, sc);
     }
     else if (e->ident == Id::parent)
@@ -898,7 +898,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
 
         Expressions *exps = new Expressions();
         if (ad->aliasthis)
-            exps->push(new StringExp(e->loc, (char *)ad->aliasthis->ident->toChars()));
+            exps->push(new StringExp(e->loc, const_cast<char *>(ad->aliasthis->ident->toChars())));
         Expression *ex = new TupleExp(e->loc, exps);
         ex = semantic(ex, sc);
         return ex;
@@ -1028,7 +1028,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
             default:
                 assert(0);
         }
-        StringExp *se = new StringExp(e->loc, (char*)style);
+        StringExp *se = new StringExp(e->loc, const_cast<char*>(style));
         return semantic(se, sc);
     }
     else if (e->ident == Id::getParameterStorageClasses)
@@ -1100,31 +1100,31 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
         Expressions *exps = new Expressions;
 
         if (stc & STCauto)
-            exps->push(new StringExp(e->loc, (char *)"auto"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("auto")));
         if (stc & STCreturn)
-            exps->push(new StringExp(e->loc, (char *)"return"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("return")));
 
         if (stc & STCout)
-            exps->push(new StringExp(e->loc, (char *)"out"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("out")));
         else if (stc & STCref)
-            exps->push(new StringExp(e->loc, (char *)"ref"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("ref")));
         else if (stc & STCin)
-            exps->push(new StringExp(e->loc, (char *)"in"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("in")));
         else if (stc & STClazy)
-            exps->push(new StringExp(e->loc, (char *)"lazy"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("lazy")));
         else if (stc & STCalias)
-            exps->push(new StringExp(e->loc, (char *)"alias"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("alias")));
 
         if (stc & STCconst)
-            exps->push(new StringExp(e->loc, (char *)"const"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("const")));
         if (stc & STCimmutable)
-            exps->push(new StringExp(e->loc, (char *)"immutable"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("immutable")));
         if (stc & STCwild)
-            exps->push(new StringExp(e->loc, (char *)"inout"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("inout")));
         if (stc & STCshared)
-            exps->push(new StringExp(e->loc, (char *)"shared"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("shared")));
         if (stc & STCscope && !(stc & STCscopeinferred))
-            exps->push(new StringExp(e->loc, (char *)"scope"));
+            exps->push(new StringExp(e->loc, const_cast<char *>("scope")));
 
         TupleExp *tup = new TupleExp(e->loc, exps);
         return semantic(tup, sc);
@@ -1162,7 +1162,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
             link = d->linkage;
         }
         const char *linkage = linkageToChars(link);
-        StringExp *se = new StringExp(e->loc, (char *)linkage);
+        StringExp *se = new StringExp(e->loc, const_cast<char *>(linkage));
         return semantic(se, sc);
     }
     else if (e->ident == Id::allMembers ||
@@ -1289,7 +1289,7 @@ Expression *semanticTraits(TraitsExp *e, Scope *sc)
         for (size_t i = 0; i < idents->dim; i++)
         {
             Identifier *id = (*idents)[i];
-            StringExp *se = new StringExp(e->loc, (char *)id->toChars());
+            StringExp *se = new StringExp(e->loc, const_cast<char *>(id->toChars()));
             (*exps)[i] = se;
         }
 

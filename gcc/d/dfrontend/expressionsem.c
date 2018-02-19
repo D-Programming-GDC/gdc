@@ -8393,7 +8393,7 @@ Expression *semanticX(DotIdExp *exp, Scope *sc)
                     OutBuffer buf;
                     mangleToBuffer(ds, &buf);
                     const char *s = buf.extractString();
-                    Expression *e = new StringExp(exp->loc, (void*)s, strlen(s));
+                    Expression *e = new StringExp(exp->loc, const_cast<char*>(s), strlen(s));
                     e = semantic(e, sc);
                     return e;
                 }
@@ -8695,7 +8695,7 @@ Expression *semanticY(DotIdExp *exp, Scope *sc, int flag)
         else if (exp->ident == Id::stringof)
         {
             const char *p = ie->toChars();
-            e = new StringExp(exp->loc, (char*)p, strlen(p));
+            e = new StringExp(exp->loc, const_cast<char *>(p), strlen(p));
             e = semantic(e, sc);
             return e;
         }

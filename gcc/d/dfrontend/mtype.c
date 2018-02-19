@@ -1673,7 +1673,7 @@ Type *Type::merge()
         else
         {
             sv->ptrvalue = (char *)(t = stripDefaultArgs(t));
-            deco = t->deco = (char *)sv->toDchars();
+            deco = t->deco = const_cast<char *>(sv->toDchars());
             //printf("new value, deco = '%s' %p\n", t->deco, t->deco);
         }
     }
@@ -2119,7 +2119,7 @@ Expression *Type::getProperty(Loc loc, Identifier *ident, int flag)
     else if (ident == Id::stringof)
     {
         const char *s = toChars();
-        e = new StringExp(loc, (char *)s, strlen(s));
+        e = new StringExp(loc, const_cast<char *>(s), strlen(s));
         Scope sc;
         e = ::semantic(e, &sc);
     }
@@ -2203,7 +2203,7 @@ Expression *Type::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
          * pretty-printing the type.
          */
         const char *s = e->toChars();
-        e = new StringExp(e->loc, (char *)s, strlen(s));
+        e = new StringExp(e->loc, const_cast<char *>(s), strlen(s));
     }
     else
         e = getProperty(e->loc, ident, flag & 1);
@@ -2289,7 +2289,7 @@ Expression *Type::noMember(Scope *sc, Expression *e, Identifier *ident, int flag
                 --nest;
                 return new ErrorExp();
             }
-            StringExp *se = new StringExp(e->loc, (char *)ident->toChars());
+            StringExp *se = new StringExp(e->loc, const_cast<char *>(ident->toChars()));
             Objects *tiargs = new Objects();
             tiargs->push(se);
             DotTemplateInstanceExp *dti = new DotTemplateInstanceExp(e->loc, e, Id::opDispatch, tiargs);
@@ -7615,7 +7615,7 @@ Expression *TypeEnum::getProperty(Loc loc, Identifier *ident, int flag)
     else if (ident == Id::stringof)
     {
         const char *s = toChars();
-        e = new StringExp(loc, (char *)s, strlen(s));
+        e = new StringExp(loc, const_cast<char *>(s), strlen(s));
         Scope sc;
         e = ::semantic(e, &sc);
     }

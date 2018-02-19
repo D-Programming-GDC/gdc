@@ -6673,7 +6673,7 @@ Expression *FileInitExp::resolveLoc(Loc loc, Scope *sc)
     const char *s = loc.filename ? loc.filename : sc->_module->ident->toChars();
     if (subop == TOKfilefullpath)
         s = FileName::combine(sc->_module->srcfilePath, s);
-    Expression *e = new StringExp(loc, (char *)s);
+    Expression *e = new StringExp(loc, const_cast<char *>(s));
     e = semantic(e, sc);
     e = e->castTo(sc, type);
     return e;
@@ -6707,7 +6707,7 @@ Expression *ModuleInitExp::resolveLoc(Loc loc, Scope *sc)
         s = sc->callsc->_module->toPrettyChars();
     else
         s = sc->_module->toPrettyChars();
-    Expression *e = new StringExp(loc, (char *)s);
+    Expression *e = new StringExp(loc, const_cast<char *>(s));
     e = semantic(e, sc);
     e = e->castTo(sc, type);
     return e;
@@ -6729,7 +6729,7 @@ Expression *FuncInitExp::resolveLoc(Loc loc, Scope *sc)
         s = sc->func->Dsymbol::toPrettyChars();
     else
         s = "";
-    Expression *e = new StringExp(loc, (char *)s);
+    Expression *e = new StringExp(loc, const_cast<char *>(s));
     e = semantic(e, sc);
     e = e->castTo(sc, type);
     return e;
@@ -6763,7 +6763,7 @@ Expression *PrettyFuncInitExp::resolveLoc(Loc loc, Scope *sc)
         s = "";
     }
 
-    Expression *e = new StringExp(loc, (char *)s);
+    Expression *e = new StringExp(loc, const_cast<char *>(s));
     e = semantic(e, sc);
     e = e->castTo(sc, type);
     return e;

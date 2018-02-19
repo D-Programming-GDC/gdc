@@ -1907,7 +1907,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                         e = new AssertExp(
                               endloc,
                               new IntegerExp(0),
-                              new StringExp(loc, (char *)"missing return expression")
+                              new StringExp(loc, const_cast<char *>("missing return expression"))
                             );
                     }
                     else
@@ -4278,7 +4278,7 @@ Expression *addInvariant(Loc loc, Scope *sc, AggregateDeclaration *ad, VarDeclar
         v->type = vthis->type;
         if (ad->isStructDeclaration())
             v = v->addressOf();
-        e = new StringExp(Loc(), (char *)"null this");
+        e = new StringExp(Loc(), const_cast<char *>("null this"));
         e = new AssertExp(loc, v, e);
         e = semantic(e, sc);
     }
@@ -4860,8 +4860,7 @@ void FuncLiteralDeclaration::modifyReturns(Scope *sc, Type *tret)
 
 const char *FuncLiteralDeclaration::kind()
 {
-    // GCC requires the (char*) casts
-    return (tok != TOKfunction) ? (char*)"delegate" : (char*)"function";
+    return (tok != TOKfunction) ? "delegate" : "function";
 }
 
 const char *FuncLiteralDeclaration::toPrettyChars(bool QualifyTypes)
@@ -4979,7 +4978,7 @@ const char *CtorDeclaration::kind()
 
 const char *CtorDeclaration::toChars()
 {
-    return (char *)"this";
+    return "this";
 }
 
 bool CtorDeclaration::isVirtual()
@@ -5149,7 +5148,7 @@ const char *DtorDeclaration::kind()
 
 const char *DtorDeclaration::toChars()
 {
-    return (char *)"~this";
+    return "~this";
 }
 
 bool DtorDeclaration::isVirtual()

@@ -44,7 +44,7 @@ File::File(const FileName *n)
     ref = 0;
     buffer = NULL;
     len = 0;
-    name = (FileName *)n;
+    name = const_cast<FileName *>(n);
 }
 
 File *File::create(const char *n)
