@@ -830,12 +830,8 @@ void cpuidX86()
         cf.maxCores = 1;
         if (hyperThreadingBit) {
             // determine max number of cores for AMD
-            version(GNU)
-            {
+            version(GNU) pure nothrow @nogc {
                 gnuCpuid(0x8000_0008, a, b, c, d);
-            }
-            version(GNU) asm pure nothrow @nogc {
-                "cpuid" : "=a" a, "=c" c : "a" 0x8000_0008 : "ebx", "edx";
             } else asm pure nothrow @nogc {
                 mov EAX, 0x8000_0008;
                 cpuid;
@@ -1025,13 +1021,13 @@ bool hasCPUID()
 
 version (GNU)
 {
-    nothrow @nogc
+    nothrow @nogc pure
     void gnuCpuid(A, B, C, D)(uint eax, out A a, out B b, out C c, out D d)
     {
         gnuCpuid(eax, 0, a, b, c, d);
     }
 
-    nothrow @nogc
+    nothrow @nogc pure
     void gnuCpuid(A, B, C, D)(uint eax, uint ecx, out A a, out B b, out C c, out D d)
     {
         // On x86 the PIC register 'ebx' must not be overwritten. GCC <5 will error out otherwise.
