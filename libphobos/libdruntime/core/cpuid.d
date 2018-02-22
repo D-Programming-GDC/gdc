@@ -830,7 +830,7 @@ void cpuidX86()
         cf.maxCores = 1;
         if (hyperThreadingBit) {
             // determine max number of cores for AMD
-            version(GNU) pure nothrow @nogc {
+            version(GNU) {
                 gnuCpuid(0x8000_0008, a, b, c, d);
             } else asm pure nothrow @nogc {
                 mov EAX, 0x8000_0008;
