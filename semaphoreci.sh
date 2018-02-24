@@ -45,6 +45,7 @@ fi
 
 export CC="gcc-${HOST_PACKAGE}"
 export CXX="g++-${HOST_PACKAGE}"
+export GDC="gdc-${HOST_PACKAGE}"
 
 setup() {
     ## Install build dependencies.
@@ -52,7 +53,7 @@ setup() {
     # But the network speed is nothing to complain about so far...
     sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     sudo apt-get update -qq
-    sudo apt-get install -qq gcc-${HOST_PACKAGE} g++-${HOST_PACKAGE} \
+    sudo apt-get install -qq gcc-${HOST_PACKAGE} g++-${HOST_PACKAGE} gdc-${HOST_PACKAGE} \
         autogen autoconf2.64 automake1.11 bison dejagnu flex patch || exit 1
 
     ## Download and extract GCC sources.
