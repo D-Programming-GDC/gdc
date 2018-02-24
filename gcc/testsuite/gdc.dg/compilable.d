@@ -449,3 +449,14 @@ class RedBlackTree280
 }
 
 __gshared s = new RedBlackTree280('h');
+
+/******************************************/
+
+// Bug 284
+
+alias v284 = __vector(int[2]);
+
+v284 test284(v284 a, ...)
+{
+    return a + a;
+}
