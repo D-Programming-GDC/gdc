@@ -1,3 +1,19 @@
+2018-02-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-frontend.cc (CTFloat::fabs): Assign result to real_t directly.
+	(CTFloat::ldexp): Likewise.
+	* d-longdouble.cc (longdouble::from_int): Remove function.
+	(longdouble::from_uint): Likewise.
+	(longdouble::to_int): Update Signature.
+	(longdouble::to_uint): Likewise.
+	(longdouble::operator): Likewise.
+	(longdouble::add): New function, move operator overload headers.
+	(longdouble::sub, longdouble::mul, longdouble::div): Likewise.
+	(longdouble::mod, longdouble::neg): Likewise.
+	(longdouble::cmp, longdouble::equals): Likewise.
+	* d-target.cc (Target::_init): Construct assignment into real_t
+	directly.
+
 2018-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (DMD_WARN_CXXFLAGS): Only filter out
