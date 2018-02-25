@@ -1,3 +1,7 @@
+2018-02-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_FRONTEND_OBJS): Remove inline.o and inlinecost.o.
+
 2018-02-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-frontend.cc (CTFloat::fabs): Assign result to real_t directly.

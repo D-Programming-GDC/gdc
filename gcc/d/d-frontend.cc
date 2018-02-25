@@ -532,3 +532,11 @@ getTypeInfoType (Type *type, Scope *sc)
   create_typeinfo (type, sc ? sc->_module->importedFrom : NULL);
   return type->vtinfo->type;
 }
+
+/* Return an inlined copy of a default argument for a function parameter.  */
+
+Expression *
+inlineCopy (Expression *e, Scope *)
+{
+  return e->copy ();
+}
