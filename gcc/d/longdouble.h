@@ -31,58 +31,90 @@ public:
   real_value& rv (void)
   { return *(real_value *) this; }
 
+  /* Normalize the value to be the precision supported by target.  */
+  longdouble normalize();
+
   /* No constructor to be able to use this class in a union.  */
   template<typename T> longdouble& operator = (T x)
   { set (x); return *this; }
 
-  /* Lvalue operators.
-     We need to list all basic types to avoid ambiguities.  */
-  void set (real_value& rv);
-  void set (int8_t d);
-  void set (int16_t d);
+  /* Lvalue operators.  */
+  void set (real_value& d);
   void set (int32_t d);
   void set (int64_t d);
-  void set (uint8_t d);
-  void set (uint16_t d);
   void set (uint32_t d);
   void set (uint64_t d);
   void set (bool d);
 
   /* Rvalue operators.  */
-  operator real_value&();
-  operator int8_t (void);
-  operator int16_t (void);
-  operator int32_t (void);
-  operator int64_t (void);
-  operator uint8_t (void);
-  operator uint16_t (void);
-  operator uint32_t (void);
-  operator uint64_t (void);
-  operator bool (void);
+  bool to_bool () const;
+  int64_t to_int () const;
+  uint64_t to_uint () const;
+
+  operator int32_t (void)
+  { return (int32_t) this->to_int (); }
+
+  operator int64_t (void)
+  { return this->to_int (); }
+
+  operator uint32_t (void)
+  { return (uint32_t) this->to_uint (); }
+
+  operator uint64_t (void)
+  { return this->to_uint (); }
+
+  operator bool (void)
+  { return this->to_bool (); }
 
   /* Arithmetic operators.  */
-  longdouble operator + (const longdouble& r);
-  longdouble operator - (const longdouble& r);
-  longdouble operator * (const longdouble& r);
-  longdouble operator / (const longdouble& r);
-  longdouble operator % (const longdouble& r);
+  longdouble add(const longdouble& r) const;
+  longdouble sub(const longdouble& r) const;
+  longdouble mul(const longdouble& r) const;
+  longdouble div(const longdouble& r) const;
+  longdouble mod(const longdouble& r) const;
+  longdouble neg() const;
 
-  longdouble operator -();
+  longdouble operator + (const longdouble& r)
+  { return this->add (r); }
+
+  longdouble operator - (const longdouble& r)
+  { return this->sub (r); }
+
+  longdouble operator * (const longdouble& r)
+  { return this->mul (r); }
+
+  longdouble operator / (const longdouble& r)
+  { return this->div (r); }
+
+  longdouble operator % (const longdouble& r)
+  { return this->mod (r); }
+
+  longdouble operator -()
+  { return this->neg (); }
 
   /* Comparison operators.  */
-  bool operator < (const longdouble& r);
-  bool operator <= (const longdouble& r);
-  bool operator > (const longdouble& r);
-  bool operator >= (const longdouble& r);
-  bool operator == (const longdouble& r);
-  bool operator != (const longdouble& r);
+  int cmp(const longdouble& t) const;
+  int equals(const longdouble& t) const;
+
+  bool operator < (const longdouble& r)
+  { return this->cmp (r) < 0; }
+
+  bool operator <= (const longdouble& r)
+  { return this->cmp (r) <= 0; }
+
+  bool operator > (const longdouble& r)
+  { return this->cmp (r) > 0; }
+
+  bool operator >= (const longdouble& r)
+  { return this->cmp (r) >= 0; }
+
+  bool operator == (const longdouble& r)
+  { return this->equals (r); }
+
+  bool operator != (const longdouble& r)
+  { return !this->equals (r); }
 
 private:
-  longdouble from_int (Type *type, int64_t d);
-  longdouble from_uint (Type *type, uint64_t d);
-  int64_t to_int (Type *type) const;
-  uint64_t to_uint (Type *type) const;
-
   /* Including gcc/real.h presents too many problems, so just
      statically allocate enough space for REAL_VALUE_TYPE.  */
   long realvalue[(2 + (16 + sizeof (long)) / sizeof (long))];

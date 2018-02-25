@@ -317,8 +317,9 @@ Port::valcpy (void *buffer, uint64_t value, size_t sz)
 real_t
 CTFloat::fabs (real_t r)
 {
-  real_value x = real_value_abs (&r.rv ());
-  return ldouble (x);
+  real_t x;
+  real_arithmetic (&x.rv (), ABS_EXPR, &r.rv (), NULL);
+  return x.normalize ();
 }
 
 /* Return the value of R * 2 ^^ EXP.  */
@@ -326,9 +327,9 @@ CTFloat::fabs (real_t r)
 real_t
 CTFloat::ldexp (real_t r, int exp)
 {
-  real_value rv;
-  real_ldexp (&rv, &r.rv (), exp);
-  return ldouble (rv);
+  real_t x;
+  real_ldexp (&x.rv (), &r.rv (), exp);
+  return x.normalize ();
 }
 
 /* Return true if longdouble value X is identical to Y.  */
