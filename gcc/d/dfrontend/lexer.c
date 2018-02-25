@@ -78,7 +78,11 @@ Lexer::Lexer(const char *filename,
     scanloc = Loc(filename, 1, 1);
     //printf("Lexer::Lexer(%p,%d)\n",base,length);
     //printf("lexer.filename = %s\n", filename);
-    this->token = {};
+    this->token = Token();
+    this->token.ptr = NULL;
+    this->token.value = TOKreserved;
+    this->token.blockComment = NULL;
+    this->token.lineComment = NULL;
     this->base = base;
     this->end  = base + endoffset;
     p = base + begoffset;
