@@ -55,15 +55,15 @@ These official OS versions are not implemented:
  frv*)	cpu_type=frv
  	extra_options="${extra_options} g.opt"
  	;;
-@@ -419,6 +422,7 @@ x86_64-*-*)
- 		       clzerointrin.h pkuintrin.h sgxintrin.h"
+@@ -429,6 +432,7 @@ x86_64-*-*)
+ 		       avx512vpopcntdqvlintrin.h avx512bitalgintrin.h"
  	;;
  ia64-*-*)
 +	d_target_objs="ia64-d.o"
  	extra_headers=ia64intrin.h
  	extra_options="${extra_options} g.opt fused-madd.opt"
  	;;
-@@ -458,6 +462,7 @@ nios2-*-*)
+@@ -468,6 +472,7 @@ nios2-*-*)
  	;;
  nvptx-*-*)
  	cpu_type=nvptx
@@ -71,7 +71,7 @@ These official OS versions are not implemented:
  	;;
  powerpc*-*-*spe*)
  	cpu_type=powerpcspe
-@@ -486,6 +491,7 @@ powerpc*-*-*)
+@@ -499,6 +504,7 @@ powerpc*-*-*)
  riscv*)
  	cpu_type=riscv
  	extra_objs="riscv-builtins.o riscv-c.o"
@@ -79,7 +79,7 @@ These official OS versions are not implemented:
  	;;
  rs6000*-*-*)
  	extra_options="${extra_options} g.opt fused-madd.opt rs6000/rs6000-tables.opt"
-@@ -672,8 +678,10 @@ case ${target} in
+@@ -685,8 +691,10 @@ case ${target} in
    extra_options="${extra_options} darwin.opt"
    c_target_objs="${c_target_objs} darwin-c.o"
    cxx_target_objs="${cxx_target_objs} darwin-c.o"
@@ -87,10 +87,10 @@ These official OS versions are not implemented:
    fortran_target_objs="darwin-f.o"
    target_has_targetcm=yes
 +  target_has_targetdm=yes
-   extra_objs="darwin.o"
+   extra_objs="${extra_objs} darwin.o"
    extra_gcc_objs="darwin-driver.o"
    default_use_cxa_atexit=yes
-@@ -698,6 +706,9 @@ case ${target} in
+@@ -711,6 +719,9 @@ case ${target} in
        exit 1
        ;;
    esac
@@ -100,7 +100,7 @@ These official OS versions are not implemented:
    extra_options="$extra_options rpath.opt dragonfly.opt"
    default_use_cxa_atexit=yes
    use_gcc_stdint=wrap
-@@ -741,6 +752,9 @@ case ${target} in
+@@ -754,6 +765,9 @@ case ${target} in
        ;;
    esac
    fbsd_tm_file="${fbsd_tm_file} freebsd-spec.h freebsd.h freebsd-stdint.h"
@@ -110,17 +110,16 @@ These official OS versions are not implemented:
    extra_options="$extra_options rpath.opt freebsd.opt"
    case ${target} in
      *-*-freebsd[345].*)
-@@ -816,6 +830,9 @@ case ${target} in
+@@ -830,6 +844,8 @@ case ${target} in
+   tm_p_file="${tm_p_file} netbsd-protos.h"
+   tmake_file="t-netbsd t-slibgcc"
+   extra_objs="${extra_objs} netbsd.o"
++  d_target_objs="${d_target_objs} netbsd-d.o"
++  target_has_targetdm=yes
    gas=yes
    gnu_ld=yes
    use_gcc_stdint=wrap
-+  d_target_objs="${d_target_objs} netbsd-d.o"
-+  target_has_targetdm=yes
-+  tmake_file="${tmake_file} t-netbsd"
- 
-   # NetBSD 2.0 and later get POSIX threads enabled by default.
-   # Allow them to be explicitly enabled on any other version.
-@@ -844,6 +861,8 @@ case ${target} in
+@@ -841,6 +857,8 @@ case ${target} in
    ;;
  *-*-openbsd*)
    tmake_file="t-openbsd"
@@ -129,16 +128,16 @@ These official OS versions are not implemented:
    case ${enable_threads} in
      yes)
        thread_file='posix'
-@@ -909,6 +928,8 @@ case ${target} in
+@@ -906,6 +924,8 @@ case ${target} in
    tmake_file="${tmake_file} t-sol2 t-slibgcc"
    c_target_objs="${c_target_objs} sol2-c.o"
    cxx_target_objs="${cxx_target_objs} sol2-c.o sol2-cxx.o"
 +  d_target_objs="${d_target_objs} sol2-d.o"
 +  target_has_targetdm="yes"
-   extra_objs="sol2.o sol2-stubs.o"
+   extra_objs="${extra_objs} sol2.o sol2-stubs.o"
    extra_options="${extra_options} sol2.opt"
    case ${enable_threads}:${have_pthread_h}:${have_thread_h} in
-@@ -1747,7 +1768,9 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
+@@ -1768,7 +1788,9 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
  	xm_file=i386/xm-mingw32.h
  	c_target_objs="${c_target_objs} winnt-c.o"
  	cxx_target_objs="${cxx_target_objs} winnt-c.o"
@@ -148,7 +147,7 @@ These official OS versions are not implemented:
  	case ${target} in
  		x86_64-*-* | *-w64-*)
  			need_64bit_isa=yes
-@@ -4534,6 +4562,8 @@ case ${target} in
+@@ -4606,6 +4628,8 @@ case ${target} in
  		then
  			target_cpu_default2="MASK_GAS"
  		fi
@@ -157,7 +156,7 @@ These official OS versions are not implemented:
  		;;
  
  	fido*-*-* | m68k*-*-*)
-@@ -4656,6 +4656,7 @@ case ${target} in
+@@ -4699,6 +4723,7 @@ case ${target} in
  	sh[123456ble]*-*-* | sh-*-*)
  		c_target_objs="${c_target_objs} sh-c.o"
  		cxx_target_objs="${cxx_target_objs} sh-c.o"
@@ -165,7 +164,7 @@ These official OS versions are not implemented:
  		;;
  
  	sparc*-*-*)
---- a/gcc/config/darwin-d.c
+--- /dev/null
 +++ b/gcc/config/darwin-d.c
 @@ -0,0 +1,55 @@
 +/* Darwin support needed only by D front-end.
@@ -223,7 +222,7 @@ These official OS versions are not implemented:
 +#define TARGET_D_CRITSEC_SIZE darwin_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
---- a/gcc/config/dragonfly-d.c
+--- /dev/null
 +++ b/gcc/config/dragonfly-d.c
 @@ -0,0 +1,49 @@
 +/* DragonFly support needed only by D front-end.
@@ -275,7 +274,7 @@ These official OS versions are not implemented:
 +#define TARGET_D_CRITSEC_SIZE dragonfly_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
---- a/gcc/config/epiphany/epiphany-d.c
+--- /dev/null
 +++ b/gcc/config/epiphany/epiphany-d.c
 @@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the EPIPHANY architecture.
@@ -311,7 +310,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/epiphany/epiphany-protos.h
 +++ b/gcc/config/epiphany/epiphany-protos.h
-@@ -61,3 +61,5 @@ extern bool epiphany_regno_rename_ok (unsigned src, unsigned dst);
+@@ -60,3 +60,5 @@ extern bool epiphany_regno_rename_ok (un
     it uses peephole2 predicates without having all the necessary headers.  */
  extern int get_attr_sched_use_fpu (rtx_insn *);
  
@@ -319,7 +318,7 @@ These official OS versions are not implemented:
 +extern void epiphany_d_target_versions (void);
 --- a/gcc/config/epiphany/epiphany.h
 +++ b/gcc/config/epiphany/epiphany.h
-@@ -41,6 +41,9 @@ along with GCC; see the file COPYING3.  If not see
+@@ -41,6 +41,9 @@ along with GCC; see the file COPYING3.
  	builtin_assert ("machine=epiphany");	\
      } while (0)
  
@@ -339,7 +338,7 @@ These official OS versions are not implemented:
 +epiphany-d.o: $(srcdir)/config/epiphany/epiphany-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/freebsd-d.c
+--- /dev/null
 +++ b/gcc/config/freebsd-d.c
 @@ -0,0 +1,49 @@
 +/* FreeBSD support needed only by D front-end.
@@ -393,7 +392,7 @@ These official OS versions are not implemented:
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/i386/cygwin.h
 +++ b/gcc/config/i386/cygwin.h
-@@ -29,6 +29,12 @@ along with GCC; see the file COPYING3.  If not see
+@@ -29,6 +29,12 @@ along with GCC; see the file COPYING3.
      }								\
    while (0)
  
@@ -408,7 +407,7 @@ These official OS versions are not implemented:
    %{!ansi:-Dunix} \
 --- a/gcc/config/i386/mingw32.h
 +++ b/gcc/config/i386/mingw32.h
-@@ -53,6 +53,16 @@ along with GCC; see the file COPYING3.  If not see
+@@ -53,6 +53,16 @@ along with GCC; see the file COPYING3.
      }								\
    while (0)
  
@@ -427,7 +426,7 @@ These official OS versions are not implemented:
  #define SPEC_PTHREAD2 "!no-pthread"
 --- a/gcc/config/i386/t-cygming
 +++ b/gcc/config/i386/t-cygming
-@@ -32,6 +32,9 @@ winnt-cxx.o: $(srcdir)/config/i386/winnt-cxx.c $(CONFIG_H) $(SYSTEM_H) coretypes
+@@ -32,6 +32,9 @@ winnt-cxx.o: $(srcdir)/config/i386/winnt
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  	$(srcdir)/config/i386/winnt-cxx.c
  
@@ -437,7 +436,7 @@ These official OS versions are not implemented:
  
  winnt-stubs.o: $(srcdir)/config/i386/winnt-stubs.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
    $(TM_H) $(RTL_H) $(REGS_H) hard-reg-set.h output.h $(TREE_H) flags.h \
---- a/gcc/config/i386/winnt-d.c
+--- /dev/null
 +++ b/gcc/config/i386/winnt-d.c
 @@ -0,0 +1,60 @@
 +/* Windows support needed only by D front-end.
@@ -500,7 +499,7 @@ These official OS versions are not implemented:
 +#define TARGET_D_CRITSEC_SIZE winnt_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
---- a/gcc/config/ia64/ia64-d.c
+--- /dev/null
 +++ b/gcc/config/ia64/ia64-d.c
 @@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the IA64 architecture.
@@ -536,7 +535,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/ia64/ia64-protos.h
 +++ b/gcc/config/ia64/ia64-protos.h
-@@ -98,6 +98,9 @@ extern void ia64_hpux_handle_builtin_pragma (struct cpp_reader *);
+@@ -92,6 +92,9 @@ extern void ia64_hpux_handle_builtin_pra
  extern void ia64_output_function_profiler (FILE *, int);
  extern void ia64_profile_hook (int);
  
@@ -560,7 +559,7 @@ These official OS versions are not implemented:
  #endif
 --- a/gcc/config/ia64/t-ia64
 +++ b/gcc/config/ia64/t-ia64
-@@ -21,6 +21,10 @@ ia64-c.o: $(srcdir)/config/ia64/ia64-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -21,6 +21,10 @@ ia64-c.o: $(srcdir)/config/ia64/ia64-c.c
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/ia64/ia64-c.c
  
@@ -571,7 +570,7 @@ These official OS versions are not implemented:
  # genattrtab generates very long string literals.
  insn-attrtab.o-warn = -Wno-error
  
---- a/gcc/config/netbsd-d.c
+--- /dev/null
 +++ b/gcc/config/netbsd-d.c
 @@ -0,0 +1,49 @@
 +/* NetBSD support needed only by D front-end.
@@ -623,7 +622,7 @@ These official OS versions are not implemented:
 +#define TARGET_D_CRITSEC_SIZE netbsd_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
---- a/gcc/config/nvptx/nvptx-d.c
+--- /dev/null
 +++ b/gcc/config/nvptx/nvptx-d.c
 @@ -0,0 +1,34 @@
 +/* Subroutines for the D front end on the NVPTX architecture.
@@ -662,9 +661,9 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/nvptx/nvptx-protos.h
 +++ b/gcc/config/nvptx/nvptx-protos.h
-@@ -42,6 +42,9 @@ extern void nvptx_output_skip (FILE *, unsigned HOST_WIDE_INT);
- extern void nvptx_output_ascii (FILE *, const char *, unsigned HOST_WIDE_INT);
+@@ -43,6 +43,9 @@ extern void nvptx_output_ascii (FILE *,
  extern void nvptx_register_pragmas (void);
+ extern unsigned int nvptx_data_alignment (const_tree, unsigned int);
  
 +/* Routines implemented in nvptx-d.c  */
 +extern void nvptx_d_target_versions (void);
@@ -686,7 +685,7 @@ These official OS versions are not implemented:
  #define GOMP_SELF_SPECS ""
 --- a/gcc/config/nvptx/t-nvptx
 +++ b/gcc/config/nvptx/t-nvptx
-@@ -10,3 +10,7 @@ mkoffload$(exeext): mkoffload.o collect-utils.o libcommon-target.a $(LIBIBERTY)
+@@ -10,3 +10,7 @@ mkoffload$(exeext): mkoffload.o collect-
  	  mkoffload.o collect-utils.o libcommon-target.a $(LIBIBERTY) $(LIBS)
  
  MULTILIB_OPTIONS = mgomp
@@ -694,7 +693,7 @@ These official OS versions are not implemented:
 +nvptx-d.o: $(srcdir)/config/nvptx/nvptx-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/openbsd-d.c
+--- /dev/null
 +++ b/gcc/config/openbsd-d.c
 @@ -0,0 +1,49 @@
 +/* OpenBSD support needed only by D front-end.
@@ -746,7 +745,7 @@ These official OS versions are not implemented:
 +#define TARGET_D_CRITSEC_SIZE openbsd_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
---- a/gcc/config/pa/pa-d.c
+--- /dev/null
 +++ b/gcc/config/pa/pa-d.c
 @@ -0,0 +1,39 @@
 +/* Subroutines for the D front end on the HPPA architecture.
@@ -790,7 +789,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/pa/pa-linux.h
 +++ b/gcc/config/pa/pa-linux.h
-@@ -27,6 +27,8 @@ along with GCC; see the file COPYING3.  If not see
+@@ -27,6 +27,8 @@ along with GCC; see the file COPYING3.
      }						\
    while (0)
  
@@ -801,8 +800,8 @@ These official OS versions are not implemented:
  
 --- a/gcc/config/pa/pa-protos.h
 +++ b/gcc/config/pa/pa-protos.h
-@@ -109,3 +109,6 @@ extern void pa_hpux_asm_output_external (FILE *, tree, const char *);
- extern HOST_WIDE_INT pa_initial_elimination_offset (int, int);
+@@ -110,3 +110,6 @@ extern HOST_WIDE_INT pa_initial_eliminat
+ extern HOST_WIDE_INT pa_function_arg_size (machine_mode, const_tree);
  
  extern const int pa_magic_milli[];
 +
@@ -820,13 +819,13 @@ These official OS versions are not implemented:
  #define CC1_SPEC "%{pg:} %{p:}"
  
  #define LINK_SPEC "%{mlinker-opt:-O} %{!shared:-u main} %{shared:-b}"
---- a/gcc/config/pa/t-pa
+--- /dev/null
 +++ b/gcc/config/pa/t-pa
 @@ -0,0 +1,3 @@
 +pa-d.o: $(srcdir)/config/pa/pa-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/riscv/riscv-d.c
+--- /dev/null
 +++ b/gcc/config/riscv/riscv-d.c
 @@ -0,0 +1,39 @@
 +/* Subroutines for the D front end on the RISC-V architecture.
@@ -870,7 +869,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/riscv/riscv-protos.h
 +++ b/gcc/config/riscv/riscv-protos.h
-@@ -74,6 +74,9 @@ extern unsigned int riscv_hard_regno_nregs (int, enum machine_mode);
+@@ -74,6 +74,9 @@ extern bool riscv_expand_block_move (rtx
  /* Routines implemented in riscv-c.c.  */
  void riscv_cpu_cpp_builtins (cpp_reader *);
  
@@ -879,10 +878,10 @@ These official OS versions are not implemented:
 +
  /* Routines implemented in riscv-builtins.c.  */
  extern void riscv_atomic_assign_expand_fenv (tree *, tree *, tree *);
- extern rtx riscv_expand_builtin (tree, rtx, rtx, enum machine_mode, int);
+ extern rtx riscv_expand_builtin (tree, rtx, rtx, machine_mode, int);
 --- a/gcc/config/riscv/riscv.h
 +++ b/gcc/config/riscv/riscv.h
-@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.  If not see
+@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() riscv_cpu_cpp_builtins (pfile)
  
@@ -894,7 +893,7 @@ These official OS versions are not implemented:
  #ifndef TARGET_DEFAULT
 --- a/gcc/config/riscv/t-riscv
 +++ b/gcc/config/riscv/t-riscv
-@@ -9,3 +9,7 @@ riscv-c.o: $(srcdir)/config/riscv/riscv-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -9,3 +9,7 @@ riscv-c.o: $(srcdir)/config/riscv/riscv-
      coretypes.h $(TM_H) $(TREE_H) output.h $(C_COMMON_H) $(TARGET_H)
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/riscv/riscv-c.c
@@ -902,7 +901,7 @@ These official OS versions are not implemented:
 +riscv-d.o: $(srcdir)/config/riscv/riscv-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/sh/sh-d.c
+--- /dev/null
 +++ b/gcc/config/sh/sh-d.c
 @@ -0,0 +1,36 @@
 +/* Subroutines for the D front end on the SuperH architecture.
@@ -943,7 +942,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/sh/sh-protos.h
 +++ b/gcc/config/sh/sh-protos.h
-@@ -363,4 +363,7 @@ extern machine_mode sh_hard_regno_caller_save_mode (unsigned int, unsigned int,
+@@ -363,4 +363,7 @@ extern machine_mode sh_hard_regno_caller
  						    machine_mode);
  extern bool sh_can_use_simple_return_p (void);
  extern rtx sh_load_function_descriptor (rtx);
@@ -953,7 +952,7 @@ These official OS versions are not implemented:
  #endif /* ! GCC_SH_PROTOS_H */
 --- a/gcc/config/sh/sh.h
 +++ b/gcc/config/sh/sh.h
-@@ -31,6 +31,9 @@ extern int code_for_indirect_jump_scratch;
+@@ -31,6 +31,9 @@ extern int code_for_indirect_jump_scratc
  
  #define TARGET_CPU_CPP_BUILTINS() sh_cpu_cpp_builtins (pfile)
  
@@ -976,7 +975,7 @@ These official OS versions are not implemented:
  sh_treg_combine.o: $(srcdir)/config/sh/sh_treg_combine.cc \
    $(CONFIG_H) $(SYSTEM_H) $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
---- a/gcc/config/sol2-d.c
+--- /dev/null
 +++ b/gcc/config/sol2-d.c
 @@ -0,0 +1,49 @@
 +/* Solaris support needed only by D front-end.
@@ -1040,13 +1039,13 @@ These official OS versions are not implemented:
  
  darwin-f.o: $(srcdir)/config/darwin-f.c
  	$(COMPILE) $<
---- a/gcc/config/t-dragonfly
+--- /dev/null
 +++ b/gcc/config/t-dragonfly
 @@ -0,0 +1,3 @@
 +dragonfly-d.o: config/dragonfly-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/t-freebsd
+--- /dev/null
 +++ b/gcc/config/t-freebsd
 @@ -0,0 +1,3 @@
 +freebsd-d.o: config/freebsd-d.c
@@ -1054,10 +1053,13 @@ These official OS versions are not implemented:
 +	$(POSTCOMPILE)
 --- a/gcc/config/t-netbsd
 +++ b/gcc/config/t-netbsd
-@@ -0,0 +1,3 @@
+@@ -1,3 +1,6 @@
 +netbsd-d.o: config/netbsd-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
+ # Copyright (C) 2017-2018 Free Software Foundation, Inc.
+ #
+ # This file is part of GCC.
 --- a/gcc/config/t-openbsd
 +++ b/gcc/config/t-openbsd
 @@ -1,2 +1,6 @@
