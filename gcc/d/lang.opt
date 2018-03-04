@@ -42,6 +42,18 @@ D NoDriverArg Separate Alias(MD)
 D NoDriverArg Separate Alias(MMD)
 ; Documented in C
 
+H
+D
+; Different from documented use in C.
+
+Hd
+D Joined Separate
+-Hd <dir>	Write D interface files to directory <dir>.
+
+Hf
+D Joined Separate
+-Hf <file>	Write D interface to <file>.
+
 I
 D Joined Separate
 ; Documented in C
@@ -206,15 +218,16 @@ D
 Ignore unsupported pragmas.
 
 fintfc
-Generate D interface files.
+D Alias(H)
+; Deprecated in favour of -H
 
 fintfc-dir=
-D Joined RejectNegative
--fintfc-dir=<dir>	Write D interface files to directory <dir>.
+D Joined RejectNegative Alias(Hd)
+; Deprecated in favour of -Hd
 
 fintfc-file=
-D Joined RejectNegative
--fintfc-file=<file>	Write D interface to <file>.
+D Joined RejectNegative Alias(Hf)
+; Deprecated in favour of -Hf
 
 finvariants
 D Var(flag_invariants)
