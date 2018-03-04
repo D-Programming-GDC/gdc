@@ -2062,7 +2062,7 @@ Expression *Expression::copy()
     }
     void *pe = mem.xmalloc(size);
     //printf("Expression::copy(op = %d) e = %p\n", op, pe);
-    e = (Expression *)memcpy(pe, this, size);
+    e = (Expression *)memcpy(pe, (void *)this, size);
     return e;
 }
 
@@ -3605,7 +3605,7 @@ size_t StringExp::numberOfCodeUnits(int tynto) const
  *  tyto = encoding type of the result
  *  zero = add terminating 0
  */
-void StringExp::writeTo(void* dest, bool zero, int tyto) const
+void StringExp::writeTo(void *dest, bool zero, int tyto) const
 {
     int encSize;
     switch (tyto)

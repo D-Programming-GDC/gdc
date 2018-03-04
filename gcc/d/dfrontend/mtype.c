@@ -163,7 +163,7 @@ const char *Type::kind()
 Type *Type::copy()
 {
     void *pt = mem.xmalloc(sizeTy[ty]);
-    Type *t = (Type *)memcpy(pt, this, sizeTy[ty]);
+    Type *t = (Type *)memcpy(pt, (void *)this, sizeTy[ty]);
     return t;
 }
 
@@ -346,7 +346,7 @@ Type *Type::nullAttributes()
 {
     unsigned sz = sizeTy[ty];
     void *pt = mem.xmalloc(sz);
-    Type *t = (Type *)memcpy(pt, this, sz);
+    Type *t = (Type *)memcpy(pt, (void *)this, sz);
     t->deco = NULL;
     t->arrayof = NULL;
     t->pto = NULL;
@@ -2365,7 +2365,7 @@ Identifier *Type::getTypeInfoIdent()
 
     size_t off = 0;
 #ifndef IN_GCC
-    if (global.params.isOSX || global.params.isWindows && !global.params.is64bit)
+    if (global.params.isOSX || (global.params.isWindows && !global.params.is64bit))
         ++off;                 // C mangling will add '_' back in
 #endif
     Identifier *id = Identifier::idPool(name + off);
@@ -5525,7 +5525,7 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
         for (size_t i = 0; i < parameters->dim; i++)
         {
             void *pp = mem.xmalloc(sizeof(Parameter));
-            Parameter *p = (Parameter *)memcpy(pp, (*parameters)[i], sizeof(Parameter));
+            Parameter *p = (Parameter *)memcpy(pp, (void *)(*parameters)[i], sizeof(Parameter));
             (*tf->parameters)[i] = p;
         }
     }
