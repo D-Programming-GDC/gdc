@@ -175,11 +175,11 @@ D Joined RejectNegative
 
 fdeps
 D
-Print information about module dependencies.
+This switch is deprecated; do not use.
 
 fdeps=
 D Joined RejectNegative
--fdeps=<file>	Write module dependencies to <file>.
+This switch is deprecated; do not use.
 
 fdoc
 D
