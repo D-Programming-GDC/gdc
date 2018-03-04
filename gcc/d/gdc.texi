@@ -485,17 +485,6 @@ and applies a @file{.json} suffix.
 Same as @option{-X}, but writes all JSON contents to the specified
 @var{file}.
 
-@item -fdeps
-@cindex @option{-fdeps}
-Dump module dependencies of all source files being compiled in a machine
-readable format.  Suitable for any build tool that needs to track source
-file dependencies for incremental builds.
-
-@item -fdeps=@var{file}
-@cindex @option{-fdeps=}
-Same as @option{-fdeps}, but writes dependencies to the specified
-@var{file}.
-
 @item -fdoc
 @cindex @option{-fdoc}
 Generates @code{Ddoc} documentation and writes to a file.  The compiler
