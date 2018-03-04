@@ -1,5 +1,13 @@
 2018-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_handle_option): Rename OPT_fintfc cases to OPT_H.
+	* gdc.texi (Code Generation): Rename -fintfc options to -H.
+	* lang-specs.h: Add H, Hd, and Hf options.
+	* lang.opt (H, Hd, Hf): New options.
+	(fintfc, fintfc-dir=, fintfc-file=): Deprecate and alias new options.
+
+2018-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* lang.opt (fdeps, fdeps=): Deprecate options.
 	* gdc.texi (Code Generation): Remove deprecated fdeps options.
 

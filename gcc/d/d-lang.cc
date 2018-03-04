@@ -480,20 +480,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ignoreUnsupportedPragmas = value;
       break;
 
-    case OPT_fintfc:
-      global.params.doHdrGeneration = value;
-      break;
-
-    case OPT_fintfc_dir_:
-      global.params.doHdrGeneration = true;
-      global.params.hdrdir = arg;
-      break;
-
-    case OPT_fintfc_file_:
-      global.params.doHdrGeneration = true;
-      global.params.hdrname = arg;
-      break;
-
     case OPT_finvariants:
       global.params.useInvariants = value;
       break;
@@ -593,6 +579,20 @@ d_handle_option (size_t scode, const char *arg, int value,
 	}
 
       error ("bad argument for -fversion '%s'", arg);
+      break;
+
+    case OPT_H:
+      global.params.doHdrGeneration = true;
+      break;
+
+    case OPT_Hd:
+      global.params.doHdrGeneration = true;
+      global.params.hdrdir = arg;
+      break;
+
+    case OPT_Hf:
+      global.params.doHdrGeneration = true;
+      global.params.hdrname = arg;
       break;
 
     case OPT_imultilib:

@@ -166,7 +166,7 @@ when using @code{-S} or @code{-c}.
 @cindex D interface files.
 A D interface file contains only what an import of the module needs,
 rather than the whole implementation of that module.  They can be created
-by @command{gdc} from a D source file by using the @code{-fintfc} option.
+by @command{gdc} from a D source file by using the @code{-H} option.
 When the compiler resolves an import declaration, it searches for matching
 @file{.di} files first, then for @file{.d}.
 
@@ -422,6 +422,25 @@ In addition to the many @command{gcc} options controlling code generation,
 
 @table @gcctabopt
 
+@item -H
+@cindex @option{-H}
+Generates D interface files for all modules being compiled.  The compiler
+determines the output @var{file} based on the name of the input file,
+removes any directory components and suffix, and applies the @file{.di}
+suffix.
+
+@item -Hd @var{dir}
+@cindex @option{-Hd}
+Same as @option{-H}, but writes interface files to @var{dir} directory.
+This option can be used with @option{-Hf @var{file}} to independently set the
+output file and directory path.
+
+@item -Hf @var{file}
+@cindex @option{-Hf}
+Same as @option{-H} but writes interface files to @var{file}.  This option can
+be used with @option{-Hd @var{dir}} to independently set the output file and
+directory path.
+
 @item -M
 @cindex @option{-M}
 Output the module dependencies of all source files being compiled in a
@@ -509,25 +528,6 @@ Specify @var{file} as a @var{Ddoc} macro file to be read.  Multiple
 @option{-fdoc-inc} options can be used, and files are read and processed
 in the same order.
 
-@item -fintfc
-@cindex @option{-fintfc}
-Generates D interface files for all modules being compiled.  The compiler
-determines the output @var{file} based on the name of the input file,
-removes any directory components and suffix, and applies the @file{.di}
-suffix.
-
-@item -fintfc-dir=@var{dir}
-@cindex @option{-fintfc-dir}
-Same as @option{-fintfc}, but writes interface files to @var{dir}
-directory.  This option can be used with @option{-fintfc-file=@var{file}}
-to independently set the output file and directory path.
-
-@item -fintfc-file=@var{filename}
-@cindex @option{-fintfc-file}
-Same as @option{-fintfc} but writes interface files to @var{file}.  This
-option can be used with @option{-fintfc-dir=@var{dir}} to independently
-set the output file and directory path.
-
 @end table
 
 @node Warnings
@@ -608,7 +608,7 @@ number of error messages produced.
 @cindex @option{-fno-syntax-only}
 Check the code for syntax errors, but do not actually compile it.  This
 only suppresses the generation of the object code, and can be used in
-conjunction with @option{-fdoc} or @option{-fintfc} options.
+conjunction with @option{-fdoc} or @option{-H} options.
 
 @item -ftransition=@var{id}
 @cindex @option{-ftransition}
