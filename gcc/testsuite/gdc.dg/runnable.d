@@ -1547,6 +1547,44 @@ void test285()
 
 /******************************************/
 
+// Bug 286
+
+void test286()
+{
+    struct K286
+    {
+        int count;
+        this(this)
+        {
+            count++;
+        }
+    }
+
+    struct S286
+    {
+        int data;
+        this(K286 key)
+        {
+            data = key.count;
+        }
+    }
+
+    S286 getData(K286 key)
+    {
+        static S286[K286] getCache;
+        auto p = key in getCache;
+        if (p)
+            return *p;
+        return (getCache[key] = S286(key));
+    }
+
+    auto s = getData(K286());
+    if (s.data == 0)
+        assert(0);
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -1581,6 +1619,7 @@ void main()
     test250();
     test273();
     test285();
+    test286();
 
     printf("Success!\n");
 }

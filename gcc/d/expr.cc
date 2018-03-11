@@ -171,10 +171,18 @@ class ExprVisitor : public Visitor
 	e1b = ce->e1;
       }
 
-    /* The LHS expression could be an assignment, to which it's operation gets
-       lost during gimplification.  Stabilize lhs for assignment.  */
+    /* Stabilize LHS for assignment.  */
     tree lhs = build_expr (e1b);
     tree lexpr = stabilize_expr (&lhs);
+
+    /* The LHS expression could be an assignment, to which it's operation gets
+       lost during gimplification.  */
+    if (TREE_CODE (lhs) == MODIFY_EXPR)
+      {
+	lexpr = compound_expr (lexpr, lhs);
+	lhs = TREE_OPERAND (lhs, 0);
+      }
+
     lhs = stabilize_reference (lhs);
 
     /* Save RHS, to ensure that the expression is evaluated before LHS.  */
