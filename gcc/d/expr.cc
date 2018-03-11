@@ -2593,24 +2593,39 @@ public:
 
     /* All strings are null terminated except static arrays.  */
     const char *string = (const char *)(e->len ? e->string : "");
-    dinteger_t length = (e->len * e->sz);
-    tree value = build_string (length, string);
     tree type = build_ctype (e->type);
 
     if (tb->ty == Tsarray)
-      TREE_TYPE (value) = type;
+      {
+	/* Turn the string into a constructor for the static array.  */
+	vec<constructor_elt, va_gc> *elms = NULL;
+	vec_safe_reserve (elms, e->len);
+	tree etype = TREE_TYPE (type);
+
+	for (size_t i = 0; i < e->len; i++)
+	  {
+	    tree value = build_integer_cst (e->charAt (i), etype);
+	    CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
+	  }
+
+	tree ctor = build_constructor (type, elms);
+	TREE_CONSTANT (ctor) = 1;
+	this->result_ = ctor;
+      }
     else
       {
 	/* Array type string length includes the null terminator.  */
-	TREE_TYPE (value) = make_array_type (tb->nextOf (), length + 1);
+	dinteger_t length = (e->len * e->sz) + 1;
+	tree value = build_string (length, string);
+	TREE_TYPE (value) = make_array_type (tb->nextOf (), length);
 	value = build_address (value);
 
 	if (tb->ty == Tarray)
 	  value = d_array_value (type, size_int (e->len), value);
-      }
 
-    TREE_CONSTANT (value) = 1;
-    this->result_ = d_convert (type, value);
+	TREE_CONSTANT (value) = 1;
+	this->result_ = d_convert (type, value);
+      }
   }
 
   /* Build a tuple literal.  Just an argument list that may have
