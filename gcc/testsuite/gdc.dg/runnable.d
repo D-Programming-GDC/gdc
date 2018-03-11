@@ -1531,6 +1531,22 @@ void test273()
 
 /******************************************/
 
+// Bug 285
+
+inout(char)[] test285a(inout(char)* s) @nogc @system pure nothrow
+{
+    import core.stdc.string : strlen;
+    return s ? s[0 .. strlen(s)] : null;
+}
+
+void test285()
+{
+    assert(test285a(null) == null);
+    assert(test285a("foo") == "foo");
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -1564,6 +1580,7 @@ void main()
     test248();
     test250();
     test273();
+    test285();
 
     printf("Success!\n");
 }
