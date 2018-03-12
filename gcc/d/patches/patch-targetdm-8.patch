@@ -82,7 +82,7 @@ The following OS versions are implemented:
  MACHMODE_H = machmode.h mode-classes.def
  HOOKS_H = hooks.h
  HOSTHOOKS_DEF_H = hosthooks-def.h $(HOOKS_H)
-@@ -1181,6 +1186,9 @@ C_TARGET_OBJS=@c_target_objs@
+@@ -1185,6 +1190,9 @@ C_TARGET_OBJS=@c_target_objs@
  # Target specific, C++ specific object file
  CXX_TARGET_OBJS=@cxx_target_objs@
  
@@ -92,7 +92,7 @@ The following OS versions are implemented:
  # Target specific, Fortran specific object file
  FORTRAN_TARGET_OBJS=@fortran_target_objs@
  
-@@ -1779,6 +1787,7 @@ bconfig.h: cs-bconfig.h ; @true
+@@ -1783,6 +1791,7 @@ bconfig.h: cs-bconfig.h ; @true
  tconfig.h: cs-tconfig.h ; @true
  tm.h: cs-tm.h ; @true
  tm_p.h: cs-tm_p.h ; @true
@@ -100,7 +100,7 @@ The following OS versions are implemented:
  
  cs-config.h: Makefile
  	TARGET_CPU_DEFAULT="" \
-@@ -1805,6 +1814,11 @@ cs-tm_p.h: Makefile
+@@ -1809,6 +1818,11 @@ cs-tm_p.h: Makefile
  	HEADERS="$(tm_p_include_list)" DEFINES="" \
  	$(SHELL) $(srcdir)/mkconfig.sh tm_p.h
  
@@ -112,7 +112,7 @@ The following OS versions are implemented:
  # Don't automatically run autoconf, since configure.ac might be accidentally
  # newer than configure.  Also, this writes into the source directory which
  # might be on a read-only file system.  If configured for maintainer mode
-@@ -2171,6 +2185,12 @@ default-c.o: config/default-c.c
+@@ -2175,6 +2189,12 @@ default-c.o: config/default-c.c
  CFLAGS-prefix.o += -DPREFIX=\"$(prefix)\" -DBASEVER=$(BASEVER_s)
  prefix.o: $(BASEVER)
  
@@ -125,7 +125,7 @@ The following OS versions are implemented:
  # Language-independent files.
  
  DRIVER_DEFINES = \
-@@ -2466,6 +2486,15 @@ s-common-target-hooks-def-h: build/genho
+@@ -2470,6 +2490,15 @@ s-common-target-hooks-def-h: build/genho
  					     common/common-target-hooks-def.h
  	$(STAMP) s-common-target-hooks-def-h
  
@@ -141,7 +141,7 @@ The following OS versions are implemented:
  # check if someone mistakenly only changed tm.texi.
  # We use a different pathname here to avoid a circular dependency.
  s-tm-texi: $(srcdir)/doc/../doc/tm.texi
-@@ -2489,6 +2518,7 @@ s-tm-texi: build/genhooks$(build_exeext)
+@@ -2493,6 +2522,7 @@ s-tm-texi: build/genhooks$(build_exeext)
  	  && ( test $(srcdir)/doc/tm.texi -nt $(srcdir)/target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/c-family/c-target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/common/common-target.def \
@@ -149,7 +149,7 @@ The following OS versions are implemented:
  	  ); then \
  	  echo >&2 ; \
  	  echo You should edit $(srcdir)/doc/tm.texi.in rather than $(srcdir)/doc/tm.texi . >&2 ; \
-@@ -2627,14 +2657,15 @@ s-gtype: build/gengtype$(build_exeext) $
+@@ -2631,14 +2661,15 @@ s-gtype: build/gengtype$(build_exeext) $
                      -r gtype.state
  	$(STAMP) s-gtype
  
@@ -167,7 +167,7 @@ The following OS versions are implemented:
         cfn-operators.pd
  
  #
-@@ -2777,7 +2808,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
+@@ -2781,7 +2812,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
    $(CORETYPES_H) $(GTM_H) errors.h $(READ_MD_H) $(GENSUPPORT_H)		\
    $(HASH_TABLE_H) inchash.h
  build/genhooks.o : genhooks.c $(TARGET_DEF) $(C_TARGET_DEF)		\
@@ -251,7 +251,7 @@ The following OS versions are implemented:
  	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
-@@ -388,6 +403,7 @@ x86_64-*-*)
+@@ -389,6 +404,7 @@ x86_64-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
@@ -259,7 +259,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
-@@ -436,6 +452,7 @@ microblaze*-*-*)
+@@ -438,6 +454,7 @@ microblaze*-*-*)
          ;;
  mips*-*-*)
  	cpu_type=mips
@@ -267,7 +267,7 @@ The following OS versions are implemented:
  	extra_headers="loongson.h msa.h"
  	extra_objs="frame-header-opt.o"
  	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
-@@ -491,6 +508,7 @@ sparc*-*-*)
+@@ -493,6 +510,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -275,7 +275,7 @@ The following OS versions are implemented:
  	extra_headers="visintrin.h"
  	;;
  spu*-*-*)
-@@ -498,6 +516,7 @@ spu*-*-*)
+@@ -500,6 +518,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -283,7 +283,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
-@@ -527,10 +546,13 @@ tilepro*-*-*)
+@@ -529,10 +548,13 @@ tilepro*-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -297,7 +297,7 @@ The following OS versions are implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -799,8 +821,10 @@ case ${target} in
+@@ -801,8 +823,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -308,7 +308,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3160,6 +3184,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3172,6 +3196,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4664,6 +4692,7 @@ case ${target} in
+@@ -4689,6 +4717,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -778,7 +778,7 @@ The following OS versions are implemented:
  extern void i386_pe_declare_function_type (FILE *, const char *, int);
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -697,6 +697,9 @@ extern const char *host_detect_local_cpu
+@@ -701,6 +701,9 @@ extern const char *host_detect_local_cpu
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
@@ -1430,7 +1430,7 @@ The following OS versions are implemented:
  tm_p_include_list
  tm_p_file_list
  tm_defines
-@@ -11808,6 +11811,7 @@ fi
+@@ -11810,6 +11813,7 @@ fi
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -1438,7 +1438,7 @@ The following OS versions are implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -12177,6 +12181,21 @@ for f in $tm_p_file; do
+@@ -12179,6 +12183,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -1460,21 +1460,21 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -18446,7 +18465,7 @@ else
+@@ -18448,7 +18467,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18449 "configure"
-+#line 18468 "configure"
+-#line 18451 "configure"
++#line 18470 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18552,7 +18571,7 @@ else
+@@ -18554,7 +18573,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18555 "configure"
-+#line 18574 "configure"
+-#line 18557 "configure"
++#line 18576 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
@@ -1510,7 +1510,7 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -6335,6 +6351,8 @@ AC_SUBST(tm_include_list)
+@@ -6373,6 +6389,8 @@ AC_SUBST(tm_include_list)
  AC_SUBST(tm_defines)
  AC_SUBST(tm_p_file_list)
  AC_SUBST(tm_p_include_list)
@@ -1519,7 +1519,7 @@ The following OS versions are implemented:
  AC_SUBST(xm_file_list)
  AC_SUBST(xm_include_list)
  AC_SUBST(xm_defines)
-@@ -6342,6 +6360,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -6380,6 +6398,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)
