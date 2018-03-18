@@ -541,15 +541,6 @@ stabilize_expr (tree *valuep)
       *valuep = rhs;
       return lhs;
 
-    case MODIFY_EXPR:
-    case INIT_EXPR:
-      /* Given e1 = e2:
-	 Store the leftmost 'e1' expression in VALUEP.  */
-      lhs = TREE_OPERAND (expr, 0);
-      stabilize_expr (&lhs);
-      *valuep = lhs;
-      return expr;
-
     default:
       return NULL_TREE;
     }
