@@ -313,7 +313,7 @@ public:
     DECL_INITIAL (d->sinit) = layout_struct_initializer (d);
 
     if (d->isInstantiated ())
-      d_comdat_linkage (d->sinit);
+      d_linkonce_linkage (d->sinit);
 
     d_finish_decl (d->sinit);
 
@@ -419,13 +419,13 @@ public:
 
     /* Generate static initialiser.  */
     DECL_INITIAL (d->sinit) = layout_class_initializer (d);
-    d_comdat_linkage (d->sinit);
+    d_linkonce_linkage (d->sinit);
     d_finish_decl (d->sinit);
 
     /* Put out the TypeInfo.  */
     create_typeinfo (d->type, NULL);
     DECL_INITIAL (d->csym) = layout_classinfo (d);
-    d_comdat_linkage (d->csym);
+    d_linkonce_linkage (d->csym);
     d_finish_decl (d->csym);
 
     /* Put out the vtbl[].  */
@@ -486,7 +486,7 @@ public:
     d->type->vtinfo->accept (this);
 
     DECL_INITIAL (d->csym) = layout_classinfo (d);
-    d_comdat_linkage (d->csym);
+    d_linkonce_linkage (d->csym);
     d_finish_decl (d->csym);
 
     /* Add this decl to the current binding level.  */
@@ -523,7 +523,7 @@ public:
 	DECL_INITIAL (d->sinit) = build_expr (tc->sym->defaultval, true);
 
 	if (d->isInstantiated ())
-	  d_comdat_linkage (d->sinit);
+	  d_linkonce_linkage (d->sinit);
 
 	d_finish_decl (d->sinit);
 
@@ -581,11 +581,11 @@ public:
       }
     else if (d->isDataseg () && !(d->storage_class & STCextern))
       {
-	tree t = get_symbol_decl (d);
+	tree decl = get_symbol_decl (d);
 
 	/* Duplicated VarDeclarations map to the same symbol. Check if this
 	   is the one declaration which will be emitted.  */
-	tree ident = DECL_ASSEMBLER_NAME (t);
+	tree ident = DECL_ASSEMBLER_NAME (decl);
 	if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != d)
 	  return;
 
@@ -601,19 +601,19 @@ public:
 	if (d->_init && !d->_init->isVoidInitializer ())
 	  {
 	    Expression *e = initializerToExpression (d->_init, d->type);
-	    DECL_INITIAL (t) = build_expr (e, true);
+	    DECL_INITIAL (decl) = build_expr (e, true);
 	  }
 	else
 	  {
 	    if (d->type->ty == Tstruct)
 	      {
 		StructDeclaration *sd = ((TypeStruct *) d->type)->sym;
-		DECL_INITIAL (t) = layout_struct_initializer (sd);
+		DECL_INITIAL (decl) = layout_struct_initializer (sd);
 	      }
 	    else
 	      {
 		Expression *e = d->type->defaultInitLiteral (d->loc);
-		DECL_INITIAL (t) = build_expr (e, true);
+		DECL_INITIAL (decl) = build_expr (e, true);
 	      }
 	  }
 
@@ -621,7 +621,7 @@ public:
 	gcc_assert (!integer_zerop (size)
 		    || d->type->toBasetype ()->ty == Tsarray);
 
-	d_finish_decl (t);
+	d_finish_decl (decl);
 
 	/* Maybe record the var against the current module.  */
 	register_module_decl (d);
@@ -635,6 +635,8 @@ public:
 
 	if (d->_init)
 	  {
+	    tree decl = get_symbol_decl (d);
+
 	    if (!d->_init->isVoidInitializer ())
 	      {
 		ExpInitializer *vinit = d->_init->isExpInitializer ();
@@ -644,15 +646,9 @@ public:
 		/* Maybe put variable on list of things needing destruction.  */
 		if (d->needsScopeDtor ())
 		  {
-		    /* Its a temporary, add the corresponding cleanup.  */
-		    tree decl = get_symbol_decl (d);
 		    vec_safe_push (d_function_chain->vars_in_scope, decl);
-
-		    if (TREE_CODE (exp) == INIT_EXPR
-			|| TREE_CODE (exp) == MODIFY_EXPR)
-		      exp = TREE_OPERAND (exp, 1);
-
-		    exp = build_target_expr (decl, exp);
+		    /* Force a TARGET_EXPR to add the corresponding cleanup.  */
+		    exp = force_target_expr (compound_expr (exp, decl));
 		    TARGET_EXPR_CLEANUP (exp) = build_expr (d->edtor);
 		  }
 
@@ -1146,8 +1142,8 @@ get_symbol_decl (Declaration *decl)
       /* Function was declared 'naked'.  */
       if (fd->naked)
 	{
+	  insert_decl_attribute (decl->csym, "naked");
 	  DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (decl->csym) = 1;
-	  DECL_UNINLINABLE (decl->csym) = 1;
 	}
 
       /* Vector array operations are always compiler generated.  */
@@ -1155,6 +1151,7 @@ get_symbol_decl (Declaration *decl)
 	{
 	  TREE_PUBLIC (decl->csym) = 1;
 	  DECL_ARTIFICIAL (decl->csym) = 1;
+	  DECL_DECLARED_INLINE_P (decl->csym) = 1;
 	  d_comdat_linkage (decl->csym);
 	}
 
@@ -1232,13 +1229,7 @@ get_symbol_decl (Declaration *decl)
 	  else
 	    DECL_EXTERNAL (decl->csym) = 1;
 
-	  d_comdat_linkage (decl->csym);
-
-	  /* Normally the backend only emits COMDAT things when they are needed.
-	     If this decl is meant to be externally visible, then make sure that
-	     to mark it so that it is indeed needed.  */
-	  if (TREE_PUBLIC (decl->csym))
-	    mark_needed (decl->csym);
+	  d_linkonce_linkage (decl->csym);
 	}
       else
 	{
@@ -1303,9 +1294,6 @@ declare_extern_var (tree ident, tree type)
   TREE_STATIC (decl) = 1;
   TREE_PUBLIC (decl) = 1;
 
-  /* Mark it needed so we don't forget to emit it.  */
-  mark_needed (decl);
-
   /* The decl has not been defined -- yet.  */
   DECL_EXTERNAL (decl) = 1;
 
@@ -1324,13 +1312,7 @@ declare_local_var (VarDeclaration *var)
   tree decl = get_symbol_decl (var);
 
   gcc_assert (!TREE_STATIC (decl));
-
-  /* If this is a variable used for automatic scope dtor, don't add it to the
-     current binding level, as its really a temporary used in a TARGET_EXPR.
-     See build_decl_tree visitor for VarDeclaration.  */
-  if (!var->needsScopeDtor ())
-    d_pushdecl (decl);
-
+  d_pushdecl (decl);
   DECL_CONTEXT (decl) = current_function_decl;
 
   /* Compiler generated symbols.  */
@@ -1485,6 +1467,12 @@ d_finish_decl (tree decl)
 	}
     }
 
+  /* Without weak symbols, symbol should be put in .common, but that can't
+     be done if there is a non-zero initializer.  */
+  if (DECL_COMDAT (decl) && DECL_COMMON (decl)
+      && initializer_zerop (DECL_INITIAL (decl)))
+    DECL_INITIAL (decl) = error_mark_node;
+
   /* Add this decl to the current binding level.  */
   d_pushdecl (decl);
 
@@ -1626,7 +1614,8 @@ finish_thunk (tree thunk, tree function)
 	{
 	  /* Put generic thunk into COMDAT.  */
 	  d_comdat_linkage (thunk);
-	  thunk_node->create_edge (funcn, NULL, 0, CGRAPH_FREQ_BASE);
+	  thunk_node->create_edge (funcn, NULL, thunk_node->count,
+				   CGRAPH_FREQ_BASE);
 	  thunk_node->expand_thunk (false, true);
 	}
 
@@ -2190,15 +2179,7 @@ d_comdat_group (tree decl)
 void
 d_comdat_linkage (tree decl)
 {
-  /* Weak definitions have to be public.  */
-  if (!TREE_PUBLIC (decl))
-    return;
-
-  /* Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined.  */
-  if (TREE_CODE (decl) == FUNCTION_DECL)
-    DECL_DECLARED_INLINE_P (decl) = 1;
-
-  if (supports_one_only ())
+  if (flag_weak)
     make_decl_one_only (decl, d_comdat_group (decl));
   else if (TREE_CODE (decl) == FUNCTION_DECL
 	   || (VAR_P (decl) && DECL_ARTIFICIAL (decl)))
@@ -2212,4 +2193,24 @@ d_comdat_linkage (tree decl)
 
   if (TREE_PUBLIC (decl))
     DECL_COMDAT (decl) = 1;
+}
+
+/* Set DECL up to have the closest approximation of "linkonce" linkage.  */
+
+void
+d_linkonce_linkage (tree decl)
+{
+  /* Weak definitions have to be public.  */
+  if (!TREE_PUBLIC (decl))
+    return;
+
+  /* Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined.  */
+  if (TREE_CODE (decl) == FUNCTION_DECL)
+    DECL_DECLARED_INLINE_P (decl) = 1;
+
+  /* No weak support, fallback to COMDAT linkage.  */
+  if (!flag_weak)
+   return d_comdat_linkage (decl);
+
+  make_decl_one_only (decl, d_comdat_group (decl));
 }

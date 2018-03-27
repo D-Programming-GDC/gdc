@@ -452,8 +452,6 @@ DCFG_HAVE_LIBATOMIC = @DCFG_HAVE_LIBATOMIC@
 DCFG_MINFO_BRACKETING = @DCFG_MINFO_BRACKETING@
 DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
 DEFS = @DEFS@
-DFLAGS = @DFLAGS@
-DFLAGSX = @DFLAGSX@
 DRUNTIME_SOVERSION = @DRUNTIME_SOVERSION@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
@@ -464,6 +462,8 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 GDC = @GDC@
+GDCFLAGS = @GDCFLAGS@
+GDCFLAGSX = @GDCFLAGSX@
 GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -2789,17 +2789,17 @@ uninstall-am: uninstall-toolexeclibLTLIBRARIES
 
 # Compile D into normal object files
 .d.o:
-	$(GDC) $(DFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
+	$(GDC) $(GDCFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
 # Compile D sources with libtool
 .d.lo:
-	$(LTDCOMPILE) $(DFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
+	$(LTDCOMPILE) $(GDCFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
 # Unittest rules. Unfortunately we can't use _DFLAGS in automake without
 # explicit D support, so use this hack.
 # Compile D sources with libtool and test flags
 %.t.lo : %.d
-	$(LTDCOMPILE) $(DFLAGSX) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
+	$(LTDCOMPILE) $(GDCFLAGSX) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
 # Compile objects for static linking with test flags
 # Automake breaks empty rules, so use the shell NOP :

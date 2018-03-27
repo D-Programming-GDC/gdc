@@ -511,7 +511,7 @@ class CppMangleVisitor : public Visitor
         }
     }
 
-    static int paramsCppMangleDg(void *ctx, size_t n, Parameter *fparam)
+    static int paramsCppMangleDg(void *ctx, size_t, Parameter *fparam)
     {
         CppMangleVisitor *mangler = (CppMangleVisitor *)ctx;
 
@@ -572,7 +572,7 @@ class CppMangleVisitor : public Visitor
 
 public:
     CppMangleVisitor()
-        : buf(), components(), is_top_level(false), components_on(true)
+        : components(), buf(), is_top_level(false), components_on(true)
     {
     }
 
@@ -1003,18 +1003,16 @@ class VisualCPPMangler : public Visitor
     OutBuffer buf;
 
     VisualCPPMangler(VisualCPPMangler *rvl)
-        : buf(),
-        flags(0)
+        : flags(0), buf()
     {
         flags |= (rvl->flags & IS_DMC);
         memcpy(&saved_idents, &rvl->saved_idents, sizeof(const char*) * VC_SAVED_IDENT_CNT);
         memcpy(&saved_types, &rvl->saved_types, sizeof(Type*) * VC_SAVED_TYPE_CNT);
     }
-public:
 
+public:
     VisualCPPMangler(bool isdmc)
-        : buf(),
-        flags(0)
+        : flags(0), buf()
     {
         if (isdmc)
         {
@@ -1889,7 +1887,7 @@ private:
         cur->accept(this);
     }
 
-    static int mangleParameterDg(void *ctx, size_t n, Parameter *p)
+    static int mangleParameterDg(void *ctx, size_t, Parameter *p)
     {
         VisualCPPMangler *mangler = (VisualCPPMangler *)ctx;
 
@@ -2011,7 +2009,7 @@ const char *toCppMangleMSVC(Dsymbol *s)
     return v.mangleOf(s);
 }
 
-const char *cppTypeInfoMangleMSVC(Dsymbol *s)
+const char *cppTypeInfoMangleMSVC(Dsymbol *)
 {
     //printf("cppTypeInfoMangleMSVC(%s)\n", s->toChars());
     assert(0);

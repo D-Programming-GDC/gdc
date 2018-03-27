@@ -1,6 +1,7 @@
 # gdc specific    #
 ###################
 dev/
+gcc/d/patches/series
 
 # libphobos specific #
 ######################
