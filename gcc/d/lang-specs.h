@@ -23,7 +23,7 @@ along with GCC; see the file COPYING3.  If not see
 {".di", "@d", 0, 1, 0 },
 {"@d",
   "%{!E:cc1d %i %(cc1_options) %I %{nostdinc*} %{i*} %{I*} %{J*} \
-    %{MD:-MD %b.deps} %{MMD:-MMD %b.deps} \
+    %{H} %{Hd*} %{Hf*} %{MD:-MD %b.deps} %{MMD:-MMD %b.deps} \
     %{M} %{MM} %{MF*} %{MG} %{MP} %{MQ*} %{MT*} \
     %{X:-Xf %b.json} %{Xf*} \
     %{v} %{!fsyntax-only:%(invoke_as)}}", 0, 1, 0 },

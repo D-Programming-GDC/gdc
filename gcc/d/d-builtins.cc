@@ -219,6 +219,7 @@ build_frontend_type (tree type)
 	  sdecl->parent = stubmod;
 	  sdecl->structsize = int_size_in_bytes (type);
 	  sdecl->alignsize = TYPE_ALIGN_UNIT (type);
+	  sdecl->alignment = STRUCTALIGN_DEFAULT;
 	  sdecl->sizeok = SIZEOKdone;
 	  sdecl->type = (TypeStruct::create (sdecl))->addMod (mod);
 	  sdecl->type->ctype = type;

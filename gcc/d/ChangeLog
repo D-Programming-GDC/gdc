@@ -1,3 +1,135 @@
+2018-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (stabilize_expr): Move modify expression rewrite...
+	* expr.cc (ExprVisitor::binop_assignment): ... here.
+
+2018-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(StringExp)): Include null terminator
+	in length when calling build_String.  Generate static array string
+	literals as array constructors.
+
+2018-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Rename OPT_fintfc cases to OPT_H.
+	* gdc.texi (Code Generation): Rename -fintfc options to -H.
+	* lang-specs.h: Add H, Hd, and Hf options.
+	* lang.opt (H, Hd, Hf): New options.
+	(fintfc, fintfc-dir=, fintfc-file=): Deprecate and alias new options.
+
+2018-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang.opt (fdeps, fdeps=): Deprecate options.
+	* gdc.texi (Code Generation): Remove deprecated fdeps options.
+
+2018-02-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_FRONTEND_OBJS): Remove inline.o and inlinecost.o.
+
+2018-02-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-frontend.cc (CTFloat::fabs): Assign result to real_t directly.
+	(CTFloat::ldexp): Likewise.
+	* d-longdouble.cc (longdouble::from_int): Remove function.
+	(longdouble::from_uint): Likewise.
+	(longdouble::to_int): Update Signature.
+	(longdouble::to_uint): Likewise.
+	(longdouble::operator): Likewise.
+	(longdouble::add): New function, move operator overload headers.
+	(longdouble::sub, longdouble::mul, longdouble::div): Likewise.
+	(longdouble::mod, longdouble::neg): Likewise.
+	(longdouble::cmp, longdouble::equals): Likewise.
+	* d-target.cc (Target::_init): Construct assignment into real_t
+	directly.
+
+2018-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (DMD_WARN_CXXFLAGS): Only filter out
+	-Wmissing-format-attribute from WARN_CXXFLAGS.
+
+2018-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_frontend_type): Set alignment of structs in
+	frontend.
+
+2018-02-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-incpath.cc (add_environment_paths): Remove function.
+	* gdc.texi (Environment Variables): Remove section.
+
+2018-02-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::AssertExp): Use builtin expect to mark assert
+	condition as being likely true.
+
+2018-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang.opt (fd-vgc, fd-verbose, fd-vtls): Remove options.
+	(femit-moduleinfo, femit-templates): Likewise.
+	(fmake-deps, fmake-mdeps): Likewise.
+	(fin, fout, fXf): Likewise.
+
+2018-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* gdc.texi (Runtime Options): Remove deprecated -fproperty option.
+
+2018-01-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_gimplify_expr): Gimplify all CALL_EXPR_ARGS_ORDERED
+	call arguments, not just non-constant.
+
+2018-01-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decl.cc (DeclVisitor::visit(VarDeclaration)): Don't reuse existing
+	temporary for TARGET_EXPR.
+	(declare_local_var): Push all variables to current binding level.
+
+2018-01-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* toir.cc (build_function_body): Set input_location.
+
+2018-01-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_frame_type): Don't add chain field for
+	functions without context pointer.
+	(build_closure): Don't set chain field for functions without context
+	pointer.
+
+2018-01-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decl.cc (DeclVisitor::visit(StructDeclaration)): Mark compiler
+	generated symbols as DECL_ONE_ONLY instead of DECL_COMDAT.
+	(DeclVisitor::visit(ClassDeclaration)): Likewise.
+	(DeclVisitor::visit(InterfaceDeclaration)): Likewise.
+	(DeclVisitor::visit(EnumDeclaration)): Likewise.
+	(get_symbol_decl): Mark template instantiations as DECL_ONE_ONLY
+	instead of DECL_COMDAT.  Don't call mark_needed.
+	(declare_extern_var): Don't call mark_needed.
+	(d_finish_decl): Remove zero initializer for common symbols.
+	(finish_thunk): Don't call d_comdat_linkage on generic thunk.
+	(d_comdat_linkage): Don't set DECL_DECLARED_INLINE on functions.
+	* typeinfo.cc (TypeInfoDeclVisitor::visit(TypeInfoDeclaration)): Mark
+	built-in typeinfo symbols as DECL_ONE_ONLY instead of DECL_COMDAT.
+
+2018-01-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_init): Disable flag_weak if not supported.
+	* decl.cc (d_comdat_linkage): Use flag_weak to guard setting
+	DECL_ONE_ONLY on decls.
+	(d_linkonce_linkage): New function.
+	* gdc.texi (Runtime Options): Document -fweak.
+	* lang.opt (fweak): Declare.
+
+2018-01-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decls.cc (get_symbol_decl): Use attribute to mark naked functions.
+
+2018-01-08  Eugene Wissner  <belka@caraus.de>
+
+	* d-builtins.cc (d_eval_constant_expression): Handle polynomial
+	VECTOR_CST_NELTS.
+	(build_frontend_type): Handle polynomial TYPE_VECTOR_SUBPARTS.
+
 2018-01-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	Update copyright years.

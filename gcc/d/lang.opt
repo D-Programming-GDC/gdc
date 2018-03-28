@@ -42,6 +42,18 @@ D NoDriverArg Separate Alias(MD)
 D NoDriverArg Separate Alias(MMD)
 ; Documented in C
 
+H
+D
+; Different from documented use in C.
+
+Hd
+D Joined Separate
+-Hd <dir>	Write D interface files to directory <dir>.
+
+Hf
+D Joined Separate
+-Hf <file>	Write D interface to <file>.
+
 I
 D Joined Separate
 ; Documented in C
@@ -175,11 +187,11 @@ D Joined RejectNegative
 
 fdeps
 D
-Print information about module dependencies.
+This switch is deprecated; do not use.
 
 fdeps=
 D Joined RejectNegative
--fdeps=<file>	Write module dependencies to <file>.
+This switch is deprecated; do not use.
 
 fdoc
 D
@@ -201,64 +213,25 @@ fdump-d-original
 D
 Display the frontend AST after parsing and semantic passes.
 
-fd-vgc
-D Alias(ftransition=nogc)
-; Deprecated in favor of -ftransition=nogc
-
-fd-verbose
-D Alias(v)
-; Deprecated in favor of --verbose
-
-fd-vtls
-D Alias(ftransition=tls)
-; Deprecated in favor of -ftransition=tls.
-
-femit-moduleinfo
-D Alias(fmoduleinfo)
-; Deprecated in favor of -fmoduleinfo.
-
-femit-templates
-D Alias(fall-instantiations)
-; Deprecated in favor of -fall-instantiations.
-
 fignore-unknown-pragmas
 D
 Ignore unsupported pragmas.
 
-fin
-D Alias(fpreconditions)
-; Deprecated in favor of -fpreconditions.
-
 fintfc
-Generate D interface files.
+D Alias(H)
+; Deprecated in favour of -H
 
 fintfc-dir=
-D Joined RejectNegative
--fintfc-dir=<dir>	Write D interface files to directory <dir>.
+D Joined RejectNegative Alias(Hd)
+; Deprecated in favour of -Hd
 
 fintfc-file=
-D Joined RejectNegative
--fintfc-file=<file>	Write D interface to <file>.
+D Joined RejectNegative Alias(Hf)
+; Deprecated in favour of -Hf
 
 finvariants
 D Var(flag_invariants)
 Generate code for class invariant contracts.
-
-fmake-deps
-D Alias(M)
-; Deprecated in favor of -M
-
-fmake-deps=
-D Joined RejectNegative
-Deprecated in favor of -MD
-
-fmake-mdeps
-D Alias(MM)
-; Deprecated in favor of -MM
-
-fmake-mdeps=
-D Joined RejectNegative
-Deprecated in favor of -MMD
 
 fmodule-file=
 D Joined RejectNegative
@@ -271,10 +244,6 @@ Generate ModuleInfo struct for output module.
 fonly=
 D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument.
-
-fout
-D Alias(fpostconditions)
-; Deprecated in favor of -fpostconditions.
 
 fpostconditions
 D Var(flag_postconditions)
@@ -344,9 +313,9 @@ fversion=
 D Joined RejectNegative
 -fversion=<level|ident>	Compile in version code >= <level> or identified by <ident>.
 
-fXf=
-D Joined RejectNegative Alias(Xf)
-; Deprecated in favor of -Xf
+fweak
+D Var(flag_weak) Init(1)
+; Emit common-like symbols as weak symbols.
 
 imultilib
 D Joined Separate
