@@ -14,8 +14,8 @@
 #  names need to be changed to DC)
 AC_LANG_DEFINE([D], [d], [GDC], [],
 [ac_ext=d
-ac_compile='$GDC -c $DFLAGS conftest.$ac_ext >&AS_MESSAGE_LOG_FD'
-ac_link='$GDC -o conftest$ac_exeext $DFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&AS_MESSAGE_LOG_FD'
+ac_compile='$GDC -c $GDCFLAGS conftest.$ac_ext >&AS_MESSAGE_LOG_FD'
+ac_link='$GDC -o conftest$ac_exeext $GDCFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&AS_MESSAGE_LOG_FD'
 ac_compiler_gnu=yes
 ])
 
@@ -108,7 +108,7 @@ AN_PROGRAM([gdc], [AC_PROG_GDC])
 AC_DEFUN([AC_PROG_GDC],
 [AC_LANG_PUSH(D)dnl
 AC_ARG_VAR([GDC],     [D compiler command])dnl
-AC_ARG_VAR([DFLAGS],  [D compiler flags])dnl
+AC_ARG_VAR([GDCFLAGS],  [D compiler flags])dnl
 _AC_ARG_VAR_LDFLAGS()dnl
 m4_ifval([$1],
       [AC_CHECK_TOOLS(GDC, [$1])],

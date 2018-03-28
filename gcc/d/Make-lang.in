@@ -48,8 +48,8 @@ gdc-cross$(exeext): gdc$(exeext)
 # Filter out pedantic and virtual overload warnings.
 d-warn = $(filter-out -pedantic -Woverloaded-virtual, $(STRICT_WARN))
 
-# D Frontend has slightly relaxed warnings compared to rest of GDC.
-DMD_WARN_CXXFLAGS = -Wno-deprecated -Wstrict-aliasing -Wuninitialized
+# Also filter out warnings for missing format attributes in the D Frontend.
+DMD_WARN_CXXFLAGS = $(filter-out -Wmissing-format-attribute, $(WARN_CXXFLAGS))
 DMD_COMPILE = $(subst $(WARN_CXXFLAGS), $(DMD_WARN_CXXFLAGS), $(COMPILE))
 DMDGEN_COMPILE = $(subst $(COMPILER), $(COMPILER_FOR_BUILD), $(DMD_COMPILE))
 
@@ -98,8 +98,6 @@ D_FRONTEND_OBJS = \
 	d/imphint.o \
 	d/init.o \
 	d/initsem.o \
-	d/inline.o \
-	d/inlinecost.o \
 	d/intrange.o \
 	d/json.o \
 	d/lexer.o \

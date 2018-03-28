@@ -1,9 +1,9 @@
-// { dg-additional-sources "imports/runnablea.d" }
+// { dg-additional-sources "imports/runnable.d" }
 // { dg-do run { target arm*-*-* i?86-*-* x86_64-*-* } }
 
 module runnable;
 
-import imports.runnablea;
+import imports.runnable;
 import core.stdc.stdio;
 import gcc.attribute;
 
@@ -384,7 +384,7 @@ void test36c()
 /**
  * empty is a (private) function which is nested in lightPostprocess.
  * At the same time it's a template instance, so it has to be declared as
- * weak or otherwise one-only. imports/runnablea.d creates another instance
+ * weak or otherwise one-only. imports/runnable.d creates another instance
  * of Regex!char to verify that.
  */
 struct Parser(R)
@@ -410,7 +410,7 @@ struct Regex(Char)
 void test36d()
 {
     auto parser = Parser!(char[])();
-    imports.runnablea.test36d_1;
+    imports.runnable.test36d_1;
 }
 
 void test36()
@@ -1497,6 +1497,60 @@ void test273()
 
 /******************************************/
 
+// Bug 285
+
+inout(char)[] test285a(inout(char)* s) @nogc @system pure nothrow
+{
+    import core.stdc.string : strlen;
+    return s ? s[0 .. strlen(s)] : null;
+}
+
+void test285()
+{
+    assert(test285a(null) == null);
+    assert(test285a("foo") == "foo");
+}
+
+/******************************************/
+
+// Bug 286
+
+void test286()
+{
+    struct K286
+    {
+        int count;
+        this(this)
+        {
+            count++;
+        }
+    }
+
+    struct S286
+    {
+        int data;
+        this(K286 key)
+        {
+            data = key.count;
+        }
+    }
+
+    S286 getData(K286 key)
+    {
+        static S286[K286] getCache;
+        auto p = key in getCache;
+        if (p)
+            return *p;
+        return (getCache[key] = S286(key));
+    }
+
+    auto s = getData(K286());
+    if (s.data == 0)
+        assert(0);
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -1527,6 +1581,8 @@ void main()
     test248();
     test250();
     test273();
+    test285();
+    test286();
 
     printf("Success!\n");
 }

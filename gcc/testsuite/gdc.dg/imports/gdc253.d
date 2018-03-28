@@ -1,4 +1,4 @@
-module imports.gdc253a;
+module imports.gdc253;
 
 interface I253a
 {

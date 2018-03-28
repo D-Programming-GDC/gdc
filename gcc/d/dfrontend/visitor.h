@@ -54,10 +54,10 @@ class DebugStatement;
 class GotoStatement;
 class LabelStatement;
 class AsmStatement;
-class CompoundAsmStatement;
 #ifdef IN_GCC
 class ExtAsmStatement;
 #endif
+class CompoundAsmStatement;
 class ImportStatement;
 
 class Type;
@@ -346,10 +346,10 @@ public:
     virtual void visit(GotoStatement *s) { visit((Statement *)s); }
     virtual void visit(LabelStatement *s) { visit((Statement *)s); }
     virtual void visit(AsmStatement *s) { visit((Statement *)s); }
-    virtual void visit(CompoundAsmStatement *s) { visit((CompoundStatement *)s); }
 #ifdef IN_GCC
     virtual void visit(ExtAsmStatement *s) { visit((Statement *)s); }
 #endif
+    virtual void visit(CompoundAsmStatement *s) { visit((CompoundStatement *)s); }
     virtual void visit(ImportStatement *s) { visit((Statement *)s); }
 
     virtual void visit(Type *) { assert(0); }
