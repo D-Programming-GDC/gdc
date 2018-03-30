@@ -1,4 +1,4 @@
-module imports.gdc27a;
+module imports.gdc27;
 
 interface I_A
 {

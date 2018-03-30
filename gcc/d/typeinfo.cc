@@ -1183,6 +1183,28 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
   return type;
 }
 
+/* Returns true if the TypeInfo for type should be placed in
+   the runtime library.  */
+
+static bool
+builtin_typeinfo_p (Type *type)
+{
+  if (type->isTypeBasic () || type->ty == Tclass || type->ty == Tnull)
+    return !type->mod;
+
+  if (type->ty == Tarray)
+    {
+      /* Strings are so common, make them builtin.  */
+      Type *next = type->nextOf ();
+      return !type->mod
+	&& ((next->isTypeBasic () != NULL && !next->mod)
+	    || (next->ty == Tchar && next->mod == MODimmutable)
+	    || (next->ty == Tchar && next->mod == MODconst));
+    }
+
+  return false;
+}
+
 /* Implements a visitor interface to create the decl tree for TypeInfo decls.
    TypeInfo_Class objects differ in that they also have information about
    the class type packed immediately after the TypeInfo symbol.
@@ -1209,7 +1231,11 @@ public:
 
     /* Built-in typeinfo will be referenced as one-only.  */
     gcc_assert (!tid->isInstantiated ());
-    d_comdat_linkage (tid->csym);
+
+    if (builtin_typeinfo_p (tid->tinfo))
+      d_linkonce_linkage (tid->csym);
+    else
+      d_comdat_linkage (tid->csym);
   }
 
   void visit (TypeInfoClassDeclaration *tid)
@@ -1341,28 +1367,6 @@ get_cpp_typeinfo_decl (ClassDeclaration *decl)
   layout_cpp_typeinfo (decl);
 
   return decl->cpp_type_info_ptr_sym;
-}
-
-/* Returns true if the TypeInfo for type should be placed in
-   the runtime library.  */
-
-static bool
-builtin_typeinfo_p (Type *type)
-{
-  if (type->isTypeBasic () || type->ty == Tclass || type->ty == Tnull)
-    return !type->mod;
-
-  if (type->ty == Tarray)
-    {
-      /* Strings are so common, make them builtin.  */
-      Type *next = type->nextOf ();
-      return !type->mod
-	&& ((next->isTypeBasic () != NULL && !next->mod)
-	    || (next->ty == Tchar && next->mod == MODimmutable)
-	    || (next->ty == Tchar && next->mod == MODconst));
-    }
-
-  return false;
 }
 
 /* Get the exact TypeInfo for TYPE, if it doesn't exist, create it.  */

@@ -1465,5 +1465,8 @@ void
 build_function_body (FuncDeclaration *fd)
 {
   IRVisitor v = IRVisitor (fd);
+  location_t saved_location = input_location;
+  input_location = get_linemap (fd->loc);
   v.build_stmt (fd->fbody);
+  input_location = saved_location;
 }

@@ -603,7 +603,7 @@ am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
 srcdir
-DFLAGSX
+GDCFLAGSX
 PHOBOS_SOVERSION
 DRUNTIME_SOVERSION
 SPEC_PHOBOS_DEPS
@@ -683,7 +683,7 @@ RANLIB
 MAINT
 MAINTAINER_MODE_FALSE
 MAINTAINER_MODE_TRUE
-DFLAGS
+GDCFLAGS
 GDC
 CCASFLAGS
 CCAS
@@ -1453,7 +1453,7 @@ Some influential environment variables:
   CCAS        assembler compiler command (defaults to CC)
   CCASFLAGS   assembler compiler flags (defaults to CFLAGS)
   GDC         D compiler command
-  DFLAGS      D compiler flags
+  GDCFLAGS    D compiler flags
   CPP         C preprocessor
 
 Use these variables to override the choices made by `configure' or to help
@@ -4339,8 +4339,8 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 ac_ext=d
-ac_compile='$GDC -c $DFLAGS conftest.$ac_ext >&5'
-ac_link='$GDC -o conftest$ac_exeext $DFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compile='$GDC -c $GDCFLAGS conftest.$ac_ext >&5'
+ac_link='$GDC -o conftest$ac_exeext $GDCFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=yes
 if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}gdc", so it can be a program name with args.
@@ -4580,12 +4580,12 @@ fi
 
 
 
-  gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
+  gdc_save_DFLAGS=$GDCFLAGS
+  GDCFLAGS="-fno-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $GDCFLAGS"
 
   ac_ext=d
-ac_compile='$GDC -c $DFLAGS conftest.$ac_ext >&5'
-ac_link='$GDC -o conftest$ac_exeext $DFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compile='$GDC -c $GDCFLAGS conftest.$ac_ext >&5'
+ac_link='$GDC -o conftest$ac_exeext $GDCFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=yes
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking If $GDC can compile D sources" >&5
@@ -4614,7 +4614,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-  DFLAGS=$gdc_save_DFLAGS
+  GDCFLAGS=$gdc_save_DFLAGS
 
 
 
@@ -11917,8 +11917,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-  gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
+  gdc_save_DFLAGS=$GDCFLAGS
+  GDCFLAGS="-fno-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $GDCFLAGS"
 
 
 # Source file extension for D test sources.
@@ -11968,13 +11968,13 @@ $RM -r conftest*
 # Allow CC to be a program name with arguments.
 lt_save_CC=$CC
 lt_save_CFLAGS=$CFLAGS
-lt_save_DFLAGS=$DFLAGS
+lt_save_DFLAGS=$GDCFLAGS
 lt_save_GCC=$GCC
 GCC=yes
 CC=${GDC-"gdc"}
 # Need to specify location for object.d
-DFLAGS="-nophoboslib $DFLAGS"
-CFLAGS=$DFLAGS
+GDCFLAGS="-nophoboslib $GDCFLAGS"
+CFLAGS=$GDCFLAGS
 compiler=$CC
 compiler_D=$CC
 LD_D=$CC
@@ -13757,9 +13757,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 GCC=$lt_save_GCC
 CC=$lt_save_CC
 CFLAGS=$lt_save_CFLAGS
-DFLAGS=$lt_save_DFLAGS
+GDCFLAGS=$lt_save_DFLAGS
 
-  DFLAGS=$gdc_save_DFLAGS
+  GDCFLAGS=$gdc_save_DFLAGS
 
  if test "$enable_shared" = "yes"; then
   ENABLE_SHARED_TRUE=
@@ -14083,12 +14083,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-  gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime -nophoboslib $DFLAGS"
+  gdc_save_DFLAGS=$GDCFLAGS
+  GDCFLAGS="-fno-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime -nophoboslib $GDCFLAGS"
 
   ac_ext=d
-ac_compile='$GDC -c $DFLAGS conftest.$ac_ext >&5'
-ac_link='$GDC -o conftest$ac_exeext $DFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compile='$GDC -c $GDCFLAGS conftest.$ac_ext >&5'
+ac_link='$GDC -o conftest$ac_exeext $GDCFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=yes
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing malloc" >&5
@@ -14508,7 +14508,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-  DFLAGS=$gdc_save_DFLAGS
+  GDCFLAGS=$gdc_save_DFLAGS
 
 
 
@@ -14798,13 +14798,13 @@ PHOBOS_SOVERSION="76:2:0"
 
 
 # Set default flags (after DRUNTIME_WERROR!)
-if test -z "$DFLAGS"; then
-    DFLAGS="-Wall $WERROR_FLAG -frelease -O2"
+if test -z "$GDCFLAGS"; then
+    GDCFLAGS="-Wall $WERROR_FLAG -frelease -O2"
 fi
 
 
-if test -z "$DFLAGSX"; then
-    DFLAGSX="-Wall $WERROR_FLAG -fno-release -funittest"
+if test -z "$GDCFLAGSX"; then
+    GDCFLAGSX="-Wall $WERROR_FLAG -fno-release -funittest"
 fi
 
 

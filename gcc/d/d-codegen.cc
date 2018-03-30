@@ -568,15 +568,6 @@ stabilize_expr (tree *valuep)
       *valuep = rhs;
       return lhs;
 
-    case MODIFY_EXPR:
-    case INIT_EXPR:
-      /* Given e1 = e2:
-	 Store the leftmost 'e1' expression in VALUEP.  */
-      lhs = TREE_OPERAND (expr, 0);
-      stabilize_expr (&lhs);
-      *valuep = lhs;
-      return expr;
-
     default:
       return NULL_TREE;
     }
@@ -2431,6 +2422,9 @@ build_vthis (AggregateDeclaration *decl)
   return vthis_value;
 }
 
+/* Build the RECORD_TYPE that describes the function frame or closure type for
+   the function FD.  FFI is the tree holding all frame information.  */
+
 static tree
 build_frame_type (tree ffi, FuncDeclaration *fd)
 {
@@ -2443,12 +2437,17 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
   TYPE_NAME (frame_rec_type) = get_identifier (name);
   free (name);
 
-  tree ptr_field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
-			       get_identifier ("__chain"), ptr_type_node);
-  DECL_FIELD_CONTEXT (ptr_field) = frame_rec_type;
-  TYPE_READONLY (frame_rec_type) = 1;
+  tree fields = NULL_TREE;
 
-  tree fields = chainon (NULL_TREE, ptr_field);
+  /* Function is a member or nested, so must have field for outer context.  */
+  if (fd->vthis)
+    {
+      tree ptr_field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+				   get_identifier ("__chain"), ptr_type_node);
+      DECL_FIELD_CONTEXT (ptr_field) = frame_rec_type;
+      fields = chainon (NULL_TREE, ptr_field);
+      DECL_NONADDRESSABLE_P (ptr_field) = 1;
+    }
 
   /* The __ensure and __require are called directly, so never make the outer
      functions closure, but nevertheless could still be referencing parameters
@@ -2496,16 +2495,20 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
   for (size_t i = 0; i < fd->closureVars.dim; i++)
     {
       VarDeclaration *v = fd->closureVars[i];
-      tree s = get_symbol_decl (v);
+      tree vsym = get_symbol_decl (v);
       tree ident =  v->ident
 	? get_identifier (v->ident->toChars ()) : NULL_TREE;
 
       tree field = build_decl (get_linemap (v->loc), FIELD_DECL, ident,
-			       declaration_type (v));
-      SET_DECL_LANG_FRAME_FIELD (s, field);
+			       TREE_TYPE (vsym));
+      SET_DECL_LANG_FRAME_FIELD (vsym, field);
       DECL_FIELD_CONTEXT (field) = frame_rec_type;
       fields = chainon (fields, field);
-      TREE_USED (s) = 1;
+      TREE_USED (vsym) = 1;
+
+      TREE_ADDRESSABLE (field) = TREE_ADDRESSABLE (vsym);
+      DECL_NONADDRESSABLE_P (field) = !TREE_ADDRESSABLE (vsym);
+      TREE_THIS_VOLATILE (field) = TREE_THIS_VOLATILE (vsym);
 
       /* Can't do nrvo if the variable is put in a frame.  */
       if (fd->nrvo_can && fd->nrvo_var == v)
@@ -2521,6 +2524,7 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
     }
 
   TYPE_FIELDS (frame_rec_type) = fields;
+  TYPE_READONLY (frame_rec_type) = 1;
   layout_type (frame_rec_type);
   d_keep (frame_rec_type);
 
@@ -2570,12 +2574,14 @@ build_closure (FuncDeclaration *fd)
       decl_ref = decl;
     }
 
-  DECL_IGNORED_P (decl) = 0;
-
   /* Set the first entry to the parent closure/frame, if any.  */
-  tree chain_field = component_ref (decl_ref, TYPE_FIELDS (type));
-  tree chain_expr = modify_expr (chain_field, d_function_chain->static_chain);
-  add_stmt (chain_expr);
+  if (fd->vthis)
+    {
+      tree chain_field = component_ref (decl_ref, TYPE_FIELDS (type));
+      tree chain_expr = modify_expr (chain_field,
+				     d_function_chain->static_chain);
+      add_stmt (chain_expr);
+    }
 
   /* Copy parameters that are referenced nonlocally.  */
   for (size_t i = 0; i < fd->closureVars.dim; i++)
