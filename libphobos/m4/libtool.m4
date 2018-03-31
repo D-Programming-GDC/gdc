@@ -35,13 +35,13 @@ _LT_LINKER_BOILERPLATE
 # Allow CC to be a program name with arguments.
 lt_save_CC=$CC
 lt_save_CFLAGS=$CFLAGS
-lt_save_DFLAGS=$DFLAGS
+lt_save_DFLAGS=$GDCFLAGS
 lt_save_GCC=$GCC
 GCC=yes
 CC=${GDC-"gdc"}
 # Need to specify location for object.d
-DFLAGS="-nophoboslib $DFLAGS"
-CFLAGS=$DFLAGS
+GDCFLAGS="-nophoboslib $GDCFLAGS"
+CFLAGS=$GDCFLAGS
 compiler=$CC
 _LT_TAGVAR(compiler, $1)=$CC
 _LT_TAGVAR(LD, $1)=$CC
@@ -81,5 +81,5 @@ AC_LANG_RESTORE
 GCC=$lt_save_GCC
 CC=$lt_save_CC
 CFLAGS=$lt_save_CFLAGS
-DFLAGS=$lt_save_DFLAGS
+GDCFLAGS=$lt_save_DFLAGS
 ])# _LT_LANG_D_CONFIG

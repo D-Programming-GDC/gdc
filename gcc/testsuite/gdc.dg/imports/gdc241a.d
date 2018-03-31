@@ -1,4 +1,4 @@
-import gdc241;
+import compilable;
 
 S241 *s241;     // Use indirectly imported struct
 C241 *c241;     // Use indirectly imported class

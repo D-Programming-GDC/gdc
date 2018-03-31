@@ -1,4 +1,4 @@
-module imports.runnablea;
+module imports.runnable;
 
 private import runnable;
 

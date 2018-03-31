@@ -62,7 +62,7 @@ The following OS versions are implemented:
  build_xm_file_list=@build_xm_file_list@
  build_xm_include_list=@build_xm_include_list@
  build_xm_defines=@build_xm_defines@
-@@ -806,6 +808,7 @@ BCONFIG_H = bconfig.h $(build_xm_file_list)
+@@ -807,6 +809,7 @@ BCONFIG_H = bconfig.h $(build_xm_file_li
  CONFIG_H  = config.h  $(host_xm_file_list)
  TCONFIG_H = tconfig.h $(xm_file_list)
  TM_P_H    = tm_p.h    $(tm_p_file_list)
@@ -70,7 +70,7 @@ The following OS versions are implemented:
  GTM_H     = tm.h      $(tm_file_list) insn-constants.h
  TM_H      = $(GTM_H) insn-flags.h $(OPTIONS_H)
  
-@@ -863,9 +866,11 @@ EXCEPT_H = except.h $(HASHTAB_H)
+@@ -864,9 +867,11 @@ EXCEPT_H = except.h $(HASHTAB_H)
  TARGET_DEF = target.def target-hooks-macros.h
  C_TARGET_DEF = c-family/c-target.def target-hooks-macros.h
  COMMON_TARGET_DEF = common/common-target.def target-hooks-macros.h
@@ -82,7 +82,7 @@ The following OS versions are implemented:
  MACHMODE_H = machmode.h mode-classes.def insn-modes.h
  HOOKS_H = hooks.h $(MACHMODE_H)
  HOSTHOOKS_DEF_H = hosthooks-def.h $(HOOKS_H)
-@@ -1135,6 +1140,9 @@ C_TARGET_OBJS=@c_target_objs@
+@@ -1136,6 +1141,9 @@ C_TARGET_OBJS=@c_target_objs@
  # Target specific, C++ specific object file
  CXX_TARGET_OBJS=@cxx_target_objs@
  
@@ -92,7 +92,7 @@ The following OS versions are implemented:
  # Target specific, Fortran specific object file
  FORTRAN_TARGET_OBJS=@fortran_target_objs@
  
-@@ -1666,6 +1674,7 @@ bconfig.h: cs-bconfig.h ; @true
+@@ -1667,6 +1675,7 @@ bconfig.h: cs-bconfig.h ; @true
  tconfig.h: cs-tconfig.h ; @true
  tm.h: cs-tm.h ; @true
  tm_p.h: cs-tm_p.h ; @true
@@ -100,7 +100,7 @@ The following OS versions are implemented:
  
  cs-config.h: Makefile
  	TARGET_CPU_DEFAULT="" \
-@@ -1692,6 +1701,11 @@ cs-tm_p.h: Makefile
+@@ -1693,6 +1702,11 @@ cs-tm_p.h: Makefile
  	HEADERS="$(tm_p_include_list)" DEFINES="" \
  	$(SHELL) $(srcdir)/mkconfig.sh tm_p.h
  
@@ -112,7 +112,7 @@ The following OS versions are implemented:
  # Don't automatically run autoconf, since configure.ac might be accidentally
  # newer than configure.  Also, this writes into the source directory which
  # might be on a read-only file system.  If configured for maintainer mode
-@@ -1972,6 +1986,12 @@ default-c.o: config/default-c.c
+@@ -1973,6 +1987,12 @@ default-c.o: config/default-c.c
  CFLAGS-prefix.o += -DPREFIX=\"$(prefix)\" -DBASEVER=$(BASEVER_s)
  prefix.o: $(BASEVER)
  
@@ -125,7 +125,7 @@ The following OS versions are implemented:
  # Language-independent files.
  
  DRIVER_DEFINES = \
-@@ -2240,6 +2260,15 @@ s-common-target-hooks-def-h: build/genhooks$(build_exeext)
+@@ -2242,6 +2262,15 @@ s-common-target-hooks-def-h: build/genho
  					     common/common-target-hooks-def.h
  	$(STAMP) s-common-target-hooks-def-h
  
@@ -141,7 +141,7 @@ The following OS versions are implemented:
  # check if someone mistakenly only changed tm.texi.
  # We use a different pathname here to avoid a circular dependency.
  s-tm-texi: $(srcdir)/doc/../doc/tm.texi
-@@ -2263,6 +2292,7 @@ s-tm-texi: build/genhooks$(build_exeext) $(srcdir)/doc/tm.texi.in
+@@ -2265,6 +2294,7 @@ s-tm-texi: build/genhooks$(build_exeext)
  	  && ( test $(srcdir)/doc/tm.texi -nt $(srcdir)/target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/c-family/c-target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/common/common-target.def \
@@ -149,7 +149,7 @@ The following OS versions are implemented:
  	  ); then \
  	  echo >&2 ; \
  	  echo You should edit $(srcdir)/doc/tm.texi.in rather than $(srcdir)/doc/tm.texi . >&2 ; \
-@@ -2398,7 +2428,7 @@ generated_files = config.h tm.h $(TM_P_H) $(TM_H) multilib.h \
+@@ -2400,7 +2430,7 @@ generated_files = config.h tm.h $(TM_P_H
         $(ALL_GTFILES_H) gtype-desc.c gtype-desc.h gcov-iov.h \
         options.h target-hooks-def.h insn-opinit.h \
         common/common-target-hooks-def.h pass-instances.def \
@@ -158,7 +158,7 @@ The following OS versions are implemented:
  
  #
  # How to compile object files to run on the build machine.
-@@ -2533,7 +2563,7 @@ build/genpreds.o : genpreds.c $(RTL_BASE_H) $(BCONFIG_H) $(SYSTEM_H)	\
+@@ -2535,7 +2565,7 @@ build/genpreds.o : genpreds.c $(RTL_BASE
  build/genrecog.o : genrecog.c $(RTL_BASE_H) $(BCONFIG_H) $(SYSTEM_H)	\
    coretypes.h $(GTM_H) errors.h $(READ_MD_H) gensupport.h
  build/genhooks.o : genhooks.c $(TARGET_DEF) $(C_TARGET_DEF)		\
@@ -299,7 +299,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tmake_file="t-slibgcc"
-@@ -939,7 +963,7 @@ aarch64*-*-linux*)
+@@ -949,7 +973,7 @@ aarch64*-*-linux*)
  	;;
  alpha*-*-linux*)
  	tm_file="elfos.h ${tm_file} alpha/elf.h alpha/linux.h alpha/linux-elf.h glibc-stdint.h"
@@ -308,7 +308,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} alpha/elf.opt"
  	;;
  alpha*-*-freebsd*)
-@@ -3010,6 +3034,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3024,6 +3048,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4305,6 +4333,7 @@ case ${target} in
+@@ -4319,6 +4347,7 @@ case ${target} in
  		out_file=rs6000/rs6000.c
  		c_target_objs="${c_target_objs} rs6000-c.o"
  		cxx_target_objs="${cxx_target_objs} rs6000-c.o"
@@ -374,7 +374,7 @@ The following OS versions are implemented:
  /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -329,4 +329,8 @@ int aarch64_ccmp_mode_to_code (enum machine_mode mode);
+@@ -329,4 +329,8 @@ int aarch64_ccmp_mode_to_code (enum mach
  bool extract_base_offset_in_addr (rtx mem, rtx *base, rtx *offset);
  bool aarch64_operands_ok_for_ldpstp (rtx *, bool, enum machine_mode);
  bool aarch64_operands_adjust_ok_for_ldpstp (rtx *, bool, enum machine_mode);
@@ -397,7 +397,7 @@ The following OS versions are implemented:
  /* Target machine storage layout.  */
 --- a/gcc/config/aarch64/t-aarch64
 +++ b/gcc/config/aarch64/t-aarch64
-@@ -48,6 +48,10 @@ aarch-common.o: $(srcdir)/config/arm/aarch-common.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -48,6 +48,10 @@ aarch-common.o: $(srcdir)/config/arm/aar
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/arm/aarch-common.c
  
@@ -454,7 +454,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/alpha/alpha-protos.h
 +++ b/gcc/config/alpha/alpha-protos.h
-@@ -115,3 +115,6 @@ extern rtx unicosmk_add_call_info_word (rtx);
+@@ -115,3 +115,6 @@ extern rtx unicosmk_add_call_info_word (
  extern bool some_small_symbolic_operand_int (rtx);
  extern int tls_symbolic_operand_1 (rtx, int, int);
  extern rtx resolve_reload_operand (rtx);
@@ -463,7 +463,7 @@ The following OS versions are implemented:
 +extern void alpha_d_target_versions (void);
 --- a/gcc/config/alpha/alpha.h
 +++ b/gcc/config/alpha/alpha.h
-@@ -94,6 +94,9 @@ along with GCC; see the file COPYING3.  If not see
+@@ -94,6 +94,9 @@ along with GCC; see the file COPYING3.
    while (0)
  #endif
  
@@ -475,7 +475,7 @@ The following OS versions are implemented:
  /* Which processor to schedule for. The cpu attribute defines a list that
 --- a/gcc/config/alpha/linux.h
 +++ b/gcc/config/alpha/linux.h
-@@ -33,6 +33,17 @@ along with GCC; see the file COPYING3.  If not see
+@@ -33,6 +33,17 @@ along with GCC; see the file COPYING3.
  	  builtin_define ("_GNU_SOURCE");			\
      } while (0)
  
@@ -575,7 +575,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/arm/arm-protos.h
 +++ b/gcc/config/arm/arm-protos.h
-@@ -327,6 +327,9 @@ extern void arm_emit_eabi_attribute (const char *, int, int);
+@@ -327,6 +327,9 @@ extern void arm_emit_eabi_attribute (con
  /* Defined in gcc/common/config/arm-common.c.  */
  extern const char *arm_rewrite_selected_cpu (const char *name);
  
@@ -611,7 +611,7 @@ The following OS versions are implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- a/gcc/config/arm/t-arm
 +++ b/gcc/config/arm/t-arm
-@@ -111,3 +111,7 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -111,3 +111,7 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(
      coretypes.h $(TM_H) $(TREE_H) output.h $(C_COMMON_H)
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/arm/arm-c.c
@@ -716,16 +716,14 @@ The following OS versions are implemented:
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/gnu.h
 +++ b/gcc/config/gnu.h
-@@ -39,3 +39,6 @@ along with GCC.  If not, see <http://www.gnu.org/licenses/>.
+@@ -39,3 +39,6 @@ along with GCC.  If not, see <http://www
  	builtin_assert ("system=unix");		\
  	builtin_assert ("system=posix");	\
      } while (0)
 +
 +#define GNU_USER_TARGET_D_OS_VERSIONS()		\
 +    do {					\
-+	builtin_version ("Hurd");		\
-+	builtin_version ("CRuntime_Glibc");	\
-+    } while (0)--- /dev/null
+--- /dev/null
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,44 @@
 +/* Subroutines for the D front end on the x86 architecture.
@@ -774,7 +772,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/i386/i386-protos.h
 +++ b/gcc/config/i386/i386-protos.h
-@@ -238,6 +238,9 @@ extern bool ix86_bnd_prefixed_insn_p (rtx);
+@@ -238,6 +238,9 @@ extern bool ix86_bnd_prefixed_insn_p (rt
  extern void ix86_target_macros (void);
  extern void ix86_register_pragmas (void);
  
@@ -786,7 +784,7 @@ The following OS versions are implemented:
  extern void i386_pe_declare_function_type (FILE *, const char *, int);
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -652,6 +652,9 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+@@ -650,6 +650,9 @@ extern const char *host_detect_local_cpu
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
@@ -798,7 +796,7 @@ The following OS versions are implemented:
  #endif
 --- a/gcc/config/i386/linux-common.h
 +++ b/gcc/config/i386/linux-common.h
-@@ -27,6 +27,12 @@ along with GCC; see the file COPYING3.  If not see
+@@ -27,6 +27,12 @@ along with GCC; see the file COPYING3.
      }                                          \
    while (0)
  
@@ -813,7 +811,7 @@ The following OS versions are implemented:
    LINUX_OR_ANDROID_CC (GNU_USER_TARGET_CC1_SPEC, \
 --- a/gcc/config/i386/t-i386
 +++ b/gcc/config/i386/t-i386
-@@ -23,6 +23,10 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c i386-builtin-types.inc
+@@ -23,6 +23,10 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c
  	  $(COMPILE) $<
  	  $(POSTCOMPILE)
  
@@ -826,7 +824,7 @@ The following OS versions are implemented:
    $(srcdir)/config/i386/i386-builtin-types.def
 --- a/gcc/config/kfreebsd-gnu.h
 +++ b/gcc/config/kfreebsd-gnu.h
-@@ -29,6 +29,12 @@ along with GCC; see the file COPYING3.  If not see
+@@ -29,6 +29,12 @@ along with GCC; see the file COPYING3.
      }						\
    while (0)
  
@@ -841,7 +839,7 @@ The following OS versions are implemented:
  #define GNU_USER_DYNAMIC_LINKER64      GLIBC_DYNAMIC_LINKER64
 --- a/gcc/config/kopensolaris-gnu.h
 +++ b/gcc/config/kopensolaris-gnu.h
-@@ -30,5 +30,11 @@ along with GCC; see the file COPYING3.  If not see
+@@ -30,5 +30,11 @@ along with GCC; see the file COPYING3.
      }						\
    while (0)
  
@@ -870,7 +868,7 @@ The following OS versions are implemented:
  #else
 --- a/gcc/config/linux.h
 +++ b/gcc/config/linux.h
-@@ -49,6 +49,17 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+@@ -49,6 +49,17 @@ see the files COPYING3 and COPYING.RUNTI
  	builtin_assert ("system=posix");			\
      } while (0)
  
@@ -890,7 +888,7 @@ The following OS versions are implemented:
     -muclibc or -mglibc or -mbionic has been passed to change the default.  */
 --- a/gcc/config/mips/linux-common.h
 +++ b/gcc/config/mips/linux-common.h
-@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.  If not see
+@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.
      ANDROID_TARGET_OS_CPP_BUILTINS();				\
    } while (0)
  
@@ -961,7 +959,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/mips/mips-protos.h
 +++ b/gcc/config/mips/mips-protos.h
-@@ -366,4 +366,7 @@ typedef rtx (*mulsidi3_gen_fn) (rtx, rtx, rtx);
+@@ -366,4 +366,7 @@ typedef rtx (*mulsidi3_gen_fn) (rtx, rtx
  extern mulsidi3_gen_fn mips_mulsidi3_gen_fn (enum rtx_code);
  #endif
  
@@ -983,7 +981,7 @@ The following OS versions are implemented:
  #ifndef TARGET_DEFAULT
 --- a/gcc/config/mips/t-mips
 +++ b/gcc/config/mips/t-mips
-@@ -20,3 +20,7 @@ $(srcdir)/config/mips/mips-tables.opt: $(srcdir)/config/mips/genopt.sh \
+@@ -20,3 +20,7 @@ $(srcdir)/config/mips/mips-tables.opt: $
    $(srcdir)/config/mips/mips-cpus.def
  	$(SHELL) $(srcdir)/config/mips/genopt.sh $(srcdir)/config/mips > \
  		$(srcdir)/config/mips/mips-tables.opt
@@ -1081,7 +1079,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/rs6000/rs6000-protos.h
 +++ b/gcc/config/rs6000/rs6000-protos.h
-@@ -211,6 +211,9 @@ extern void rs6000_target_modify_macros (bool, HOST_WIDE_INT, HOST_WIDE_INT);
+@@ -211,6 +211,9 @@ extern void rs6000_target_modify_macros
  extern void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT,
  						HOST_WIDE_INT);
  
@@ -1093,7 +1091,7 @@ The following OS versions are implemented:
  #endif
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -704,6 +704,9 @@ extern unsigned char rs6000_recip_bits[];
+@@ -704,6 +704,9 @@ extern unsigned char rs6000_recip_bits[]
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1105,7 +1103,7 @@ The following OS versions are implemented:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- a/gcc/config/rs6000/t-rs6000
 +++ b/gcc/config/rs6000/t-rs6000
-@@ -25,6 +25,10 @@ rs6000-c.o: $(srcdir)/config/rs6000/rs6000-c.c
+@@ -25,6 +25,10 @@ rs6000-c.o: $(srcdir)/config/rs6000/rs60
  	$(COMPILE) $<
  	$(POSTCOMPILE)
  
@@ -1162,7 +1160,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/s390/s390-protos.h
 +++ b/gcc/config/s390/s390-protos.h
-@@ -135,3 +135,6 @@ extern void s390_register_target_pragmas (void);
+@@ -135,3 +135,6 @@ extern void s390_register_target_pragmas
  
  /* Routines for s390-c.c */
  extern bool s390_const_operand_ok (tree, int, int, tree);
@@ -1183,7 +1181,7 @@ The following OS versions are implemented:
                              | MASK_OPT_HTM | MASK_OPT_VX)
 --- a/gcc/config/s390/t-s390
 +++ b/gcc/config/s390/t-s390
-@@ -25,3 +25,7 @@ s390-c.o: $(srcdir)/config/s390/s390-c.c \
+@@ -25,3 +25,7 @@ s390-c.o: $(srcdir)/config/s390/s390-c.c
    $(TARGET_H) $(TARGET_DEF_H) $(CPPLIB_H) $(C_PRAGMA_H)
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/s390/s390-c.c
@@ -1244,7 +1242,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/sparc/sparc-protos.h
 +++ b/gcc/config/sparc/sparc-protos.h
-@@ -112,4 +112,7 @@ bool sparc_modes_tieable_p (machine_mode, machine_mode);
+@@ -112,4 +112,7 @@ bool sparc_modes_tieable_p (machine_mode
  
  extern void sparc_emit_membar_for_model (enum memmodel, int, int);
  
@@ -1254,7 +1252,7 @@ The following OS versions are implemented:
  #endif /* __SPARC_PROTOS_H__ */
 --- a/gcc/config/sparc/sparc.h
 +++ b/gcc/config/sparc/sparc.h
-@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.  If not see
+@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.
  
  #define TARGET_CPU_CPP_BUILTINS() sparc_target_macros ()
  
@@ -1351,7 +1349,7 @@ The following OS versions are implemented:
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -28284,6 +28303,9 @@ fi
+@@ -28246,6 +28265,9 @@ fi
  
  
  
@@ -1412,7 +1410,7 @@ The following OS versions are implemented:
  AC_SUBST_FILE(language_hooks)
 --- a/gcc/doc/tm.texi
 +++ b/gcc/doc/tm.texi
-@@ -52,6 +52,7 @@ through the macros defined in the @file{.h} file.
+@@ -52,6 +52,7 @@ through the macros defined in the @file{
  * MIPS Coprocessors::   MIPS coprocessor support and how to customize it.
  * PCH Target::          Validity checking for precompiled headers.
  * C++ ABI::             Controlling C++ ABI changes.
@@ -1420,7 +1418,7 @@ The following OS versions are implemented:
  * Named Address Spaces:: Adding support for named address spaces
  * Misc::                Everything else.
  @end menu
-@@ -106,6 +107,14 @@ documented as ``Common Target Hook''.  This is declared in
+@@ -106,6 +107,14 @@ documented as ``Common Target Hook''.  T
  @code{target_has_targetm_common=yes} in @file{config.gcc}; otherwise a
  default definition is used.
  
@@ -1435,7 +1433,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10205,6 +10214,22 @@ unloaded. The default is to return false.
+@@ -10205,6 +10214,22 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1460,7 +1458,7 @@ The following OS versions are implemented:
  @cindex named address spaces
 --- a/gcc/doc/tm.texi.in
 +++ b/gcc/doc/tm.texi.in
-@@ -52,6 +52,7 @@ through the macros defined in the @file{.h} file.
+@@ -52,6 +52,7 @@ through the macros defined in the @file{
  * MIPS Coprocessors::   MIPS coprocessor support and how to customize it.
  * PCH Target::          Validity checking for precompiled headers.
  * C++ ABI::             Controlling C++ ABI changes.
@@ -1468,7 +1466,7 @@ The following OS versions are implemented:
  * Named Address Spaces:: Adding support for named address spaces
  * Misc::                Everything else.
  @end menu
-@@ -106,6 +107,14 @@ documented as ``Common Target Hook''.  This is declared in
+@@ -106,6 +107,14 @@ documented as ``Common Target Hook''.  T
  @code{target_has_targetm_common=yes} in @file{config.gcc}; otherwise a
  default definition is used.
  
@@ -1483,7 +1481,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7383,6 +7392,16 @@ floating-point support; they are not included in this mechanism.
+@@ -7383,6 +7392,16 @@ floating-point support; they are not inc
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  

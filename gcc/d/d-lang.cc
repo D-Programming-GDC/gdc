@@ -29,6 +29,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "options.h"
 #include "d-system.h"
+#include "varasm.h"
 #include "output.h"
 #include "debug.h"
 
@@ -348,6 +349,9 @@ d_init (void)
   if (flag_exceptions)
     using_eh_for_cleanups ();
 
+  if (!supports_one_only ())
+    flag_weak = 0;
+
   /* This is the C main, not the D main.  */
   main_identifier_node = get_identifier ("main");
 
@@ -463,20 +467,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ignoreUnsupportedPragmas = value;
       break;
 
-    case OPT_fintfc:
-      global.params.doHdrGeneration = value;
-      break;
-
-    case OPT_fintfc_dir_:
-      global.params.doHdrGeneration = true;
-      global.params.hdrdir = arg;
-      break;
-
-    case OPT_fintfc_file_:
-      global.params.doHdrGeneration = true;
-      global.params.hdrname = arg;
-      break;
-
     case OPT_finvariants:
       global.params.useInvariants = value;
       break;
@@ -578,6 +568,20 @@ d_handle_option (size_t scode, const char *arg, int value,
       error ("bad argument for -fversion '%s'", arg);
       break;
 
+    case OPT_H:
+      global.params.doHdrGeneration = true;
+      break;
+
+    case OPT_Hd:
+      global.params.doHdrGeneration = true;
+      global.params.hdrdir = arg;
+      break;
+
+    case OPT_Hf:
+      global.params.doHdrGeneration = true;
+      global.params.hdrname = arg;
+      break;
+
     case OPT_imultilib:
       d_option.multilib = arg;
       break;
@@ -603,12 +607,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_MMD:
-    case OPT_fmake_mdeps_:
       d_option.deps_skip_system = true;
       /* fall through */
 
     case OPT_MD:
-    case OPT_fmake_deps_:
       d_option.deps = true;
       d_option.deps_filename = arg;
       break;
@@ -846,17 +848,48 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p,
     case CALL_EXPR:
       if (CALL_EXPR_ARGS_ORDERED (*expr_p))
 	{
-	  /* Evaluate all arguments from left to right before passing to the
-	     function, even if an argument itself doesn't have side effects, it
-	     might be altered by another argument.  */
+	  /* Strictly evaluate all arguments from left to right.  */
 	  int nargs = call_expr_nargs (*expr_p);
+	  location_t loc = EXPR_LOC_OR_LOC (*expr_p, input_location);
 
+	  /* No need to enforce evaluation order if only one argument.  */
+	  if (nargs < 2)
+	    break;
+
+	  /* Or if all arguments are already free of side-effects.  */
+	  bool has_side_effects = false;
 	  for (int i = 0; i < nargs; i++)
 	    {
-	      tree arg = CALL_EXPR_ARG (*expr_p, i);
-	      if (! really_constant_p (arg))
-		CALL_EXPR_ARG (*expr_p, i) = get_formal_tmp_var (arg, pre_p);
+	      if (TREE_SIDE_EFFECTS (CALL_EXPR_ARG (*expr_p, i)))
+		{
+		  has_side_effects = true;
+		  break;
+		}
 	    }
+
+	  if (!has_side_effects)
+	    break;
+
+	  /* Leave the last argument for gimplify_call_expr.  */
+	  for (int i = 0; i < nargs - 1; i++)
+	    {
+	      tree new_arg = CALL_EXPR_ARG (*expr_p, i);
+
+	      /* If argument has a side-effect, gimplify_arg will handle it.  */
+	      if (gimplify_arg (&new_arg, pre_p, loc) == GS_ERROR)
+		ret = GS_ERROR;
+
+	      /* Even if an argument itself doesn't have any side-effects, it
+		 might be altered by another argument in the list.  */
+	      if (new_arg == CALL_EXPR_ARG (*expr_p, i)
+		  && !really_constant_p (new_arg))
+		new_arg = get_formal_tmp_var (new_arg, pre_p);
+
+	      CALL_EXPR_ARG (*expr_p, i) = new_arg;
+	    }
+
+	  if (ret != GS_ERROR)
+	    ret = GS_OK;
 	}
       break;
 
