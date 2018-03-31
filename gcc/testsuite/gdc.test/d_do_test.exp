@@ -34,7 +34,7 @@ proc gdc-convert-args { base args } {
             lappend out "-J$base/$path"
 
         } elseif [string match "-allinst" $arg] {
-            lappend out "-femit-templates"
+            lappend out "-fall-instantiations"
 
         } elseif { [string match "-boundscheck" $arg]
                  || [string match "-boundscheck=on" $arg] } {
@@ -64,7 +64,7 @@ proc gdc-convert-args { base args } {
             lappend out "-fdebug=$value"
 
         } elseif [string match "-dip1000" $arg] {
-            lappend out "-ftransition=safe"
+            lappend out "-ftransition=dip1000"
 
         } elseif [string match "-dip25" $arg] {
             lappend out "-ftransition=dip25"

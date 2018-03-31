@@ -136,7 +136,6 @@ the options specific to @command{gdc}.
 * Warnings::                Options controlling warnings specific to gdc
 * Linking::                 Options influceing the linking step
 * Developer Options::       Options you won't use
-* Environment Variables::   Environment variables that affect @command{gdc}.
 @end menu
 
 @c man begin OPTIONS
@@ -167,7 +166,7 @@ when using @code{-S} or @code{-c}.
 @cindex D interface files.
 A D interface file contains only what an import of the module needs,
 rather than the whole implementation of that module.  They can be created
-by @command{gdc} from a D source file by using the @code{-fintfc} option.
+by @command{gdc} from a D source file by using the @code{-H} option.
 When the compiler resolves an import declaration, it searches for matching
 @file{.di} files first, then for @file{.d}.
 
@@ -329,6 +328,14 @@ is compiled into the program.
 Turns on compilation of @code{version} code identified by @var{ident}.
 @end table
 
+@item -fno-weak
+@cindex @option{-fweak}
+@cindex @option{-fno-weak}
+Turns off emission of instantiated declarations that can be defined in multiple
+objects as weak or one-only symbols.  The default is to emit all public symbols
+as weak, unless there lacks target support.  Disabling this options means that
+common symbols are instead put in COMDAT or become private.
+
 @end table
 
 @node Directory Options
@@ -415,6 +422,25 @@ In addition to the many @command{gcc} options controlling code generation,
 
 @table @gcctabopt
 
+@item -H
+@cindex @option{-H}
+Generates D interface files for all modules being compiled.  The compiler
+determines the output @var{file} based on the name of the input file,
+removes any directory components and suffix, and applies the @file{.di}
+suffix.
+
+@item -Hd @var{dir}
+@cindex @option{-Hd}
+Same as @option{-H}, but writes interface files to @var{dir} directory.
+This option can be used with @option{-Hf @var{file}} to independently set the
+output file and directory path.
+
+@item -Hf @var{file}
+@cindex @option{-Hf}
+Same as @option{-H} but writes interface files to @var{file}.  This option can
+be used with @option{-Hd @var{dir}} to independently set the output file and
+directory path.
+
 @item -M
 @cindex @option{-M}
 Output the module dependencies of all source files being compiled in a
@@ -478,17 +504,6 @@ and applies a @file{.json} suffix.
 Same as @option{-X}, but writes all JSON contents to the specified
 @var{file}.
 
-@item -fdeps
-@cindex @option{-fdeps}
-Dump module dependencies of all source files being compiled in a machine
-readable format.  Suitable for any build tool that needs to track source
-file dependencies for incremental builds.
-
-@item -fdeps=@var{file}
-@cindex @option{-fdeps=}
-Same as @option{-fdeps}, but writes dependencies to the specified
-@var{file}.
-
 @item -fdoc
 @cindex @option{-fdoc}
 Generates @code{Ddoc} documentation and writes to a file.  The compiler
@@ -512,25 +527,6 @@ set the output file and directory path.
 Specify @var{file} as a @var{Ddoc} macro file to be read.  Multiple
 @option{-fdoc-inc} options can be used, and files are read and processed
 in the same order.
-
-@item -fintfc
-@cindex @option{-fintfc}
-Generates D interface files for all modules being compiled.  The compiler
-determines the output @var{file} based on the name of the input file,
-removes any directory components and suffix, and applies the @file{.di}
-suffix.
-
-@item -fintfc-dir=@var{dir}
-@cindex @option{-fintfc-dir}
-Same as @option{-fintfc}, but writes interface files to @var{dir}
-directory.  This option can be used with @option{-fintfc-file=@var{file}}
-to independently set the output file and directory path.
-
-@item -fintfc-file=@var{filename}
-@cindex @option{-fintfc-file}
-Same as @option{-fintfc} but writes interface files to @var{file}.  This
-option can be used with @option{-fintfc-dir=@var{dir}} to independently
-set the output file and directory path.
 
 @end table
 
@@ -607,17 +603,12 @@ Limits the maximum number of error messages to @var{n}, at which point
 source code.  If @var{n} is 0 (the default), there is no limit on the
 number of error messages produced.
 
-@item -fproperty
-@cindex @option{-fproperty}
-@cindex @option{-fno-property}
-Enforces the @code{@@property} syntax in D.
-
 @item -fsyntax-only
 @cindex @option{-fsyntax-only}
 @cindex @option{-fno-syntax-only}
 Check the code for syntax errors, but do not actually compile it.  This
 only suppresses the generation of the object code, and can be used in
-conjunction with @option{-fdoc} or @option{-fintfc} options.
+conjunction with @option{-fdoc} or @option{-H} options.
 
 @item -ftransition=@var{id}
 @cindex @option{-ftransition}
@@ -734,36 +725,6 @@ processed through the @code{parse}, @code{semantic}, @code{semantic2}, and
 and all @code{function} bodies that are being compiled.
 
 @end table
-
-@c man end
-
-@node Environment Variables
-@section Environment variables affecting @command{gdc}
-@cindex environment variable
-
-@c man begin ENVIRONMENT
-
-In addition to the many @command{gcc} environment variables that control
-its operation, @command{gdc} has a few environment variables specific to
-itself.
-
-@vtable @env
-
-@item D_IMPORT_PATH
-@findex D_IMPORT_PATH
-The value of @env{D_IMPORT_PATH} is a list of directories separated by a
-special character, much like @env{PATH}, in which to look for imports.
-The special character, @code{PATH_SEPARATOR}, is target-dependent and
-determined at GCC build time.  For Microsoft Windows-based targets it is a
-semicolon, and for almost all other targets it is a colon.
-
-@item DDOCFILE
-@findex DDOCFILE
-If @env{DDOCFILE} is set, it specifies a text file of macro definitions
-to be read and used by the Ddoc generator.  This overrides any macros
-defined in other @file{.ddoc} files.
-
-@end vtable
 
 @c man end
 

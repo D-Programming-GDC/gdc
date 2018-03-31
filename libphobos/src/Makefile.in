@@ -237,7 +237,108 @@ am__objects_13 = libgphobos_la-adler32.lo libgphobos_la-compress.lo \
 @DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_14 = $(am__objects_13)
 am_libgphobos_la_OBJECTS = $(am__objects_12) $(am__objects_14)
 libgphobos_la_OBJECTS = $(am_libgphobos_la_OBJECTS)
-libgphobos_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS) \
+am__DEPENDENCIES_1 = etc/c/curl.t.lo etc/c/sqlite3.t.lo \
+	etc/c/zlib.t.lo std/algorithm/comparison.t.lo \
+	std/algorithm/internal.t.lo std/algorithm/iteration.t.lo \
+	std/algorithm/mutation.t.lo std/algorithm/package.t.lo \
+	std/algorithm/searching.t.lo std/algorithm/setops.t.lo \
+	std/algorithm/sorting.t.lo std/array.t.lo std/ascii.t.lo \
+	std/base64.t.lo std/bigint.t.lo std/bitmanip.t.lo \
+	std/compiler.t.lo std/complex.t.lo std/concurrency.t.lo \
+	std/container/array.t.lo std/container/binaryheap.t.lo \
+	std/container/dlist.t.lo std/container/package.t.lo \
+	std/container/rbtree.t.lo std/container/slist.t.lo \
+	std/container/util.t.lo std/conv.t.lo std/csv.t.lo \
+	std/datetime/date.t.lo std/datetime/interval.t.lo \
+	std/datetime/package.t.lo std/datetime/stopwatch.t.lo \
+	std/datetime/systime.t.lo std/datetime/timezone.t.lo \
+	std/demangle.t.lo std/digest/crc.t.lo std/digest/digest.t.lo \
+	std/digest/hmac.t.lo std/digest/md.t.lo \
+	std/digest/murmurhash.t.lo std/digest/package.t.lo \
+	std/digest/ripemd.t.lo std/digest/sha.t.lo std/encoding.t.lo \
+	std/exception.t.lo \
+	std/experimental/allocator/building_blocks/affix_allocator.t.lo \
+	std/experimental/allocator/building_blocks/allocator_list.t.lo \
+	std/experimental/allocator/building_blocks/bitmapped_block.t.lo \
+	std/experimental/allocator/building_blocks/bucketizer.t.lo \
+	std/experimental/allocator/building_blocks/fallback_allocator.t.lo \
+	std/experimental/allocator/building_blocks/free_list.t.lo \
+	std/experimental/allocator/building_blocks/free_tree.t.lo \
+	std/experimental/allocator/building_blocks/kernighan_ritchie.t.lo \
+	std/experimental/allocator/building_blocks/null_allocator.t.lo \
+	std/experimental/allocator/building_blocks/package.t.lo \
+	std/experimental/allocator/building_blocks/quantizer.t.lo \
+	std/experimental/allocator/building_blocks/region.t.lo \
+	std/experimental/allocator/building_blocks/scoped_allocator.t.lo \
+	std/experimental/allocator/building_blocks/segregator.t.lo \
+	std/experimental/allocator/building_blocks/stats_collector.t.lo \
+	std/experimental/allocator/common.t.lo \
+	std/experimental/allocator/gc_allocator.t.lo \
+	std/experimental/allocator/mallocator.t.lo \
+	std/experimental/allocator/mmap_allocator.t.lo \
+	std/experimental/allocator/package.t.lo \
+	std/experimental/allocator/showcase.t.lo \
+	std/experimental/allocator/typed.t.lo \
+	std/experimental/checkedint.t.lo \
+	std/experimental/logger/core.t.lo \
+	std/experimental/logger/filelogger.t.lo \
+	std/experimental/logger/multilogger.t.lo \
+	std/experimental/logger/nulllogger.t.lo \
+	std/experimental/logger/package.t.lo \
+	std/experimental/typecons.t.lo std/file.t.lo std/format.t.lo \
+	std/functional.t.lo std/getopt.t.lo std/internal/cstring.t.lo \
+	std/internal/digest/sha_SSSE3.t.lo \
+	std/internal/math/biguintcore.t.lo \
+	std/internal/math/biguintnoasm.t.lo \
+	std/internal/math/biguintx86.t.lo \
+	std/internal/math/errorfunction.t.lo \
+	std/internal/math/gammafunction.t.lo \
+	std/internal/scopebuffer.t.lo \
+	std/internal/test/dummyrange.t.lo std/internal/test/range.t.lo \
+	std/internal/test/uda.t.lo std/internal/unicode_comp.t.lo \
+	std/internal/unicode_decomp.t.lo \
+	std/internal/unicode_grapheme.t.lo \
+	std/internal/unicode_norm.t.lo \
+	std/internal/unicode_tables.t.lo \
+	std/internal/windows/advapi32.t.lo std/json.t.lo std/math.t.lo \
+	std/mathspecial.t.lo std/meta.t.lo std/mmfile.t.lo \
+	std/net/curl.t.lo std/net/isemail.t.lo std/numeric.t.lo \
+	std/outbuffer.t.lo std/parallelism.t.lo std/path.t.lo \
+	std/process.t.lo std/random.t.lo std/range/interfaces.t.lo \
+	std/range/package.t.lo std/range/primitives.t.lo \
+	std/regex/internal/backtracking.t.lo \
+	std/regex/internal/generator.t.lo std/regex/internal/ir.t.lo \
+	std/regex/internal/kickstart.t.lo \
+	std/regex/internal/parser.t.lo std/regex/internal/tests.t.lo \
+	std/regex/internal/thompson.t.lo std/regex/package.t.lo \
+	std/signals.t.lo std/socket.t.lo std/stdint.t.lo \
+	std/stdio.t.lo std/string.t.lo std/system.t.lo std/traits.t.lo \
+	std/typecons.t.lo std/typetuple.t.lo std/uni.t.lo std/uri.t.lo \
+	std/utf.t.lo std/uuid.t.lo std/variant.t.lo \
+	std/windows/charset.t.lo std/windows/iunknown.t.lo \
+	std/windows/registry.t.lo std/windows/syserror.t.lo \
+	std/xml.t.lo std/zip.t.lo std/zlib.t.lo
+am__DEPENDENCIES_2 = std/c/fenv.t.lo std/c/locale.t.lo std/c/math.t.lo \
+	std/c/process.t.lo std/c/stdarg.t.lo std/c/stddef.t.lo \
+	std/c/stdio.t.lo std/c/stdlib.t.lo std/c/string.t.lo \
+	std/c/time.t.lo std/c/wcharh.t.lo
+am__DEPENDENCIES_3 = std/c/osx/socket.t.lo
+@DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3)
+am__DEPENDENCIES_5 = std/c/freebsd/socket.t.lo
+@DRUNTIME_OS_FREEBSD_TRUE@am__DEPENDENCIES_6 = $(am__DEPENDENCIES_5)
+am__DEPENDENCIES_7 = std/c/linux/linux.t.lo \
+	std/c/linux/linuxextern.t.lo std/c/linux/pthread.t.lo \
+	std/c/linux/socket.t.lo std/c/linux/termios.t.lo \
+	std/c/linux/tipc.t.lo
+@DRUNTIME_OS_LINUX_TRUE@am__DEPENDENCIES_8 = $(am__DEPENDENCIES_7)
+am__DEPENDENCIES_9 = std/c/windows/com.t.lo std/c/windows/stat.t.lo \
+	std/c/windows/windows.t.lo std/c/windows/winsock.t.lo
+@DRUNTIME_OS_MINGW_TRUE@am__DEPENDENCIES_10 = $(am__DEPENDENCIES_9)
+am__DEPENDENCIES_11 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
+	$(am__DEPENDENCIES_4) $(am__DEPENDENCIES_6) \
+	$(am__DEPENDENCIES_8) $(am__DEPENDENCIES_10)
+am__DEPENDENCIES_12 = $(am__DEPENDENCIES_11)
+libgphobos_t_la_DEPENDENCIES = $(am__DEPENDENCIES_12) \
 	../libdruntime/libgdruntime.la
 am__objects_15 = libgphobos_t_la-adler32.lo \
 	libgphobos_t_la-compress.lo libgphobos_t_la-crc32.lo \
@@ -265,7 +366,105 @@ am__objects_17 = adler32.$(OBJEXT) compress.$(OBJEXT) crc32.$(OBJEXT) \
 am_unittest_static_OBJECTS = ../testsuite/test_runner.$(OBJEXT) \
 	$(am__objects_18)
 unittest_static_OBJECTS = $(am_unittest_static_OBJECTS)
-unittest_static_DEPENDENCIES = $(PHOBOS_TEST_OBJECTS) \
+am__DEPENDENCIES_13 = etc/c/curl.t.o etc/c/sqlite3.t.o etc/c/zlib.t.o \
+	std/algorithm/comparison.t.o std/algorithm/internal.t.o \
+	std/algorithm/iteration.t.o std/algorithm/mutation.t.o \
+	std/algorithm/package.t.o std/algorithm/searching.t.o \
+	std/algorithm/setops.t.o std/algorithm/sorting.t.o \
+	std/array.t.o std/ascii.t.o std/base64.t.o std/bigint.t.o \
+	std/bitmanip.t.o std/compiler.t.o std/complex.t.o \
+	std/concurrency.t.o std/container/array.t.o \
+	std/container/binaryheap.t.o std/container/dlist.t.o \
+	std/container/package.t.o std/container/rbtree.t.o \
+	std/container/slist.t.o std/container/util.t.o std/conv.t.o \
+	std/csv.t.o std/datetime/date.t.o std/datetime/interval.t.o \
+	std/datetime/package.t.o std/datetime/stopwatch.t.o \
+	std/datetime/systime.t.o std/datetime/timezone.t.o \
+	std/demangle.t.o std/digest/crc.t.o std/digest/digest.t.o \
+	std/digest/hmac.t.o std/digest/md.t.o \
+	std/digest/murmurhash.t.o std/digest/package.t.o \
+	std/digest/ripemd.t.o std/digest/sha.t.o std/encoding.t.o \
+	std/exception.t.o \
+	std/experimental/allocator/building_blocks/affix_allocator.t.o \
+	std/experimental/allocator/building_blocks/allocator_list.t.o \
+	std/experimental/allocator/building_blocks/bitmapped_block.t.o \
+	std/experimental/allocator/building_blocks/bucketizer.t.o \
+	std/experimental/allocator/building_blocks/fallback_allocator.t.o \
+	std/experimental/allocator/building_blocks/free_list.t.o \
+	std/experimental/allocator/building_blocks/free_tree.t.o \
+	std/experimental/allocator/building_blocks/kernighan_ritchie.t.o \
+	std/experimental/allocator/building_blocks/null_allocator.t.o \
+	std/experimental/allocator/building_blocks/package.t.o \
+	std/experimental/allocator/building_blocks/quantizer.t.o \
+	std/experimental/allocator/building_blocks/region.t.o \
+	std/experimental/allocator/building_blocks/scoped_allocator.t.o \
+	std/experimental/allocator/building_blocks/segregator.t.o \
+	std/experimental/allocator/building_blocks/stats_collector.t.o \
+	std/experimental/allocator/common.t.o \
+	std/experimental/allocator/gc_allocator.t.o \
+	std/experimental/allocator/mallocator.t.o \
+	std/experimental/allocator/mmap_allocator.t.o \
+	std/experimental/allocator/package.t.o \
+	std/experimental/allocator/showcase.t.o \
+	std/experimental/allocator/typed.t.o \
+	std/experimental/checkedint.t.o \
+	std/experimental/logger/core.t.o \
+	std/experimental/logger/filelogger.t.o \
+	std/experimental/logger/multilogger.t.o \
+	std/experimental/logger/nulllogger.t.o \
+	std/experimental/logger/package.t.o \
+	std/experimental/typecons.t.o std/file.t.o std/format.t.o \
+	std/functional.t.o std/getopt.t.o std/internal/cstring.t.o \
+	std/internal/digest/sha_SSSE3.t.o \
+	std/internal/math/biguintcore.t.o \
+	std/internal/math/biguintnoasm.t.o \
+	std/internal/math/biguintx86.t.o \
+	std/internal/math/errorfunction.t.o \
+	std/internal/math/gammafunction.t.o \
+	std/internal/scopebuffer.t.o std/internal/test/dummyrange.t.o \
+	std/internal/test/range.t.o std/internal/test/uda.t.o \
+	std/internal/unicode_comp.t.o std/internal/unicode_decomp.t.o \
+	std/internal/unicode_grapheme.t.o \
+	std/internal/unicode_norm.t.o std/internal/unicode_tables.t.o \
+	std/internal/windows/advapi32.t.o std/json.t.o std/math.t.o \
+	std/mathspecial.t.o std/meta.t.o std/mmfile.t.o \
+	std/net/curl.t.o std/net/isemail.t.o std/numeric.t.o \
+	std/outbuffer.t.o std/parallelism.t.o std/path.t.o \
+	std/process.t.o std/random.t.o std/range/interfaces.t.o \
+	std/range/package.t.o std/range/primitives.t.o \
+	std/regex/internal/backtracking.t.o \
+	std/regex/internal/generator.t.o std/regex/internal/ir.t.o \
+	std/regex/internal/kickstart.t.o std/regex/internal/parser.t.o \
+	std/regex/internal/tests.t.o std/regex/internal/thompson.t.o \
+	std/regex/package.t.o std/signals.t.o std/socket.t.o \
+	std/stdint.t.o std/stdio.t.o std/string.t.o std/system.t.o \
+	std/traits.t.o std/typecons.t.o std/typetuple.t.o std/uni.t.o \
+	std/uri.t.o std/utf.t.o std/uuid.t.o std/variant.t.o \
+	std/windows/charset.t.o std/windows/iunknown.t.o \
+	std/windows/registry.t.o std/windows/syserror.t.o std/xml.t.o \
+	std/zip.t.o std/zlib.t.o
+am__DEPENDENCIES_14 = std/c/fenv.t.o std/c/locale.t.o std/c/math.t.o \
+	std/c/process.t.o std/c/stdarg.t.o std/c/stddef.t.o \
+	std/c/stdio.t.o std/c/stdlib.t.o std/c/string.t.o \
+	std/c/time.t.o std/c/wcharh.t.o
+am__DEPENDENCIES_15 = std/c/osx/socket.t.o
+@DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_16 = $(am__DEPENDENCIES_15)
+am__DEPENDENCIES_17 = std/c/freebsd/socket.t.o
+@DRUNTIME_OS_FREEBSD_TRUE@am__DEPENDENCIES_18 =  \
+@DRUNTIME_OS_FREEBSD_TRUE@	$(am__DEPENDENCIES_17)
+am__DEPENDENCIES_19 = std/c/linux/linux.t.o \
+	std/c/linux/linuxextern.t.o std/c/linux/pthread.t.o \
+	std/c/linux/socket.t.o std/c/linux/termios.t.o \
+	std/c/linux/tipc.t.o
+@DRUNTIME_OS_LINUX_TRUE@am__DEPENDENCIES_20 = $(am__DEPENDENCIES_19)
+am__DEPENDENCIES_21 = std/c/windows/com.t.o std/c/windows/stat.t.o \
+	std/c/windows/windows.t.o std/c/windows/winsock.t.o
+@DRUNTIME_OS_MINGW_TRUE@am__DEPENDENCIES_22 = $(am__DEPENDENCIES_21)
+am__DEPENDENCIES_23 = $(am__DEPENDENCIES_13) $(am__DEPENDENCIES_14) \
+	$(am__DEPENDENCIES_16) $(am__DEPENDENCIES_18) \
+	$(am__DEPENDENCIES_20) $(am__DEPENDENCIES_22)
+am__DEPENDENCIES_24 = $(am__DEPENDENCIES_23)
+unittest_static_DEPENDENCIES = $(am__DEPENDENCIES_24) \
 	../libdruntime/libgdruntime.la
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp =
@@ -314,8 +513,6 @@ DCFG_HAVE_LIBATOMIC = @DCFG_HAVE_LIBATOMIC@
 DCFG_MINFO_BRACKETING = @DCFG_MINFO_BRACKETING@
 DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
 DEFS = @DEFS@
-DFLAGS = @DFLAGS@
-DFLAGSX = @DFLAGSX@
 DRUNTIME_SOVERSION = @DRUNTIME_SOVERSION@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
@@ -326,6 +523,8 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 GDC = @GDC@
+GDCFLAGS = @GDCFLAGS@
+GDCFLAGSX = @GDCFLAGSX@
 GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -493,15 +692,8 @@ ALL_PHOBOS_COMPILE_DSOURCES = $(PHOBOS_DSOURCES) \
 	$(PHOBOS_DSOURCES_STDC) $(am__append_1) $(am__append_2) \
 	$(am__append_3) $(am__append_4)
 ALL_PHOBOS_SOURCES = $(ALL_PHOBOS_COMPILE_DSOURCES)
-REAL_PHOBOS_TEST_LOBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.lo)
-REAL_PHOBOS_TEST_OBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.o)
-# Workaround issue #
-PHOBOS_TEST_OBJECTS = $(filter-out std/net/curl.t.o std/base64.t.o, \
-    $(REAL_PHOBOS_TEST_OBJECTS))
-
-PHOBOS_TEST_LOBJECTS = $(filter-out std/net/curl.t.lo std/base64.t.lo, \
-    $(REAL_PHOBOS_TEST_LOBJECTS))
-
+PHOBOS_TEST_LOBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.lo)
+PHOBOS_TEST_OBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.o)
 @DRUNTIME_ZLIB_SYSTEM_FALSE@ZLIB_SRC = $(ZLIB_CSOURCES)
 
 # Main library build definitions
@@ -1783,17 +1975,17 @@ uninstall-am: uninstall-toolexeclibDATA \
 
 # Compile D into normal object files
 .d.o:
-	$(GDC) $(DFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
+	$(GDC) $(GDCFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
 # Compile D sources with libtool
 .d.lo:
-	$(LTDCOMPILE) $(DFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
+	$(LTDCOMPILE) $(GDCFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
 # Unittest rules. Unfortunately we can't use _DFLAGS in automake without
 # explicit D support, so use this hack.
 # Compile D sources with libtool and test flags
 %.t.lo : %.d
-	$(LTDCOMPILE) $(DFLAGSX) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
+	$(LTDCOMPILE) $(GDCFLAGSX) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
 # Compile objects for static linking with test flags
 # Automake breaks empty rules, so use the shell NOP :

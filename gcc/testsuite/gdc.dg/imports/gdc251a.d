@@ -1,6 +1,6 @@
 module imports.gdc251a;
 
 import imports.gdc251b;
-import gdc251;
+import compilable;
 
 C251 config;
