@@ -17,27 +17,27 @@ class FuncDeclaration;
 
 // MARK: ObjcSelector
 
-ObjcSelector::ObjcSelector(const char *sv, size_t len, size_t pcount)
+ObjcSelector::ObjcSelector(const char *, size_t, size_t)
 {
     printf("Should never be called when D_OBJC is false\n");
     assert(0);
 }
 
-ObjcSelector *ObjcSelector::lookup(const char *s)
-{
-    printf("Should never be called when D_OBJC is false\n");
-    assert(0);
-    return NULL;
-}
-
-ObjcSelector *ObjcSelector::lookup(const char *s, size_t len, size_t pcount)
+ObjcSelector *ObjcSelector::lookup(const char *)
 {
     printf("Should never be called when D_OBJC is false\n");
     assert(0);
     return NULL;
 }
 
-ObjcSelector *ObjcSelector::create(FuncDeclaration *fdecl)
+ObjcSelector *ObjcSelector::lookup(const char *, size_t, size_t)
+{
+    printf("Should never be called when D_OBJC is false\n");
+    assert(0);
+    return NULL;
+}
+
+ObjcSelector *ObjcSelector::create(FuncDeclaration *)
 {
     printf("Should never be called when D_OBJC is false\n");
     assert(0);

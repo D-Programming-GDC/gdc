@@ -23,12 +23,12 @@ AC_DEFUN([PHOBOS_ABS_SRCDIR], [
 
 # WITH_LOCAL_DRUNTIME(CALL, EXTRAFLAGS)
 # -------------------------------------
-# Execute CALL with DFLAGS adjusted to use the local druntime includes.
-# Flags contains extra arguments to append to DFLAGS (e.g. -nophoboslib).
+# Execute CALL with GDCFLAGS adjusted to use the local druntime includes.
+# Flags contains extra arguments to append to GDCFLAGS (e.g. -nophoboslib).
 AC_DEFUN([WITH_LOCAL_DRUNTIME], [
   AC_REQUIRE([PHOBOS_ABS_SRCDIR])
-  gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime $2 $DFLAGS"
+  gdc_save_DFLAGS=$GDCFLAGS
+  GDCFLAGS="-fno-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime $2 $GDCFLAGS"
   $1
-  DFLAGS=$gdc_save_DFLAGS
+  GDCFLAGS=$gdc_save_DFLAGS
 ])

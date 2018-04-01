@@ -1,4 +1,4 @@
-module imports.gdc231a;
+module imports.gdc231;
 
 interface ImplementorIF
 {
@@ -14,7 +14,7 @@ template ImplementorT()
     }
 }
 
-class Widget : ImplementorIF
+class Widget231 : ImplementorIF
 {
     mixin ImplementorT;
     void* getStruct()
