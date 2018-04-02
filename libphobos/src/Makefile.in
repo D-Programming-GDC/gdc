@@ -612,6 +612,8 @@ mkdir_p = @mkdir_p@
 multi_basedir = @multi_basedir@
 oldincludedir = @oldincludedir@
 pdfdir = @pdfdir@
+phobos_compiler_pic_flag = @phobos_compiler_pic_flag@
+phobos_compiler_shared_flag = @phobos_compiler_shared_flag@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
@@ -680,6 +682,9 @@ D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I $(srcdir) \
 
 # C flags for zlib compilation
 AM_CFLAGS = @DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
+
+# D flags for compilation
+AM_DFLAGS = $(phobos_compiler_pic_flag)
 
 # Install all D files
 ALL_PHOBOS_INSTALL_DSOURCES = $(PHOBOS_DSOURCES) $(PHOBOS_DSOURCES_STDC) \
