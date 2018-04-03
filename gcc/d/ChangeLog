@@ -1,3 +1,11 @@
+2018-04-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (doing_semantic_analysis_p): New variable.
+	(d_parse_file): Set when in semantic pass.
+	* d-tree.h (doing_semantic_analysis_p): Add declaration.
+	* intrinsics.cc (maybe_expand_intrinsic): Test for
+	doing_semantic_analysis_p.
+
 2018-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (stabilize_expr): Move modify expression rewrite...
