@@ -5,4 +5,4 @@
 #
 
 %rename lib liborig_gdc_renamed
-*lib: %(liborig_gdc_renamed) @SPEC_PHOBOS_DEPS@
+*lib: @SPEC_PHOBOS_DEPS@ %(liborig_gdc_renamed)
