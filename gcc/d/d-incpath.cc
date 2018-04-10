@@ -21,42 +21,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "dfrontend/globals.h"
 
-#include "d-system.h"
-#include "options.h"
 #include "cppdefault.h"
-
-#include "d-tree.h"
-
-/* Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
-   append all the names to the import search path.  */
-
-static void
-add_environment_paths (const char *env_var)
-{
-  char *q = getenv (env_var);
-  char *path;
-
-  if (!q)
-    return;
-
-  for (char *p = q; *q; p = q + 1)
-    {
-      q = p;
-      while (*q != 0 && *q != PATH_SEPARATOR)
-	q++;
-
-      if (p == q)
-	path = xstrdup (".");
-      else
-	{
-	  path = XNEWVEC (char, q - p + 1);
-	  memcpy (path, p, q - p);
-	  path[q - p] = '\0';
-	}
-
-      global.params.imppath->push (path);
-    }
-}
 
 /* Look for directories that start with the standard prefix.
    "Translate" them, i.e. replace /usr/local/lib/gcc with
@@ -204,9 +169,6 @@ add_import_paths (const char *iprefix, const char *imultilib, bool stdinc)
 	  global.params.imppath->shift (path);
 	}
     }
-
-  /* Language-dependent environment variables may add to the include chain.  */
-  add_environment_paths ("D_IMPORT_PATH");
 
   /* Add import search paths  */
   if (global.params.imppath)

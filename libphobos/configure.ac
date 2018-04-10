@@ -118,15 +118,15 @@ AC_SUBST([DRUNTIME_SOVERSION])
 AC_SUBST([PHOBOS_SOVERSION])
 
 # Set default flags (after DRUNTIME_WERROR!)
-if test -z "$DFLAGS"; then
-    DFLAGS="-Wall $WERROR_FLAG -frelease -O2"
+if test -z "$GDCFLAGS"; then
+    GDCFLAGS="-Wall $WERROR_FLAG -frelease -O2"
 fi
-AC_SUBST(DFLAGS)
+AC_SUBST(GDCFLAGS)
 
-if test -z "$DFLAGSX"; then
-    DFLAGSX="-Wall $WERROR_FLAG -fno-release -funittest"
+if test -z "$GDCFLAGSX"; then
+    GDCFLAGSX="-Wall $WERROR_FLAG -fno-release -funittest"
 fi
-AC_SUBST(DFLAGSX)
+AC_SUBST(GDCFLAGSX)
 
 # Sanity check for the cross-compilation case:
 AC_CHECK_HEADER(stdio.h,:,

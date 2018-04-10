@@ -32,54 +32,17 @@ real_t CTFloat::one;
 real_t CTFloat::minusone;
 real_t CTFloat::half;
 
-
-/* Return conversion of signed integer value D to longdouble.
-   Conversion is done at precision mode of TYPE.  */
+/* Truncate longdouble to the highest precision supported by target.  */
 
 longdouble
-longdouble::from_int (Type *type, int64_t d)
+longdouble::normalize (void)
 {
-  tree t = build_ctype (type);
-  double_int cst = double_int::from_shwi (d);
-  REAL_VALUE_FROM_INT (rv (), cst.low, cst.high, TYPE_MODE (t));
+  const machine_mode mode = TYPE_MODE (long_double_type_node);
+  real_convert (&this->rv (), mode, &this->rv ());
   return *this;
 }
 
-/* Return conversion of unsigned integer value D to longdouble.
-   Conversion is done at precision mode of TYPE.  */
-
-longdouble
-longdouble::from_uint (Type *type, uint64_t d)
-{
-  tree t = build_ctype (type);
-  double_int cst = double_int::from_uhwi (d);
-  REAL_VALUE_FROM_UNSIGNED_INT (rv (), cst.low, cst.high, TYPE_MODE (t));
-  return *this;
-}
-
-/* Return conversion of longdouble value to int64_t.
-   Conversion is done at precision mode of TYPE.  */
-
-int64_t
-longdouble::to_int (Type *type) const
-{
-  if (REAL_VALUE_ISNAN (this->rv ()))
-    return 0;
-
-  tree t = fold_build1 (FIX_TRUNC_EXPR, build_ctype (type),
-		       build_float_cst (*this, Type::tfloat80));
-  return TREE_INT_CST_LOW (t);
-}
-
-/* Same as longdouble::to_int, but returns a uint64_t.  */
-
-uint64_t
-longdouble::to_uint (Type *type) const
-{
-  return (uint64_t) to_int (type);
-}
-
-/* Conversion routines between longdouble and real_value.  */
+/* Assign a real_value to a longdouble type.  */
 
 void
 longdouble::set (real_value& d)
@@ -87,102 +50,51 @@ longdouble::set (real_value& d)
   real_convert (&this->rv (), TYPE_MODE (long_double_type_node), &d);
 }
 
-longdouble::operator
-real_value& (void)
-{
-  return this->rv ();
-}
-
 /* Conversion routines between longdouble and integer types.  */
-
-void
-longdouble::set (int8_t d)
-{
-  from_int (Type::tfloat32, d);
-}
-
-void
-longdouble::set (int16_t d)
-{
-  from_int (Type::tfloat32, d);
-}
 
 void
 longdouble::set (int32_t d)
 {
-  from_int (Type::tfloat64, d);
+  double_int cst = double_int::from_shwi (d);
+  REAL_VALUE_FROM_INT (this->rv (), cst.low, cst.high, TYPE_MODE (double_type_node));
 }
 
 void
 longdouble::set (int64_t d)
 {
-  from_int (Type::tfloat80, d);
+  double_int cst = double_int::from_shwi (d);
+  REAL_VALUE_FROM_INT (this->rv (), cst.low, cst.high,
+    TYPE_MODE (long_double_type_node));
 }
 
-longdouble::operator int8_t (void)
+int64_t
+longdouble::to_int (void) const
 {
-  return to_int (Type::tint8);
-}
-
-longdouble::operator int16_t (void)
-{
-  return to_int (Type::tint16);
-}
-
-longdouble::operator int32_t (void)
-{
-  return to_int (Type::tint32);
-}
-
-longdouble::operator int64_t (void)
-{
-  return to_int (Type::tint64);
+  return real_to_integer (&this->rv ());
 }
 
 /* Unsigned variants of the same conversion routines.  */
 
 void
-longdouble::set (uint8_t d)
-{
-  from_uint (Type::tfloat32, d);
-}
-
-void
-longdouble::set (uint16_t d)
-{
-  from_uint (Type::tfloat32, d);
-}
-
-void
 longdouble::set (uint32_t d)
 {
-  from_uint (Type::tfloat64, d);
+  double_int cst = double_int::from_uhwi (d);
+  REAL_VALUE_FROM_UNSIGNED_INT (this->rv (), cst.low, cst.high,
+    TYPE_MODE (double_type_node));
 }
 
 void
 longdouble::set (uint64_t d)
 {
-  from_uint (Type::tfloat80, d);
+  double_int cst = double_int::from_uhwi (d);
+  REAL_VALUE_FROM_UNSIGNED_INT (this->rv (), cst.low, cst.high,
+    TYPE_MODE (long_double_type_node));
 }
 
-longdouble::operator uint8_t (void)
+uint64_t
+longdouble::to_uint (void) const
 {
-  return to_uint (Type::tuns8);
-}
-
-longdouble::operator uint16_t (void)
-{
-  return to_uint (Type::tuns16);
-}
-
-longdouble::operator uint32_t (void)
-{
-  return to_uint (Type::tuns32);
-}
-
-longdouble::operator uint64_t (void)
-{
-  return to_uint (Type::tuns64);
+  return (uint64_t)real_to_integer (&this->rv ());
 }
 
 /* For conversion between boolean, only need to check if is zero.  */
@@ -193,8 +105,8 @@ longdouble::set (bool d)
   this->rv () = (d == false) ? dconst0 : dconst1;
 }
 
-longdouble::operator
-bool (void)
+bool
+longdouble::to_bool (void) const
 {
   return this->rv ().cl != rvc_zero;
 }
@@ -202,47 +114,47 @@ bool (void)
 /* Overload numeric operators for longdouble types.  */
 
 longdouble
-longdouble::operator + (const longdouble& r)
+longdouble::add (const longdouble& r) const
 {
-  real_value x;
-  real_arithmetic (&x, PLUS_EXPR, &this->rv (), &r.rv ());
-  return ldouble (x);
+  longdouble x;
+  real_arithmetic (&x.rv (), PLUS_EXPR, &this->rv (), &r.rv ());
+  return x.normalize ();
 }
 
 longdouble
-longdouble::operator - (const longdouble& r)
+longdouble::sub (const longdouble& r) const
 {
-  real_value x;
-  real_arithmetic (&x, MINUS_EXPR, &this->rv (), &r.rv ());
-  return ldouble (x);
+  longdouble x;
+  real_arithmetic (&x.rv (), MINUS_EXPR, &this->rv (), &r.rv ());
+  return x.normalize ();
 }
 
 longdouble
-longdouble::operator * (const longdouble& r)
+longdouble::mul (const longdouble& r) const
 {
-  real_value x;
-  real_arithmetic (&x, MULT_EXPR, &this->rv (), &r.rv ());
-  return ldouble (x);
+  longdouble x;
+  real_arithmetic (&x.rv (), MULT_EXPR, &this->rv (), &r.rv ());
+  return x.normalize ();
 }
 
 longdouble
-longdouble::operator / (const longdouble& r)
+longdouble::div (const longdouble& r) const
 {
-  real_value x;
-  real_arithmetic (&x, RDIV_EXPR, &this->rv (), &r.rv ());
-  return ldouble (x);
+  longdouble x;
+  real_arithmetic (&x.rv (), RDIV_EXPR, &this->rv (), &r.rv ());
+  return x.normalize ();
 }
 
 longdouble
-longdouble::operator % (const longdouble& r)
+longdouble::mod (const longdouble& r) const
 {
-  real_value q, x;
+  longdouble x;
+  real_value q;
 
   if (r.rv ().cl == rvc_zero || REAL_VALUE_ISINF (this->rv ()))
     {
-      real_value rvt;
-      real_nan (&rvt, "", 1, TYPE_MODE (long_double_type_node));
-      return ldouble (rvt);
+      real_nan (&x.rv (), "", 1, TYPE_MODE (long_double_type_node));
+      return x;
     }
 
   if (this->rv ().cl == rvc_zero)
@@ -255,52 +167,35 @@ longdouble::operator % (const longdouble& r)
   real_arithmetic (&q, RDIV_EXPR, &this->rv (), &r.rv ());
   real_arithmetic (&q, FIX_TRUNC_EXPR, &q, NULL);
   real_arithmetic (&q, MULT_EXPR, &q, &r.rv ());
-  real_arithmetic (&x, MINUS_EXPR, &this->rv (), &q);
+  real_arithmetic (&x.rv (), MINUS_EXPR, &this->rv (), &q);
 
-  return ldouble (x);
+  return x.normalize ();
 }
 
 longdouble
-longdouble::operator -(void)
+longdouble::neg (void) const
 {
-  real_value x = real_value_negate (&this->rv ());
-  return ldouble (x);
+  longdouble x;
+  real_arithmetic (&x.rv (), NEGATE_EXPR, &this->rv (), NULL);
+  return x.normalize ();
 }
 
 /* Overload equality operators for longdouble types.  */
 
-bool
-longdouble::operator < (const longdouble& r)
+int
+longdouble::cmp (const longdouble& r) const
 {
-  return real_compare (LT_EXPR, &this->rv (), &r.rv ());
+  if (real_compare (LT_EXPR, &this->rv (), &r.rv ()))
+    return -1;
+
+  if (real_compare (GT_EXPR, &this->rv (), &r.rv ()))
+    return 1;
+
+  return 0;
 }
 
-bool
-longdouble::operator > (const longdouble& r)
-{
-  return real_compare (GT_EXPR, &this->rv (), &r.rv ());
-}
-
-bool
-longdouble::operator <= (const longdouble& r)
-{
-  return real_compare (LE_EXPR, &this->rv (), &r.rv ());
-}
-
-bool
-longdouble::operator >= (const longdouble& r)
-{
-  return real_compare (GE_EXPR, &this->rv (), &r.rv ());
-}
-
-bool
-longdouble::operator == (const longdouble& r)
+int
+longdouble::equals (const longdouble& r) const
 {
   return real_compare (EQ_EXPR, &this->rv (), &r.rv ());
-}
-
-bool
-longdouble::operator != (const longdouble& r)
-{
-  return real_compare (NE_EXPR, &this->rv (), &r.rv ());
 }
