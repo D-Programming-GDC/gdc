@@ -38,8 +38,6 @@ along with GCC; see the file COPYING3.  If not see
 /* Implements the Global interface defined by the frontend.
    Used for managing the state of the current compilation.  */
 
-Global global;
-
 void
 Global::_init (void)
 {

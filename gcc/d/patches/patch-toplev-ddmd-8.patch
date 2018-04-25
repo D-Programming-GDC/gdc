@@ -1,0 +1,210 @@
+Index: gcc-8-20180422/config/acx.m4
+===================================================================
+--- gcc-8-20180422.orig/config/acx.m4
++++ gcc-8-20180422/config/acx.m4
+@@ -420,6 +420,18 @@ else
+ fi
+ ])
+ 
++# Test for D.
++AC_DEFUN([ACX_PROG_GDC],
++[AC_REQUIRE([AC_CHECK_TOOL_PREFIX])
++AC_REQUIRE([AC_PROG_CC])
++AC_CHECK_TOOL(GDC, gdc, no)
++if test "x$GDC" != xno; then
++  have_gdc=yes
++else
++  have_gdc=no
++fi
++])
++
+ dnl 'make compare' can be significantly faster, if cmp itself can
+ dnl skip bytes instead of using tail.  The test being performed is
+ dnl "if cmp --ignore-initial=2 t1 t2 && ! cmp --ignore-initial=1 t1 t2"
+Index: gcc-8-20180422/configure
+===================================================================
+--- gcc-8-20180422.orig/configure
++++ gcc-8-20180422/configure
+@@ -662,6 +662,7 @@ extra_mpfr_configure_flags
+ gmpinc
+ gmplibs
+ do_compare
++GDC
+ GNATMAKE
+ GNATBIND
+ ac_ct_CXX
+@@ -5268,6 +5269,106 @@ else
+   have_gnat=no
+ fi
+ 
++
++
++if test -n "$ac_tool_prefix"; then
++  # Extract the first word of "${ac_tool_prefix}gdc", so it can be a program name with args.
++set dummy ${ac_tool_prefix}gdc; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if test "${ac_cv_prog_GDC+set}" = set; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$GDC"; then
++  ac_cv_prog_GDC="$GDC" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++    ac_cv_prog_GDC="${ac_tool_prefix}gdc"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++GDC=$ac_cv_prog_GDC
++if test -n "$GDC"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GDC" >&5
++$as_echo "$GDC" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++
++fi
++if test -z "$ac_cv_prog_GDC"; then
++  ac_ct_GDC=$GDC
++  # Extract the first word of "gdc", so it can be a program name with args.
++set dummy gdc; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if test "${ac_cv_prog_ac_ct_GDC+set}" = set; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$ac_ct_GDC"; then
++  ac_cv_prog_ac_ct_GDC="$ac_ct_GDC" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++    ac_cv_prog_ac_ct_GDC="gdc"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++ac_ct_GDC=$ac_cv_prog_ac_ct_GDC
++if test -n "$ac_ct_GDC"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_ct_GDC" >&5
++$as_echo "$ac_ct_GDC" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++  if test "x$ac_ct_GDC" = x; then
++    GDC="no"
++  else
++    case $cross_compiling:$ac_tool_warned in
++yes:)
++{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
++$as_echo "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
++ac_tool_warned=yes ;;
++esac
++    GDC=$ac_ct_GDC
++  fi
++else
++  GDC="$ac_cv_prog_GDC"
++fi
++
++if test "x$GDC" != xno; then
++  have_gdc=yes
++else
++  have_gdc=no
++fi
++
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking how to compare bootstrapped objects" >&5
+ $as_echo_n "checking how to compare bootstrapped objects... " >&6; }
+ if test "${gcc_cv_prog_cmp_skip+set}" = set; then :
+@@ -6293,6 +6394,23 @@ $as_echo "$as_me: WARNING: GNAT is requi
+             ;;
+         esac
+ 
++        # Disable D if no preexisting GDC is available.
++        case ${add_this_lang}:${language}:${have_gdc} in
++          yes:d:no)
++            # Specifically requested language; tell them.
++            as_fn_error "GDC is required to build $language" "$LINENO" 5
++           ;;
++          all:d:no)
++            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: GDC is required to build $language" >&5
++$as_echo "$as_me: WARNING: GDC is required to build $language" >&2;}
++            add_this_lang=unsupported
++            ;;
++          *:d:no)
++            # Silently disable.
++            add_this_lang=unsupported
++            ;;
++        esac
++
+         # Disable jit if -enable-host-shared not specified
+         case ${add_this_lang}:${language}:${host_shared} in
+           yes:jit:no)
+@@ -6660,7 +6778,7 @@ fi
+ # Check whether --with-gcc-major-version-only was given.
+ if test "${with_gcc_major_version_only+set}" = set; then :
+   withval=$with_gcc_major_version_only; if test x$with_gcc_major_version_only = xyes ; then
+-        get_gcc_base_ver="sed -e 's/^\([0-9]*\).*\$\$/\1/'"
++        get_gcc_base_ver="sed -e 's/^\([0-9]*\).*/\1/'"
+       fi
+ 
+ fi
+Index: gcc-8-20180422/configure.ac
+===================================================================
+--- gcc-8-20180422.orig/configure.ac
++++ gcc-8-20180422/configure.ac
+@@ -1315,6 +1315,7 @@ int main() {}],
+ fi
+ 
+ ACX_PROG_GNAT
++ACX_PROG_GDC
+ ACX_PROG_CMP_IGNORE_INITIAL
+ 
+ AC_ARG_ENABLE([bootstrap],
+@@ -1960,6 +1961,22 @@ if test -d ${srcdir}/gcc; then
+             # Silently disable.
+             add_this_lang=unsupported
+             ;;
++        esac
++
++        # Disable D if no preexisting GDC is available.
++        case ${add_this_lang}:${language}:${have_gdc} in
++          yes:d:no)
++            # Specifically requested language; tell them.
++            AC_MSG_ERROR([GDC is required to build $language])
++           ;;
++          all:d:no)
++            AC_MSG_WARN([GDC is required to build $language])
++            add_this_lang=unsupported
++            ;;
++          *:d:no)
++            # Silently disable.
++            add_this_lang=unsupported
++            ;;
+         esac
+ 
+         # Disable jit if -enable-host-shared not specified

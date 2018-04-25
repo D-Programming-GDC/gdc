@@ -2625,6 +2625,7 @@ public:
 	/* Array type string length includes the null terminator.  */
 	dinteger_t length = (e->len * e->sz) + 1;
 	tree value = build_string (length, string);
+	((char*)TREE_STRING_POINTER (value))[length - 1] = '\0';
 	TREE_TYPE (value) = make_array_type (tb->nextOf (), length);
 	value = build_address (value);
 
