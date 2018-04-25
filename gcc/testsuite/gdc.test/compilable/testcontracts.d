@@ -153,22 +153,3 @@ class Z17502
         return p;
     }
 }
-
-/***************************************************/
-// https://issues.dlang.org/show_bug.cgi?id=17893
-
-final class Foo17893(T)
-{
-    extern(C) void maythrow();
-
-    void bar()
-    in
-    {
-        maythrow();
-    }
-    body
-    {
-    }
-}
-
-Foo17893!int foo17893;
