@@ -532,6 +532,27 @@ build_unary_op (tree_code code, tree type, tree arg)
       return compound_expr (TREE_OPERAND (arg, 0), result);
     }
 
+  if (code == ADDR_EXPR)
+    {
+      /* Can't take the address of a manifest constant, get the real value of
+	 the decl instead.  */
+      if (TREE_CODE (arg) == CONST_DECL)
+	arg = DECL_INITIAL (arg);
+
+      /* Some expression lowering may request an address of a compile-time
+	 constant.  Make sure it is assigned to a location we can reference.  */
+      if (CONSTANT_CLASS_P (arg) && TREE_CODE (arg) != STRING_CST)
+	arg = force_target_expr (arg);
+
+      d_mark_addressable (arg);
+      tree result = build_fold_addr_expr_with_type_loc (input_location, arg,
+							type);
+      if (TREE_CODE (result) == ADDR_EXPR)
+	TREE_NO_TRAMPOLINE (result) = 1;
+
+      return result;
+    }
+
   return fold_build1_loc (input_location, code, type, arg);
 }
 
@@ -624,25 +645,7 @@ build_address (tree exp)
   else
     ptrtype = build_pointer_type (type);
 
-  /* Maybe rewrite: &(e1, e2) => (e1, &e2).  */
-  tree init = stabilize_expr (&exp);
-
-  /* Can't take the address of a manifest constant, instead use its value.  */
-  if (TREE_CODE (exp) == CONST_DECL)
-    exp = DECL_INITIAL (exp);
-
-  /* Some expression lowering may request an address of a compile-time constant.
-     Make sure it is assigned to a location we can reference.  */
-  if (CONSTANT_CLASS_P (exp) && TREE_CODE (exp) != STRING_CST)
-    exp = force_target_expr (exp);
-
-  d_mark_addressable (exp);
-  exp = build_fold_addr_expr_with_type_loc (input_location, exp, ptrtype);
-
-  if (TREE_CODE (exp) == ADDR_EXPR)
-    TREE_NO_TRAMPOLINE (exp) = 1;
-
-  return compound_expr (init, exp);
+  return build_unary_op (ADDR_EXPR, ptrtype, exp);
 }
 
 /* Mark EXP saying that we need to be able to take the
