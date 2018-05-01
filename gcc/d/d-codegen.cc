@@ -517,6 +517,24 @@ d_save_expr (tree exp)
   return exp;
 }
 
+/* Build an unary op CODE to the expression ARG.  If the expression can be
+   broken down so that the operation is applied only to the part whose value we
+   care about, then handle lowering to keep lvalues trivial.  */
+
+static tree
+build_unary_op (tree_code code, tree type, tree arg)
+{
+  /* Given ((e1, ...), eN):
+     Treat the last RHS 'eN' expression as the lvalue part.  */
+  if (TREE_CODE (arg) == COMPOUND_EXPR)
+    {
+      tree result = build_unary_op (code, type, TREE_OPERAND (arg, 1));
+      return compound_expr (TREE_OPERAND (arg, 0), result);
+    }
+
+  return fold_build1_loc (input_location, code, type, arg);
+}
+
 /* VALUEP is an expression we want to pre-evaluate or perform a computation on.
    The expression returned by this function is the part whose value we don't
    care about, storing the value in VALUEP.  Callers must ensure that the
@@ -1360,11 +1378,7 @@ build_nop (tree type, tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  /* Maybe rewrite: cast(TYPE)(e1, e2) => (e1, cast(TYPE) e2)  */
-  tree init = stabilize_expr (&exp);
-  exp = fold_build1_loc (input_location, NOP_EXPR, type, exp);
-
-  return compound_expr (init, exp);
+  return build_unary_op (NOP_EXPR, type, exp);
 }
 
 /* Return EXP to be viewed as being another type TYPE.  Same as build_nop,
