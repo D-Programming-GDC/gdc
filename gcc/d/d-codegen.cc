@@ -562,6 +562,21 @@ build_unary_op (tree_code code, tree type, tree arg)
    returned expression is evaluated before VALUEP.  */
 
 tree
+stabilize_expr2 (tree *valuep)
+{
+  tree expr = *valuep;
+
+  /* No side effects or expression has no value.  */
+  if (!TREE_SIDE_EFFECTS (expr) || VOID_TYPE_P (TREE_TYPE (expr)))
+    return NULL_TREE;
+
+  tree init = force_target_expr (expr);
+  *valuep = TARGET_EXPR_SLOT (init);
+
+  return init;
+}
+
+tree
 stabilize_expr (tree *valuep)
 {
   tree expr = *valuep;
@@ -1193,6 +1208,7 @@ find_aggregate_field (tree type, tree ident, tree offset)
 
   return NULL_TREE;
 }
+
 /* Return a constructor that matches the layout of the class expression EXP.  */
 
 tree
@@ -1530,7 +1546,7 @@ indirect_ref (tree type, tree exp)
     return exp;
 
   /* Maybe rewrite: *(e1, e2) => (e1, *e2)  */
-  tree init = stabilize_expr (&exp);
+  tree init = stabilize_expr2 (&exp);
 
   if (TREE_CODE (TREE_TYPE (exp)) == REFERENCE_TYPE)
     exp = fold_build1 (INDIRECT_REF, type, exp);
@@ -1552,7 +1568,7 @@ build_deref (tree exp)
     return exp;
 
   /* Maybe rewrite: *(e1, e2) => (e1, *e2)  */
-  tree init = stabilize_expr (&exp);
+  tree init = stabilize_expr2 (&exp);
 
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (exp)));
 
