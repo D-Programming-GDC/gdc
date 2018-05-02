@@ -18,6 +18,7 @@ The master branch of this project closely follows [GCC development branch][gcc-d
 * [GCC 5.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-5)
 * [GCC 6.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-6)
 * [GCC 7.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-7)
+* [GCC 8.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-8)
 
 [home]: http://gdcproject.org
 [wiki]: http://wiki.dlang.org/GDC
