@@ -524,12 +524,28 @@ d_save_expr (tree exp)
 static tree
 build_unary_op (tree_code code, tree type, tree arg)
 {
-  /* Given ((e1, ...), eN):
-     Treat the last RHS 'eN' expression as the lvalue part.  */
+  /* Given ((e1, ...), eN), treat the last RHS 'eN' expression as the
+     lvalue part.  */
   if (TREE_CODE (arg) == COMPOUND_EXPR)
     {
       tree result = build_unary_op (code, type, TREE_OPERAND (arg, 1));
       return compound_expr (TREE_OPERAND (arg, 0), result);
+    }
+
+  /* Given (e1 = e2), (++e1), or (--e1), convert 'e1' into an lvalue.  */
+  if (TREE_CODE (arg) == MODIFY_EXPR
+      || TREE_CODE (arg) == PREINCREMENT_EXPR
+      || TREE_CODE (arg) == PREDECREMENT_EXPR)
+    {
+      if (TREE_SIDE_EFFECTS (TREE_OPERAND (arg, 0)))
+	{
+	  arg = build2 (TREE_CODE (arg), TREE_TYPE (arg),
+			stabilize_reference (TREE_OPERAND (arg, 0)),
+			TREE_OPERAND (arg, 1));
+	  gcc_unreachable ();
+	}
+      return build_unary_op (code, type,
+			     compound_expr (arg, TREE_OPERAND (arg, 0)));
     }
 
   if (code == ADDR_EXPR)
@@ -567,7 +583,8 @@ stabilize_expr2 (tree *valuep)
   tree expr = *valuep;
 
   /* No side effects or expression has no value.  */
-  if (!TREE_SIDE_EFFECTS (expr) || VOID_TYPE_P (TREE_TYPE (expr)))
+  if (!TREE_SIDE_EFFECTS (expr) || TREE_CODE (expr) == SAVE_EXPR
+      || VOID_TYPE_P (TREE_TYPE (expr)))
     return NULL_TREE;
 
   tree init = force_target_expr (expr);
@@ -1322,9 +1339,6 @@ component_ref (tree object, tree field)
 
   gcc_assert (TREE_CODE (field) == FIELD_DECL);
 
-  /* Maybe rewrite: (e1, e2).field => (e1, e2.field)  */
-  tree init = stabilize_expr (&object);
-
   /* If the FIELD is from an anonymous aggregate, generate a reference
      to the anonymous data member, and recur to find FIELD.  */
   if (ANON_AGGR_TYPE_P (DECL_CONTEXT (field)))
@@ -1334,10 +1348,8 @@ component_ref (tree object, tree field)
       object = component_ref (object, anonymous_field);
     }
 
-  tree result = fold_build3_loc (input_location, COMPONENT_REF,
-				 TREE_TYPE (field), object, field, NULL_TREE);
-
-  return compound_expr (init, result);
+  return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
+			  object, field, NULL_TREE);
 }
 
 /* Build an assignment expression of lvalue LHS from value RHS.
