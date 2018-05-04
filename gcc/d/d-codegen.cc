@@ -517,6 +517,28 @@ d_save_expr (tree exp)
   return exp;
 }
 
+/* Adjust EXPR so that it is a valid lvalue, and can be evaluated multiple times
+   if it has any side effects.  */
+
+static tree
+compound_lvalue (tree expr)
+{
+  const tree_code code = TREE_CODE (expr);
+
+  if (code == MODIFY_EXPR || code == PREINCREMENT_EXPR
+      || code == PREDECREMENT_EXPR)
+    {
+      if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 0)))
+	expr = build2 (TREE_CODE (expr), TREE_TYPE (expr),
+			 stabilize_reference (TREE_OPERAND (expr, 0)),
+			 TREE_OPERAND (expr, 1));
+
+      return compound_expr (expr, TREE_OPERAND (expr, 0));
+    }
+
+  return expr;
+}
+
 /* Build an unary op CODE to the expression ARG.  If the expression can be
    broken down so that the operation is applied only to the part whose value we
    care about, then handle lowering to keep lvalues trivial.  */
@@ -532,21 +554,7 @@ build_unary_op (tree_code code, tree type, tree arg)
       return compound_expr (TREE_OPERAND (arg, 0), result);
     }
 
-  /* Given (e1 = e2), (++e1), or (--e1), convert 'e1' into an lvalue.  */
-  if (TREE_CODE (arg) == MODIFY_EXPR
-      || TREE_CODE (arg) == PREINCREMENT_EXPR
-      || TREE_CODE (arg) == PREDECREMENT_EXPR)
-    {
-      if (TREE_SIDE_EFFECTS (TREE_OPERAND (arg, 0)))
-	{
-	  arg = build2 (TREE_CODE (arg), TREE_TYPE (arg),
-			stabilize_reference (TREE_OPERAND (arg, 0)),
-			TREE_OPERAND (arg, 1));
-	  gcc_unreachable ();
-	}
-      return build_unary_op (code, type,
-			     compound_expr (arg, TREE_OPERAND (arg, 0)));
-    }
+  arg = compound_lvalue (arg);
 
   if (code == ADDR_EXPR)
     {
@@ -586,6 +594,16 @@ stabilize_expr2 (tree *valuep)
   if (!TREE_SIDE_EFFECTS (expr) || TREE_CODE (expr) == SAVE_EXPR
       || VOID_TYPE_P (TREE_TYPE (expr)))
     return NULL_TREE;
+
+  /* Stabilize only the right hand side of compound expressions.  */
+  if (TREE_CODE (expr) == COMPOUND_EXPR)
+    {
+      tree lhs = TREE_OPERAND (expr, 0);
+      tree rhs = TREE_OPERAND (expr, 1);
+      lhs = compound_expr (lhs, stabilize_expr2 (&rhs));
+      *valuep = rhs;
+      return lhs;
+    }
 
   tree init = force_target_expr (expr);
   *valuep = TARGET_EXPR_SLOT (init);
@@ -929,12 +947,9 @@ build_struct_comparison (tree_code code, StructDeclaration *sd,
     return build_boolop (code, integer_zero_node, integer_zero_node);
 
   /* Make temporaries to prevent multiple evaluations.  */
-  tree t1init = stabilize_expr (&t1);
-  tree t2init = stabilize_expr (&t2);
+  tree t1init = stabilize_expr2 (&t1);
+  tree t2init = stabilize_expr2 (&t2);
   tree result;
-
-  t1 = d_save_expr (t1);
-  t2 = d_save_expr (t2);
 
   /* Bitwise comparison of structs not returned in memory may not work
      due to data holes loosing its zero padding upon return.
@@ -1337,6 +1352,12 @@ component_ref (tree object, tree field)
   if (error_operand_p (object) || error_operand_p (field))
     return error_mark_node;
 
+  if (TREE_CODE (object) == COMPOUND_EXPR)
+    {
+      tree result = component_ref (TREE_OPERAND (object, 1), field);
+      return compound_expr (TREE_OPERAND (object, 0), result);
+    }
+
   gcc_assert (TREE_CODE (field) == FIELD_DECL);
 
   /* If the FIELD is from an anonymous aggregate, generate a reference
@@ -1359,8 +1380,14 @@ component_ref (tree object, tree field)
 tree
 build_assign (tree_code code, tree lhs, tree rhs)
 {
-  tree init = stabilize_expr (&lhs);
-  init = compound_expr (init, stabilize_expr (&rhs));
+  /* Handle control structure constructs used as lvalues.  */
+  if (TREE_CODE (lhs) == COMPOUND_EXPR)
+    {
+      tree result = build_assign (code, TREE_OPERAND (lhs, 1), rhs);
+      return compound_expr (TREE_OPERAND (lhs, 0), result);
+    }
+
+  lhs = compound_lvalue (lhs);
 
   /* If initializing the LHS using a function that returns via NRVO.  */
   if (code == INIT_EXPR && TREE_CODE (rhs) == CALL_EXPR
@@ -1388,9 +1415,7 @@ build_assign (tree_code code, tree lhs, tree rhs)
 	}
     }
 
-  tree result = fold_build2_loc (input_location, code,
-				 TREE_TYPE (lhs), lhs, rhs);
-  return compound_expr (init, result);
+  return fold_build2_loc (input_location, code, TREE_TYPE (lhs), lhs, rhs);
 }
 
 /* Build an assignment expression of lvalue LHS from value RHS.  */
@@ -1558,7 +1583,11 @@ indirect_ref (tree type, tree exp)
     return exp;
 
   /* Maybe rewrite: *(e1, e2) => (e1, *e2)  */
-  tree init = stabilize_expr2 (&exp);
+  if (TREE_CODE (exp) == COMPOUND_EXPR)
+    {
+      tree result = indirect_ref (type, TREE_OPERAND (exp, 1));
+      return compound_expr (TREE_OPERAND (exp, 0), result);
+    }
 
   if (TREE_CODE (TREE_TYPE (exp)) == REFERENCE_TYPE)
     exp = fold_build1 (INDIRECT_REF, type, exp);
@@ -1568,7 +1597,7 @@ indirect_ref (tree type, tree exp)
       exp = build_deref (exp);
     }
 
-  return compound_expr (init, exp);
+  return exp;
 }
 
 /* Returns indirect reference of EXP, which must be a pointer type.  */
@@ -1580,7 +1609,11 @@ build_deref (tree exp)
     return exp;
 
   /* Maybe rewrite: *(e1, e2) => (e1, *e2)  */
-  tree init = stabilize_expr2 (&exp);
+  if (TREE_CODE (exp) == COMPOUND_EXPR)
+    {
+      tree result = build_deref (TREE_OPERAND (exp, 1));
+      return compound_expr (TREE_OPERAND (exp, 0), result);
+    }
 
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (exp)));
 
@@ -1589,7 +1622,7 @@ build_deref (tree exp)
   else
     exp = build_fold_indirect_ref (exp);
 
-  return compound_expr (init, exp);
+  return exp;
 }
 
 /* Builds pointer offset expression PTR[INDEX].  */
