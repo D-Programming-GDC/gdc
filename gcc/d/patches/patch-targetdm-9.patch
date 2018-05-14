@@ -167,7 +167,7 @@ The following OS versions are implemented:
         cfn-operators.pd
  
  #
-@@ -2781,7 +2812,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
+@@ -2782,7 +2813,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
    $(CORETYPES_H) $(GTM_H) errors.h $(READ_MD_H) $(GENSUPPORT_H)		\
    $(HASH_TABLE_H) inchash.h
  build/genhooks.o : genhooks.c $(TARGET_DEF) $(C_TARGET_DEF)		\
@@ -251,7 +251,7 @@ The following OS versions are implemented:
  	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
-@@ -390,6 +405,7 @@ x86_64-*-*)
+@@ -391,6 +406,7 @@ x86_64-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
@@ -259,7 +259,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
-@@ -439,6 +455,7 @@ microblaze*-*-*)
+@@ -441,6 +457,7 @@ microblaze*-*-*)
          ;;
  mips*-*-*)
  	cpu_type=mips
@@ -267,7 +267,7 @@ The following OS versions are implemented:
  	extra_headers="loongson.h msa.h"
  	extra_objs="frame-header-opt.o"
  	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
-@@ -494,6 +511,7 @@ sparc*-*-*)
+@@ -495,6 +512,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -275,7 +275,7 @@ The following OS versions are implemented:
  	extra_headers="visintrin.h"
  	;;
  spu*-*-*)
-@@ -501,6 +519,7 @@ spu*-*-*)
+@@ -502,6 +520,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -283,7 +283,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
-@@ -530,10 +549,13 @@ tilepro*-*-*)
+@@ -531,10 +550,13 @@ tilepro*-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -297,7 +297,7 @@ The following OS versions are implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -802,8 +824,10 @@ case ${target} in
+@@ -804,8 +826,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -308,7 +308,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3183,6 +3207,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3182,6 +3206,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4734,6 +4762,7 @@ case ${target} in
+@@ -4785,6 +4813,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -778,7 +778,7 @@ The following OS versions are implemented:
  extern void i386_pe_declare_function_type (FILE *, const char *, int);
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -705,6 +705,9 @@ extern const char *host_detect_local_cpu
+@@ -708,6 +708,9 @@ extern const char *host_detect_local_cpu
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
@@ -1208,7 +1208,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/rs6000/rs6000-protos.h
 +++ b/gcc/config/rs6000/rs6000-protos.h
-@@ -233,6 +233,9 @@ extern void rs6000_target_modify_macros
+@@ -226,6 +226,9 @@ extern void rs6000_target_modify_macros
  extern void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT,
  						HOST_WIDE_INT);
  
@@ -1220,7 +1220,7 @@ The following OS versions are implemented:
  #endif
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -797,6 +797,9 @@ extern unsigned char rs6000_recip_bits[]
+@@ -753,6 +753,9 @@ extern unsigned char rs6000_recip_bits[]
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1510,7 +1510,7 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -6379,6 +6395,8 @@ AC_SUBST(tm_include_list)
+@@ -6393,6 +6409,8 @@ AC_SUBST(tm_include_list)
  AC_SUBST(tm_defines)
  AC_SUBST(tm_p_file_list)
  AC_SUBST(tm_p_include_list)
@@ -1519,7 +1519,7 @@ The following OS versions are implemented:
  AC_SUBST(xm_file_list)
  AC_SUBST(xm_include_list)
  AC_SUBST(xm_defines)
-@@ -6386,6 +6404,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -6400,6 +6418,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)
@@ -1552,7 +1552,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10617,6 +10626,22 @@ unloaded. The default is to return false
+@@ -10625,6 +10634,22 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1600,7 +1600,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7275,6 +7284,16 @@ floating-point support; they are not inc
+@@ -7277,6 +7286,16 @@ floating-point support; they are not inc
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  
