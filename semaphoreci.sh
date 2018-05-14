@@ -10,12 +10,12 @@ GCC_VERSION=$(cat gcc.version)
 
 if [ "${GCC_VERSION:0:5}" = "gcc-9" ]; then
     GCC_TARBALL="snapshots/${GCC_VERSION:4}/${GCC_VERSION}.tar.xz"
-    GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.16.1.tar.bz2"
+    GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.18.tar.bz2"
     PATCH_VERSION="9"
     HOST_PACKAGE="7"
 elif [ "${GCC_VERSION:0:5}" = "gcc-8" ]; then
     GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.xz"
-    GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.16.1.tar.bz2"
+    GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.18.tar.bz2"
     PATCH_VERSION="8"
     HOST_PACKAGE="7"
 elif [ "${GCC_VERSION:0:5}" = "gcc-7" ]; then
