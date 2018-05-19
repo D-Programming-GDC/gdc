@@ -537,7 +537,7 @@ FuncDeclaration *buildXopEquals(StructDeclaration *sd, Scope *sc)
     Parameters *parameters = new Parameters;
     parameters->push(new Parameter(STCref | STCconst, sd->type, Id::p, NULL));
     parameters->push(new Parameter(STCref | STCconst, sd->type, Id::q, NULL));
-    TypeFunction *tf = new TypeFunction(parameters, Type::tbool, 0, LINKd);
+    TypeFunction *tf = new TypeFunction(parameters, Type::tbool, 0, LINKc);
 
     Identifier *id = Id::xopEquals;
     FuncDeclaration *fop = new FuncDeclaration(declLoc, Loc(), id, STCstatic, tf);
@@ -551,7 +551,7 @@ FuncDeclaration *buildXopEquals(StructDeclaration *sd, Scope *sc)
     unsigned errors = global.startGagging();    // Do not report errors
     Scope *sc2 = sc->push();
     sc2->stc = 0;
-    sc2->linkage = LINKd;
+    sc2->linkage = LINKc;
 
     fop->semantic(sc2);
     fop->semantic2(sc2);
@@ -657,25 +657,21 @@ FuncDeclaration *buildXopCmp(StructDeclaration *sd, Scope *sc)
     Parameters *parameters = new Parameters;
     parameters->push(new Parameter(STCref | STCconst, sd->type, Id::p, NULL));
     parameters->push(new Parameter(STCref | STCconst, sd->type, Id::q, NULL));
-    TypeFunction *tf = new TypeFunction(parameters, Type::tint32, 0, LINKd);
+    TypeFunction *tf = new TypeFunction(parameters, Type::tint32, 0, LINKc);
 
     Identifier *id = Id::xopCmp;
     FuncDeclaration *fop = new FuncDeclaration(declLoc, Loc(), id, STCstatic, tf);
     fop->generated = true;
     Expression *e1 = new IdentifierExp(loc, Id::p);
     Expression *e2 = new IdentifierExp(loc, Id::q);
-#ifdef IN_GCC
     Expression *e = new CallExp(loc, new DotIdExp(loc, e1, Id::cmp), e2);
-#else
-    Expression *e = new CallExp(loc, new DotIdExp(loc, e2, Id::cmp), e1);
-#endif
 
     fop->fbody = new ReturnStatement(loc, e);
 
     unsigned errors = global.startGagging();    // Do not report errors
     Scope *sc2 = sc->push();
     sc2->stc = 0;
-    sc2->linkage = LINKd;
+    sc2->linkage = LINKc;
 
     fop->semantic(sc2);
     fop->semantic2(sc2);
