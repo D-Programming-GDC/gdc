@@ -1,3 +1,4 @@
+// { dg-lto-do link }
 module ltotests_0;
 
 import core.stdc.stdio;
