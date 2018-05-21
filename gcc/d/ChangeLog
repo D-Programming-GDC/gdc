@@ -1,3 +1,8 @@
+2018-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::binary_op): Don't do complex conversions if
+	already handling excess precision.
+
 2018-04-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (doing_semantic_analysis_p): New variable.
