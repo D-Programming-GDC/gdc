@@ -517,10 +517,99 @@ d_save_expr (tree exp)
   return exp;
 }
 
+/* Adjust EXPR so that it is a valid lvalue, and can be evaluated multiple times
+   if it has any side effects.  */
+
+static tree
+compound_lvalue (tree expr)
+{
+  const tree_code code = TREE_CODE (expr);
+
+  if (code == MODIFY_EXPR || code == PREINCREMENT_EXPR
+      || code == PREDECREMENT_EXPR)
+    {
+      if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 0)))
+	expr = build2 (TREE_CODE (expr), TREE_TYPE (expr),
+			 stabilize_reference (TREE_OPERAND (expr, 0)),
+			 TREE_OPERAND (expr, 1));
+
+      return compound_expr (expr, TREE_OPERAND (expr, 0));
+    }
+
+  return expr;
+}
+
+/* Build an unary op CODE to the expression ARG.  If the expression can be
+   broken down so that the operation is applied only to the part whose value we
+   care about, then handle lowering to keep lvalues trivial.  */
+
+static tree
+build_unary_op (tree_code code, tree type, tree arg)
+{
+  /* Given ((e1, ...), eN), treat the last RHS 'eN' expression as the
+     lvalue part.  */
+  if (TREE_CODE (arg) == COMPOUND_EXPR)
+    {
+      tree result = build_unary_op (code, type, TREE_OPERAND (arg, 1));
+      return compound_expr (TREE_OPERAND (arg, 0), result);
+    }
+
+  arg = compound_lvalue (arg);
+
+  if (code == ADDR_EXPR)
+    {
+      /* Can't take the address of a manifest constant, get the real value of
+	 the decl instead.  */
+      if (TREE_CODE (arg) == CONST_DECL)
+	arg = DECL_INITIAL (arg);
+
+      /* Some expression lowering may request an address of a compile-time
+	 constant.  Make sure it is assigned to a location we can reference.  */
+      if (CONSTANT_CLASS_P (arg) && TREE_CODE (arg) != STRING_CST)
+	arg = force_target_expr (arg);
+
+      d_mark_addressable (arg);
+      tree result = build_fold_addr_expr_with_type_loc (input_location, arg,
+							type);
+      if (TREE_CODE (result) == ADDR_EXPR)
+	TREE_NO_TRAMPOLINE (result) = 1;
+
+      return result;
+    }
+
+  return fold_build1_loc (input_location, code, type, arg);
+}
+
 /* VALUEP is an expression we want to pre-evaluate or perform a computation on.
    The expression returned by this function is the part whose value we don't
    care about, storing the value in VALUEP.  Callers must ensure that the
    returned expression is evaluated before VALUEP.  */
+
+tree
+stabilize_expr2 (tree *valuep)
+{
+  tree expr = *valuep;
+
+  /* No side effects or expression has no value.  */
+  if (!TREE_SIDE_EFFECTS (expr) || TREE_CODE (expr) == SAVE_EXPR
+      || VOID_TYPE_P (TREE_TYPE (expr)))
+    return NULL_TREE;
+
+  /* Stabilize only the right hand side of compound expressions.  */
+  if (TREE_CODE (expr) == COMPOUND_EXPR)
+    {
+      tree lhs = TREE_OPERAND (expr, 0);
+      tree rhs = TREE_OPERAND (expr, 1);
+      lhs = compound_expr (lhs, stabilize_expr2 (&rhs));
+      *valuep = rhs;
+      return lhs;
+    }
+
+  tree init = force_target_expr (expr);
+  *valuep = TARGET_EXPR_SLOT (init);
+
+  return init;
+}
 
 tree
 stabilize_expr (tree *valuep)
@@ -606,25 +695,7 @@ build_address (tree exp)
   else
     ptrtype = build_pointer_type (type);
 
-  /* Maybe rewrite: &(e1, e2) => (e1, &e2).  */
-  tree init = stabilize_expr (&exp);
-
-  /* Can't take the address of a manifest constant, instead use its value.  */
-  if (TREE_CODE (exp) == CONST_DECL)
-    exp = DECL_INITIAL (exp);
-
-  /* Some expression lowering may request an address of a compile-time constant.
-     Make sure it is assigned to a location we can reference.  */
-  if (CONSTANT_CLASS_P (exp) && TREE_CODE (exp) != STRING_CST)
-    exp = force_target_expr (exp);
-
-  d_mark_addressable (exp);
-  exp = build_fold_addr_expr_with_type_loc (input_location, exp, ptrtype);
-
-  if (TREE_CODE (exp) == ADDR_EXPR)
-    TREE_NO_TRAMPOLINE (exp) = 1;
-
-  return compound_expr (init, exp);
+  return build_unary_op (ADDR_EXPR, ptrtype, exp);
 }
 
 /* Mark EXP saying that we need to be able to take the
@@ -876,12 +947,9 @@ build_struct_comparison (tree_code code, StructDeclaration *sd,
     return build_boolop (code, integer_zero_node, integer_zero_node);
 
   /* Make temporaries to prevent multiple evaluations.  */
-  tree t1init = stabilize_expr (&t1);
-  tree t2init = stabilize_expr (&t2);
+  tree t1init = stabilize_expr2 (&t1);
+  tree t2init = stabilize_expr2 (&t2);
   tree result;
-
-  t1 = d_save_expr (t1);
-  t2 = d_save_expr (t2);
 
   /* Bitwise comparison of structs not returned in memory may not work
      due to data holes loosing its zero padding upon return.
@@ -1172,6 +1240,7 @@ find_aggregate_field (tree type, tree ident, tree offset)
 
   return NULL_TREE;
 }
+
 /* Return a constructor that matches the layout of the class expression EXP.  */
 
 tree
@@ -1283,10 +1352,13 @@ component_ref (tree object, tree field)
   if (error_operand_p (object) || error_operand_p (field))
     return error_mark_node;
 
-  gcc_assert (TREE_CODE (field) == FIELD_DECL);
+  if (TREE_CODE (object) == COMPOUND_EXPR)
+    {
+      tree result = component_ref (TREE_OPERAND (object, 1), field);
+      return compound_expr (TREE_OPERAND (object, 0), result);
+    }
 
-  /* Maybe rewrite: (e1, e2).field => (e1, e2.field)  */
-  tree init = stabilize_expr (&object);
+  gcc_assert (TREE_CODE (field) == FIELD_DECL);
 
   /* If the FIELD is from an anonymous aggregate, generate a reference
      to the anonymous data member, and recur to find FIELD.  */
@@ -1297,10 +1369,8 @@ component_ref (tree object, tree field)
       object = component_ref (object, anonymous_field);
     }
 
-  tree result = fold_build3_loc (input_location, COMPONENT_REF,
-				 TREE_TYPE (field), object, field, NULL_TREE);
-
-  return compound_expr (init, result);
+  return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
+			  object, field, NULL_TREE);
 }
 
 /* Build an assignment expression of lvalue LHS from value RHS.
@@ -1310,8 +1380,14 @@ component_ref (tree object, tree field)
 tree
 build_assign (tree_code code, tree lhs, tree rhs)
 {
-  tree init = stabilize_expr (&lhs);
-  init = compound_expr (init, stabilize_expr (&rhs));
+  /* Handle control structure constructs used as lvalues.  */
+  if (TREE_CODE (lhs) == COMPOUND_EXPR)
+    {
+      tree result = build_assign (code, TREE_OPERAND (lhs, 1), rhs);
+      return compound_expr (TREE_OPERAND (lhs, 0), result);
+    }
+
+  lhs = compound_lvalue (lhs);
 
   /* If initializing the LHS using a function that returns via NRVO.  */
   if (code == INIT_EXPR && TREE_CODE (rhs) == CALL_EXPR
@@ -1339,9 +1415,7 @@ build_assign (tree_code code, tree lhs, tree rhs)
 	}
     }
 
-  tree result = fold_build2_loc (input_location, code,
-				 TREE_TYPE (lhs), lhs, rhs);
-  return compound_expr (init, result);
+  return fold_build2_loc (input_location, code, TREE_TYPE (lhs), lhs, rhs);
 }
 
 /* Build an assignment expression of lvalue LHS from value RHS.  */
@@ -1360,11 +1434,7 @@ build_nop (tree type, tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  /* Maybe rewrite: cast(TYPE)(e1, e2) => (e1, cast(TYPE) e2)  */
-  tree init = stabilize_expr (&exp);
-  exp = fold_build1_loc (input_location, NOP_EXPR, type, exp);
-
-  return compound_expr (init, exp);
+  return build_unary_op (NOP_EXPR, type, exp);
 }
 
 /* Return EXP to be viewed as being another type TYPE.  Same as build_nop,
@@ -1513,7 +1583,11 @@ indirect_ref (tree type, tree exp)
     return exp;
 
   /* Maybe rewrite: *(e1, e2) => (e1, *e2)  */
-  tree init = stabilize_expr (&exp);
+  if (TREE_CODE (exp) == COMPOUND_EXPR)
+    {
+      tree result = indirect_ref (type, TREE_OPERAND (exp, 1));
+      return compound_expr (TREE_OPERAND (exp, 0), result);
+    }
 
   if (TREE_CODE (TREE_TYPE (exp)) == REFERENCE_TYPE)
     exp = fold_build1 (INDIRECT_REF, type, exp);
@@ -1523,7 +1597,7 @@ indirect_ref (tree type, tree exp)
       exp = build_deref (exp);
     }
 
-  return compound_expr (init, exp);
+  return exp;
 }
 
 /* Returns indirect reference of EXP, which must be a pointer type.  */
@@ -1535,7 +1609,11 @@ build_deref (tree exp)
     return exp;
 
   /* Maybe rewrite: *(e1, e2) => (e1, *e2)  */
-  tree init = stabilize_expr (&exp);
+  if (TREE_CODE (exp) == COMPOUND_EXPR)
+    {
+      tree result = build_deref (TREE_OPERAND (exp, 1));
+      return compound_expr (TREE_OPERAND (exp, 0), result);
+    }
 
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (exp)));
 
@@ -1544,7 +1622,7 @@ build_deref (tree exp)
   else
     exp = build_fold_indirect_ref (exp);
 
-  return compound_expr (init, exp);
+  return exp;
 }
 
 /* Builds pointer offset expression PTR[INDEX].  */

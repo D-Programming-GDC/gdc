@@ -508,6 +508,7 @@ extern void extract_from_method_call (tree, tree &, tree &);
 extern tree build_vindex_ref (tree, tree, size_t);
 extern tree d_save_expr (tree);
 extern tree stabilize_expr (tree *);
+extern tree stabilize_expr2 (tree *);
 extern tree build_target_expr (tree, tree);
 extern tree force_target_expr (tree);
 extern tree build_address (tree);
