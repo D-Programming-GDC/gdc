@@ -143,14 +143,16 @@ class ExprVisitor : public Visitor
 	    arg1 = d_convert (eptype, arg1);
 	  }
 	else
-	  eptype = type;
+	  {
+	    /* Front-end does not do this conversion and GCC does not
+	       always do it right.  */
+	    if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
+	      arg1 = d_convert (t0, arg1);
+	    else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
+	      arg0 = d_convert (t1, arg0);
 
-	/* Front-end does not do this conversion and GCC does not
-	   always do it right.  */
-	if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
-	  arg1 = d_convert (t0, arg1);
-	else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
-	  arg0 = d_convert (t1, arg0);
+	    eptype = type;
+	  }
 
 	ret = fold_build2 (code, eptype, arg0, arg1);
       }
