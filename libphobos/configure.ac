@@ -113,6 +113,9 @@ AC_SUBST(phobos_compiler_shared_flag)
 lt_prog_compiler_pic_D="$phobos_compiler_shared_flag"
 pic_mode='default'
 
+# Determine what GCC version number to use in filesystem paths.
+GCC_BASE_VER
+
 # libphobos/libdruntime specific options and feature detection
 DRUNTIME_MULTILIB
 DRUNTIME_WERROR
@@ -164,12 +167,6 @@ AC_SUBST(GDCFLAGSX)
 AC_CHECK_HEADER(stdio.h,:,
   [AC_MSG_ERROR([cannot find stdio.h.])])
 
-# Create all directories ready to start building.
-d_subdirs=`( cd $srcdir && find . -type d ) | sed -e 's/^.\///'`
-d_subdirs="$d_subdirs"
-for i in $d_subdirs; do
-    mkdir -p $i;
-done
 AC_SUBST(srcdir)
 
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
