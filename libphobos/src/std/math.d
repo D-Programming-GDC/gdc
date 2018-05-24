@@ -158,7 +158,7 @@ version (PPC)       version = PPC_Any;
 version (PPC64)     version = PPC_Any;
 version (MIPS32)    version = MIPS_Any;
 version (MIPS64)    version = MIPS_Any;
-version (AAarch64)  version = ARM_Any;
+version (AArch64)   version = ARM_Any;
 version (ARM)       version = ARM_Any;
 
 version(D_InlineAsm_X86)
