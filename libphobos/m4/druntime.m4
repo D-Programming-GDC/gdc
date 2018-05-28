@@ -43,8 +43,10 @@ AC_DEFUN([DRUNTIME_INSTALL_DIRECTORIES],
   AC_REQUIRE([AC_PROG_GDC])
 
   AC_MSG_CHECKING([D GCC version])
-  d_gcc_ver=`$GDC -dumpversion`
-  AC_MSG_RESULT($d_gcc_ver)
+  gcc_version=`eval $get_gcc_base_ver $srcdir/../gcc/BASE-VER`
+  AC_MSG_RESULT($gcc_version)
+  AC_SUBST(gcc_version)
+
   AC_ARG_WITH([cross-host],
     AC_HELP_STRING([--with-cross-host=HOST],
                    [configuring with a cross compiler]))
@@ -78,7 +80,7 @@ AC_DEFUN([DRUNTIME_INSTALL_DIRECTORIES],
   AC_SUBST(toolexeclibdir)
 
   # Default case for install directory for D sources files.
-  gdc_include_dir='${libdir}/gcc/${target_alias}'/${d_gcc_ver}/include/d
+  gdc_include_dir='$(libdir)/gcc/${target_alias}/${gcc_version}/include/d'
   AC_SUBST(gdc_include_dir)
 ])
 
