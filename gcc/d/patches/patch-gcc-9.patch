@@ -164,7 +164,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  Return TRUE if removal
     was successful.  */
  
-@@ -24451,6 +24461,8 @@ gen_compile_unit_die (const char *filena
+@@ -24455,6 +24465,8 @@ gen_compile_unit_die (const char *filena
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)
  	language = DW_LANG_ObjC_plus_plus;
@@ -173,7 +173,7 @@ relevant documentation about the GDC front end.
        else if (dwarf_version >= 5 || !dwarf_strict)
  	{
  	  if (strcmp (language_string, "GNU Go") == 0)
-@@ -26054,7 +26066,7 @@ declare_in_namespace (tree thing, dw_die
+@@ -26058,7 +26070,7 @@ declare_in_namespace (tree thing, dw_die
  
    if (ns_context != context_die)
      {
@@ -182,7 +182,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, NULL, ns_context);
-@@ -26077,7 +26089,7 @@ gen_namespace_die (tree decl, dw_die_ref
+@@ -26081,7 +26093,7 @@ gen_namespace_die (tree decl, dw_die_ref
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -191,7 +191,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -26149,7 +26161,7 @@ gen_decl_die (tree decl, tree origin, st
+@@ -26153,7 +26165,7 @@ gen_decl_die (tree decl, tree origin, st
        break;
  
      case CONST_DECL:
@@ -200,7 +200,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -26746,7 +26758,7 @@ dwarf2out_decl (tree decl)
+@@ -26750,7 +26762,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -211,7 +211,7 @@ relevant documentation about the GDC front end.
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
-@@ -1301,6 +1301,7 @@ static const struct compiler default_com
+@@ -1302,6 +1302,7 @@ static const struct compiler default_com
    {".f08", "#Fortran", 0, 0, 0}, {".F08", "#Fortran", 0, 0, 0},
    {".r", "#Ratfor", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},
