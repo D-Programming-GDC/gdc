@@ -152,12 +152,14 @@ version(DigitalMars)
     version = INLINE_YL2X;        // x87 has opcodes for these
 }
 
-version (X86)    version = X86_Any;
-version (X86_64) version = X86_Any;
-version (PPC)    version = PPC_Any;
-version (PPC64)  version = PPC_Any;
-version (MIPS32) version = MIPS_Any;
-version (MIPS64) version = MIPS_Any;
+version (X86)       version = X86_Any;
+version (X86_64)    version = X86_Any;
+version (PPC)       version = PPC_Any;
+version (PPC64)     version = PPC_Any;
+version (MIPS32)    version = MIPS_Any;
+version (MIPS64)    version = MIPS_Any;
+version (AArch64)   version = ARM_Any;
+version (ARM)       version = ARM_Any;
 
 version(D_InlineAsm_X86)
 {
@@ -4957,19 +4959,21 @@ version(X86_Any)
 {
     version = IeeeFlagsSupport;
 }
-else version(ARM)
+version(X86_Any)
 {
-    version(GNU)
-    {
-        version(ARM_HardFloat)
-            version = IeeeFlagsSupport;
-        else version(ARM_SoftFP)
-            version = IeeeFlagsSupport;
-    }
-    else
-    {
-        version = IeeeFlagsSupport;
-    }
+    version = IeeeFlagsSupport;
+}
+else version(PPC_Any)
+{
+    version = IeeeFlagsSupport;
+}
+else version(MIPS_Any)
+{
+    version = IeeeFlagsSupport;
+}
+else version(ARM_Any)
+{
+    version = IeeeFlagsSupport;
 }
 
 /// Set all of the floating-point status flags to false.
@@ -5111,10 +5115,11 @@ struct FloatingPointControl
             allExceptions, /// ditto
         }
     }
-    else version (AArch64)
+    else version (ARM_Any)
     {
         enum : ExceptionMask
         {
+            subnormalException    = 0x8000,
             inexactException      = 0x1000,
             underflowException    = 0x0800,
             overflowException     = 0x0400,
@@ -5123,22 +5128,7 @@ struct FloatingPointControl
             severeExceptions   = overflowException | divByZeroException
                                  | invalidException,
             allExceptions      = severeExceptions | underflowException
-                                 | inexactException,
-        }
-    }
-    else version (ARM)
-    {
-        enum : ExceptionMask
-        {
-            inexactException      = 0x1000,
-            underflowException    = 0x0800,
-            overflowException     = 0x0400,
-            divByZeroException    = 0x0200,
-            invalidException      = 0x0100,
-            severeExceptions   = overflowException | divByZeroException
-                                 | invalidException,
-            allExceptions      = severeExceptions | underflowException
-                                 | inexactException,
+                                 | inexactException | subnormalException,
         }
     }
     else version (MIPS_Any)
@@ -5175,11 +5165,26 @@ struct FloatingPointControl
     {
         enum : ExceptionMask
         {
-            invalidException      = 0x00800000,
-            divByZeroException    = 0x01000000,
-            underflowException    = 0x02000000,
-            overflowException     = 0x04000000,
+            inexactException      = 0x0800000,
+            divByZeroException    = 0x1000000,
+            overflowException     = 0x4000000,
+            underflowException    = 0x2000000,
+            invalidException      = 0x8000000,
+            severeExceptions   = overflowException | divByZeroException
+                                 | invalidException,
+            allExceptions      = severeExceptions | underflowException
+                                 | inexactException,
+        }
+    }
+    else version (SystemZ)
+    {
+        enum : ExceptionMask
+        {
             inexactException      = 0x08000000,
+            divByZeroException    = 0x40000000,
+            overflowException     = 0x20000000,
+            underflowException    = 0x10000000,
+            invalidException      = 0x80000000,
             severeExceptions   = overflowException | divByZeroException
                                  | invalidException,
             allExceptions      = severeExceptions | underflowException
@@ -5213,21 +5218,14 @@ public:
             return true;
         else version(PPC_Any)
             return true;
-        else version(AArch64)
-        {
-            auto oldState = getControlState();
-            // If exceptions are not supported, we set the bit but read it back as zero
-            setControlState(oldState | (divByZeroException & allExceptions));
-            bool result = (getControlState() & allExceptions) != 0;
-            setControlState(oldState);
-            return result;
-        }
-        else version(ARM)
+        else version(MIPS_Any)
+            return true;
+        else version(ARM_Any)
         {
             auto oldState = getControlState();
             // If exceptions are not supported, we set the bit but read it back as zero
             // https://sourceware.org/ml/libc-ports/2012-06/msg00091.html
-            setControlState(oldState | (divByZeroException & allExceptions));
+            setControlState(oldState | divByZeroException);
             immutable result = (getControlState() & allExceptions) != 0;
             setControlState(oldState);
             return result;
@@ -5281,23 +5279,23 @@ private:
 
     bool initialized = false;
 
-    version (AArch64)
+    version(ARM_Any)
     {
         alias ControlState = uint;
     }
-    else version (ARM)
+    else version(PPC_Any)
     {
         alias ControlState = uint;
     }
-    else version (MIPS_Any)
-    {
-        alias ControlState = uint;
-    }
-    else version (PPC_Any)
+    else version(MIPS_Any)
     {
         alias ControlState = uint;
     }
     else version (SPARC64)
+    {
+        alias ControlState = ulong;
+    }
+    else version (SystemZ)
     {
         alias ControlState = uint;
     }
@@ -5360,7 +5358,7 @@ private:
                 return cont;
             }
             else
-                static assert(0, "Not yet supported");
+                assert(0, "Not yet supported");
         }
         else
         version (D_InlineAsm_X86)

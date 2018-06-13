@@ -461,6 +461,12 @@ enum libcall_fn
   LIBCALL_LAST,
 };
 
+/* Gate for when the D frontend make an early call into the codegen pass, such
+   as when it requires target information or CTFE evaluation.  As full semantic
+   may not be completed, we only want to build the superficial tree structure
+   without finishing any decls or types.  */
+extern bool doing_semantic_analysis_p;
+
 /* In d-attribs.c.  */
 extern tree insert_type_attribute (tree, const char *, tree = NULL_TREE);
 extern tree insert_decl_attribute (tree, const char *, tree = NULL_TREE);

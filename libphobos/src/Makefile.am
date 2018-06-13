@@ -25,6 +25,9 @@ D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) \
 # C flags for zlib compilation
 AM_CFLAGS=@DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
 
+# D flags for compilation
+AM_DFLAGS=$(phobos_compiler_pic_flag)
+
 # Install all D files
 ALL_PHOBOS_INSTALL_DSOURCES = $(PHOBOS_DSOURCES) $(PHOBOS_DSOURCES_STDC) \
 	$(PHOBOS_DSOURCES_FREEBSD) $(PHOBOS_DSOURCES_OSX) \
