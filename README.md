@@ -14,7 +14,6 @@ Work is currently under way to merge GDC into a future release of GCC. Assistanc
 
 The master branch of this project closely follows [GCC development branch][gcc-devel], which if you intend to use GDC for production applications, is likely not the version of GCC you want to build against.  For versions of GDC compatible with GCC releases, checkout one of the following branches:
 
-* [GCC 4.9.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-4.9)
 * [GCC 5.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-5)
 * [GCC 6.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-6)
 * [GCC 7.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-7)

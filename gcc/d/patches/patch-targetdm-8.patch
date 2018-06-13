@@ -220,7 +220,7 @@ The following OS versions are implemented:
  tm_defines=
  xm_defines=
  # Set this to force installation and use of collect2.
-@@ -303,12 +314,14 @@ aarch64*-*-*)
+@@ -304,12 +315,14 @@ aarch64*-*-*)
  	extra_headers="arm_fp16.h arm_neon.h arm_acle.h"
  	c_target_objs="aarch64-c.o"
  	cxx_target_objs="aarch64-c.o"
@@ -235,7 +235,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} g.opt"
  	;;
  am33_2.0-*-linux*)
-@@ -328,6 +341,7 @@ arm*-*-*)
+@@ -329,6 +342,7 @@ arm*-*-*)
  	target_type_format_char='%'
  	c_target_objs="arm-c.o"
  	cxx_target_objs="arm-c.o"
@@ -243,7 +243,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} arm/arm-tables.opt"
  	target_gtfiles="\$(srcdir)/config/arm/arm-builtins.c"
  	;;
-@@ -360,6 +374,7 @@ i[34567]86-*-*)
+@@ -361,6 +375,7 @@ i[34567]86-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
@@ -251,7 +251,7 @@ The following OS versions are implemented:
  	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
-@@ -389,6 +404,7 @@ x86_64-*-*)
+@@ -390,6 +405,7 @@ x86_64-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
@@ -259,7 +259,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_objs="x86-tune-sched.o x86-tune-sched-bd.o x86-tune-sched-atom.o x86-tune-sched-core.o"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
-@@ -438,6 +454,7 @@ microblaze*-*-*)
+@@ -439,6 +455,7 @@ microblaze*-*-*)
          ;;
  mips*-*-*)
  	cpu_type=mips
@@ -267,7 +267,7 @@ The following OS versions are implemented:
  	extra_headers="loongson.h msa.h"
  	extra_objs="frame-header-opt.o"
  	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
-@@ -493,6 +510,7 @@ sparc*-*-*)
+@@ -494,6 +511,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -275,7 +275,7 @@ The following OS versions are implemented:
  	extra_headers="visintrin.h"
  	;;
  spu*-*-*)
-@@ -500,6 +518,7 @@ spu*-*-*)
+@@ -501,6 +519,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -283,7 +283,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
-@@ -529,10 +548,13 @@ tilepro*-*-*)
+@@ -530,10 +549,13 @@ tilepro*-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -297,7 +297,7 @@ The following OS versions are implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -801,8 +823,10 @@ case ${target} in
+@@ -802,8 +824,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -308,7 +308,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3172,6 +3196,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3183,6 +3207,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4689,6 +4717,7 @@ case ${target} in
+@@ -4734,6 +4762,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -778,7 +778,7 @@ The following OS versions are implemented:
  extern void i386_pe_declare_function_type (FILE *, const char *, int);
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -702,6 +702,9 @@ extern const char *host_detect_local_cpu
+@@ -705,6 +705,9 @@ extern const char *host_detect_local_cpu
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
@@ -1208,7 +1208,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/rs6000/rs6000-protos.h
 +++ b/gcc/config/rs6000/rs6000-protos.h
-@@ -232,6 +232,9 @@ extern void rs6000_target_modify_macros
+@@ -233,6 +233,9 @@ extern void rs6000_target_modify_macros
  extern void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT,
  						HOST_WIDE_INT);
  

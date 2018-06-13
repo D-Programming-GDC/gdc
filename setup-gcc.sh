@@ -47,7 +47,10 @@ elif grep -q -E '^7\.[0-9]+([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
     gcc_ver=7
 elif grep -q -E '^8\.[0-9]+([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
     gcc_ver=8
-else echo "cannot get gcc version"
+elif grep -q -E '^9\.[0-9]+([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+    gcc_ver=9
+else
+    echo "cannot get gcc version"
     exit 1
 fi
 echo "found gcc version $gcc_ver"
