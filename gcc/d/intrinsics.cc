@@ -639,8 +639,8 @@ maybe_expand_intrinsic (tree callexp)
   if (TREE_CODE (callee) != FUNCTION_DECL)
     return callexp;
 
-  /* Need a better way to determine if we are compiling for CTFE or not.  */
-  if (DECL_BUILT_IN_CTFE (callee) && d_function_chain)
+  /* Don't expand CTFE-only intrinsics outside of semantic processing.  */
+  if (DECL_BUILT_IN_CTFE (callee) && !doing_semantic_analysis_p)
     {
       clear_intrinsic_flag (callexp);
       return callexp;

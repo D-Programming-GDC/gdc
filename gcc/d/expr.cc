@@ -143,14 +143,16 @@ class ExprVisitor : public Visitor
 	    arg1 = d_convert (eptype, arg1);
 	  }
 	else
-	  eptype = type;
+	  {
+	    /* Front-end does not do this conversion and GCC does not
+	       always do it right.  */
+	    if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
+	      arg1 = d_convert (t0, arg1);
+	    else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
+	      arg0 = d_convert (t1, arg0);
 
-	/* Front-end does not do this conversion and GCC does not
-	   always do it right.  */
-	if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
-	  arg1 = d_convert (t0, arg1);
-	else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
-	  arg0 = d_convert (t1, arg0);
+	    eptype = type;
+	  }
 
 	ret = fold_build2 (code, eptype, arg0, arg1);
       }
@@ -2593,14 +2595,12 @@ public:
 				   build_float_cst (cimagl (e->value), tnext));
   }
 
-  /* Build a string literal.  */
+  /* Build a string literal, all strings are null terminated except for
+     static arrays.  */
 
   void visit (StringExp *e)
   {
     Type *tb = e->type->toBasetype ();
-
-    /* All strings are null terminated except static arrays.  */
-    const char *string = (const char *)(e->len ? e->string : "");
     tree type = build_ctype (e->type);
 
     if (tb->ty == Tsarray)
@@ -2622,10 +2622,15 @@ public:
       }
     else
       {
-	/* Array type string length includes the null terminator.  */
-	dinteger_t length = (e->len * e->sz) + 1;
-	tree value = build_string (length, string);
-	TREE_TYPE (value) = make_array_type (tb->nextOf (), length);
+	/* Copy the string contents to a null terminated string.  */
+	dinteger_t length = (e->len * e->sz);
+	char *string = XALLOCAVEC (char, length + 1);
+	memcpy (string, e->string, length);
+	string[length] = '\0';
+
+	/* String value and type includes the null terminator.  */
+	tree value = build_string (length + 1, string);
+	TREE_TYPE (value) = make_array_type (tb->nextOf (), length + 1);
 	value = build_address (value);
 
 	if (tb->ty == Tarray)
