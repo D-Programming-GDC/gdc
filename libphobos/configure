@@ -610,6 +610,7 @@ SPEC_PHOBOS_DEPS
 gdc_include_dir
 toolexeclibdir
 toolexecdir
+gcc_version
 DRUNTIME_ZLIB_SYSTEM_FALSE
 DRUNTIME_ZLIB_SYSTEM_TRUE
 BACKTRACE_SUPPORTS_THREADS
@@ -649,16 +650,13 @@ DRUNTIME_GC_ENABLE_FALSE
 DRUNTIME_GC_ENABLE_TRUE
 DRUNTIME_WERROR_FALSE
 DRUNTIME_WERROR_TRUE
+get_gcc_base_ver
+phobos_compiler_shared_flag
+phobos_compiler_pic_flag
 ENABLE_STATIC_FALSE
 ENABLE_STATIC_TRUE
 ENABLE_SHARED_FALSE
 ENABLE_SHARED_TRUE
-LIBADD_DL
-LT_DLPREOPEN
-LIBADD_DLD_LINK
-LIBADD_SHL_LOAD
-LIBADD_DLOPEN
-LT_DLLOADERS
 CPP
 OTOOL64
 OTOOL
@@ -779,6 +777,7 @@ with_pic
 enable_fast_install
 with_gnu_ld
 enable_libtool_lock
+with_gcc_major_version_only
 enable_werror
 enable_druntime_gc
 enable_unix
@@ -1435,6 +1434,8 @@ Optional Packages:
   --with-pic              try to use only PIC/non-PIC objects [default=use
                           both]
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
+  --with-gcc-major-version-only
+                          use only GCC major number in filesystem paths
   --without-libatomic     Do not use libatomic in core.atomic (default: auto)
   --without-libbacktrace  Do not use libbacktrace in core.runtime (default:
                           auto)
@@ -1834,51 +1835,6 @@ $as_echo "$ac_res" >&6; }
   eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
 
 } # ac_fn_c_check_func
-
-# ac_fn_c_check_decl LINENO SYMBOL VAR
-# ------------------------------------
-# Tests whether SYMBOL is declared, setting cache variable VAR accordingly.
-ac_fn_c_check_decl ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  as_decl_name=`echo $2|sed 's/ *(.*//'`
-  as_decl_use=`echo $2|sed -e 's/(/((/' -e 's/)/) 0&/' -e 's/,/) 0& (/g'`
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $as_decl_name is declared" >&5
-$as_echo_n "checking whether $as_decl_name is declared... " >&6; }
-if { as_var=$3; eval "test \"\${$as_var+set}\" = set"; }; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-$4
-int
-main ()
-{
-#ifndef $as_decl_name
-#ifdef __cplusplus
-  (void) $as_decl_use;
-#else
-  (void) $as_decl_name;
-#endif
-#endif
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  eval "$3=yes"
-else
-  eval "$3=no"
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-eval ac_res=\$$3
-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-  eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
-
-} # ac_fn_c_check_decl
 
 # ac_fn_d_try_link LINENO
 # -----------------------
@@ -7777,10 +7733,9 @@ done
 
 
 # Set options
+enable_dlopen=yes
 
 
-
-        enable_dlopen=no
 
 
   enable_win32_dll=no
@@ -11250,7 +11205,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11253 "configure"
+#line 11208 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11356,7 +11311,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11359 "configure"
+#line 11314 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11595,327 +11550,6 @@ CC="$lt_save_CC"
 
 
 
-LT_DLLOADERS=
-
-
-ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-lt_dlload_save_LIBS=$LIBS
-
-LIBADD_DLOPEN=
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing dlopen" >&5
-$as_echo_n "checking for library containing dlopen... " >&6; }
-if test "${ac_cv_search_dlopen+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_func_search_save_LIBS=$LIBS
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char dlopen ();
-int
-main ()
-{
-return dlopen ();
-  ;
-  return 0;
-}
-_ACEOF
-for ac_lib in '' dl; do
-  if test -z "$ac_lib"; then
-    ac_res="none required"
-  else
-    ac_res=-l$ac_lib
-    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
-  fi
-  if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_search_dlopen=$ac_res
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext
-  if test "${ac_cv_search_dlopen+set}" = set; then :
-  break
-fi
-done
-if test "${ac_cv_search_dlopen+set}" = set; then :
-
-else
-  ac_cv_search_dlopen=no
-fi
-rm conftest.$ac_ext
-LIBS=$ac_func_search_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_dlopen" >&5
-$as_echo "$ac_cv_search_dlopen" >&6; }
-ac_res=$ac_cv_search_dlopen
-if test "$ac_res" != no; then :
-  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
-
-$as_echo "#define HAVE_LIBDL 1" >>confdefs.h
-
-	if test "$ac_cv_search_dlopen" != "none required"; then
-	  LIBADD_DLOPEN=-ldl
-	fi
-	libltdl_cv_lib_dl_dlopen=yes
-	LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dlopen.la"
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#if HAVE_DLFCN_H
-#  include <dlfcn.h>
-#endif
-
-int
-main ()
-{
-dlopen(0, 0);
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-
-$as_echo "#define HAVE_LIBDL 1" >>confdefs.h
-
-	    libltdl_cv_func_dlopen=yes
-	    LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dlopen.la"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for dlopen in -lsvld" >&5
-$as_echo_n "checking for dlopen in -lsvld... " >&6; }
-if test "${ac_cv_lib_svld_dlopen+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lsvld  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char dlopen ();
-int
-main ()
-{
-return dlopen ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_svld_dlopen=yes
-else
-  ac_cv_lib_svld_dlopen=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_svld_dlopen" >&5
-$as_echo "$ac_cv_lib_svld_dlopen" >&6; }
-if test "x$ac_cv_lib_svld_dlopen" = x""yes; then :
-
-$as_echo "#define HAVE_LIBDL 1" >>confdefs.h
-
-	        LIBADD_DLOPEN=-lsvld libltdl_cv_func_dlopen=yes
-		LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dlopen.la"
-fi
-
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-fi
-
-if test yes = "$libltdl_cv_func_dlopen" || test yes = "$libltdl_cv_lib_dl_dlopen"
-then
-  lt_save_LIBS=$LIBS
-  LIBS="$LIBS $LIBADD_DLOPEN"
-  for ac_func in dlerror
-do :
-  ac_fn_c_check_func "$LINENO" "dlerror" "ac_cv_func_dlerror"
-if test "x$ac_cv_func_dlerror" = x""yes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_DLERROR 1
-_ACEOF
-
-fi
-done
-
-  LIBS=$lt_save_LIBS
-fi
-
-
-LIBADD_SHL_LOAD=
-ac_fn_c_check_func "$LINENO" "shl_load" "ac_cv_func_shl_load"
-if test "x$ac_cv_func_shl_load" = x""yes; then :
-
-$as_echo "#define HAVE_SHL_LOAD 1" >>confdefs.h
-
-	LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}shl_load.la"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for shl_load in -ldld" >&5
-$as_echo_n "checking for shl_load in -ldld... " >&6; }
-if test "${ac_cv_lib_dld_shl_load+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-ldld  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char shl_load ();
-int
-main ()
-{
-return shl_load ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_dld_shl_load=yes
-else
-  ac_cv_lib_dld_shl_load=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dld_shl_load" >&5
-$as_echo "$ac_cv_lib_dld_shl_load" >&6; }
-if test "x$ac_cv_lib_dld_shl_load" = x""yes; then :
-
-$as_echo "#define HAVE_SHL_LOAD 1" >>confdefs.h
-
-	    LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}shl_load.la"
-	    LIBADD_SHL_LOAD=-ldld
-fi
-
-fi
-
-
-
-case $host_os in
-darwin[1567].*)
-# We only want this for pre-Mac OS X 10.4.
-  ac_fn_c_check_func "$LINENO" "_dyld_func_lookup" "ac_cv_func__dyld_func_lookup"
-if test "x$ac_cv_func__dyld_func_lookup" = x""yes; then :
-
-$as_echo "#define HAVE_DYLD 1" >>confdefs.h
-
-	LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dyld.la"
-fi
-
-  ;;
-beos*)
-  LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}load_add_on.la"
-  ;;
-cygwin* | mingw* | pw32*)
-  ac_fn_c_check_decl "$LINENO" "cygwin_conv_path" "ac_cv_have_decl_cygwin_conv_path" "#include <sys/cygwin.h>
-"
-if test "x$ac_cv_have_decl_cygwin_conv_path" = x""yes; then :
-  ac_have_decl=1
-else
-  ac_have_decl=0
-fi
-
-cat >>confdefs.h <<_ACEOF
-#define HAVE_DECL_CYGWIN_CONV_PATH $ac_have_decl
-_ACEOF
-
-  LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}loadlibrary.la"
-  ;;
-esac
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dld_link in -ldld" >&5
-$as_echo_n "checking for dld_link in -ldld... " >&6; }
-if test "${ac_cv_lib_dld_dld_link+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-ldld  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char dld_link ();
-int
-main ()
-{
-return dld_link ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_dld_dld_link=yes
-else
-  ac_cv_lib_dld_dld_link=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dld_dld_link" >&5
-$as_echo "$ac_cv_lib_dld_dld_link" >&6; }
-if test "x$ac_cv_lib_dld_dld_link" = x""yes; then :
-
-$as_echo "#define HAVE_DLD 1" >>confdefs.h
-
-		LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dld_link.la"
-fi
-
-
-
-
-LT_DLPREOPEN=
-if test -n "$LT_DLLOADERS"
-then
-  for lt_loader in $LT_DLLOADERS; do
-    LT_DLPREOPEN="$LT_DLPREOPEN-dlpreopen $lt_loader "
-  done
-
-$as_echo "#define HAVE_LIBDLLOADER 1" >>confdefs.h
-
-fi
-
-
-LIBADD_DL="$LIBADD_DLOPEN $LIBADD_SHL_LOAD"
-
-
-LIBS=$lt_dlload_save_LIBS
-ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-
-
 
   gdc_save_DFLAGS=$GDCFLAGS
   GDCFLAGS="-fno-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $GDCFLAGS"
@@ -12001,6 +11635,65 @@ reload_cmds_D=$reload_cmds
 ## the running order or otherwise move them around unless you know exactly
 ## what you are doing...
 if test -n "$compiler"; then
+
+lt_prog_compiler_no_builtin_flag_D=
+
+if test "$GCC" = yes; then
+  case $cc_basename in
+  nvcc*)
+    lt_prog_compiler_no_builtin_flag_D=' -Xcompiler -fno-builtin' ;;
+  *)
+    lt_prog_compiler_no_builtin_flag_D=' -fno-builtin' ;;
+  esac
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if $compiler supports -fno-rtti -fno-exceptions" >&5
+$as_echo_n "checking if $compiler supports -fno-rtti -fno-exceptions... " >&6; }
+if test "${lt_cv_prog_compiler_rtti_exceptions+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  lt_cv_prog_compiler_rtti_exceptions=no
+   ac_outfile=conftest.$ac_objext
+   echo "$lt_simple_compile_test_code" > conftest.$ac_ext
+   lt_compiler_flag="-fno-rtti -fno-exceptions"
+   # Insert the option either (1) after the last *FLAGS variable, or
+   # (2) before a word containing "conftest.", or (3) at the end.
+   # Note that $ac_compile itself does not contain backslashes and begins
+   # with a dollar sign (not a hyphen), so the echo should work correctly.
+   # The option is referenced via a variable to avoid confusing sed.
+   lt_compile=`echo "$ac_compile" | $SED \
+   -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
+   -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
+   -e 's:$: $lt_compiler_flag:'`
+   (eval echo "\"\$as_me:$LINENO: $lt_compile\"" >&5)
+   (eval "$lt_compile" 2>conftest.err)
+   ac_status=$?
+   cat conftest.err >&5
+   echo "$as_me:$LINENO: \$? = $ac_status" >&5
+   if (exit $ac_status) && test -s "$ac_outfile"; then
+     # The compiler can only warn and ignore the option if not recognized
+     # So say no if there are warnings other than the usual output.
+     $ECHO "$_lt_compiler_boilerplate" | $SED '/^$/d' >conftest.exp
+     $SED '/^$/d; /^ *+/d' conftest.err >conftest.er2
+     if test ! -s conftest.er2 || diff conftest.exp conftest.er2 >/dev/null; then
+       lt_cv_prog_compiler_rtti_exceptions=yes
+     fi
+   fi
+   $RM conftest*
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $lt_cv_prog_compiler_rtti_exceptions" >&5
+$as_echo "$lt_cv_prog_compiler_rtti_exceptions" >&6; }
+
+if test x"$lt_cv_prog_compiler_rtti_exceptions" = xyes; then
+    lt_prog_compiler_no_builtin_flag_D="$lt_prog_compiler_no_builtin_flag_D -fno-rtti -fno-exceptions"
+else
+    :
+fi
+
+fi
+
+
+
   lt_prog_compiler_wl_D=
 lt_prog_compiler_pic_D=
 lt_prog_compiler_static_D=
@@ -12396,7 +12089,6 @@ fi
 
 
 
-            lt_prog_compiler_pic_D="$lt_prog_compiler_pic_D -fversion=Shared"
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking if $compiler supports -c -o file.$ac_objext" >&5
 $as_echo_n "checking if $compiler supports -c -o file.$ac_objext... " >&6; }
 if test "${lt_cv_prog_compiler_c_o_D+set}" = set; then :
@@ -13778,6 +13470,55 @@ else
 fi
 
 
+# libtool variables for Phobos shared and position-independent compiles.
+#
+# Use phobos_compiler_shared_flag to designate the compile-time flags for
+# creating shared objects. Default: -fversion=Shared.
+#
+# Use phobos_compiler_pic_flag to designate the compile-time flags for
+# creating position-independent objects. This varies with the target
+# hardware and operating system, but is often: -fPIC.
+#
+# The distinction between pic and shared compilation flags is not present in
+# libtool, and so we make it here.  How it is handled is that in shared
+# compilations the `lt_prog_compiler_pic_D' variable is used to instead
+# ensure that conditional compilation of shared runtime code is compiled in.
+# The original PIC flags are then used in the compilation of every object.
+#
+# Why are objects destined for libgphobos.a compiled with -fPIC?
+# Because -fPIC is not harmful to use for objects destined for static
+# libraries. In addition, using -fPIC will allow the use of static
+# libgphobos.a in the creation of other D shared libraries.
+if test "$enable_shared" = yes; then
+  phobos_compiler_pic_flag="$lt_prog_compiler_pic_D"
+  phobos_compiler_shared_flag="-fversion=Shared"
+else
+  phobos_compiler_pic_flag=
+  phobos_compiler_shared_flag=
+fi
+
+
+
+# Override the libtool's pic_flag and pic_mode.
+# Do this step after AM_PROG_LIBTOOL, but before AC_OUTPUT.
+# NB: this impacts --with-pic and --without-pic.
+lt_prog_compiler_pic_D="$phobos_compiler_shared_flag"
+pic_mode='default'
+
+# Determine what GCC version number to use in filesystem paths.
+
+  get_gcc_base_ver="cat"
+
+# Check whether --with-gcc-major-version-only was given.
+if test "${with_gcc_major_version_only+set}" = set; then :
+  withval=$with_gcc_major_version_only; if test x$with_gcc_major_version_only = xyes ; then
+        get_gcc_base_ver="sed -e 's/^\([0-9]*\).*/\1/'"
+      fi
+
+fi
+
+
+
 
 # libphobos/libdruntime specific options and feature detection
 
@@ -14138,8 +13879,8 @@ if test "$ac_res" != no; then :
 fi
 
 
-enable_thread_lib=yes
-# Check whether --enable-thread-lib was given.
+  enable_thread_lib=yes
+  # Check whether --enable-thread-lib was given.
 if test "${enable_thread_lib+set}" = set; then :
   enableval=$enable_thread_lib;
 fi
@@ -14244,6 +13985,7 @@ _ACEOF
 else
 
         as_fn_error "Thread library not found" "$LINENO" 5
+
 fi
 
 
@@ -14663,6 +14405,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+  # Libtool has already checked this, so re-use the inferred dlopen lib.
+  if test "x$enable_dlopen" = "xyes" && test -n "$lt_cv_dlopen_libs"; then :
+
+    LIBS="$LIBS $lt_cv_dlopen_libs"
+
+fi
+
+
 
 # Check whether --with-target-system-zlib was given.
 if test "${with_target_system_zlib+set}" = set; then :
@@ -14716,6 +14466,7 @@ if test "x$ac_cv_lib_z_deflate" = x""yes; then :
 else
 
       as_fn_error "System zlib not found" "$LINENO" 5
+
 fi
 
 
@@ -14742,9 +14493,11 @@ fi
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking D GCC version" >&5
 $as_echo_n "checking D GCC version... " >&6; }
-  d_gcc_ver=`$GDC -dumpversion`
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $d_gcc_ver" >&5
-$as_echo "$d_gcc_ver" >&6; }
+  gcc_version=`eval $get_gcc_base_ver $srcdir/../gcc/BASE-VER`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $gcc_version" >&5
+$as_echo "$gcc_version" >&6; }
+
+
 
 # Check whether --with-cross-host was given.
 if test "${with_cross_host+set}" = set; then :
@@ -14781,14 +14534,12 @@ fi
 
 
   # Default case for install directory for D sources files.
-  gdc_include_dir='${libdir}/gcc/${target_alias}'/${d_gcc_ver}/include/d
+  gdc_include_dir='$(libdir)/gcc/${target_alias}/${gcc_version}/include/d'
 
 
 
 # Add dependencies for libgphobos.spec file
-LIBS="$LIBS $LIBADD_DLOPEN"
 SPEC_PHOBOS_DEPS="$LIBS"
-
 
 
 # Libdruntime / phobos soname version
@@ -14818,12 +14569,6 @@ fi
 
 
 
-# Create all directories ready to start building.
-d_subdirs=`( cd $srcdir && find . -type d ) | sed -e 's/^.\///'`
-d_subdirs="$d_subdirs"
-for i in $d_subdirs; do
-    mkdir -p $i;
-done
 
 
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so

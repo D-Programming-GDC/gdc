@@ -40,6 +40,9 @@ along with GCC; see the file COPYING3.  If not see
 /* Array of D frontend type/decl nodes.  */
 tree d_global_trees[DTI_MAX];
 
+/* True if compilation is currently inside the D frontend semantic passes.  */
+bool doing_semantic_analysis_p = false;
+
 /* Options handled by the compiler that are separate from the frontend.  */
 struct d_option_data
 {
@@ -1096,6 +1099,8 @@ d_parse_file (void)
     goto had_errors;
 
   /* Do semantic analysis.  */
+  doing_semantic_analysis_p = true;
+
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
@@ -1167,6 +1172,7 @@ d_parse_file (void)
     goto had_errors;
 
   /* Generate output files.  */
+  doing_semantic_analysis_p = false;
 
   if (Module::rootModule)
     {

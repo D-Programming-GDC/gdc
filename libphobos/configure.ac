@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-# Copyright (C) 2006-2017 Free Software Foundation, Inc.
+# Copyright (C) 2006-2018 Free Software Foundation, Inc.
 #
 # GCC is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -72,13 +72,49 @@ AC_SUBST(CC_FOR_BUILD)
 AC_SUBST(CFLAGS_FOR_BUILD)
 
 # Enable libtool
-LT_INIT
+LT_INIT(dlopen)
 AM_PROG_LIBTOOL
-LT_LIB_DLLOAD
 WITH_LOCAL_DRUNTIME([LT_LANG([D])], [])
 AM_CONDITIONAL([ENABLE_SHARED], [test "$enable_shared" = "yes"])
 AM_CONDITIONAL([ENABLE_STATIC], [test "$enable_static" = "yes"])
 
+# libtool variables for Phobos shared and position-independent compiles.
+#
+# Use phobos_compiler_shared_flag to designate the compile-time flags for
+# creating shared objects. Default: -fversion=Shared.
+#
+# Use phobos_compiler_pic_flag to designate the compile-time flags for
+# creating position-independent objects. This varies with the target
+# hardware and operating system, but is often: -fPIC.
+#
+# The distinction between pic and shared compilation flags is not present in
+# libtool, and so we make it here.  How it is handled is that in shared
+# compilations the `lt_prog_compiler_pic_D' variable is used to instead
+# ensure that conditional compilation of shared runtime code is compiled in.
+# The original PIC flags are then used in the compilation of every object.
+#
+# Why are objects destined for libgphobos.a compiled with -fPIC?
+# Because -fPIC is not harmful to use for objects destined for static
+# libraries. In addition, using -fPIC will allow the use of static
+# libgphobos.a in the creation of other D shared libraries.
+if test "$enable_shared" = yes; then
+  phobos_compiler_pic_flag="$lt_prog_compiler_pic_D"
+  phobos_compiler_shared_flag="-fversion=Shared"
+else
+  phobos_compiler_pic_flag=
+  phobos_compiler_shared_flag=
+fi
+AC_SUBST(phobos_compiler_pic_flag)
+AC_SUBST(phobos_compiler_shared_flag)
+
+# Override the libtool's pic_flag and pic_mode.
+# Do this step after AM_PROG_LIBTOOL, but before AC_OUTPUT.
+# NB: this impacts --with-pic and --without-pic.
+lt_prog_compiler_pic_D="$phobos_compiler_shared_flag"
+pic_mode='default'
+
+# Determine what GCC version number to use in filesystem paths.
+GCC_BASE_VER
 
 # libphobos/libdruntime specific options and feature detection
 DRUNTIME_MULTILIB
@@ -102,13 +138,12 @@ WITH_LOCAL_DRUNTIME([
 
 DRUNTIME_LIBRARIES_ATOMIC
 DRUNTIME_LIBRARIES_BACKTRACE
+DRUNTIME_LIBRARIES_DLOPEN
 DRUNTIME_LIBRARIES_ZLIB
 DRUNTIME_INSTALL_DIRECTORIES
 
 # Add dependencies for libgphobos.spec file
-LIBS="$LIBS $LIBADD_DLOPEN"
 SPEC_PHOBOS_DEPS="$LIBS"
-AC_SUBST(LIBS)
 AC_SUBST(SPEC_PHOBOS_DEPS)
 
 # Libdruntime / phobos soname version
@@ -132,12 +167,6 @@ AC_SUBST(GDCFLAGSX)
 AC_CHECK_HEADER(stdio.h,:,
   [AC_MSG_ERROR([cannot find stdio.h.])])
 
-# Create all directories ready to start building.
-d_subdirs=`( cd $srcdir && find . -type d ) | sed -e 's/^.\///'`
-d_subdirs="$d_subdirs"
-for i in $d_subdirs; do
-    mkdir -p $i;
-done
 AC_SUBST(srcdir)
 
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
