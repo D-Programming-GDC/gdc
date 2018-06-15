@@ -1100,6 +1100,15 @@ This implements building of libphobos library in GCC.
    DLLTOOL_FOR_BUILD="\$(DLLTOOL)"
    LD_FOR_BUILD="\$(LD)"
    NM_FOR_BUILD="\$(NM)"
+@@ -6331,7 +6339,7 @@ $as_echo "$as_me: WARNING: ${language} n
+ 		  *) stage1_languages="${stage1_languages}${language}," ;;
+ 		esac
+ 		# We need to bootstrap any supporting libraries.
+-		bootstrap_target_libs="${bootstrap_target_libs}${target_libs},"
++		bootstrap_target_libs=`echo "${bootstrap_target_libs}${target_libs}," | sed "s/ /,/g"`
+ 		;;
+ 	    esac
+ 	    ;;
 @@ -7640,6 +7648,7 @@ done
  
  
@@ -1356,6 +1365,15 @@ This implements building of libphobos library in GCC.
    DLLTOOL_FOR_BUILD="\$(DLLTOOL)"
    LD_FOR_BUILD="\$(LD)"
    NM_FOR_BUILD="\$(NM)"
+@@ -2006,7 +2009,7 @@ directories, to avoid imposing the perfo
+ 		  *) stage1_languages="${stage1_languages}${language}," ;;
+ 		esac
+ 		# We need to bootstrap any supporting libraries.
+-		bootstrap_target_libs="${bootstrap_target_libs}${target_libs},"
++		bootstrap_target_libs=`echo "${bootstrap_target_libs}${target_libs}," | sed "s/ /,/g"`
+ 		;;
+ 	    esac
+ 	    ;;
 @@ -3225,6 +3228,7 @@ AC_SUBST(CXX_FOR_BUILD)
  AC_SUBST(DLLTOOL_FOR_BUILD)
  AC_SUBST(GFORTRAN_FOR_BUILD)
