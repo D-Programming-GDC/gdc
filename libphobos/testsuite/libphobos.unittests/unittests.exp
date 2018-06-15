@@ -14,8 +14,6 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-load_lib libphobos.exp
-
 proc unittest_list_modules { prog } {
     # Running the test runner without arguments prints a list of all
     # modules that have unittests compiled in.

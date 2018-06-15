@@ -14,7 +14,6 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-load_lib libphobos.exp
 load_lib libphobos-dg.exp
 
 # Immediately exit if target doesn't support shared.
@@ -25,10 +24,6 @@ if { ![is-effective-target shared] } {
 # If a testcase doesn't have special options, use these.
 if ![info exists DEFAULT_CFLAGS] then {
     set DEFAULT_CFLAGS "-g"
-}
-
-if ![info exists DEFAULT_DFLAGS] then {
-    set DEFAULT_DFLAGS "-g"
 }
 
 #
