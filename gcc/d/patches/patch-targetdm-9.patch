@@ -1478,6 +1478,16 @@ The following OS versions are implemented:
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
+@@ -29762,6 +29781,9 @@ fi
+ 
+ 
+ 
++
++
++
+ 
+ 
+ 
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
 @@ -1724,6 +1724,7 @@ AC_SUBST(build_subdir)
