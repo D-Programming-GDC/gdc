@@ -1,6 +1,1748 @@
 This implements building of self hosted D compiler in GCC.
 ---
 
+--- a/Makefile.def
++++ b/Makefile.def
+@@ -147,7 +147,7 @@ target_modules = { module= liboffloadmic
+ target_modules = { module= libssp; lib_path=.libs; };
+ target_modules = { module= newlib; };
+ target_modules = { module= libgcc; bootstrap=true; no_check=true; };
+-target_modules = { module= libbacktrace; };
++target_modules = { module= libbacktrace; bootstrap=true; };
+ target_modules = { module= libquadmath; };
+ target_modules = { module= libgfortran; };
+ target_modules = { module= libobjc; };
+@@ -168,7 +168,7 @@ target_modules = { module= rda; };
+ target_modules = { module= libada; };
+ target_modules = { module= libgomp; bootstrap= true; lib_path=.libs; };
+ target_modules = { module= libitm; lib_path=.libs; };
+-target_modules = { module= libatomic; lib_path=.libs; };
++target_modules = { module= libatomic; bootstrap=true; lib_path=.libs; };
+ 
+ // These are (some of) the make targets to be done in each subdirectory.
+ // Not all; these are the ones which don't have special options.
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -1192,7 +1192,9 @@ all-target: maybe-all-target-newlib
+ @if target-libgcc-no-bootstrap
+ all-target: maybe-all-target-libgcc
+ @endif target-libgcc-no-bootstrap
++@if target-libbacktrace-no-bootstrap
+ all-target: maybe-all-target-libbacktrace
++@endif target-libbacktrace-no-bootstrap
+ all-target: maybe-all-target-libquadmath
+ all-target: maybe-all-target-libgfortran
+ all-target: maybe-all-target-libobjc
+@@ -1210,7 +1212,9 @@ all-target: maybe-all-target-libada
+ all-target: maybe-all-target-libgomp
+ @endif target-libgomp-no-bootstrap
+ all-target: maybe-all-target-libitm
++@if target-libatomic-no-bootstrap
+ all-target: maybe-all-target-libatomic
++@endif target-libatomic-no-bootstrap
+ 
+ # Do a target for all the subdirectories.  A ``make do-X'' will do a
+ # ``make X'' in all subdirectories (because, in general, there is a
+@@ -44249,7 +44253,6 @@ configure-target-libbacktrace: stage_cur
+ @if target-libbacktrace
+ maybe-configure-target-libbacktrace: configure-target-libbacktrace
+ configure-target-libbacktrace: 
+-	@: $(MAKE); $(unstage)
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	echo "Checking multilib configuration for libbacktrace..."; \
+@@ -44287,6 +44290,412 @@ configure-target-libbacktrace:
+ 
+ 
+ 
++.PHONY: configure-stage1-target-libbacktrace maybe-configure-stage1-target-libbacktrace
++maybe-configure-stage1-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stage1-target-libbacktrace: configure-stage1-target-libbacktrace
++configure-stage1-target-libbacktrace:
++	@[ $(current_stage) = stage1 ] || $(MAKE) stage1-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE1_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage 1 in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	   \
++	  $(STAGE1_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++.PHONY: configure-stage2-target-libbacktrace maybe-configure-stage2-target-libbacktrace
++maybe-configure-stage2-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stage2-target-libbacktrace: configure-stage2-target-libbacktrace
++configure-stage2-target-libbacktrace:
++	@[ $(current_stage) = stage2 ] || $(MAKE) stage2-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE2_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage 2 in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGE2_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++.PHONY: configure-stage3-target-libbacktrace maybe-configure-stage3-target-libbacktrace
++maybe-configure-stage3-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stage3-target-libbacktrace: configure-stage3-target-libbacktrace
++configure-stage3-target-libbacktrace:
++	@[ $(current_stage) = stage3 ] || $(MAKE) stage3-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE3_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage 3 in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGE3_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++.PHONY: configure-stage4-target-libbacktrace maybe-configure-stage4-target-libbacktrace
++maybe-configure-stage4-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stage4-target-libbacktrace: configure-stage4-target-libbacktrace
++configure-stage4-target-libbacktrace:
++	@[ $(current_stage) = stage4 ] || $(MAKE) stage4-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE4_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage 4 in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGE4_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++.PHONY: configure-stageprofile-target-libbacktrace maybe-configure-stageprofile-target-libbacktrace
++maybe-configure-stageprofile-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stageprofile-target-libbacktrace: configure-stageprofile-target-libbacktrace
++configure-stageprofile-target-libbacktrace:
++	@[ $(current_stage) = stageprofile ] || $(MAKE) stageprofile-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEprofile_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage profile in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEprofile_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++.PHONY: configure-stagetrain-target-libbacktrace maybe-configure-stagetrain-target-libbacktrace
++maybe-configure-stagetrain-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stagetrain-target-libbacktrace: configure-stagetrain-target-libbacktrace
++configure-stagetrain-target-libbacktrace:
++	@[ $(current_stage) = stagetrain ] || $(MAKE) stagetrain-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEtrain_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage train in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEtrain_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++.PHONY: configure-stagefeedback-target-libbacktrace maybe-configure-stagefeedback-target-libbacktrace
++maybe-configure-stagefeedback-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stagefeedback-target-libbacktrace: configure-stagefeedback-target-libbacktrace
++configure-stagefeedback-target-libbacktrace:
++	@[ $(current_stage) = stagefeedback ] || $(MAKE) stagefeedback-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEfeedback_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage feedback in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEfeedback_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++.PHONY: configure-stageautoprofile-target-libbacktrace maybe-configure-stageautoprofile-target-libbacktrace
++maybe-configure-stageautoprofile-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stageautoprofile-target-libbacktrace: configure-stageautoprofile-target-libbacktrace
++configure-stageautoprofile-target-libbacktrace:
++	@[ $(current_stage) = stageautoprofile ] || $(MAKE) stageautoprofile-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEautoprofile_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage autoprofile in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEautoprofile_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++.PHONY: configure-stageautofeedback-target-libbacktrace maybe-configure-stageautofeedback-target-libbacktrace
++maybe-configure-stageautofeedback-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-configure-stageautofeedback-target-libbacktrace: configure-stageautofeedback-target-libbacktrace
++configure-stageautofeedback-target-libbacktrace:
++	@[ $(current_stage) = stageautofeedback ] || $(MAKE) stageautofeedback-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEautofeedback_TFLAGS)"; \
++	echo "Checking multilib configuration for libbacktrace..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libbacktrace/Makefile; \
++	    mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage autofeedback in $(TARGET_SUBDIR)/libbacktrace; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace; \
++	cd $(TARGET_SUBDIR)/libbacktrace || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libbacktrace/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libbacktrace; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEautofeedback_CONFIGURE_FLAGS)
++@endif target-libbacktrace-bootstrap
++
++
++
+ 
+ 
+ .PHONY: all-target-libbacktrace maybe-all-target-libbacktrace
+@@ -44298,7 +44707,6 @@ all-target-libbacktrace: stage_current
+ TARGET-target-libbacktrace=all
+ maybe-all-target-libbacktrace: all-target-libbacktrace
+ all-target-libbacktrace: configure-target-libbacktrace
+-	@: $(MAKE); $(unstage)
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	$(NORMAL_TARGET_EXPORTS)  \
+@@ -44309,6 +44717,387 @@ all-target-libbacktrace: configure-targe
+ 
+ 
+ 
++.PHONY: all-stage1-target-libbacktrace maybe-all-stage1-target-libbacktrace
++.PHONY: clean-stage1-target-libbacktrace maybe-clean-stage1-target-libbacktrace
++maybe-all-stage1-target-libbacktrace:
++maybe-clean-stage1-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stage1-target-libbacktrace: all-stage1-target-libbacktrace
++all-stage1: all-stage1-target-libbacktrace
++TARGET-stage1-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stage1-target-libbacktrace: configure-stage1-target-libbacktrace
++	@[ $(current_stage) = stage1 ] || $(MAKE) stage1-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE1_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS)  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)  \
++		  \
++		TFLAGS="$(STAGE1_TFLAGS)"  \
++		$(TARGET-stage1-target-libbacktrace)
++
++maybe-clean-stage1-target-libbacktrace: clean-stage1-target-libbacktrace
++clean-stage1: clean-stage1-target-libbacktrace
++clean-stage1-target-libbacktrace:
++	@if [ $(current_stage) = stage1 ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stage1-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stage1-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)  \
++	  clean
++@endif target-libbacktrace-bootstrap
++
++
++.PHONY: all-stage2-target-libbacktrace maybe-all-stage2-target-libbacktrace
++.PHONY: clean-stage2-target-libbacktrace maybe-clean-stage2-target-libbacktrace
++maybe-all-stage2-target-libbacktrace:
++maybe-clean-stage2-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stage2-target-libbacktrace: all-stage2-target-libbacktrace
++all-stage2: all-stage2-target-libbacktrace
++TARGET-stage2-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stage2-target-libbacktrace: configure-stage2-target-libbacktrace
++	@[ $(current_stage) = stage2 ] || $(MAKE) stage2-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE2_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGE2_TFLAGS)"  \
++		$(TARGET-stage2-target-libbacktrace)
++
++maybe-clean-stage2-target-libbacktrace: clean-stage2-target-libbacktrace
++clean-stage2: clean-stage2-target-libbacktrace
++clean-stage2-target-libbacktrace:
++	@if [ $(current_stage) = stage2 ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stage2-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stage2-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libbacktrace-bootstrap
++
++
++.PHONY: all-stage3-target-libbacktrace maybe-all-stage3-target-libbacktrace
++.PHONY: clean-stage3-target-libbacktrace maybe-clean-stage3-target-libbacktrace
++maybe-all-stage3-target-libbacktrace:
++maybe-clean-stage3-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stage3-target-libbacktrace: all-stage3-target-libbacktrace
++all-stage3: all-stage3-target-libbacktrace
++TARGET-stage3-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stage3-target-libbacktrace: configure-stage3-target-libbacktrace
++	@[ $(current_stage) = stage3 ] || $(MAKE) stage3-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE3_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGE3_TFLAGS)"  \
++		$(TARGET-stage3-target-libbacktrace)
++
++maybe-clean-stage3-target-libbacktrace: clean-stage3-target-libbacktrace
++clean-stage3: clean-stage3-target-libbacktrace
++clean-stage3-target-libbacktrace:
++	@if [ $(current_stage) = stage3 ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stage3-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stage3-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libbacktrace-bootstrap
++
++
++.PHONY: all-stage4-target-libbacktrace maybe-all-stage4-target-libbacktrace
++.PHONY: clean-stage4-target-libbacktrace maybe-clean-stage4-target-libbacktrace
++maybe-all-stage4-target-libbacktrace:
++maybe-clean-stage4-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stage4-target-libbacktrace: all-stage4-target-libbacktrace
++all-stage4: all-stage4-target-libbacktrace
++TARGET-stage4-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stage4-target-libbacktrace: configure-stage4-target-libbacktrace
++	@[ $(current_stage) = stage4 ] || $(MAKE) stage4-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE4_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGE4_TFLAGS)"  \
++		$(TARGET-stage4-target-libbacktrace)
++
++maybe-clean-stage4-target-libbacktrace: clean-stage4-target-libbacktrace
++clean-stage4: clean-stage4-target-libbacktrace
++clean-stage4-target-libbacktrace:
++	@if [ $(current_stage) = stage4 ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stage4-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stage4-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libbacktrace-bootstrap
++
++
++.PHONY: all-stageprofile-target-libbacktrace maybe-all-stageprofile-target-libbacktrace
++.PHONY: clean-stageprofile-target-libbacktrace maybe-clean-stageprofile-target-libbacktrace
++maybe-all-stageprofile-target-libbacktrace:
++maybe-clean-stageprofile-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stageprofile-target-libbacktrace: all-stageprofile-target-libbacktrace
++all-stageprofile: all-stageprofile-target-libbacktrace
++TARGET-stageprofile-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stageprofile-target-libbacktrace: configure-stageprofile-target-libbacktrace
++	@[ $(current_stage) = stageprofile ] || $(MAKE) stageprofile-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEprofile_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEprofile_TFLAGS)"  \
++		$(TARGET-stageprofile-target-libbacktrace)
++
++maybe-clean-stageprofile-target-libbacktrace: clean-stageprofile-target-libbacktrace
++clean-stageprofile: clean-stageprofile-target-libbacktrace
++clean-stageprofile-target-libbacktrace:
++	@if [ $(current_stage) = stageprofile ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stageprofile-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stageprofile-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libbacktrace-bootstrap
++
++
++.PHONY: all-stagetrain-target-libbacktrace maybe-all-stagetrain-target-libbacktrace
++.PHONY: clean-stagetrain-target-libbacktrace maybe-clean-stagetrain-target-libbacktrace
++maybe-all-stagetrain-target-libbacktrace:
++maybe-clean-stagetrain-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stagetrain-target-libbacktrace: all-stagetrain-target-libbacktrace
++all-stagetrain: all-stagetrain-target-libbacktrace
++TARGET-stagetrain-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stagetrain-target-libbacktrace: configure-stagetrain-target-libbacktrace
++	@[ $(current_stage) = stagetrain ] || $(MAKE) stagetrain-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEtrain_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEtrain_TFLAGS)"  \
++		$(TARGET-stagetrain-target-libbacktrace)
++
++maybe-clean-stagetrain-target-libbacktrace: clean-stagetrain-target-libbacktrace
++clean-stagetrain: clean-stagetrain-target-libbacktrace
++clean-stagetrain-target-libbacktrace:
++	@if [ $(current_stage) = stagetrain ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stagetrain-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stagetrain-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libbacktrace-bootstrap
++
++
++.PHONY: all-stagefeedback-target-libbacktrace maybe-all-stagefeedback-target-libbacktrace
++.PHONY: clean-stagefeedback-target-libbacktrace maybe-clean-stagefeedback-target-libbacktrace
++maybe-all-stagefeedback-target-libbacktrace:
++maybe-clean-stagefeedback-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stagefeedback-target-libbacktrace: all-stagefeedback-target-libbacktrace
++all-stagefeedback: all-stagefeedback-target-libbacktrace
++TARGET-stagefeedback-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stagefeedback-target-libbacktrace: configure-stagefeedback-target-libbacktrace
++	@[ $(current_stage) = stagefeedback ] || $(MAKE) stagefeedback-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEfeedback_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEfeedback_TFLAGS)"  \
++		$(TARGET-stagefeedback-target-libbacktrace)
++
++maybe-clean-stagefeedback-target-libbacktrace: clean-stagefeedback-target-libbacktrace
++clean-stagefeedback: clean-stagefeedback-target-libbacktrace
++clean-stagefeedback-target-libbacktrace:
++	@if [ $(current_stage) = stagefeedback ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stagefeedback-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stagefeedback-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libbacktrace-bootstrap
++
++
++.PHONY: all-stageautoprofile-target-libbacktrace maybe-all-stageautoprofile-target-libbacktrace
++.PHONY: clean-stageautoprofile-target-libbacktrace maybe-clean-stageautoprofile-target-libbacktrace
++maybe-all-stageautoprofile-target-libbacktrace:
++maybe-clean-stageautoprofile-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stageautoprofile-target-libbacktrace: all-stageautoprofile-target-libbacktrace
++all-stageautoprofile: all-stageautoprofile-target-libbacktrace
++TARGET-stageautoprofile-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stageautoprofile-target-libbacktrace: configure-stageautoprofile-target-libbacktrace
++	@[ $(current_stage) = stageautoprofile ] || $(MAKE) stageautoprofile-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEautoprofile_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$$s/gcc/config/i386/$(AUTO_PROFILE) \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEautoprofile_TFLAGS)"  \
++		$(TARGET-stageautoprofile-target-libbacktrace)
++
++maybe-clean-stageautoprofile-target-libbacktrace: clean-stageautoprofile-target-libbacktrace
++clean-stageautoprofile: clean-stageautoprofile-target-libbacktrace
++clean-stageautoprofile-target-libbacktrace:
++	@if [ $(current_stage) = stageautoprofile ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stageautoprofile-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stageautoprofile-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libbacktrace-bootstrap
++
++
++.PHONY: all-stageautofeedback-target-libbacktrace maybe-all-stageautofeedback-target-libbacktrace
++.PHONY: clean-stageautofeedback-target-libbacktrace maybe-clean-stageautofeedback-target-libbacktrace
++maybe-all-stageautofeedback-target-libbacktrace:
++maybe-clean-stageautofeedback-target-libbacktrace:
++@if target-libbacktrace-bootstrap
++maybe-all-stageautofeedback-target-libbacktrace: all-stageautofeedback-target-libbacktrace
++all-stageautofeedback: all-stageautofeedback-target-libbacktrace
++TARGET-stageautofeedback-target-libbacktrace = $(TARGET-target-libbacktrace)
++all-stageautofeedback-target-libbacktrace: configure-stageautofeedback-target-libbacktrace
++	@[ $(current_stage) = stageautofeedback ] || $(MAKE) stageautofeedback-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEautofeedback_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEautofeedback_TFLAGS)" PERF_DATA=perf.data \
++		$(TARGET-stageautofeedback-target-libbacktrace)
++
++maybe-clean-stageautofeedback-target-libbacktrace: clean-stageautofeedback-target-libbacktrace
++clean-stageautofeedback: clean-stageautofeedback-target-libbacktrace
++clean-stageautofeedback-target-libbacktrace:
++	@if [ $(current_stage) = stageautofeedback ]; then \
++	  [ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stageautofeedback-libbacktrace/Makefile ] || exit 0; \
++	  $(MAKE) stageautofeedback-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libbacktrace && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libbacktrace-bootstrap
++
++
++
++
+ 
+ 
+ .PHONY: check-target-libbacktrace maybe-check-target-libbacktrace
+@@ -52282,7 +53071,6 @@ configure-target-libatomic: stage_curren
+ @if target-libatomic
+ maybe-configure-target-libatomic: configure-target-libatomic
+ configure-target-libatomic: 
+-	@: $(MAKE); $(unstage)
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	echo "Checking multilib configuration for libatomic..."; \
+@@ -52320,6 +53108,412 @@ configure-target-libatomic:
+ 
+ 
+ 
++.PHONY: configure-stage1-target-libatomic maybe-configure-stage1-target-libatomic
++maybe-configure-stage1-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stage1-target-libatomic: configure-stage1-target-libatomic
++configure-stage1-target-libatomic:
++	@[ $(current_stage) = stage1 ] || $(MAKE) stage1-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE1_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage 1 in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	   \
++	  $(STAGE1_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++.PHONY: configure-stage2-target-libatomic maybe-configure-stage2-target-libatomic
++maybe-configure-stage2-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stage2-target-libatomic: configure-stage2-target-libatomic
++configure-stage2-target-libatomic:
++	@[ $(current_stage) = stage2 ] || $(MAKE) stage2-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE2_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage 2 in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGE2_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++.PHONY: configure-stage3-target-libatomic maybe-configure-stage3-target-libatomic
++maybe-configure-stage3-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stage3-target-libatomic: configure-stage3-target-libatomic
++configure-stage3-target-libatomic:
++	@[ $(current_stage) = stage3 ] || $(MAKE) stage3-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE3_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage 3 in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGE3_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++.PHONY: configure-stage4-target-libatomic maybe-configure-stage4-target-libatomic
++maybe-configure-stage4-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stage4-target-libatomic: configure-stage4-target-libatomic
++configure-stage4-target-libatomic:
++	@[ $(current_stage) = stage4 ] || $(MAKE) stage4-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE4_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage 4 in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGE4_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++.PHONY: configure-stageprofile-target-libatomic maybe-configure-stageprofile-target-libatomic
++maybe-configure-stageprofile-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stageprofile-target-libatomic: configure-stageprofile-target-libatomic
++configure-stageprofile-target-libatomic:
++	@[ $(current_stage) = stageprofile ] || $(MAKE) stageprofile-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEprofile_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage profile in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEprofile_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++.PHONY: configure-stagetrain-target-libatomic maybe-configure-stagetrain-target-libatomic
++maybe-configure-stagetrain-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stagetrain-target-libatomic: configure-stagetrain-target-libatomic
++configure-stagetrain-target-libatomic:
++	@[ $(current_stage) = stagetrain ] || $(MAKE) stagetrain-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEtrain_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage train in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEtrain_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++.PHONY: configure-stagefeedback-target-libatomic maybe-configure-stagefeedback-target-libatomic
++maybe-configure-stagefeedback-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stagefeedback-target-libatomic: configure-stagefeedback-target-libatomic
++configure-stagefeedback-target-libatomic:
++	@[ $(current_stage) = stagefeedback ] || $(MAKE) stagefeedback-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEfeedback_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage feedback in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEfeedback_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++.PHONY: configure-stageautoprofile-target-libatomic maybe-configure-stageautoprofile-target-libatomic
++maybe-configure-stageautoprofile-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stageautoprofile-target-libatomic: configure-stageautoprofile-target-libatomic
++configure-stageautoprofile-target-libatomic:
++	@[ $(current_stage) = stageautoprofile ] || $(MAKE) stageautoprofile-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEautoprofile_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage autoprofile in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEautoprofile_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++.PHONY: configure-stageautofeedback-target-libatomic maybe-configure-stageautofeedback-target-libatomic
++maybe-configure-stageautofeedback-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-configure-stageautofeedback-target-libatomic: configure-stageautofeedback-target-libatomic
++configure-stageautofeedback-target-libatomic:
++	@[ $(current_stage) = stageautofeedback ] || $(MAKE) stageautofeedback-start
++	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEautofeedback_TFLAGS)"; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(NORMAL_TARGET_EXPORTS) \
++	 \
++	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
++	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
++	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
++	echo Configuring stage autofeedback in $(TARGET_SUBDIR)/libatomic; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	$(SHELL) $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias} \
++	  --with-build-libsubdir=$(HOST_SUBDIR) \
++	  $(STAGEautofeedback_CONFIGURE_FLAGS)
++@endif target-libatomic-bootstrap
++
++
++
+ 
+ 
+ .PHONY: all-target-libatomic maybe-all-target-libatomic
+@@ -52331,7 +53525,6 @@ all-target-libatomic: stage_current
+ TARGET-target-libatomic=all
+ maybe-all-target-libatomic: all-target-libatomic
+ all-target-libatomic: configure-target-libatomic
+-	@: $(MAKE); $(unstage)
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	$(NORMAL_TARGET_EXPORTS)  \
+@@ -52342,6 +53535,387 @@ all-target-libatomic: configure-target-l
+ 
+ 
+ 
++.PHONY: all-stage1-target-libatomic maybe-all-stage1-target-libatomic
++.PHONY: clean-stage1-target-libatomic maybe-clean-stage1-target-libatomic
++maybe-all-stage1-target-libatomic:
++maybe-clean-stage1-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stage1-target-libatomic: all-stage1-target-libatomic
++all-stage1: all-stage1-target-libatomic
++TARGET-stage1-target-libatomic = $(TARGET-target-libatomic)
++all-stage1-target-libatomic: configure-stage1-target-libatomic
++	@[ $(current_stage) = stage1 ] || $(MAKE) stage1-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE1_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS)  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)  \
++		  \
++		TFLAGS="$(STAGE1_TFLAGS)"  \
++		$(TARGET-stage1-target-libatomic)
++
++maybe-clean-stage1-target-libatomic: clean-stage1-target-libatomic
++clean-stage1: clean-stage1-target-libatomic
++clean-stage1-target-libatomic:
++	@if [ $(current_stage) = stage1 ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stage1-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stage1-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)  \
++	  clean
++@endif target-libatomic-bootstrap
++
++
++.PHONY: all-stage2-target-libatomic maybe-all-stage2-target-libatomic
++.PHONY: clean-stage2-target-libatomic maybe-clean-stage2-target-libatomic
++maybe-all-stage2-target-libatomic:
++maybe-clean-stage2-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stage2-target-libatomic: all-stage2-target-libatomic
++all-stage2: all-stage2-target-libatomic
++TARGET-stage2-target-libatomic = $(TARGET-target-libatomic)
++all-stage2-target-libatomic: configure-stage2-target-libatomic
++	@[ $(current_stage) = stage2 ] || $(MAKE) stage2-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE2_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGE2_TFLAGS)"  \
++		$(TARGET-stage2-target-libatomic)
++
++maybe-clean-stage2-target-libatomic: clean-stage2-target-libatomic
++clean-stage2: clean-stage2-target-libatomic
++clean-stage2-target-libatomic:
++	@if [ $(current_stage) = stage2 ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stage2-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stage2-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libatomic-bootstrap
++
++
++.PHONY: all-stage3-target-libatomic maybe-all-stage3-target-libatomic
++.PHONY: clean-stage3-target-libatomic maybe-clean-stage3-target-libatomic
++maybe-all-stage3-target-libatomic:
++maybe-clean-stage3-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stage3-target-libatomic: all-stage3-target-libatomic
++all-stage3: all-stage3-target-libatomic
++TARGET-stage3-target-libatomic = $(TARGET-target-libatomic)
++all-stage3-target-libatomic: configure-stage3-target-libatomic
++	@[ $(current_stage) = stage3 ] || $(MAKE) stage3-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE3_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGE3_TFLAGS)"  \
++		$(TARGET-stage3-target-libatomic)
++
++maybe-clean-stage3-target-libatomic: clean-stage3-target-libatomic
++clean-stage3: clean-stage3-target-libatomic
++clean-stage3-target-libatomic:
++	@if [ $(current_stage) = stage3 ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stage3-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stage3-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libatomic-bootstrap
++
++
++.PHONY: all-stage4-target-libatomic maybe-all-stage4-target-libatomic
++.PHONY: clean-stage4-target-libatomic maybe-clean-stage4-target-libatomic
++maybe-all-stage4-target-libatomic:
++maybe-clean-stage4-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stage4-target-libatomic: all-stage4-target-libatomic
++all-stage4: all-stage4-target-libatomic
++TARGET-stage4-target-libatomic = $(TARGET-target-libatomic)
++all-stage4-target-libatomic: configure-stage4-target-libatomic
++	@[ $(current_stage) = stage4 ] || $(MAKE) stage4-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGE4_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGE4_TFLAGS)"  \
++		$(TARGET-stage4-target-libatomic)
++
++maybe-clean-stage4-target-libatomic: clean-stage4-target-libatomic
++clean-stage4: clean-stage4-target-libatomic
++clean-stage4-target-libatomic:
++	@if [ $(current_stage) = stage4 ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stage4-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stage4-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libatomic-bootstrap
++
++
++.PHONY: all-stageprofile-target-libatomic maybe-all-stageprofile-target-libatomic
++.PHONY: clean-stageprofile-target-libatomic maybe-clean-stageprofile-target-libatomic
++maybe-all-stageprofile-target-libatomic:
++maybe-clean-stageprofile-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stageprofile-target-libatomic: all-stageprofile-target-libatomic
++all-stageprofile: all-stageprofile-target-libatomic
++TARGET-stageprofile-target-libatomic = $(TARGET-target-libatomic)
++all-stageprofile-target-libatomic: configure-stageprofile-target-libatomic
++	@[ $(current_stage) = stageprofile ] || $(MAKE) stageprofile-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEprofile_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEprofile_TFLAGS)"  \
++		$(TARGET-stageprofile-target-libatomic)
++
++maybe-clean-stageprofile-target-libatomic: clean-stageprofile-target-libatomic
++clean-stageprofile: clean-stageprofile-target-libatomic
++clean-stageprofile-target-libatomic:
++	@if [ $(current_stage) = stageprofile ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stageprofile-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stageprofile-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libatomic-bootstrap
++
++
++.PHONY: all-stagetrain-target-libatomic maybe-all-stagetrain-target-libatomic
++.PHONY: clean-stagetrain-target-libatomic maybe-clean-stagetrain-target-libatomic
++maybe-all-stagetrain-target-libatomic:
++maybe-clean-stagetrain-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stagetrain-target-libatomic: all-stagetrain-target-libatomic
++all-stagetrain: all-stagetrain-target-libatomic
++TARGET-stagetrain-target-libatomic = $(TARGET-target-libatomic)
++all-stagetrain-target-libatomic: configure-stagetrain-target-libatomic
++	@[ $(current_stage) = stagetrain ] || $(MAKE) stagetrain-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEtrain_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEtrain_TFLAGS)"  \
++		$(TARGET-stagetrain-target-libatomic)
++
++maybe-clean-stagetrain-target-libatomic: clean-stagetrain-target-libatomic
++clean-stagetrain: clean-stagetrain-target-libatomic
++clean-stagetrain-target-libatomic:
++	@if [ $(current_stage) = stagetrain ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stagetrain-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stagetrain-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libatomic-bootstrap
++
++
++.PHONY: all-stagefeedback-target-libatomic maybe-all-stagefeedback-target-libatomic
++.PHONY: clean-stagefeedback-target-libatomic maybe-clean-stagefeedback-target-libatomic
++maybe-all-stagefeedback-target-libatomic:
++maybe-clean-stagefeedback-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stagefeedback-target-libatomic: all-stagefeedback-target-libatomic
++all-stagefeedback: all-stagefeedback-target-libatomic
++TARGET-stagefeedback-target-libatomic = $(TARGET-target-libatomic)
++all-stagefeedback-target-libatomic: configure-stagefeedback-target-libatomic
++	@[ $(current_stage) = stagefeedback ] || $(MAKE) stagefeedback-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEfeedback_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEfeedback_TFLAGS)"  \
++		$(TARGET-stagefeedback-target-libatomic)
++
++maybe-clean-stagefeedback-target-libatomic: clean-stagefeedback-target-libatomic
++clean-stagefeedback: clean-stagefeedback-target-libatomic
++clean-stagefeedback-target-libatomic:
++	@if [ $(current_stage) = stagefeedback ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stagefeedback-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stagefeedback-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libatomic-bootstrap
++
++
++.PHONY: all-stageautoprofile-target-libatomic maybe-all-stageautoprofile-target-libatomic
++.PHONY: clean-stageautoprofile-target-libatomic maybe-clean-stageautoprofile-target-libatomic
++maybe-all-stageautoprofile-target-libatomic:
++maybe-clean-stageautoprofile-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stageautoprofile-target-libatomic: all-stageautoprofile-target-libatomic
++all-stageautoprofile: all-stageautoprofile-target-libatomic
++TARGET-stageautoprofile-target-libatomic = $(TARGET-target-libatomic)
++all-stageautoprofile-target-libatomic: configure-stageautoprofile-target-libatomic
++	@[ $(current_stage) = stageautoprofile ] || $(MAKE) stageautoprofile-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEautoprofile_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$$s/gcc/config/i386/$(AUTO_PROFILE) \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEautoprofile_TFLAGS)"  \
++		$(TARGET-stageautoprofile-target-libatomic)
++
++maybe-clean-stageautoprofile-target-libatomic: clean-stageautoprofile-target-libatomic
++clean-stageautoprofile: clean-stageautoprofile-target-libatomic
++clean-stageautoprofile-target-libatomic:
++	@if [ $(current_stage) = stageautoprofile ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stageautoprofile-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stageautoprofile-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libatomic-bootstrap
++
++
++.PHONY: all-stageautofeedback-target-libatomic maybe-all-stageautofeedback-target-libatomic
++.PHONY: clean-stageautofeedback-target-libatomic maybe-clean-stageautofeedback-target-libatomic
++maybe-all-stageautofeedback-target-libatomic:
++maybe-clean-stageautofeedback-target-libatomic:
++@if target-libatomic-bootstrap
++maybe-all-stageautofeedback-target-libatomic: all-stageautofeedback-target-libatomic
++all-stageautofeedback: all-stageautofeedback-target-libatomic
++TARGET-stageautofeedback-target-libatomic = $(TARGET-target-libatomic)
++all-stageautofeedback-target-libatomic: configure-stageautofeedback-target-libatomic
++	@[ $(current_stage) = stageautofeedback ] || $(MAKE) stageautofeedback-start
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	TFLAGS="$(STAGEautofeedback_TFLAGS)"; \
++	$(NORMAL_TARGET_EXPORTS) \
++	  \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	 \
++	$(MAKE) $(BASE_FLAGS_TO_PASS) \
++		CFLAGS="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)" \
++		CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" \
++		CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)" \
++		LIBCFLAGS_FOR_TARGET="$(LIBCFLAGS_FOR_TARGET)" \
++		$(EXTRA_TARGET_FLAGS)   \
++		TFLAGS="$(STAGEautofeedback_TFLAGS)" PERF_DATA=perf.data \
++		$(TARGET-stageautofeedback-target-libatomic)
++
++maybe-clean-stageautofeedback-target-libatomic: clean-stageautofeedback-target-libatomic
++clean-stageautofeedback: clean-stageautofeedback-target-libatomic
++clean-stageautofeedback-target-libatomic:
++	@if [ $(current_stage) = stageautofeedback ]; then \
++	  [ -f $(TARGET_SUBDIR)/libatomic/Makefile ] || exit 0; \
++	else \
++	  [ -f $(TARGET_SUBDIR)/stageautofeedback-libatomic/Makefile ] || exit 0; \
++	  $(MAKE) stageautofeedback-start; \
++	fi; \
++	cd $(TARGET_SUBDIR)/libatomic && \
++	$(MAKE) $(EXTRA_TARGET_FLAGS)   clean
++@endif target-libatomic-bootstrap
++
++
++
++
+ 
+ 
+ .PHONY: check-target-libatomic maybe-check-target-libatomic
+@@ -56022,7 +57596,15 @@ configure-stagetrain-target-libgcc: mayb
+ configure-stagefeedback-target-libgcc: maybe-all-stagefeedback-gcc
+ configure-stageautoprofile-target-libgcc: maybe-all-stageautoprofile-gcc
+ configure-stageautofeedback-target-libgcc: maybe-all-stageautofeedback-gcc
+-configure-target-libbacktrace: stage_last
++configure-stage1-target-libbacktrace: maybe-all-stage1-gcc
++configure-stage2-target-libbacktrace: maybe-all-stage2-gcc
++configure-stage3-target-libbacktrace: maybe-all-stage3-gcc
++configure-stage4-target-libbacktrace: maybe-all-stage4-gcc
++configure-stageprofile-target-libbacktrace: maybe-all-stageprofile-gcc
++configure-stagetrain-target-libbacktrace: maybe-all-stagetrain-gcc
++configure-stagefeedback-target-libbacktrace: maybe-all-stagefeedback-gcc
++configure-stageautoprofile-target-libbacktrace: maybe-all-stageautoprofile-gcc
++configure-stageautofeedback-target-libbacktrace: maybe-all-stageautofeedback-gcc
+ configure-target-libquadmath: stage_last
+ configure-target-libgfortran: stage_last
+ configure-target-libobjc: stage_last
+@@ -56046,7 +57628,15 @@ configure-stagefeedback-target-libgomp:
+ configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-gcc
+ configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-gcc
+ configure-target-libitm: stage_last
+-configure-target-libatomic: stage_last
++configure-stage1-target-libatomic: maybe-all-stage1-gcc
++configure-stage2-target-libatomic: maybe-all-stage2-gcc
++configure-stage3-target-libatomic: maybe-all-stage3-gcc
++configure-stage4-target-libatomic: maybe-all-stage4-gcc
++configure-stageprofile-target-libatomic: maybe-all-stageprofile-gcc
++configure-stagetrain-target-libatomic: maybe-all-stagetrain-gcc
++configure-stagefeedback-target-libatomic: maybe-all-stagefeedback-gcc
++configure-stageautoprofile-target-libatomic: maybe-all-stageautoprofile-gcc
++configure-stageautofeedback-target-libatomic: maybe-all-stageautofeedback-gcc
+ @endif gcc-bootstrap
+ 
+ @if gcc-no-bootstrap
+@@ -57285,6 +58875,15 @@ configure-stagetrain-target-libvtv: mayb
+ configure-stagefeedback-target-libvtv: maybe-all-stagefeedback-target-libgcc
+ configure-stageautoprofile-target-libvtv: maybe-all-stageautoprofile-target-libgcc
+ configure-stageautofeedback-target-libvtv: maybe-all-stageautofeedback-target-libgcc
++configure-stage1-target-libbacktrace: maybe-all-stage1-target-libgcc
++configure-stage2-target-libbacktrace: maybe-all-stage2-target-libgcc
++configure-stage3-target-libbacktrace: maybe-all-stage3-target-libgcc
++configure-stage4-target-libbacktrace: maybe-all-stage4-target-libgcc
++configure-stageprofile-target-libbacktrace: maybe-all-stageprofile-target-libgcc
++configure-stagetrain-target-libbacktrace: maybe-all-stagetrain-target-libgcc
++configure-stagefeedback-target-libbacktrace: maybe-all-stagefeedback-target-libgcc
++configure-stageautoprofile-target-libbacktrace: maybe-all-stageautoprofile-target-libgcc
++configure-stageautofeedback-target-libbacktrace: maybe-all-stageautofeedback-target-libgcc
+ configure-stage1-target-libgomp: maybe-all-stage1-target-libgcc
+ configure-stage2-target-libgomp: maybe-all-stage2-target-libgcc
+ configure-stage3-target-libgomp: maybe-all-stage3-target-libgcc
+@@ -57294,6 +58893,15 @@ configure-stagetrain-target-libgomp: may
+ configure-stagefeedback-target-libgomp: maybe-all-stagefeedback-target-libgcc
+ configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-target-libgcc
+ configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-target-libgcc
++configure-stage1-target-libatomic: maybe-all-stage1-target-libgcc
++configure-stage2-target-libatomic: maybe-all-stage2-target-libgcc
++configure-stage3-target-libatomic: maybe-all-stage3-target-libgcc
++configure-stage4-target-libatomic: maybe-all-stage4-target-libgcc
++configure-stageprofile-target-libatomic: maybe-all-stageprofile-target-libgcc
++configure-stagetrain-target-libatomic: maybe-all-stagetrain-target-libgcc
++configure-stagefeedback-target-libatomic: maybe-all-stagefeedback-target-libgcc
++configure-stageautoprofile-target-libatomic: maybe-all-stageautoprofile-target-libgcc
++configure-stageautofeedback-target-libatomic: maybe-all-stageautofeedback-target-libgcc
+ @endif gcc-bootstrap
+ 
+ @if gcc-no-bootstrap
 --- a/config/acx.m4
 +++ b/config/acx.m4
 @@ -420,6 +420,18 @@ else
