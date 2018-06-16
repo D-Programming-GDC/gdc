@@ -120,6 +120,7 @@ D_FRONTEND_OBJS = \
 	d/imphint.o \
 	d/init.o \
 	d/initsem.o \
+	d/inline.o \
 	d/intrange.o \
 	d/json.o \
 	d/lexer.o \
