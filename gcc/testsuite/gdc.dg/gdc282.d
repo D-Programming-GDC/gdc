@@ -1,4 +1,5 @@
 // { dg-shouldfail "conflicting methods in class" }
+// { dg-do compile }
 
 class C282a
 {

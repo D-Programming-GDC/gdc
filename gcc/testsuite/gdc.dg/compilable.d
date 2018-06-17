@@ -1,5 +1,6 @@
 // { dg-options "-I $srcdir/gdc.dg -I $srcdir/gdc.dg/imports" }
 // { dg-additional-sources "imports/gdc27.d imports/gdc231.d" }
+// { dg-do compile }
 
 import core.simd;
 import gcc.attribute;
