@@ -1,5 +1,6 @@
 // { dg-options "-I $srcdir/gdc.dg" }
 // { dg-shouldfail "interface function is not implemented" }
+// { dg-do compile }
 
 import imports.gdc254a;
 

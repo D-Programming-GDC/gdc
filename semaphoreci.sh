@@ -119,7 +119,7 @@ alltests() {
 testsuite() {
     ## Run just the compiler testsuite.
     cd ${SEMAPHORE_PROJECT_DIR}/build
-    make -j$(nproc) check-gcc-d
+    make -j$(nproc) check-gcc-d RUNTESTFLAGS="--target_board=unix\{,-fstack-protector\}"
 
     ## Print out summaries of testsuite run after finishing.
     # Just omit testsuite PASSes from the summary file.
@@ -135,7 +135,7 @@ testsuite() {
 unittests() {
     ## Run just the library unittests.
     cd ${SEMAPHORE_PROJECT_DIR}/build
-    if ! make -j$(nproc) check-target-libphobos; then
+    if ! make -j$(nproc) check-target-libphobos RUNTESTFLAGS="--target_board=unix\{,-fstack-protector\}"; then
         echo "== Unittest has failures =="
         exit 1
     fi
