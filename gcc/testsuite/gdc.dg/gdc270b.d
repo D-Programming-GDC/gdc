@@ -1,3 +1,5 @@
+// { dg-do compile }
+
 // Bug 270
 
 module gdc270;
