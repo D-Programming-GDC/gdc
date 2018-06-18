@@ -1,4 +1,4 @@
-[![Build Status](https://semaphoreci.com/api/v1/d-programming-gdc/gdc/branches/master/badge.svg)](https://semaphoreci.com/d-programming-gdc/gdc)
+[![Build Status](https://semaphoreci.com/api/v1/d-programming-gdc/gdc/branches/stable/badge.svg)](https://semaphoreci.com/d-programming-gdc/gdc)
 
 ### What is GDC?
 
