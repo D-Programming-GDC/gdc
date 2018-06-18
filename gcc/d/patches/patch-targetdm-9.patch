@@ -308,7 +308,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3206,6 +3230,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3203,6 +3227,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4826,6 +4854,7 @@ case ${target} in
+@@ -4823,6 +4851,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -965,7 +965,7 @@ The following OS versions are implemented:
  #endif /* ! GCC_MIPS_PROTOS_H */
 --- a/gcc/config/mips/mips.h
 +++ b/gcc/config/mips/mips.h
-@@ -644,6 +644,9 @@ struct mips_cpu_info {
+@@ -645,6 +645,9 @@ struct mips_cpu_info {
      }									\
    while (0)
  
