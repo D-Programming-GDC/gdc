@@ -33,7 +33,6 @@ class AttribDeclaration : public Dsymbol
 public:
     Dsymbols *decl;     // array of Dsymbol's
 
-    AttribDeclaration(Dsymbols *decl);
     virtual Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
     int apply(Dsymbol_apply_ft_t fp, void *param);
     static Scope *createNewScope(Scope *sc,
@@ -64,7 +63,6 @@ class StorageClassDeclaration : public AttribDeclaration
 public:
     StorageClass stc;
 
-    StorageClassDeclaration(StorageClass stc, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
     bool oneMember(Dsymbol **ps, Identifier *ident);
@@ -80,7 +78,6 @@ public:
     Expression *msg;
     const char *msgstr;
 
-    DeprecatedDeclaration(Expression *msg, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
     void setScope(Scope *sc);
@@ -94,7 +91,6 @@ class LinkDeclaration : public AttribDeclaration
 public:
     LINK linkage;
 
-    LinkDeclaration(LINK p, Dsymbols *decl);
     static LinkDeclaration *create(LINK p, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
@@ -107,7 +103,6 @@ class CPPMangleDeclaration : public AttribDeclaration
 public:
     CPPMANGLE cppmangle;
 
-    CPPMangleDeclaration(CPPMANGLE p, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
     const char *toChars();
@@ -119,9 +114,6 @@ class ProtDeclaration : public AttribDeclaration
 public:
     Prot protection;
     Identifiers* pkg_identifiers;
-
-    ProtDeclaration(Loc loc, Prot p, Dsymbols *decl);
-    ProtDeclaration(Loc loc, Identifiers* pkg_identifiers, Dsymbols *decl);
 
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
@@ -154,7 +146,6 @@ public:
     unsigned anonstructsize;    // size of anonymous struct
     unsigned anonalignsize;     // size of anonymous struct for alignment purposes
 
-    AnonDeclaration(Loc loc, bool isunion, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void setScope(Scope *sc);
     void semantic(Scope *sc);
@@ -169,7 +160,6 @@ class PragmaDeclaration : public AttribDeclaration
 public:
     Expressions *args;          // array of Expression's
 
-    PragmaDeclaration(Loc loc, Identifier *ident, Expressions *args, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
     void semantic(Scope *sc);
@@ -183,7 +173,6 @@ public:
     Condition *condition;
     Dsymbols *elsedecl; // array of Dsymbol's for else block
 
-    ConditionalDeclaration(Condition *condition, Dsymbols *decl, Dsymbols *elsedecl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     bool oneMember(Dsymbol **ps, Identifier *ident);
     Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
@@ -198,7 +187,6 @@ public:
     ScopeDsymbol *scopesym;
     bool addisdone;
 
-    StaticIfDeclaration(Condition *condition, Dsymbols *decl, Dsymbols *elsedecl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
     void addMember(Scope *sc, ScopeDsymbol *sds);
@@ -249,7 +237,6 @@ public:
     ScopeDsymbol *scopesym;
     bool compiled;
 
-    CompileDeclaration(Loc loc, Expression *exp);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void addMember(Scope *sc, ScopeDsymbol *sds);
     void setScope(Scope *sc);
@@ -268,7 +255,6 @@ class UserAttributeDeclaration : public AttribDeclaration
 public:
     Expressions *atts;
 
-    UserAttributeDeclaration(Expressions *atts, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
     void setScope(Scope *sc);
