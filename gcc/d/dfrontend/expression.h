@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -59,7 +58,7 @@ Expression *resolveProperties(Scope *sc, Expression *e);
 Expression *resolvePropertiesOnly(Scope *sc, Expression *e1);
 bool checkAccess(Loc loc, Scope *sc, Expression *e, Declaration *d);
 bool checkAccess(Loc loc, Scope *sc, Package *p);
-Expression *build_overload(Loc loc, Scope *sc, Expression *ethis, Expression *earg, Dsymbol *d);
+Expression *build_overload(const Loc &loc, Scope *sc, Expression *ethis, Expression *earg, Dsymbol *d);
 Dsymbol *search_function(ScopeDsymbol *ad, Identifier *funcid);
 void expandTuples(Expressions *exps);
 TupleDeclaration *isAliasThisTuple(Expression *e);
@@ -172,14 +171,15 @@ public:
     {
         return ::castTo(this, sc, t);
     }
-    virtual Expression *resolveLoc(Loc loc, Scope *sc);
+    virtual Expression *resolveLoc(const Loc &loc, Scope *sc);
     virtual bool checkType();
     virtual bool checkValue();
     bool checkScalar();
     bool checkNoBool();
     bool checkIntegral();
     bool checkArithmetic();
-    void checkDeprecated(Scope *sc, Dsymbol *s);
+    bool checkDeprecated(Scope *sc, Dsymbol *s);
+    bool checkDisabled(Scope *sc, Dsymbol *s);
     bool checkPurity(Scope *sc, FuncDeclaration *f);
     bool checkPurity(Scope *sc, VarDeclaration *v);
     bool checkSafety(Scope *sc, FuncDeclaration *f);
@@ -226,6 +226,7 @@ public:
     dinteger_t value;
 
     static IntegerExp *create(Loc loc, dinteger_t value, Type *type);
+    static IntegerExp *createi(Loc loc, int value, Type *type);
     bool equals(RootObject *o);
     dinteger_t toInteger();
     real_t toReal();
@@ -469,7 +470,7 @@ public:
 };
 
 class DotIdExp;
-DotIdExp *typeDotIdExp(Loc loc, Type *type, Identifier *ident);
+DotIdExp *typeDotIdExp(const Loc &loc, Type *type, Identifier *ident);
 
 class TypeExp : public Expression
 {
@@ -518,7 +519,8 @@ public:
 
     CtorDeclaration *member;    // constructor function
     NewDeclaration *allocator;  // allocator function
-    int onstack;                // allocate on stack
+    bool onstack;               // allocate on stack
+    bool thrownew;              // this NewExp is the expression of a ThrowStatement
 
     static NewExp *create(Loc loc, Expression *thisexp, Expressions *newargs, Type *newtype, Expressions *arguments);
     Expression *syntaxCopy();
@@ -679,13 +681,13 @@ public:
 
     Expression *syntaxCopy();
     Expression *incompatibleTypes();
-    Expression *resolveLoc(Loc loc, Scope *sc);
+    Expression *resolveLoc(const Loc &loc, Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
 };
 
-typedef UnionExp (*fp_t)(Loc loc, Type *, Expression *, Expression *);
-typedef int (*fp2_t)(Loc loc, TOK, Expression *, Expression *);
+typedef UnionExp (*fp_t)(const Loc &loc, Type *, Expression *, Expression *);
+typedef int (*fp2_t)(const Loc &loc, TOK, Expression *, Expression *);
 
 class BinExp : public Expression
 {
@@ -812,6 +814,7 @@ public:
     static CallExp *create(Loc loc, Expression *e, Expressions *exps);
     static CallExp *create(Loc loc, Expression *e);
     static CallExp *create(Loc loc, Expression *e, Expression *earg1);
+    static CallExp *create(Loc loc, FuncDeclaration *fd, Expression *earg1);
 
     Expression *syntaxCopy();
     bool isLvalue();
@@ -1225,14 +1228,7 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 };
 
-class OrOrExp : public BinExp
-{
-public:
-    Expression *toBoolean(Scope *sc);
-    void accept(Visitor *v) { v->visit(this); }
-};
-
-class AndAndExp : public BinExp
+class LogicalExp : public BinExp
 {
 public:
     Expression *toBoolean(Scope *sc);
@@ -1307,35 +1303,35 @@ public:
 class FileInitExp : public DefaultInitExp
 {
 public:
-    Expression *resolveLoc(Loc loc, Scope *sc);
+    Expression *resolveLoc(const Loc &loc, Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
 class LineInitExp : public DefaultInitExp
 {
 public:
-    Expression *resolveLoc(Loc loc, Scope *sc);
+    Expression *resolveLoc(const Loc &loc, Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
 class ModuleInitExp : public DefaultInitExp
 {
 public:
-    Expression *resolveLoc(Loc loc, Scope *sc);
+    Expression *resolveLoc(const Loc &loc, Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
 class FuncInitExp : public DefaultInitExp
 {
 public:
-    Expression *resolveLoc(Loc loc, Scope *sc);
+    Expression *resolveLoc(const Loc &loc, Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
 class PrettyFuncInitExp : public DefaultInitExp
 {
 public:
-    Expression *resolveLoc(Loc loc, Scope *sc);
+    Expression *resolveLoc(const Loc &loc, Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -1388,6 +1384,13 @@ private:
 
 /****************************************************************/
 
+class ObjcClassReferenceExp : public Expression
+{
+    ClassDeclaration* classDeclaration;
+
+    void accept(Visitor *v) { v->visit(this); }
+};
+
 /* Special values used by the interpreter
  */
 
@@ -1401,24 +1404,24 @@ UnionExp Cast(Loc loc, Type *type, Type *to, Expression *e1);
 UnionExp ArrayLength(Type *type, Expression *e1);
 UnionExp Ptr(Type *type, Expression *e1);
 
-UnionExp Add(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Min(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Mul(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Div(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Mod(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Pow(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Shl(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Shr(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Ushr(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp And(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Or(Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Xor(Loc loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Add(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Min(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Mul(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Div(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Mod(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Pow(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Shl(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Shr(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Ushr(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp And(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Or(const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Xor(const Loc &loc, Type *type, Expression *e1, Expression *e2);
 UnionExp Index(Type *type, Expression *e1, Expression *e2);
 UnionExp Cat(Type *type, Expression *e1, Expression *e2);
 
-UnionExp Equal(TOK op, Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Cmp(TOK op, Loc loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Identity(TOK op, Loc loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Equal(TOK op, const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Cmp(TOK op, const Loc &loc, Type *type, Expression *e1, Expression *e2);
+UnionExp Identity(TOK op, const Loc &loc, Type *type, Expression *e1, Expression *e2);
 
 UnionExp Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr);
 

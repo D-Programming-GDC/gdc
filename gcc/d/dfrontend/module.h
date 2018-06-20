@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -40,7 +39,7 @@ public:
     unsigned tag;       // auto incremented tag, used to mask package tree in scopes
     Module *mod;        // != NULL if isPkgMod == PKGmodule
 
-    const char *kind();
+    const char *kind() const;
 
     static DsymbolTable *resolve(Identifiers *packages, Dsymbol **pparent, Package **ppkg);
 
@@ -48,7 +47,6 @@ public:
 
     bool isAncestorPackageOf(const Package * const pkg) const;
 
-    void semantic(Scope *);
     Dsymbol *search(Loc loc, Identifier *ident, int flags = SearchLocalsOnly);
     void accept(Visitor *v) { v->visit(this); }
 
@@ -65,6 +63,12 @@ public:
     static Dsymbols deferred2;  // deferred Dsymbol's needing semantic2() run on them
     static Dsymbols deferred3;  // deferred Dsymbol's needing semantic3() run on them
     static unsigned dprogress;  // progress resolving the deferred list
+    /**
+     * A callback function that is called once an imported module is
+     * parsed. If the callback returns true, then it tells the
+     * frontend that the driver intends on compiling the import.
+     */
+    static bool (*onImport)(Module);
     static void _init();
 
     static AggregateDeclaration *moduleinfo;
@@ -73,7 +77,6 @@ public:
     const char *arg;    // original argument name
     ModuleDeclaration *md; // if !NULL, the contents of the ModuleDeclaration declaration
     File *srcfile;      // input source file
-    const char* srcfilePath; // the path prefix to the srcfile if it applies
     File *objfile;      // output .obj file
     File *hdrfile;      // 'header' file
     File *docfile;      // output documentation file
@@ -81,8 +84,8 @@ public:
     unsigned numlines;  // number of lines in source file
     int isDocFile;      // if it is a documentation input file, not D source
     bool isPackageFile; // if it is a package.d
+    Strings contentImportedFiles;  // array of files whose content was imported
     int needmoduleinfo;
-
     int selfimports;            // 0: don't know, 1: does not, 2: does
     bool selfImports();         // returns true if module imports itself
 
@@ -121,15 +124,12 @@ public:
 
     static Module *load(Loc loc, Identifiers *packages, Identifier *ident);
 
-    const char *kind();
+    const char *kind() const;
     File *setOutfile(const char *name, const char *dir, const char *arg, const char *ext);
     void setDocfile();
     bool read(Loc loc); // read file, returns 'true' if succeed, 'false' otherwise.
     Module *parse();    // syntactic parse
     void importAll(Scope *sc);
-    void semantic(Scope *);    // semantic analysis
-    void semantic2(Scope *);   // pass 2 semantic analysis
-    void semantic3(Scope *);   // pass 3 semantic analysis
     int needModuleInfo();
     Dsymbol *search(Loc loc, Identifier *ident, int flags = SearchLocalsOnly);
     bool isPackageAccessible(Package *p, Prot protection, int flags = 0);

@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -80,14 +79,14 @@ public:
     bool ismixin;               // template declaration is only to be used as a mixin
     bool isstatic;              // this is static template declaration
     Prot protection;
+    int inuse;                  // for recursive expansion detection
 
     TemplatePrevious *previous;         // threaded list of previous instantiation attempts on stack
 
     Dsymbol *syntaxCopy(Dsymbol *);
-    void semantic(Scope *sc);
     bool overloadInsert(Dsymbol *s);
     bool hasStaticCtorOrDtor();
-    const char *kind();
+    const char *kind() const;
     const char *toChars();
 
     Prot prot();
@@ -147,7 +146,6 @@ public:
 
     virtual TemplateParameter *syntaxCopy() = 0;
     virtual bool declareParameter(Scope *sc) = 0;
-    virtual bool semantic(Scope *sc, TemplateParameters *parameters) = 0;
     virtual void print(RootObject *oarg, RootObject *oded) = 0;
     virtual RootObject *specialization() = 0;
     virtual RootObject *defaultArg(Loc instLoc, Scope *sc) = 0;
@@ -178,7 +176,6 @@ public:
     TemplateTypeParameter *isTemplateTypeParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
-    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
     RootObject *specialization();
     RootObject *defaultArg(Loc instLoc, Scope *sc);
@@ -209,12 +206,9 @@ public:
     Expression *specValue;
     Expression *defaultValue;
 
-    static AA *edummies;
-
     TemplateValueParameter *isTemplateValueParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
-    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
     RootObject *specialization();
     RootObject *defaultArg(Loc instLoc, Scope *sc);
@@ -239,7 +233,6 @@ public:
     TemplateAliasParameter *isTemplateAliasParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
-    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
     RootObject *specialization();
     RootObject *defaultArg(Loc instLoc, Scope *sc);
@@ -258,7 +251,6 @@ public:
     TemplateTupleParameter *isTemplateTupleParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
-    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
     RootObject *specialization();
     RootObject *defaultArg(Loc instLoc, Scope *sc);
@@ -313,12 +305,8 @@ public:
 
     static Objects *arraySyntaxCopy(Objects *objs);
     Dsymbol *syntaxCopy(Dsymbol *);
-    void semantic(Scope *sc, Expressions *fargs);
-    void semantic(Scope *sc);
-    void semantic2(Scope *sc);
-    void semantic3(Scope *sc);
     Dsymbol *toAlias();                 // resolve real symbol
-    const char *kind();
+    const char *kind() const;
     bool oneMember(Dsymbol **ps, Identifier *ident);
     const char *toChars();
     const char* toPrettyCharsHelper();
@@ -332,7 +320,7 @@ public:
     // Internal
     bool findTempDecl(Scope *sc, WithScopeSymbol **pwithsym);
     bool updateTempDecl(Scope *sc, Dsymbol *s);
-    static bool semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int flags);
+    static bool semanticTiargs(const Loc &loc, Scope *sc, Objects *tiargs, int flags);
     bool semanticTiargs(Scope *sc);
     bool findBestMatch(Scope *sc, Expressions *fargs);
     bool needsTypeInference(Scope *sc, int flag = 0);
@@ -354,10 +342,7 @@ public:
     TypeQualified *tqual;
 
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void semantic(Scope *sc);
-    void semantic2(Scope *sc);
-    void semantic3(Scope *sc);
-    const char *kind();
+    const char *kind() const;
     bool oneMember(Dsymbol **ps, Identifier *ident);
     int apply(Dsymbol_apply_ft_t fp, void *param);
     bool hasPointers();
@@ -375,8 +360,8 @@ Dsymbol *isDsymbol(RootObject *o);
 Type *isType(RootObject *o);
 Tuple *isTuple(RootObject *o);
 Parameter *isParameter(RootObject *o);
-bool arrayObjectIsError(Objects *args);
-bool isError(RootObject *o);
+bool arrayObjectIsError(const Objects *args);
+bool isError(const RootObject *o);
 Type *getType(RootObject *o);
 Dsymbol *getDsymbol(RootObject *o);
 

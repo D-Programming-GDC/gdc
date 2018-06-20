@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -33,7 +32,7 @@ class AttribDeclaration : public Dsymbol
 public:
     Dsymbols *decl;     // array of Dsymbol's
 
-    virtual Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
+    virtual Dsymbols *include(Scope *sc);
     int apply(Dsymbol_apply_ft_t fp, void *param);
     static Scope *createNewScope(Scope *sc,
         StorageClass newstc, LINK linkage, CPPMANGLE cppmangle, Prot protection,
@@ -42,9 +41,6 @@ public:
     void addMember(Scope *sc, ScopeDsymbol *sds);
     void setScope(Scope *sc);
     void importAll(Scope *sc);
-    void semantic(Scope *sc);
-    void semantic2(Scope *sc);
-    void semantic3(Scope *sc);
     void addComment(const utf8_t *comment);
     const char *kind() const;
     bool oneMember(Dsymbol **ps, Identifier *ident);
@@ -81,7 +77,6 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
     void setScope(Scope *sc);
-    void semantic2(Scope *sc);
     const char *getMessage();
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -120,6 +115,7 @@ public:
     void addMember(Scope *sc, ScopeDsymbol *sds);
     const char *kind() const;
     const char *toPrettyChars(bool unused);
+    ProtDeclaration *isProtDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -129,11 +125,9 @@ public:
     Expression *ealign;
     structalign_t salign;
 
-    AlignDeclaration(Loc loc, Expression *ealign, Dsymbols *decl);
+    AlignDeclaration(const Loc &loc, Expression *ealign, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
-    void semantic2(Scope *sc);
-    structalign_t getAlignment(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -148,7 +142,6 @@ public:
 
     Dsymbol *syntaxCopy(Dsymbol *s);
     void setScope(Scope *sc);
-    void semantic(Scope *sc);
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     const char *kind() const;
     AnonDeclaration *isAnonDeclaration() { return this; }
@@ -162,7 +155,6 @@ public:
 
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
-    void semantic(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -175,7 +167,7 @@ public:
 
     Dsymbol *syntaxCopy(Dsymbol *s);
     bool oneMember(Dsymbol **ps, Identifier *ident);
-    Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
+    Dsymbols *include(Scope *sc);
     void addComment(const utf8_t *comment);
     void setScope(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
@@ -186,13 +178,13 @@ class StaticIfDeclaration : public ConditionalDeclaration
 public:
     ScopeDsymbol *scopesym;
     bool addisdone;
+    bool onStack;
 
     Dsymbol *syntaxCopy(Dsymbol *s);
-    Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
+    Dsymbols *include(Scope *sc);
     void addMember(Scope *sc, ScopeDsymbol *sds);
     void setScope(Scope *sc);
     void importAll(Scope *sc);
-    void semantic(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -206,13 +198,12 @@ public:
     Dsymbols *cache;
 
     Dsymbol *syntaxCopy(Dsymbol *s);
-    bool oneMember(Dsymbol *ps, Identifier *ident);
-    Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
+    bool oneMember(Dsymbol **ps, Identifier *ident);
+    Dsymbols *include(Scope *sc);
     void addMember(Scope *sc, ScopeDsymbol *sds);
-    void addComment(const char *comment);
+    void addComment(const utf8_t *comment);
     void setScope(Scope *sc);
     void importAll(Scope *sc);
-    void semantic(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -240,8 +231,6 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     void addMember(Scope *sc, ScopeDsymbol *sds);
     void setScope(Scope *sc);
-    void compileIt(Scope *sc);
-    void semantic(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -258,8 +247,6 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
     void setScope(Scope *sc);
-    void semantic(Scope *sc);
-    void semantic2(Scope *sc);
     static Expressions *concat(Expressions *udas1, Expressions *udas2);
     Expressions *getAttributes();
     const char *kind() const;

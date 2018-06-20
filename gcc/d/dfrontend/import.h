@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -47,13 +46,11 @@ public:
     AliasDeclarations aliasdecls; // corresponding AliasDeclarations for alias=name pairs
 
     void addAlias(Identifier *name, Identifier *alias);
-    const char *kind();
+    const char *kind() const;
     Prot prot();
     Dsymbol *syntaxCopy(Dsymbol *s);    // copy only syntax trees
     void load(Scope *sc);
     void importAll(Scope *sc);
-    void semantic(Scope *sc);
-    void semantic2(Scope *sc);
     Dsymbol *toAlias();
     void addMember(Scope *sc, ScopeDsymbol *sds);
     void setScope(Scope* sc);

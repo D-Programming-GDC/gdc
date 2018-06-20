@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -17,6 +16,7 @@
 #endif /* __DMC__ */
 
 #include "root.h"
+#include "rmem.h"
 #include "stringtable.h"
 
 class Identifier : public RootObject
@@ -39,7 +39,7 @@ public:
     static StringTable stringtable;
     static Identifier *generateId(const char *prefix);
     static Identifier *generateId(const char *prefix, size_t i);
-    static Identifier *idPool(const char *s, size_t len);
+    static Identifier *idPool(const char *s, unsigned len);
 
     static inline Identifier *idPool(const char *s)
     {

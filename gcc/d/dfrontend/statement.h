@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -229,11 +228,6 @@ class ForwardingStatement : public Statement
     Statement *statement;
 
     Statement *syntaxCopy();
-    Statement *getRelatedLabeled();
-    bool hasBreak();
-    bool hasContinue();
-    Statement *scopeCode(Scope *sc, Statement **sentry, Statement **sexception, Statement **sfinally);
-    Statement *last();
     Statements *flatten(Scope *sc);
     ForwardingStatement *isForwardingStatement() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -341,9 +335,8 @@ public:
     Expression *condition;
     Statement *ifbody;
     Statement *elsebody;
-    Loc endloc;                 // location of closing curly bracket
-
     VarDeclaration *match;      // for MatchExpression results
+    Loc endloc;                 // location of closing curly bracket
 
     Statement *syntaxCopy();
     IfStatement *isIfStatement() { return this; }
@@ -585,6 +578,8 @@ class TryFinallyStatement : public Statement
 public:
     Statement *_body;
     Statement *finalbody;
+
+    bool bodyFallsThru;         // true if _body falls through to finally
 
     static TryFinallyStatement *create(Loc loc, Statement *body, Statement *finalbody);
     Statement *syntaxCopy();

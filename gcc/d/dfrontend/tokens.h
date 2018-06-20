@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -82,15 +81,10 @@ enum TOK
         TOKindex,       TOKis,
 
 // 64
-        // NCEG floating point compares
-        // !<>=     <>    <>=    !>     !>=   !<     !<=   !<>
-        TOKunord,TOKlg,TOKleg,TOKule,TOKul,TOKuge,TOKug,TOKue,
-
-// 72
         TOKshl,         TOKshr,
         TOKshlass,      TOKshrass,
         TOKushr,        TOKushrass,
-        TOKcat,         TOKcatass,      // ~ ~=
+        TOKcat,         TOKcatass,      TOKcatelemass,  TOKcatdcharass,     // ~ ~=
         TOKadd,         TOKmin,         TOKaddass,      TOKminass,
         TOKmul,         TOKdiv,         TOKmod,
         TOKmulass,      TOKdivass,      TOKmodass,
@@ -102,7 +96,7 @@ enum TOK
         TOKquestion,    TOKandand,      TOKoror,
         TOKpreplusplus, TOKpreminusminus,
 
-// 111
+// 105
         // Numeric literals
         TOKint32v, TOKuns32v,
         TOKint64v, TOKuns64v,
@@ -131,7 +125,7 @@ enum TOK
         TOKcomplex32, TOKcomplex64, TOKcomplex80,
         TOKchar, TOKwchar, TOKdchar, TOKbool,
 
-// 158
+// 152
         // Aggregates
         TOKstruct, TOKclass, TOKinterface, TOKunion, TOKenum, TOKimport,
         TOKalias, TOKoverride, TOKdelegate, TOKfunction,
@@ -142,6 +136,7 @@ enum TOK
         TOKdebug, TOKdeprecated, TOKin, TOKout, TOKinout, TOKlazy,
         TOKauto, TOKpackage, TOKmanifest, TOKimmutable,
 
+// 183
         // Statements
         TOKif, TOKelse, TOKwhile, TOKfor, TOKdo, TOKswitch,
         TOKcase, TOKdefault, TOKbreak, TOKcontinue, TOKwith,
@@ -150,6 +145,7 @@ enum TOK
         TOKscope,
         TOKon_scope_exit, TOKon_scope_failure, TOKon_scope_success,
 
+// 207
         // Contracts
         TOKinvariant,
 
@@ -161,6 +157,7 @@ enum TOK
         TOKref,
         TOKmacro,
 
+// 212
         TOKparameters,
         TOKtraits,
         TOKoverloadset,
@@ -181,9 +178,12 @@ enum TOK
         TOKvector,
         TOKpound,
 
+// 231
         TOKinterval,
         TOKvoidexp,
         TOKcantexp,
+
+        TOKobjc_class_reference,
 
         TOKMAX
 };
@@ -201,8 +201,8 @@ struct Token
     union
     {
         // Integers
-        d_int64 int64value;
-        d_uns64 uns64value;
+        sinteger_t intvalue;
+        uinteger_t unsvalue;
 
         // Floats
         real_t floatvalue;

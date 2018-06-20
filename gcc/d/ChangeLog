@@ -7,6 +7,15 @@
 
 	* Makefile.in (d.mostlyclean): Remove cleanup of verstr.h.
 
+2018-06-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Makefile.in (D_FRONTEND_OBJS): Add compiler.o, ctorflow.o,
+	dsymbolsem.o, lambdacomp.o, longdouble.o, parsetimevisitor.o,
+	permissivevisitor.o, port.o, semantic2.o, semantic3.o,
+	templateparamsem.o, transitivevisitor.o
+	(D_INCLUDES): Rename ddmd to dmd.
+	(d/%.o): Likewise.
+
 2018-06-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Makefile.in (DMD_WARN_CXXFLAGS, DMD_COMPILE)

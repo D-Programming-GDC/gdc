@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -37,7 +36,7 @@ public:
     int inc;
 
     virtual Condition *syntaxCopy() = 0;
-    virtual int include(Scope *sc, ScopeDsymbol *sds) = 0;
+    virtual int include(Scope *sc) = 0;
     virtual DebugCondition *isDebugCondition() { return NULL; }
     virtual void accept(Visitor *v) { v->visit(this); }
 };
@@ -69,10 +68,9 @@ public:
 class DebugCondition : public DVCondition
 {
 public:
-    static void setGlobalLevel(unsigned level);
     static void addGlobalIdent(const char *ident);
 
-    int include(Scope *sc, ScopeDsymbol *sds);
+    int include(Scope *sc);
     DebugCondition *isDebugCondition() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -80,11 +78,10 @@ public:
 class VersionCondition : public DVCondition
 {
 public:
-    static void setGlobalLevel(unsigned level);
     static void addGlobalIdent(const char *ident);
     static void addPredefinedGlobalIdent(const char *ident);
 
-    int include(Scope *sc, ScopeDsymbol *sds);
+    int include(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -95,7 +92,7 @@ public:
     int nest;         // limit circular dependencies
 
     Condition *syntaxCopy();
-    int include(Scope *sc, ScopeDsymbol *sds);
+    int include(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 

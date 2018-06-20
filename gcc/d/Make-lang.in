@@ -80,12 +80,14 @@ D_FRONTEND_OBJS = \
 	d/builtin.o \
 	d/canthrow.o \
 	d/clone.o \
+	d/compiler.o \
 	d/complex.o \
 	d/cond.o \
 	d/constfold.o \
 	d/cppmangle.o \
 	d/ctfeexpr.o \
 	d/ctfloat.o \
+	d/ctorflow.o \
 	d/dcast.o \
 	d/dclass.o \
 	d/declaration.o \
@@ -100,6 +102,7 @@ D_FRONTEND_OBJS = \
 	d/dscope.o \
 	d/dstruct.o \
 	d/dsymbol.o \
+	d/dsymbolsem.o \
 	d/dtemplate.o \
 	d/dversion.o \
 	d/entity.o \
@@ -123,7 +126,9 @@ D_FRONTEND_OBJS = \
 	d/inline.o \
 	d/intrange.o \
 	d/json.o \
+	d/lambdacomp.o \
 	d/lexer.o \
+	d/longdouble.o \
 	d/mtype.o \
 	d/nogc.o \
 	d/nspace.o \
@@ -132,10 +137,15 @@ D_FRONTEND_OBJS = \
 	d/optimize.o \
 	d/outbuffer.o \
 	d/parse.o \
+	d/parsetimevisitor.o \
+	d/permissivevisitor.o \
+	d/port.o \
 	d/rmem.o \
 	d/rootobject.o \
 	d/safe.o \
 	d/sapply.o \
+	d/semantic2.o \
+	d/semantic3.o \
 	d/sideeffect.o \
 	d/speller.o \
 	d/statement.o \
@@ -145,8 +155,10 @@ D_FRONTEND_OBJS = \
 	d/staticcond.o \
 	d/stringtable.o \
 	d/target.o \
+	d/templateparamsem.o \
 	d/tokens.o \
 	d/traits.o \
+	d/transitivevisitor.o \
 	d/typesem.o \
 	d/typinf.o \
 	d/utf.o \
@@ -318,13 +330,13 @@ d.stagefeedback: stagefeedback-start
 	-mv d/*$(objext) stagefeedback/d
 
 # Include the dfrontend and build directories for headers.
-D_INCLUDES = -I$(srcdir)/d -J$(srcdir)/d/ddmd/ddoc
+D_INCLUDES = -I$(srcdir)/d -J$(srcdir)/d/dmd/ddoc
 
 # Override build rules for D frontend.
-d/%.o: d/ddmd/%.d
+d/%.o: d/dmd/%.d
 	$(DCOMPILE) $(D_INCLUDES) $<
 	$(DPOSTCOMPILE)
 
-d/%.o: d/ddmd/root/%.d
+d/%.o: d/dmd/root/%.d
 	$(DCOMPILE) $(D_INCLUDES) $<
 	$(DPOSTCOMPILE)

@@ -1,7 +1,6 @@
 
 /* Compiler implementation of the D programming language
  * Copyright (C) 2006-2018 by The D Language Foundation, All Rights Reserved
- * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -32,6 +31,8 @@ typedef Array<class ClassDeclaration *> ClassDeclarations;
 typedef Array<class Dsymbol *> Dsymbols;
 
 typedef Array<class RootObject *> Objects;
+
+typedef Array<class DtorDeclaration *> DtorDeclarations;
 
 typedef Array<class FuncDeclaration *> FuncDeclarations;
 
@@ -67,5 +68,7 @@ typedef Array<class ReturnStatement *> ReturnStatements;
 typedef Array<class GotoStatement *> GotoStatements;
 
 typedef Array<class TemplateInstance *> TemplateInstances;
+
+typedef Array<struct Ensure> Ensures;
 
 #endif
