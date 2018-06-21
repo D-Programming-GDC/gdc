@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -26,7 +26,7 @@ class TypeInfo_D : TypeInfo
     pure:
     nothrow:
 
-    override size_t getHash(in void* p)
+    override size_t getHash(scope const void* p)
     {
         return rt.util.hash.hashOf(p[0 .. dg.sizeof], 0);
     }
