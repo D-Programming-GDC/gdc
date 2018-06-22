@@ -5,6 +5,21 @@
 
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-builtins.cc (d_init_versions): Replace BOUNDSCHECK enum values
+	with CHECKENABLE.
+	* d-codegen.cc (array_bounds_check): Likewise.
+	* d-frontend.cc (Global::init_): Don't set params initialized by the
+	frontend.
+	* d-lang.cc (d_init_options): Update initialization of global struct.
+	(d_handle_option): Replace BOUNDSCHECK enum values with CHECKENABLE.
+	Update handling of debug and version identifiers.
+	(d_post_options): Replace BOUNDSCHECK enum values with CHECKENABLE.
+	Handle debug and version identifiers given on the command line.
+	(d_parse_file): Use global versionids to get full list of predefined
+	identifiers.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-frontend.cc (Global::startGagging): Remove function.
 	(Global::endGagging): Remove function.
 	(Global::increaseErrorCount): Remove function.

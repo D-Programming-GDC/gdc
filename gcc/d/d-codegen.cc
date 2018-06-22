@@ -1766,13 +1766,13 @@ array_bounds_check (void)
 
   switch (global.params.useArrayBounds)
     {
-    case BOUNDSCHECKoff:
+    case CHECKENABLEoff:
       return false;
 
-    case BOUNDSCHECKon:
+    case CHECKENABLEon:
       return true;
 
-    case BOUNDSCHECKsafeonly:
+    case CHECKENABLEsafeonly:
       /* For D2 safe functions only.  */
       fd = d_function_chain->function;
       if (fd && fd->type->ty == Tfunction)

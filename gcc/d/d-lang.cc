@@ -281,7 +281,7 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.useInvariants = true;
   global.params.useIn = true;
   global.params.useOut = true;
-  global.params.useArrayBounds = BOUNDSCHECKdefault;
+  global.params.useArrayBounds = CHECKENABLEdefault;
   global.params.useSwitchError = true;
   global.params.useInline = false;
   global.params.warnings = 0;
@@ -290,11 +290,7 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.hdrStripPlainFunctions = true;
   global.params.betterC = false;
   global.params.allInst = false;
-
-  global.params.linkswitches = new Strings ();
-  global.params.libfiles = new Strings ();
-  global.params.objfiles = new Strings ();
-  global.params.ddocfiles = new Strings ();
+  global.params.errorLimit = flag_max_errors;
 
   global.params.imppath = new Strings ();
   global.params.fileImppath = new Strings ();
@@ -420,12 +416,12 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fbounds_check:
       global.params.useArrayBounds = value
-	? BOUNDSCHECKon : BOUNDSCHECKoff;
+	? CHECKENABLEon : CHECKENABLEoff;
       break;
 
     case OPT_fbounds_check_:
-      global.params.useArrayBounds = (value == 2) ? BOUNDSCHECKon
-	: (value == 1) ? BOUNDSCHECKsafeonly : BOUNDSCHECKoff;
+      global.params.useArrayBounds = (value == 2) ? CHECKENABLEon
+	: (value == 1) ? CHECKENABLEsafeonly : CHECKENABLEoff;
       break;
 
     case OPT_fdebug:
@@ -438,14 +434,16 @@ d_handle_option (size_t scode, const char *arg, int value,
 	  int level = integral_argument (arg);
 	  if (level != -1)
 	    {
-	      DebugCondition::setGlobalLevel (level);
+	      global.params.debuglevel = level;
 	      break;
 	    }
 	}
 
       if (Identifier::isValidIdentifier (CONST_CAST (char *, arg)))
 	{
-	  DebugCondition::addGlobalIdent (arg);
+	  if (!global.params.debugids)
+	    global.params.debugids = new Strings ();
+	  global.params.debugids->push (arg);
 	  break;
 	}
 
@@ -478,7 +476,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fdoc_inc_:
-      global.params.ddocfiles->push (arg);
+      global.params.ddocfiles.push (arg);
       break;
 
     case OPT_fdump_d_original:
@@ -576,14 +574,16 @@ d_handle_option (size_t scode, const char *arg, int value,
 	  int level = integral_argument (arg);
 	  if (level != -1)
 	    {
-	      VersionCondition::setGlobalLevel (level);
+	      global.params.versionlevel = level;
 	      break;
 	    }
 	}
 
       if (Identifier::isValidIdentifier (CONST_CAST (char *, arg)))
 	{
-	  VersionCondition::addGlobalIdent (arg);
+	  if (!global.params.versionids)
+	    global.params.versionids = new Strings ();
+	  global.params.versionids->push (arg);
 	  break;
 	}
 
@@ -717,10 +717,10 @@ d_post_options (const char ** fn)
   *fn = filename;
 
   /* Release mode doesn't turn off bounds checking for safe functions.  */
-  if (global.params.useArrayBounds == BOUNDSCHECKdefault)
+  if (global.params.useArrayBounds == CHECKENABLEdefault)
     {
       global.params.useArrayBounds = global.params.release
-	? BOUNDSCHECKsafeonly : BOUNDSCHECKon;
+	? CHECKENABLEsafeonly : CHECKENABLEon;
       flag_bounds_check = !global.params.release;
     }
 
@@ -748,7 +748,7 @@ d_post_options (const char ** fn)
 
   /* Make -fmax-errors visible to frontend's diagnostic machinery.  */
   if (global_options_set.x_flag_max_errors)
-    global.errorLimit = flag_max_errors;
+    global.params.errorLimit = flag_max_errors;
 
   if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
     flag_excess_precision_cmdline = EXCESS_PRECISION_STANDARD;
@@ -766,6 +766,25 @@ d_post_options (const char ** fn)
 
   /* Has no effect yet.  */
   global.params.pic = flag_pic != 0;
+
+  /* Add in versions given on the command line.  */
+  if (global.params.versionids)
+    {
+      for (size_t i = 0; i < global.params.versionids->dim; i++)
+	{
+	  const char *s = (*global.params.versionids)[i];
+	  VersionCondition::addGlobalIdent (s);
+	}
+    }
+
+  if (global.params.debugids)
+    {
+      for (size_t i = 0; i < global.params.debugids->dim; i++)
+	{
+	  const char *s = (*global.params.debugids)[i];
+	  DebugCondition::addGlobalIdent (s);
+	}
+    }
 
   if (warn_return_type == -1)
     warn_return_type = 0;
@@ -969,13 +988,13 @@ d_parse_file (void)
       message ("binary    %s", global.params.argv0);
       message ("version   %s", global.version);
 
-      if (global.params.versionids)
+      if (global.versionids)
 	{
 	  OutBuffer buf;
 	  buf.writestring ("predefs  ");
-	  for (size_t i = 0; i < global.params.versionids->dim; i++)
+	  for (size_t i = 0; i < global.versionids->dim; i++)
 	    {
-	      Identifier *id = (*global.params.versionids)[i];
+	      Identifier *id = (*global.versionids)[i];
 	      buf.writestring (" ");
 	      buf.writestring (id->toChars ());
 	    }

@@ -41,20 +41,12 @@ along with GCC; see the file COPYING3.  If not see
 void
 Global::_init (void)
 {
-  this->mars_ext = "d";
-  this->hdr_ext  = "di";
-  this->doc_ext  = "html";
-  this->ddoc_ext = "ddoc";
-  this->json_ext = "json";
   this->obj_ext = "o";
 
   this->run_noext = true;
   this->version = "v"
 #include "verstr.h"
     ;
-
-  this->stdmsg = stderr;
-  this->errorLimit = flag_max_errors;
 }
 
 /* Implements the Loc interface defined by the frontend.
