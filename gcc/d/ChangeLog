@@ -11,6 +11,12 @@
 
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* decl.cc (DeclVisitor::visit(FuncDeclaration)): Move function
+	unnesting to...
+	(get_symbol_decl): ... here.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_post_options): Set global showColumns parameter.
 
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
