@@ -966,18 +966,21 @@ d_parse_file (void)
 {
   if (global.params.verbose)
     {
-      fprintf (global.stdmsg, "binary    %s\n", global.params.argv0);
-      fprintf (global.stdmsg, "version   %s\n", global.version);
+      message ("binary    %s", global.params.argv0);
+      message ("version   %s", global.version);
 
       if (global.params.versionids)
 	{
-	  fprintf (global.stdmsg, "predefs  ");
+	  OutBuffer buf;
+	  buf.writestring ("predefs  ");
 	  for (size_t i = 0; i < global.params.versionids->dim; i++)
 	    {
-	      const char *s = (*global.params.versionids)[i];
-	      fprintf (global.stdmsg, " %s", s);
+	      Identifier *id = (*global.params.versionids)[i];
+	      buf.writestring (" ");
+	      buf.writestring (id->toChars ());
 	    }
-	  fprintf (global.stdmsg, "\n");
+
+	  message ("%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
 
@@ -1052,7 +1055,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "parse     %s\n", m->toChars ());
+	message ("parse     %s", m->toChars ());
 
       if (!Module::rootModule)
 	Module::rootModule = m;
@@ -1085,7 +1088,7 @@ d_parse_file (void)
 	    continue;
 
 	  if (global.params.verbose)
-	    fprintf (global.stdmsg, "import    %s\n", m->toChars ());
+	    message ("import    %s", m->toChars ());
 
 	  genhdrfile (m);
 	}
@@ -1100,7 +1103,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "importall %s\n", m->toChars ());
+	message ("importall %s", m->toChars ());
 
       m->importAll (NULL);
     }
@@ -1116,7 +1119,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic  %s\n", m->toChars ());
+	message ("semantic  %s", m->toChars ());
 
       dsymbolSemantic (m, NULL);
     }
@@ -1147,7 +1150,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic2 %s\n", m->toChars ());
+	message ("semantic2 %s", m->toChars ());
 
       semantic2 (m, NULL);
     }
@@ -1163,7 +1166,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic3 %s\n", m->toChars ());
+	message ("semantic3 %s", m->toChars ());
 
       semantic3 (m, NULL);
     }
@@ -1206,7 +1209,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fdeps);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf->offset, (char *) buf->data);
+	message ("%.*s", (int) buf->offset, (char *) buf->data);
     }
 
   /* Make dependencies.  */
@@ -1229,7 +1232,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fdeps);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	message ("%.*s", (int) buf.offset, (char *) buf.data);
     }
 
   /* Generate JSON files.  */
@@ -1249,7 +1252,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fjson);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	message ("%.*s", (int) buf.offset, (char *) buf.data);
     }
 
   /* Generate Ddoc files.  */
@@ -1275,7 +1278,7 @@ d_parse_file (void)
 	  hgs.fullDump = true;
 
 	  toCBuffer (m, &buf, &hgs);
-	  fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	  message ("%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
 
@@ -1286,7 +1289,7 @@ d_parse_file (void)
 	continue;
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "code      %s\n", m->toChars ());
+	message ("code      %s", m->toChars ());
 
       if (!flag_syntax_only)
 	{

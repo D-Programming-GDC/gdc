@@ -5,6 +5,16 @@
 
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-diagnostic.cc (expand_format): Handle whitespace format specifier.
+	(d_diagnostic_report_diagnostic): Change signature, updated all
+	callers.  Handle writing messages verbatim.
+	(vmessage): New function.
+	* d-lang.cc (d_parse_file): Use message to emit verbose diagnostics.
+	* decl.cc (DeclVisitor::visit(FuncDeclaration)): Likewise.
+	(get_symbol_decl): Likewise.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-builtins.cc (build_frontend_type): Update call to
 	TypeVector::create.  Use Type::merge2 to complete type.
 	(maybe_set_builtin_1): Update call to AttribDeclaration::include.
