@@ -753,7 +753,7 @@ public:
       }
 
     if (global.params.verbose)
-      fprintf (global.stdmsg, "function  %s\n", d->toPrettyChars ());
+      message ("function  %s", d->toPrettyChars ());
 
     /* Start generating code for this function.  */
     gcc_assert (d->semanticRun == PASSsemantic3done);
@@ -1246,13 +1246,7 @@ get_symbol_decl (Declaration *decl)
   if (decl->isThreadlocal () && !DECL_ARTIFICIAL (decl->csym))
     {
       if (global.params.vtls)
-	{
-	  const char *p = decl->loc.toChars ();
-	  fprintf (global.stdmsg, "%s: %s is thread local\n",
-		   p ? p : "", decl->toChars ());
-	  if (p)
-	    free (CONST_CAST (char *, p));
-	}
+	message (decl->loc, "`%s` is thread local", decl->toChars ());
 
       set_decl_tls_model (decl->csym, decl_default_tls_model (decl->csym));
     }
