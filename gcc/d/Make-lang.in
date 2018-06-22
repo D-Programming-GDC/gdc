@@ -296,7 +296,6 @@ d.uninstall:
 d.mostlyclean:
 	-rm -f d/*$(objext)
 	-rm -f d/*$(coverageexts)
-	-rm -f verstr.h
 	-rm -f d/gdc$(exeext) gdc-cross$(exeext) d/cc1d$(exeext)
 d.clean:
 d.distclean:
