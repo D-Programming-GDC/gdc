@@ -9,6 +9,19 @@
 	* d-spec.c: Include opt-suggestions.h containing option_proposer used by
 	gcc.h.
 
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_frontend_type): Use Type::merge2 to merge
+	generated front-end types.
+	* d-codegen.cc (declaration_type): Likewise.
+	(type_passed_as): Likewise.
+	* d-convert.cc (convert_expr): Use ClassDeclaration::isCPPclass.
+	* d-lang.cc (d_build_eh_runtime_type): Likewise.
+	* toir.cc (IRVisitor::visit): Use ClassDecalration::isCPPclass.
+	* typeinfo.cc (TypeInfoVisitor::visit): Use Type::merge2 to merge
+	generated front-end types.
+	* types.cc (layout_aggregate_type): Use ClassDeclaration::isCPPclass.
+
 2018-05-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(StringExp)): Copy string literal from

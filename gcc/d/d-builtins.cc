@@ -232,7 +232,7 @@ build_frontend_type (tree type)
 	  sdecl->sizeok = SIZEOKdone;
 	  sdecl->type = (TypeStruct::create (sdecl))->addMod (mod);
 	  sdecl->type->ctype = type;
-	  sdecl->type->merge ();
+	  sdecl->type->merge2 ();
 
 	  /* Does not seem necessary to convert fields, but the members field
 	     must be non-null for the above size setting to stick.  */

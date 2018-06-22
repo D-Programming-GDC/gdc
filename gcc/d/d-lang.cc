@@ -1751,7 +1751,7 @@ d_build_eh_runtime_type (tree type)
   ClassDeclaration *cd = ((TypeClass *) t)->sym;
   tree decl;
 
-  if (cd->cpp)
+  if (cd->isCPPclass ())
     decl = get_cpp_typeinfo_decl (cd);
   else
     decl = get_classinfo_decl (cd);
