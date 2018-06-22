@@ -752,6 +752,7 @@ d_post_options (const char ** fn)
 
   global.params.symdebug = write_symbols != NO_DEBUG;
   global.params.useInline = flag_inline_functions;
+  global.params.showColumns = flag_show_column;
 
   if (global.params.useInline)
     global.params.hdrStripPlainFunctions = false;

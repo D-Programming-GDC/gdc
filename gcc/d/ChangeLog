@@ -11,6 +11,10 @@
 
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_post_options): Set global showColumns parameter.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-diagnostic.cc (expand_format): Handle whitespace format specifier.
 	(d_diagnostic_report_diagnostic): Change signature, updated all
 	callers.  Handle writing messages verbatim.
