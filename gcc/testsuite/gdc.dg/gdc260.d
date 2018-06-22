@@ -1,4 +1,5 @@
 // { dg-options "-Wall -Werror" }
+// { dg-do compile }
 import gcc.builtins;
 
 char *bug260(char *buffer)

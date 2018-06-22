@@ -14,7 +14,6 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-load_lib libphobos.exp
 load_lib libphobos-dg.exp
 
 # Immediately exit if target doesn't support shared.
@@ -25,10 +24,6 @@ if { ![is-effective-target shared] } {
 # If a testcase doesn't have special options, use these.
 if ![info exists DEFAULT_CFLAGS] then {
     set DEFAULT_CFLAGS "-g"
-}
-
-if ![info exists DEFAULT_DFLAGS] then {
-    set DEFAULT_DFLAGS "-g"
 }
 
 #
@@ -42,7 +37,7 @@ proc shared_library { source destfile options } {
     # Compiling with -fno-gnu-unique as tests call dlopen/dlclose multiple times on the same library.
     lappend options "additional_flags=$DEFAULT_DFLAGS -fno-gnu-unique -fpic -shared -shared-libphobos"
 
-    set comp_output [gdc_target_compile "$source" "$destfile" "executable" $options]
+    set comp_output [libphobos_target_compile "$source" "$destfile" "executable" $options]
     if ![ string match "" $comp_output ] {
         fail "libphobos.shared/[file tail $source]"
         verbose -log $comp_output
