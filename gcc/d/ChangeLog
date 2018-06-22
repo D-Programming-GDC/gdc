@@ -5,6 +5,10 @@
 
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_post_options): Set global showColumns parameter.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-builtins.cc (d_init_versions): Replace BOUNDSCHECK enum values
 	with CHECKENABLE.
 	* d-codegen.cc (array_bounds_check): Likewise.
