@@ -740,13 +740,6 @@ public:
     if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != d)
       return;
 
-    /* For nested functions in particular, unnest fndecl in the cgraph, as
-       all static chain passing is handled by the front-end.  Do this even
-       if we are not emitting the body.  */
-    struct cgraph_node *node = cgraph_node::get_create (fndecl);
-    if (node->origin)
-      node->unnest ();
-
     if (!d->fbody)
       {
 	rest_of_decl_compilation (fndecl, 1, 0);
@@ -1171,6 +1164,13 @@ get_symbol_decl (Declaration *decl)
       /* Check whether this function is expanded by the frontend.  */
       DECL_INTRINSIC_CODE (decl->csym) = INTRINSIC_NONE;
       maybe_set_intrinsic (fd);
+
+      /* For nested functions in particular, unnest fndecl in the cgraph, as
+	 all static chain passing is handled by the front-end.  Do this even
+	 if we are not emitting the body.  */
+      struct cgraph_node *node = cgraph_node::get_create (decl->csym);
+      if (node->origin)
+	node->unnest ();
     }
 
   /* Mark compiler generated temporaries as artificial.  */
