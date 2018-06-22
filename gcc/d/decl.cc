@@ -206,7 +206,7 @@ public:
 
   void visit (AttribDeclaration *d)
   {
-    Dsymbols *ds = d->include (NULL, NULL);
+    Dsymbols *ds = d->include (NULL);
 
     if (!ds)
       return;
@@ -1185,9 +1185,9 @@ get_symbol_decl (Declaration *decl)
     TREE_THIS_VOLATILE (decl->csym) = 1;
 
   /* Protection attributes are used by the debugger.  */
-  if (decl->protection.kind == PROTprivate)
+  if (decl->protection.kind == Prot::private_)
     TREE_PRIVATE (decl->csym) = 1;
-  else if (decl->protection.kind == PROTprotected)
+  else if (decl->protection.kind == Prot::protected_)
     TREE_PROTECTED (decl->csym) = 1;
 
   /* Likewise, so could the deprecated attribute.  */

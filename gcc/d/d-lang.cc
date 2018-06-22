@@ -1118,7 +1118,7 @@ d_parse_file (void)
       if (global.params.verbose)
 	fprintf (global.stdmsg, "semantic  %s\n", m->toChars ());
 
-      m->semantic (NULL);
+      dsymbolSemantic (m, NULL);
     }
 
   /* Do deferred semantic analysis.  */
@@ -1149,7 +1149,7 @@ d_parse_file (void)
       if (global.params.verbose)
 	fprintf (global.stdmsg, "semantic2 %s\n", m->toChars ());
 
-      m->semantic2 (NULL);
+      semantic2 (m, NULL);
     }
 
   Module::runDeferredSemantic2 ();
@@ -1165,7 +1165,7 @@ d_parse_file (void)
       if (global.params.verbose)
 	fprintf (global.stdmsg, "semantic3 %s\n", m->toChars ());
 
-      m->semantic3 (NULL);
+      semantic3 (m, NULL);
     }
 
   Module::runDeferredSemantic3 ();
@@ -1757,7 +1757,7 @@ d_build_eh_runtime_type (tree type)
   ClassDeclaration *cd = ((TypeClass *) t)->sym;
   tree decl;
 
-  if (cd->cpp)
+  if (cd->isCPPclass ())
     decl = get_cpp_typeinfo_decl (cd);
   else
     decl = get_classinfo_decl (cd);

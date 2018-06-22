@@ -203,7 +203,7 @@ build_frontend_type (tree type)
 	  if (dtype->nextOf ()->isTypeBasic () == NULL)
 	    break;
 
-	  dtype = (TypeVector::create (Loc (), dtype))->addMod (mod);
+	  dtype = (TypeVector::create (dtype))->addMod (mod);
 	  builtin_converted_decls.safe_push (builtin_data (dtype, type));
 	  return dtype;
 	}
@@ -232,7 +232,7 @@ build_frontend_type (tree type)
 	  sdecl->sizeok = SIZEOKdone;
 	  sdecl->type = (TypeStruct::create (sdecl))->addMod (mod);
 	  sdecl->type->ctype = type;
-	  sdecl->type->merge ();
+	  sdecl->type->merge2 ();
 
 	  /* Does not seem necessary to convert fields, but the members field
 	     must be non-null for the above size setting to stick.  */
@@ -600,7 +600,7 @@ maybe_set_builtin_1 (Dsymbol *d)
   if (ad != NULL)
     {
       /* Recursively search through attribute decls.  */
-      Dsymbols *decls = ad->include (NULL, NULL);
+      Dsymbols *decls = ad->include (NULL);
       if (decls && decls->dim)
 	{
 	  for (size_t i = 0; i < decls->dim; i++)

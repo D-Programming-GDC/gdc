@@ -5,6 +5,30 @@
 
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-builtins.cc (build_frontend_type): Update call to
+	TypeVector::create.  Use Type::merge2 to complete type.
+	(maybe_set_builtin_1): Update call to AttribDeclaration::include.
+	* d-codegen.cc (declaration_type): Use Type::merge2 to complete type.
+	(type_passed_as): Likewise.
+	* d-convert.cc (convert_expr): Use ClassDeclaration::isCPPclass.
+	* d-frontend.cc (genCmain): Use new semantic entrypoints.
+	* d-lang.cc (d_parse_file): Likewise.
+	(d_build_eh_runtime_type): Use ClassDeclaration::isCPPclass.
+	* decl.cc (DeclVisitor::visit(AttribDeclaration)): Update call to
+	AttribDeclaration::include.
+	(get_symbol_decl): Replace PROT enum values with Prot.
+	* expr.cc (ExprVisitor::visit): Merge AndAndExp and OrOrExp into
+	LogicalExp visitor method.
+	* modules.cc (get_internal_fn): Replace PROT enum value with Prot.
+	* toir.cc (IRVisitor::visit): Use ClassDecalration::isCPPclass.
+	* typeinfo.cc (make_frontend_typeinfo): Use new semantic entrypoints.
+	(TypeInfoVisitor::visit): Use Type::merge2 to complete type.
+	* types.cc (layout_aggregate_members): Update call to
+	AttribDeclaration::include.
+	(layout_aggregate_type): Use ClassDeclaration::isCPPclass.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* Makefile.in (d.mostlyclean): Remove cleanup of verstr.h.
 
 2018-06-20  Iain Buclaw  <ibuclaw@gdcproject.org>

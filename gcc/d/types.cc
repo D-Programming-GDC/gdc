@@ -364,7 +364,7 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
       AttribDeclaration *attrib = sym->isAttribDeclaration ();
       if (attrib != NULL)
 	{
-	  Dsymbols *decls = attrib->include (NULL, NULL);
+	  Dsymbols *decls = attrib->include (NULL);
 	  if (decls != NULL)
 	    {
 	      fields += layout_aggregate_members (decls, context, inherited_p);
@@ -419,7 +419,7 @@ layout_aggregate_type (AggregateDeclaration *decl, tree type,
 	      insert_aggregate_field (type, field, 0);
 	    }
 
-	  if (!id && !cd->cpp)
+	  if (!id && !cd->isCPPclass ())
 	    {
 	      tree field = create_field_decl (ptr_type_node, "__monitor", 1,
 					      inherited_p);

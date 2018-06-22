@@ -1121,7 +1121,7 @@ public:
 	  }
       }
 
-    if (cd->cpp || (id != NULL && id->cpp))
+    if (cd->isCPPclass () || (id != NULL && id->isCPPclass ()))
       s->error ("cannot throw C++ classes");
     else if (cd->com || (id != NULL && id->com))
       s->error ("cannot throw COM objects");
@@ -1166,7 +1166,7 @@ public:
 	    Type *tcatch = vcatch->type->toBasetype ();
 	    ClassDeclaration *cd = tcatch->isClassHandle ();
 
-	    libcall_fn libcall = (cd->cpp) ? LIBCALL_CXA_BEGIN_CATCH
+	    libcall_fn libcall = (cd->isCPPclass ()) ? LIBCALL_CXA_BEGIN_CATCH
 	      : LIBCALL_BEGIN_CATCH;
 	    object = build_libcall (libcall, vcatch->type, 1, ehptr);
 
@@ -1192,7 +1192,7 @@ public:
 
 	    /* Need to wrap C++ handlers in a try/finally block to signal
 	       the end catch callback.  */
-	    if (cd->cpp)
+	    if (cd->isCPPclass ())
 	      {
 		tree endcatch = build_libcall (LIBCALL_CXA_END_CATCH,
 					       Type::tvoid, 0);
