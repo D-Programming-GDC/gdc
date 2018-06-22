@@ -88,9 +88,10 @@ DIST_COMMON = $(top_srcdir)/d_rules.am $(srcdir)/Makefile.in \
 @DRUNTIME_OS_LINUX_TRUE@am__append_8 = $(DRUNTIME_DSOURCES_LINUX)
 @DRUNTIME_OS_MINGW_TRUE@am__append_9 = $(DRUNTIME_DSOURCES_WINDOWS)
 @DRUNTIME_OS_SOLARIS_TRUE@am__append_10 = $(DRUNTIME_DSOURCES_SOLARIS)
+@DRUNTIME_OS_DRAGONFLYBSD_TRUE@am__append_11 = $(DRUNTIME_DSOURCES_DRAGONFLYBSD)
 check_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
-@ENABLE_SHARED_TRUE@am__append_11 = unittest
-@ENABLE_STATIC_TRUE@am__append_12 = unittest_static
+@ENABLE_SHARED_TRUE@am__append_12 = unittest
+@ENABLE_STATIC_TRUE@am__append_13 = unittest_static
 subdir = libdruntime
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/../config/acx.m4 \
@@ -149,32 +150,32 @@ am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	core/checkedint.lo core/cpuid.lo core/demangle.lo \
 	core/exception.lo core/internal/abort.lo \
 	core/internal/arrayop.lo core/internal/convert.lo \
-	core/internal/hash.lo core/internal/spinlock.lo \
-	core/internal/string.lo core/internal/traits.lo core/math.lo \
-	core/memory.lo core/runtime.lo core/simd.lo \
-	core/stdc/assert_.lo core/stdc/complex.lo core/stdc/config.lo \
-	core/stdc/ctype.lo core/stdc/errno.lo core/stdc/fenv.lo \
-	core/stdc/float_.lo core/stdc/inttypes.lo core/stdc/limits.lo \
-	core/stdc/locale.lo core/stdc/math.lo core/stdc/signal.lo \
-	core/stdc/stdarg.lo core/stdc/stddef.lo core/stdc/stdint.lo \
-	core/stdc/stdio.lo core/stdc/stdlib.lo core/stdc/string.lo \
-	core/stdc/tgmath.lo core/stdc/time.lo core/stdc/wchar_.lo \
-	core/stdc/wctype.lo core/sync/barrier.lo \
-	core/sync/condition.lo core/sync/config.lo \
-	core/sync/exception.lo core/sync/mutex.lo core/sync/rwmutex.lo \
-	core/sync/semaphore.lo core/thread.lo core/time.lo \
-	core/vararg.lo etc/linux/memoryerror.lo gcc/attribute.lo \
-	gcc/backtrace.lo gcc/builtins.lo gcc/deh.lo gcc/unwind/arm.lo \
-	gcc/unwind/arm_common.lo gcc/unwind/c6x.lo \
+	core/internal/hash.lo core/internal/parseoptions.lo \
+	core/internal/spinlock.lo core/internal/string.lo \
+	core/internal/traits.lo core/math.lo core/memory.lo \
+	core/runtime.lo core/simd.lo core/stdc/assert_.lo \
+	core/stdc/complex.lo core/stdc/config.lo core/stdc/ctype.lo \
+	core/stdc/errno.lo core/stdc/fenv.lo core/stdc/float_.lo \
+	core/stdc/inttypes.lo core/stdc/limits.lo core/stdc/locale.lo \
+	core/stdc/math.lo core/stdc/signal.lo core/stdc/stdarg.lo \
+	core/stdc/stddef.lo core/stdc/stdint.lo core/stdc/stdio.lo \
+	core/stdc/stdlib.lo core/stdc/string.lo core/stdc/tgmath.lo \
+	core/stdc/time.lo core/stdc/wchar_.lo core/stdc/wctype.lo \
+	core/sync/barrier.lo core/sync/condition.lo \
+	core/sync/config.lo core/sync/exception.lo core/sync/mutex.lo \
+	core/sync/rwmutex.lo core/sync/semaphore.lo core/thread.lo \
+	core/time.lo core/vararg.lo etc/linux/memoryerror.lo \
+	gcc/attribute.lo gcc/backtrace.lo gcc/builtins.lo gcc/deh.lo \
+	gcc/unwind/arm.lo gcc/unwind/arm_common.lo gcc/unwind/c6x.lo \
 	gcc/unwind/generic.lo gcc/unwind/package.lo gcc/unwind/pe.lo \
 	object.lo rt/aApply.lo rt/aApplyR.lo rt/aaA.lo rt/adi.lo \
-	rt/arrayassign.lo rt/arraycast.lo rt/arraycat.lo \
-	rt/backtrace/dwarf.lo rt/backtrace/elf.lo rt/cast_.lo \
+	rt/arrayassign.lo rt/arraycast.lo rt/arraycat.lo rt/cast_.lo \
 	rt/config.lo rt/critical_.lo rt/deh.lo rt/dmain2.lo \
-	rt/invariant.lo rt/lifetime.lo rt/memory.lo rt/minfo.lo \
-	rt/monitor_.lo rt/obj.lo rt/qsort.lo rt/sections.lo \
-	rt/sections_android.lo rt/sections_elf_shared.lo \
-	rt/sections_osx.lo rt/sections_solaris.lo rt/sections_win32.lo \
+	rt/ehalloc.lo rt/invariant.lo rt/lifetime.lo rt/memory.lo \
+	rt/minfo.lo rt/monitor_.lo rt/obj.lo rt/qsort.lo \
+	rt/sections.lo rt/sections_android.lo \
+	rt/sections_elf_shared.lo rt/sections_osx.lo \
+	rt/sections_solaris.lo rt/sections_win32.lo \
 	rt/sections_win64.lo rt/switch_.lo rt/tlsgc.lo \
 	rt/typeinfo/ti_Acdouble.lo rt/typeinfo/ti_Acfloat.lo \
 	rt/typeinfo/ti_Acreal.lo rt/typeinfo/ti_Adouble.lo \
@@ -200,12 +201,11 @@ am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	rt/util/hash.lo rt/util/random.lo rt/util/typeinfo.lo \
 	rt/util/utf.lo
 am__objects_2 = gc/bits.lo gc/config.lo gc/gcinterface.lo \
-	gc/impl/conservative/gc.lo gc/impl/manual/gc.lo gc/os.lo \
-	gc/pooltable.lo gc/proxy.lo
+	gc/impl/conservative/gc.lo gc/impl/manual/gc.lo \
+	gc/impl/proto/gc.lo gc/os.lo gc/pooltable.lo gc/proxy.lo
 @DRUNTIME_GC_ENABLE_TRUE@am__objects_3 = $(am__objects_2)
-am__objects_4 = gcstub/gc.lo
-@DRUNTIME_GC_ENABLE_FALSE@am__objects_5 = $(am__objects_4)
-am__objects_6 = core/sys/posix/aio.lo core/sys/posix/arpa/inet.lo \
+am__objects_4 =
+am__objects_5 = core/sys/posix/aio.lo core/sys/posix/arpa/inet.lo \
 	core/sys/posix/config.lo core/sys/posix/dirent.lo \
 	core/sys/posix/dlfcn.lo core/sys/posix/fcntl.lo \
 	core/sys/posix/grp.lo core/sys/posix/iconv.lo \
@@ -230,8 +230,8 @@ am__objects_6 = core/sys/posix/aio.lo core/sys/posix/arpa/inet.lo \
 	core/sys/posix/termios.lo core/sys/posix/time.lo \
 	core/sys/posix/ucontext.lo core/sys/posix/unistd.lo \
 	core/sys/posix/utime.lo
-@DRUNTIME_OS_UNIX_TRUE@am__objects_7 = $(am__objects_6)
-am__objects_8 = core/sys/darwin/dlfcn.lo core/sys/darwin/execinfo.lo \
+@DRUNTIME_OS_UNIX_TRUE@am__objects_6 = $(am__objects_5)
+am__objects_7 = core/sys/darwin/dlfcn.lo core/sys/darwin/execinfo.lo \
 	core/sys/darwin/mach/dyld.lo core/sys/darwin/mach/getsect.lo \
 	core/sys/darwin/mach/kern_return.lo \
 	core/sys/darwin/mach/loader.lo core/sys/darwin/mach/port.lo \
@@ -240,17 +240,17 @@ am__objects_8 = core/sys/darwin/dlfcn.lo core/sys/darwin/execinfo.lo \
 	core/sys/darwin/netinet/in_.lo core/sys/darwin/pthread.lo \
 	core/sys/darwin/sys/cdefs.lo core/sys/darwin/sys/event.lo \
 	core/sys/darwin/sys/mman.lo
-am__objects_9 = core/sys/osx/execinfo.lo core/sys/osx/mach/dyld.lo \
+am__objects_8 = core/sys/osx/execinfo.lo core/sys/osx/mach/dyld.lo \
 	core/sys/osx/mach/getsect.lo core/sys/osx/mach/kern_return.lo \
 	core/sys/osx/mach/loader.lo core/sys/osx/mach/port.lo \
 	core/sys/osx/mach/semaphore.lo core/sys/osx/mach/thread_act.lo \
 	core/sys/osx/pthread.lo core/sys/osx/sys/cdefs.lo \
 	core/sys/osx/sys/event.lo core/sys/osx/sys/mman.lo
-@DRUNTIME_OS_DARWIN_TRUE@am__objects_10 = $(am__objects_8) \
-@DRUNTIME_OS_DARWIN_TRUE@	$(am__objects_9)
-am__objects_11 = core/sys/bionic/fcntl.lo core/sys/bionic/unistd.lo
-@DRUNTIME_OS_ANDROID_TRUE@am__objects_12 = $(am__objects_11)
-am__objects_13 = core/sys/freebsd/dlfcn.lo \
+@DRUNTIME_OS_DARWIN_TRUE@am__objects_9 = $(am__objects_7) \
+@DRUNTIME_OS_DARWIN_TRUE@	$(am__objects_8)
+am__objects_10 = core/sys/bionic/fcntl.lo core/sys/bionic/unistd.lo
+@DRUNTIME_OS_ANDROID_TRUE@am__objects_11 = $(am__objects_10)
+am__objects_12 = core/sys/freebsd/dlfcn.lo \
 	core/sys/freebsd/execinfo.lo core/sys/freebsd/netinet/in_.lo \
 	core/sys/freebsd/pthread_np.lo core/sys/freebsd/sys/_bitset.lo \
 	core/sys/freebsd/sys/_cpuset.lo core/sys/freebsd/sys/cdefs.lo \
@@ -259,10 +259,10 @@ am__objects_13 = core/sys/freebsd/dlfcn.lo \
 	core/sys/freebsd/sys/elf_common.lo \
 	core/sys/freebsd/sys/event.lo core/sys/freebsd/sys/link_elf.lo \
 	core/sys/freebsd/sys/mman.lo core/sys/freebsd/time.lo
-@DRUNTIME_OS_FREEBSD_TRUE@am__objects_14 = $(am__objects_13)
-am__objects_15 = core/sys/openbsd/dlfcn.lo
-@DRUNTIME_OS_OPENBSD_TRUE@am__objects_16 = $(am__objects_15)
-am__objects_17 = core/sys/linux/config.lo core/sys/linux/dlfcn.lo \
+@DRUNTIME_OS_FREEBSD_TRUE@am__objects_13 = $(am__objects_12)
+am__objects_14 = core/sys/openbsd/dlfcn.lo
+@DRUNTIME_OS_OPENBSD_TRUE@am__objects_15 = $(am__objects_14)
+am__objects_16 = core/sys/linux/config.lo core/sys/linux/dlfcn.lo \
 	core/sys/linux/elf.lo core/sys/linux/epoll.lo \
 	core/sys/linux/errno.lo core/sys/linux/execinfo.lo \
 	core/sys/linux/fcntl.lo core/sys/linux/ifaddrs.lo \
@@ -277,8 +277,8 @@ am__objects_17 = core/sys/linux/config.lo core/sys/linux/dlfcn.lo \
 	core/sys/linux/sys/xattr.lo core/sys/linux/termios.lo \
 	core/sys/linux/time.lo core/sys/linux/timerfd.lo \
 	core/sys/linux/tipc.lo core/sys/linux/unistd.lo
-@DRUNTIME_OS_LINUX_TRUE@am__objects_18 = $(am__objects_17)
-am__objects_19 = core/sys/windows/accctrl.lo \
+@DRUNTIME_OS_LINUX_TRUE@am__objects_17 = $(am__objects_16)
+am__objects_18 = core/sys/windows/accctrl.lo \
 	core/sys/windows/aclapi.lo core/sys/windows/aclui.lo \
 	core/sys/windows/basetsd.lo core/sys/windows/basetyps.lo \
 	core/sys/windows/cderr.lo core/sys/windows/cguid.lo \
@@ -361,8 +361,8 @@ am__objects_19 = core/sys/windows/accctrl.lo \
 	core/sys/windows/winspool.lo core/sys/windows/winsvc.lo \
 	core/sys/windows/winuser.lo core/sys/windows/winver.lo \
 	core/sys/windows/wtsapi32.lo core/sys/windows/wtypes.lo
-@DRUNTIME_OS_MINGW_TRUE@am__objects_20 = $(am__objects_19)
-am__objects_21 = core/sys/solaris/dlfcn.lo core/sys/solaris/elf.lo \
+@DRUNTIME_OS_MINGW_TRUE@am__objects_19 = $(am__objects_18)
+am__objects_20 = core/sys/solaris/dlfcn.lo core/sys/solaris/elf.lo \
 	core/sys/solaris/execinfo.lo core/sys/solaris/libelf.lo \
 	core/sys/solaris/link.lo core/sys/solaris/sys/elf.lo \
 	core/sys/solaris/sys/elf_386.lo \
@@ -373,24 +373,41 @@ am__objects_21 = core/sys/solaris/dlfcn.lo core/sys/solaris/elf.lo \
 	core/sys/solaris/sys/priocntl.lo \
 	core/sys/solaris/sys/procset.lo core/sys/solaris/sys/types.lo \
 	core/sys/solaris/time.lo
-@DRUNTIME_OS_SOLARIS_TRUE@am__objects_22 = $(am__objects_21)
-am__objects_23 = gcc/config.lo gcc/libbacktrace.lo
-am__objects_24 = $(am__objects_1) $(am__objects_3) $(am__objects_5) \
-	$(am__objects_7) $(am__objects_10) $(am__objects_12) \
-	$(am__objects_14) $(am__objects_16) $(am__objects_18) \
-	$(am__objects_20) $(am__objects_22) $(am__objects_23)
-am__objects_25 = libgdruntime_la-errno_.lo \
+@DRUNTIME_OS_SOLARIS_TRUE@am__objects_21 = $(am__objects_20)
+am__objects_22 = core/sys/dragonflybsd/dlfcn.lo \
+	core/sys/dragonflybsd/execinfo.lo \
+	core/sys/dragonflybsd/netinet/in_.lo \
+	core/sys/dragonflybsd/pthread_np.lo \
+	core/sys/dragonflybsd/sys/_bitset.lo \
+	core/sys/dragonflybsd/sys/_cpuset.lo \
+	core/sys/dragonflybsd/sys/cdefs.lo \
+	core/sys/dragonflybsd/sys/elf.lo \
+	core/sys/dragonflybsd/sys/elf32.lo \
+	core/sys/dragonflybsd/sys/elf64.lo \
+	core/sys/dragonflybsd/sys/elf_common.lo \
+	core/sys/dragonflybsd/sys/event.lo \
+	core/sys/dragonflybsd/sys/link_elf.lo \
+	core/sys/dragonflybsd/sys/mman.lo \
+	core/sys/dragonflybsd/time.lo
+@DRUNTIME_OS_DRAGONFLYBSD_TRUE@am__objects_23 = $(am__objects_22)
+am__objects_24 = gcc/config.lo gcc/libbacktrace.lo
+am__objects_25 = $(am__objects_1) $(am__objects_3) $(am__objects_4) \
+	$(am__objects_6) $(am__objects_9) $(am__objects_11) \
+	$(am__objects_13) $(am__objects_15) $(am__objects_17) \
+	$(am__objects_19) $(am__objects_21) $(am__objects_23) \
+	$(am__objects_24)
+am__objects_26 = libgdruntime_la-errno_.lo \
 	libgdruntime_la-bss_section.lo
-am__objects_26 = libgdruntime_la-threadasm.lo
-am__objects_27 = $(am__objects_24) $(am__objects_25) $(am__objects_26)
-am_libgdruntime_la_OBJECTS = $(am__objects_27)
+am__objects_27 = libgdruntime_la-threadasm.lo
+am__objects_28 = $(am__objects_25) $(am__objects_26) $(am__objects_27)
+am_libgdruntime_la_OBJECTS = $(am__objects_28)
 libgdruntime_la_OBJECTS = $(am_libgdruntime_la_OBJECTS)
 libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
-am__objects_28 = libgdruntime_t_la-errno_.lo \
+am__objects_29 = libgdruntime_t_la-errno_.lo \
 	libgdruntime_t_la-bss_section.lo
-am__objects_29 = libgdruntime_t_la-threadasm.lo
-am_libgdruntime_t_la_OBJECTS = $(am__objects_28) $(am__objects_29)
+am__objects_30 = libgdruntime_t_la-threadasm.lo
+am_libgdruntime_t_la_OBJECTS = $(am__objects_29) $(am__objects_30)
 libgdruntime_t_la_OBJECTS = $(am_libgdruntime_t_la_OBJECTS)
 @ENABLE_SHARED_TRUE@am_libgdruntime_t_la_rpath =
 @ENABLE_SHARED_TRUE@am__EXEEXT_1 = unittest$(EXEEXT)
@@ -398,10 +415,10 @@ libgdruntime_t_la_OBJECTS = $(am_libgdruntime_t_la_OBJECTS)
 am_unittest_OBJECTS = ../testsuite/test_runner.$(OBJEXT)
 unittest_OBJECTS = $(am_unittest_OBJECTS)
 unittest_DEPENDENCIES = libgdruntime_t.la
-am__objects_30 = errno_.$(OBJEXT) bss_section.$(OBJEXT)
-am__objects_31 = threadasm.$(OBJEXT)
+am__objects_31 = errno_.$(OBJEXT) bss_section.$(OBJEXT)
+am__objects_32 = threadasm.$(OBJEXT)
 am_unittest_static_OBJECTS = ../testsuite/test_runner.$(OBJEXT) \
-	$(am__objects_30) $(am__objects_31)
+	$(am__objects_31) $(am__objects_32)
 unittest_static_OBJECTS = $(am_unittest_static_OBJECTS)
 unittest_static_DEPENDENCIES = $(DRUNTIME_TEST_OBJECTS) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
@@ -626,11 +643,12 @@ AM_DFLAGS = $(phobos_compiler_pic_flag)
 ALL_DRUNTIME_INSTALL_DSOURCES = $(DRUNTIME_DSOURCES) \
 	$(DRUNTIME_DSOURCES_GC) $(DRUNTIME_DSOURCES_GCSTUB) \
 	$(DRUNTIME_DSOURCES_BIONIC) $(DRUNTIME_DSOURCES_DARWIN) \
-	$(DRUNTIME_DSOURCES_FREEBSD) $(DRUNTIME_DSOURCES_LINUX) \
-	$(DRUNTIME_DSOURCES_OPENBSD) $(DRUNTIME_DSOURCES_OSX) \
-	$(DRUNTIME_DSOURCES_POSIX) $(DRUNTIME_DSOURCES_SOLARIS) \
-	$(DRUNTIME_DSOURCES_WINDOWS) $(DRUNTIME_DSOURCES_GENERATED) \
-	$(DRUNTIME_DISOURCES) $(DRUNTIME_DSOURCES_STDCXX)
+	$(DRUNTIME_DSOURCES_DRAGONFLYBSD) $(DRUNTIME_DSOURCES_FREEBSD) \
+	$(DRUNTIME_DSOURCES_LINUX) $(DRUNTIME_DSOURCES_OPENBSD) \
+	$(DRUNTIME_DSOURCES_OSX) $(DRUNTIME_DSOURCES_POSIX) \
+	$(DRUNTIME_DSOURCES_SOLARIS) $(DRUNTIME_DSOURCES_WINDOWS) \
+	$(DRUNTIME_DSOURCES_GENERATED) $(DRUNTIME_DSOURCES_STDCXX) \
+	$(DRUNTIME_DISOURCES)
 
 
 # Setup source files depending on configure
@@ -639,7 +657,7 @@ ALL_DRUNTIME_COMPILE_DSOURCES = $(DRUNTIME_DSOURCES) $(am__append_1) \
 	$(am__append_2) $(am__append_3) $(am__append_4) \
 	$(am__append_5) $(am__append_6) $(am__append_7) \
 	$(am__append_8) $(am__append_9) $(am__append_10) \
-	$(DRUNTIME_DSOURCES_GENERATED)
+	$(am__append_11) $(DRUNTIME_DSOURCES_GENERATED)
 ALL_DRUNTIME_SOURCES = $(ALL_DRUNTIME_COMPILE_DSOURCES) $(DRUNTIME_CSOURCES) \
 	$(DRUNTIME_SSOURCES)
 
@@ -694,9 +712,10 @@ DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
 DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/checkedint.d core/cpuid.d core/demangle.d core/exception.d \
 	core/internal/abort.d core/internal/arrayop.d core/internal/convert.d \
-	core/internal/hash.d core/internal/spinlock.d core/internal/string.d \
-	core/internal/traits.d core/math.d core/memory.d core/runtime.d \
-	core/simd.d core/stdc/assert_.d core/stdc/complex.d core/stdc/config.d \
+	core/internal/hash.d core/internal/parseoptions.d \
+	core/internal/spinlock.d core/internal/string.d core/internal/traits.d \
+	core/math.d core/memory.d core/runtime.d core/simd.d \
+	core/stdc/assert_.d core/stdc/complex.d core/stdc/config.d \
 	core/stdc/ctype.d core/stdc/errno.d core/stdc/fenv.d \
 	core/stdc/float_.d core/stdc/inttypes.d core/stdc/limits.d \
 	core/stdc/locale.d core/stdc/math.d core/stdc/signal.d \
@@ -710,19 +729,18 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
 	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
 	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
-	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d \
-	rt/backtrace/elf.d rt/cast_.d rt/config.d rt/critical_.d rt/deh.d \
-	rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d \
-	rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
-	rt/sections_elf_shared.d rt/sections_osx.d rt/sections_solaris.d \
-	rt/sections_win32.d rt/sections_win64.d rt/switch_.d rt/tlsgc.d \
-	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
-	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
-	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
-	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
-	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
-	rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d \
-	rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
+	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d \
+	rt/critical_.d rt/deh.d rt/dmain2.d rt/ehalloc.d rt/invariant.d \
+	rt/lifetime.d rt/memory.d rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d \
+	rt/sections.d rt/sections_android.d rt/sections_elf_shared.d \
+	rt/sections_osx.d rt/sections_solaris.d rt/sections_win32.d \
+	rt/sections_win64.d rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_Acdouble.d \
+	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
+	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
+	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
+	rt/typeinfo/ti_Ashort.d rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d \
+	rt/typeinfo/ti_cdouble.d rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d \
+	rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
 	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
 	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
 	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
@@ -738,10 +756,9 @@ DRUNTIME_DSOURCES_STDCXX = core/stdcpp/exception.d \
 	core/stdcpp/typeinfo.d
 
 DRUNTIME_DSOURCES_GC = gc/bits.d gc/config.d gc/gcinterface.d \
-	gc/impl/conservative/gc.d gc/impl/manual/gc.d gc/os.d gc/pooltable.d \
-	gc/proxy.d
+	gc/impl/conservative/gc.d gc/impl/manual/gc.d gc/impl/proto/gc.d \
+	gc/os.d gc/pooltable.d gc/proxy.d
 
-DRUNTIME_DSOURCES_GCSTUB = gcstub/gc.d
 DRUNTIME_DSOURCES_BIONIC = core/sys/bionic/fcntl.d \
 	core/sys/bionic/unistd.d
 
@@ -1016,6 +1033,7 @@ core/internal/abort.lo: core/internal/$(am__dirstamp)
 core/internal/arrayop.lo: core/internal/$(am__dirstamp)
 core/internal/convert.lo: core/internal/$(am__dirstamp)
 core/internal/hash.lo: core/internal/$(am__dirstamp)
+core/internal/parseoptions.lo: core/internal/$(am__dirstamp)
 core/internal/spinlock.lo: core/internal/$(am__dirstamp)
 core/internal/string.lo: core/internal/$(am__dirstamp)
 core/internal/traits.lo: core/internal/$(am__dirstamp)
@@ -1091,16 +1109,12 @@ rt/adi.lo: rt/$(am__dirstamp)
 rt/arrayassign.lo: rt/$(am__dirstamp)
 rt/arraycast.lo: rt/$(am__dirstamp)
 rt/arraycat.lo: rt/$(am__dirstamp)
-rt/backtrace/$(am__dirstamp):
-	@$(MKDIR_P) rt/backtrace
-	@: > rt/backtrace/$(am__dirstamp)
-rt/backtrace/dwarf.lo: rt/backtrace/$(am__dirstamp)
-rt/backtrace/elf.lo: rt/backtrace/$(am__dirstamp)
 rt/cast_.lo: rt/$(am__dirstamp)
 rt/config.lo: rt/$(am__dirstamp)
 rt/critical_.lo: rt/$(am__dirstamp)
 rt/deh.lo: rt/$(am__dirstamp)
 rt/dmain2.lo: rt/$(am__dirstamp)
+rt/ehalloc.lo: rt/$(am__dirstamp)
 rt/invariant.lo: rt/$(am__dirstamp)
 rt/lifetime.lo: rt/$(am__dirstamp)
 rt/memory.lo: rt/$(am__dirstamp)
@@ -1186,13 +1200,13 @@ gc/impl/manual/$(am__dirstamp):
 	@$(MKDIR_P) gc/impl/manual
 	@: > gc/impl/manual/$(am__dirstamp)
 gc/impl/manual/gc.lo: gc/impl/manual/$(am__dirstamp)
+gc/impl/proto/$(am__dirstamp):
+	@$(MKDIR_P) gc/impl/proto
+	@: > gc/impl/proto/$(am__dirstamp)
+gc/impl/proto/gc.lo: gc/impl/proto/$(am__dirstamp)
 gc/os.lo: gc/$(am__dirstamp)
 gc/pooltable.lo: gc/$(am__dirstamp)
 gc/proxy.lo: gc/$(am__dirstamp)
-gcstub/$(am__dirstamp):
-	@$(MKDIR_P) gcstub
-	@: > gcstub/$(am__dirstamp)
-gcstub/gc.lo: gcstub/$(am__dirstamp)
 core/sys/posix/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/posix
 	@: > core/sys/posix/$(am__dirstamp)
@@ -1582,6 +1596,43 @@ core/sys/solaris/sys/priocntl.lo:  \
 core/sys/solaris/sys/procset.lo: core/sys/solaris/sys/$(am__dirstamp)
 core/sys/solaris/sys/types.lo: core/sys/solaris/sys/$(am__dirstamp)
 core/sys/solaris/time.lo: core/sys/solaris/$(am__dirstamp)
+core/sys/dragonflybsd/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/dragonflybsd
+	@: > core/sys/dragonflybsd/$(am__dirstamp)
+core/sys/dragonflybsd/dlfcn.lo: core/sys/dragonflybsd/$(am__dirstamp)
+core/sys/dragonflybsd/execinfo.lo:  \
+	core/sys/dragonflybsd/$(am__dirstamp)
+core/sys/dragonflybsd/netinet/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/dragonflybsd/netinet
+	@: > core/sys/dragonflybsd/netinet/$(am__dirstamp)
+core/sys/dragonflybsd/netinet/in_.lo:  \
+	core/sys/dragonflybsd/netinet/$(am__dirstamp)
+core/sys/dragonflybsd/pthread_np.lo:  \
+	core/sys/dragonflybsd/$(am__dirstamp)
+core/sys/dragonflybsd/sys/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/dragonflybsd/sys
+	@: > core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/_bitset.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/_cpuset.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/cdefs.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/elf.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/elf32.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/elf64.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/elf_common.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/event.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/link_elf.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/sys/mman.lo:  \
+	core/sys/dragonflybsd/sys/$(am__dirstamp)
+core/sys/dragonflybsd/time.lo: core/sys/dragonflybsd/$(am__dirstamp)
 gcc/config.lo: gcc/$(am__dirstamp)
 gcc/libbacktrace.lo: gcc/$(am__dirstamp)
 libgdruntime.la: $(libgdruntime_la_OBJECTS) $(libgdruntime_la_DEPENDENCIES) $(EXTRA_libgdruntime_la_DEPENDENCIES) 
@@ -1633,6 +1684,8 @@ mostlyclean-compile:
 	-rm -f core/internal/convert.lo
 	-rm -f core/internal/hash.$(OBJEXT)
 	-rm -f core/internal/hash.lo
+	-rm -f core/internal/parseoptions.$(OBJEXT)
+	-rm -f core/internal/parseoptions.lo
 	-rm -f core/internal/spinlock.$(OBJEXT)
 	-rm -f core/internal/spinlock.lo
 	-rm -f core/internal/string.$(OBJEXT)
@@ -1737,6 +1790,36 @@ mostlyclean-compile:
 	-rm -f core/sys/darwin/sys/event.lo
 	-rm -f core/sys/darwin/sys/mman.$(OBJEXT)
 	-rm -f core/sys/darwin/sys/mman.lo
+	-rm -f core/sys/dragonflybsd/dlfcn.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/dlfcn.lo
+	-rm -f core/sys/dragonflybsd/execinfo.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/execinfo.lo
+	-rm -f core/sys/dragonflybsd/netinet/in_.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/netinet/in_.lo
+	-rm -f core/sys/dragonflybsd/pthread_np.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/pthread_np.lo
+	-rm -f core/sys/dragonflybsd/sys/_bitset.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/_bitset.lo
+	-rm -f core/sys/dragonflybsd/sys/_cpuset.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/_cpuset.lo
+	-rm -f core/sys/dragonflybsd/sys/cdefs.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/cdefs.lo
+	-rm -f core/sys/dragonflybsd/sys/elf.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/elf.lo
+	-rm -f core/sys/dragonflybsd/sys/elf32.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/elf32.lo
+	-rm -f core/sys/dragonflybsd/sys/elf64.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/elf64.lo
+	-rm -f core/sys/dragonflybsd/sys/elf_common.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/elf_common.lo
+	-rm -f core/sys/dragonflybsd/sys/event.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/event.lo
+	-rm -f core/sys/dragonflybsd/sys/link_elf.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/link_elf.lo
+	-rm -f core/sys/dragonflybsd/sys/mman.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/sys/mman.lo
+	-rm -f core/sys/dragonflybsd/time.$(OBJEXT)
+	-rm -f core/sys/dragonflybsd/time.lo
 	-rm -f core/sys/freebsd/dlfcn.$(OBJEXT)
 	-rm -f core/sys/freebsd/dlfcn.lo
 	-rm -f core/sys/freebsd/execinfo.$(OBJEXT)
@@ -2331,6 +2414,8 @@ mostlyclean-compile:
 	-rm -f gc/impl/conservative/gc.lo
 	-rm -f gc/impl/manual/gc.$(OBJEXT)
 	-rm -f gc/impl/manual/gc.lo
+	-rm -f gc/impl/proto/gc.$(OBJEXT)
+	-rm -f gc/impl/proto/gc.lo
 	-rm -f gc/os.$(OBJEXT)
 	-rm -f gc/os.lo
 	-rm -f gc/pooltable.$(OBJEXT)
@@ -2361,8 +2446,6 @@ mostlyclean-compile:
 	-rm -f gcc/unwind/package.lo
 	-rm -f gcc/unwind/pe.$(OBJEXT)
 	-rm -f gcc/unwind/pe.lo
-	-rm -f gcstub/gc.$(OBJEXT)
-	-rm -f gcstub/gc.lo
 	-rm -f rt/aApply.$(OBJEXT)
 	-rm -f rt/aApply.lo
 	-rm -f rt/aApplyR.$(OBJEXT)
@@ -2377,10 +2460,6 @@ mostlyclean-compile:
 	-rm -f rt/arraycast.lo
 	-rm -f rt/arraycat.$(OBJEXT)
 	-rm -f rt/arraycat.lo
-	-rm -f rt/backtrace/dwarf.$(OBJEXT)
-	-rm -f rt/backtrace/dwarf.lo
-	-rm -f rt/backtrace/elf.$(OBJEXT)
-	-rm -f rt/backtrace/elf.lo
 	-rm -f rt/cast_.$(OBJEXT)
 	-rm -f rt/cast_.lo
 	-rm -f rt/config.$(OBJEXT)
@@ -2391,6 +2470,8 @@ mostlyclean-compile:
 	-rm -f rt/deh.lo
 	-rm -f rt/dmain2.$(OBJEXT)
 	-rm -f rt/dmain2.lo
+	-rm -f rt/ehalloc.$(OBJEXT)
+	-rm -f rt/ehalloc.lo
 	-rm -f rt/invariant.$(OBJEXT)
 	-rm -f rt/invariant.lo
 	-rm -f rt/lifetime.$(OBJEXT)
@@ -2587,6 +2668,9 @@ clean-libtool:
 	-rm -rf core/sys/darwin/mach/.libs core/sys/darwin/mach/_libs
 	-rm -rf core/sys/darwin/netinet/.libs core/sys/darwin/netinet/_libs
 	-rm -rf core/sys/darwin/sys/.libs core/sys/darwin/sys/_libs
+	-rm -rf core/sys/dragonflybsd/.libs core/sys/dragonflybsd/_libs
+	-rm -rf core/sys/dragonflybsd/netinet/.libs core/sys/dragonflybsd/netinet/_libs
+	-rm -rf core/sys/dragonflybsd/sys/.libs core/sys/dragonflybsd/sys/_libs
 	-rm -rf core/sys/freebsd/.libs core/sys/freebsd/_libs
 	-rm -rf core/sys/freebsd/netinet/.libs core/sys/freebsd/netinet/_libs
 	-rm -rf core/sys/freebsd/sys/.libs core/sys/freebsd/sys/_libs
@@ -2610,11 +2694,10 @@ clean-libtool:
 	-rm -rf gc/.libs gc/_libs
 	-rm -rf gc/impl/conservative/.libs gc/impl/conservative/_libs
 	-rm -rf gc/impl/manual/.libs gc/impl/manual/_libs
+	-rm -rf gc/impl/proto/.libs gc/impl/proto/_libs
 	-rm -rf gcc/.libs gcc/_libs
 	-rm -rf gcc/unwind/.libs gcc/unwind/_libs
-	-rm -rf gcstub/.libs gcstub/_libs
 	-rm -rf rt/.libs rt/_libs
-	-rm -rf rt/backtrace/.libs rt/backtrace/_libs
 	-rm -rf rt/typeinfo/.libs rt/typeinfo/_libs
 	-rm -rf rt/util/.libs rt/util/_libs
 	-rm -rf rt/util/container/.libs rt/util/container/_libs
@@ -2714,6 +2797,9 @@ distclean-generic:
 	-rm -f core/sys/darwin/mach/$(am__dirstamp)
 	-rm -f core/sys/darwin/netinet/$(am__dirstamp)
 	-rm -f core/sys/darwin/sys/$(am__dirstamp)
+	-rm -f core/sys/dragonflybsd/$(am__dirstamp)
+	-rm -f core/sys/dragonflybsd/netinet/$(am__dirstamp)
+	-rm -f core/sys/dragonflybsd/sys/$(am__dirstamp)
 	-rm -f core/sys/freebsd/$(am__dirstamp)
 	-rm -f core/sys/freebsd/netinet/$(am__dirstamp)
 	-rm -f core/sys/freebsd/sys/$(am__dirstamp)
@@ -2737,11 +2823,10 @@ distclean-generic:
 	-rm -f gc/$(am__dirstamp)
 	-rm -f gc/impl/conservative/$(am__dirstamp)
 	-rm -f gc/impl/manual/$(am__dirstamp)
+	-rm -f gc/impl/proto/$(am__dirstamp)
 	-rm -f gcc/$(am__dirstamp)
 	-rm -f gcc/unwind/$(am__dirstamp)
-	-rm -f gcstub/$(am__dirstamp)
 	-rm -f rt/$(am__dirstamp)
-	-rm -f rt/backtrace/$(am__dirstamp)
 	-rm -f rt/typeinfo/$(am__dirstamp)
 	-rm -f rt/util/$(am__dirstamp)
 	-rm -f rt/util/container/$(am__dirstamp)

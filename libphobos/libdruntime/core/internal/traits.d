@@ -2,7 +2,7 @@
  * Contains traits for runtime internal usage.
  *
  * Copyright: Copyright Digital Mars 2014 -.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Martin Nowak
  * Source: $(DRUNTIMESRC core/internal/_traits.d)
  */
@@ -208,5 +208,25 @@ template Filter(alias pred, TList...)
             TypeTuple!(
                 Filter!(pred, TList[ 0  .. $/2]),
                 Filter!(pred, TList[$/2 ..  $ ]));
+    }
+}
+
+// std.meta.staticMap
+template staticMap(alias F, T...)
+{
+    static if (T.length == 0)
+    {
+        alias staticMap = TypeTuple!();
+    }
+    else static if (T.length == 1)
+    {
+        alias staticMap = TypeTuple!(F!(T[0]));
+    }
+    else
+    {
+        alias staticMap =
+            TypeTuple!(
+                staticMap!(F, T[ 0  .. $/2]),
+                staticMap!(F, T[$/2 ..  $ ]));
     }
 }

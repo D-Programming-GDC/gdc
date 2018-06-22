@@ -2,7 +2,7 @@
  * A sorted array to quickly lookup pools.
  *
  * Copyright: Copyright Digital Mars 2001 -.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, David Friedman, Sean Kelly, Martin Nowak
  */
 module gc.pooltable;
@@ -55,14 +55,14 @@ nothrow:
 
     ref inout(Pool*) opIndex(size_t idx) inout pure
     in { assert(idx < length); }
-    body
+    do
     {
         return pools[idx];
     }
 
     inout(Pool*)[] opSlice(size_t a, size_t b) inout pure
     in { assert(a <= length && b <= length); }
-    body
+    do
     {
         return pools[a .. b];
     }

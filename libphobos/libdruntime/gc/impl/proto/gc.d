@@ -1,29 +1,5 @@
-/**
- * This module contains a minimal garbage collector implementation according to
- * published requirements.  This library is mostly intended to serve as an
- * example, but it is usable in applications which do not rely on a garbage
- * collector to clean up memory (ie. when dynamic array resizing is not used,
- * and all memory allocated with 'new' is freed deterministically with
- * 'delete').
- *
- * Please note that block attribute data must be tracked, or at a minimum, the
- * FINALIZE bit must be tracked for any allocated memory block because calling
- * rt_finalize on a non-object block can result in an access violation.  In the
- * allocator below, this tracking is done via a leading uint bitmask.  A real
- * allocator may do better to store this data separately, similar to the basic
- * GC.
- *
- * Copyright: Copyright Sean Kelly 2005 - 2016.
- * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
- * Authors:   Sean Kelly
- */
 
-/*          Copyright Sean Kelly 2005 - 2016.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
-module gc.impl.manual.gc;
+module gc.impl.proto.gc;
 
 import gc.config;
 import gc.gcinterface;
@@ -35,38 +11,46 @@ static import core.memory;
 
 extern (C) void onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure nothrow @nogc; /* dmd @@@BUG11461@@@ */
 
-class ManualGC : GC
+private
 {
-    __gshared Array!Root roots;
-    __gshared Array!Range ranges;
+    extern (C) void gc_init_nothrow() nothrow @nogc;
+    extern (C) void gc_term();
 
-    static void initialize(ref GC gc)
+    extern (C) void gc_enable() nothrow;
+    extern (C) void gc_disable() nothrow;
+
+    extern (C) void*    gc_malloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
+    extern (C) void*    gc_calloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
+    extern (C) BlkInfo gc_qalloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
+    extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
+    extern (C) size_t   gc_reserve( size_t sz ) nothrow;
+
+    extern (C) void gc_addRange( void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc;
+    extern (C) void gc_addRoot( void* p ) nothrow @nogc;
+}
+
+class ProtoGC : GC
+{
+    Array!Root roots;
+    Array!Range ranges;
+
+    // Call this function when initializing the real GC
+    // upon ProtoGC term. This function should be called
+    // after the real GC is in place.
+    void term()
     {
-        import core.stdc.string;
+        // Transfer all ranges
+        foreach (ref r; ranges)
+        {
+            // Range(p, p + sz, cast() ti)
+            gc_addRange(r.pbot, r.ptop - r.pbot, r.ti);
+        }
 
-        if (config.gc != "manual")
-            return;
-
-        auto p = cstdlib.malloc(__traits(classInstanceSize, ManualGC));
-        if (!p)
-            onOutOfMemoryError();
-
-        auto init = typeid(ManualGC).initializer();
-        assert(init.length == __traits(classInstanceSize, ManualGC));
-        auto instance = cast(ManualGC) memcpy(p, init.ptr, init.length);
-        instance.__ctor();
-
-        gc = instance;
-    }
-
-    static void finalize(ref GC gc)
-    {
-        if (config.gc != "manual")
-            return;
-
-        auto instance = cast(ManualGC) gc;
-        instance.Dtor();
-        cstdlib.free(cast(void*) instance);
+        // Transfer all roots
+        foreach (ref r; roots)
+        {
+            gc_addRoot(r.proot);
+        }
     }
 
     this()
@@ -79,10 +63,14 @@ class ManualGC : GC
 
     void enable()
     {
+        .gc_init_nothrow();
+        .gc_enable();
     }
 
     void disable()
     {
+        .gc_init_nothrow();
+        .gc_disable();
     }
 
     void collect() nothrow
@@ -114,38 +102,26 @@ class ManualGC : GC
 
     void* malloc(size_t size, uint bits, const TypeInfo ti) nothrow
     {
-        void* p = cstdlib.malloc(size);
-
-        if (size && p is null)
-            onOutOfMemoryError();
-        return p;
+        .gc_init_nothrow();
+        return .gc_malloc(size, bits, ti);
     }
 
     BlkInfo qalloc(size_t size, uint bits, const TypeInfo ti) nothrow
     {
-        BlkInfo retval;
-        retval.base = malloc(size, bits, ti);
-        retval.size = size;
-        retval.attr = bits;
-        return retval;
+        .gc_init_nothrow();
+        return .gc_qalloc(size, bits, ti);
     }
 
     void* calloc(size_t size, uint bits, const TypeInfo ti) nothrow
     {
-        void* p = cstdlib.calloc(1, size);
-
-        if (size && p is null)
-            onOutOfMemoryError();
-        return p;
+        .gc_init_nothrow();
+        return .gc_calloc(size, bits, ti);
     }
 
     void* realloc(void* p, size_t size, uint bits, const TypeInfo ti) nothrow
     {
-        p = cstdlib.realloc(p, size);
-
-        if (size && p is null)
-            onOutOfMemoryError();
-        return p;
+        .gc_init_nothrow();
+        return .gc_realloc(p, size, bits, ti);
     }
 
     size_t extend(void* p, size_t minsize, size_t maxsize, const TypeInfo ti) nothrow
@@ -155,36 +131,25 @@ class ManualGC : GC
 
     size_t reserve(size_t size) nothrow
     {
-        return 0;
+        .gc_init_nothrow();
+        return .gc_reserve(size);
     }
 
     void free(void* p) nothrow @nogc
     {
-        cstdlib.free(p);
+        if (p) assert(false, "Invalid memory deallocation");
     }
 
-    /**
-     * Determine the base address of the block containing p.  If p is not a gc
-     * allocated pointer, return null.
-     */
     void* addrOf(void* p) nothrow @nogc
     {
         return null;
     }
 
-    /**
-     * Determine the allocated size of pointer p.  If p is an interior pointer
-     * or not a gc allocated pointer, return 0.
-     */
     size_t sizeOf(void* p) nothrow @nogc
     {
         return 0;
     }
 
-    /**
-     * Determine the base address of the block containing p.  If p is not a gc
-     * allocated pointer, return null.
-     */
     BlkInfo query(void* p) nothrow
     {
         return BlkInfo.init;
@@ -194,6 +159,7 @@ class ManualGC : GC
     {
         return typeof(return).init;
     }
+
 
     void addRoot(void* p) nothrow @nogc
     {
@@ -211,7 +177,6 @@ class ManualGC : GC
                 return;
             }
         }
-        assert(false);
     }
 
     @property RootIterator rootIter() return @nogc
@@ -245,7 +210,6 @@ class ManualGC : GC
                 return;
             }
         }
-        assert(false);
     }
 
     @property RangeIterator rangeIter() return @nogc
