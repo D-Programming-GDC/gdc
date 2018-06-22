@@ -5,6 +5,20 @@
 
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-frontend.cc (Global::startGagging): Remove function.
+	(Global::endGagging): Remove function.
+	(Global::increaseErrorCount): Remove function.
+	(Loc::equals): Remove function.
+	(retStyle): Remove function.
+	(getTypeInfoType): Update signature.
+	* d-target.cc (Target::isVectorOpSupported): Don't handle unordered
+	expressions.
+	(Target::prefixName): Remove function.
+	(Target::cppParameterType): New function.
+	(Target::isReturnOnStack): New function.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* decl.cc (DeclVisitor::visit(ClassDeclaration)): Use
 	ClassDeclaration::vtblSymbol to access vtable symbol.
 	(get_vtable_decl): Likewise.

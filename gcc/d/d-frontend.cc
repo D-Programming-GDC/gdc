@@ -57,45 +57,6 @@ Global::_init (void)
   this->errorLimit = flag_max_errors;
 }
 
-/* Start gagging. Return the current number of gagged errors.  */
-
-unsigned
-Global::startGagging (void)
-{
-  this->gag++;
-  return this->gaggedErrors;
-}
-
-/* End gagging, restoring the old gagged state.  Return true if errors
-   occured while gagged.  */
-
-bool
-Global::endGagging (unsigned oldGagged)
-{
-  bool anyErrs = (this->gaggedErrors != oldGagged);
-  this->gag--;
-
-  /* Restore the original state of gagged errors; set total errors
-     to be original errors + new ungagged errors.  */
-  this->errors -= (this->gaggedErrors - oldGagged);
-  this->gaggedErrors = oldGagged;
-
-  return anyErrs;
-}
-
-/* Increment the error count to record that an error has occured in the
-   current context.  An error message may or may not have been printed.  */
-
-void
-Global::increaseErrorCount (void)
-{
-  if (gag)
-    this->gaggedErrors++;
-
-  this->errors++;
-}
-
-
 /* Implements the Loc interface defined by the frontend.
    Used for keeping track of current file/line position in code.  */
 
@@ -122,18 +83,6 @@ Loc::toChars (void) const
     }
 
   return buf.extractString ();
-}
-
-bool
-Loc::equals (const Loc& loc)
-{
-  if (this->linnum != loc.linnum || this->charnum != loc.charnum)
-    return false;
-
-  if (!FileName::equals (this->filename, loc.filename))
-    return false;
-
-  return true;
 }
 
 
@@ -435,18 +384,6 @@ asmSemantic (AsmStatement *s, Scope *sc)
   return s;
 }
 
-/* Determine return style of function - whether in registers or through a
-   hidden pointer to the caller's stack.  */
-
-RET
-retStyle (TypeFunction *)
-{
-  /* Need the backend type to determine this, but this is called from the
-     frontend before semantic processing is finished.  An accurate value
-     is not currently needed anyway.  */
-  return RETstack;
-}
-
 /* Determine if function FD is a builtin one that we can evaluate in CTFE.  */
 
 BUILTIN
@@ -524,7 +461,7 @@ genCmain (Scope *sc)
 /* Build and return typeinfo type for TYPE.  */
 
 Type *
-getTypeInfoType (Type *type, Scope *sc)
+getTypeInfoType (Loc, Type *type, Scope *sc)
 {
   gcc_assert (type->ty != Terror);
   create_typeinfo (type, sc ? sc->_module->importedFrom : NULL);

@@ -394,18 +394,10 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
       /* Logical operators must have a result type of bool.  */
       return false;
 
-    case TOKue:
-    case TOKlg:
-    case TOKule:
-    case TOKul:
-    case TOKuge:
-    case TOKug:
     case TOKle:
     case TOKlt:
     case TOKge:
     case TOKgt:
-    case TOKleg:
-    case TOKunord:
     case TOKequal:
     case TOKnotequal:
     case TOKidentity:
@@ -418,13 +410,6 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
     }
 
   return true;
-}
-
-/* Apply any target-specific prefixes based on the given linkage.  */
-
-void
-Target::prefixName (OutBuffer *, LINK)
-{
 }
 
 /* Return the symbol mangling of S for C++ linkage. */
@@ -458,10 +443,53 @@ Target::cppTypeMangle (Type *type)
     return NULL;
 }
 
+/* Return the type that will really be used for passing the given parameter
+   ARG to an extern(C++) function.  */
+
+Type *
+Target::cppParameterType (Parameter *arg)
+{
+    Type *t = arg->type->merge2 ();
+    if (arg->storageClass & (STCout | STCref))
+      t = t->referenceTo ();
+    else if (arg->storageClass & STClazy)
+      {
+	// Mangle as delegate
+	Type *td = TypeFunction::create (NULL, t, 0, LINKd);
+	td = TypeDelegate::create (td);
+	t = t->merge2 ();
+      }
+
+    // Could be a va_list, which we mangle as a pointer.
+    if (t->ty == Tsarray && Type::tvalist->ty == Tsarray)
+      {
+	Type *tb = t->toBasetype ()->mutableOf ();
+	if (tb == Type::tvalist)
+	  {
+	    tb = t->nextOf ()->pointerTo ();
+	    t = tb->castMod (t->mod);
+	  }
+      }
+
+    return t;
+}
+
 /* Return the default system linkage for the target.  */
 
 LINK
 Target::systemLinkage (void)
 {
   return LINKc;
+}
+
+/* Determine return style of function, whether in registers or through a
+   hidden pointer to the caller's stack.  */
+
+bool
+Target::isReturnOnStack (TypeFunction *, bool)
+{
+  /* Need the backend type to determine this, but this is called from the
+     frontend before semantic processing is finished.  An accurate value
+     is not currently needed anyway.  */
+  return true;
 }
