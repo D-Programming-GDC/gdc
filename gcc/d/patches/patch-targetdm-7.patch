@@ -82,7 +82,7 @@ The following OS versions are implemented:
  MACHMODE_H = machmode.h mode-classes.def insn-modes.h
  HOOKS_H = hooks.h $(MACHMODE_H)
  HOSTHOOKS_DEF_H = hosthooks-def.h $(HOOKS_H)
-@@ -1169,6 +1174,9 @@ C_TARGET_OBJS=@c_target_objs@
+@@ -1173,6 +1178,9 @@ C_TARGET_OBJS=@c_target_objs@
  # Target specific, C++ specific object file
  CXX_TARGET_OBJS=@cxx_target_objs@
  
@@ -92,7 +92,7 @@ The following OS versions are implemented:
  # Target specific, Fortran specific object file
  FORTRAN_TARGET_OBJS=@fortran_target_objs@
  
-@@ -1754,6 +1762,7 @@ bconfig.h: cs-bconfig.h ; @true
+@@ -1758,6 +1766,7 @@ bconfig.h: cs-bconfig.h ; @true
  tconfig.h: cs-tconfig.h ; @true
  tm.h: cs-tm.h ; @true
  tm_p.h: cs-tm_p.h ; @true
@@ -100,7 +100,7 @@ The following OS versions are implemented:
  
  cs-config.h: Makefile
  	TARGET_CPU_DEFAULT="" \
-@@ -1780,6 +1789,11 @@ cs-tm_p.h: Makefile
+@@ -1784,6 +1793,11 @@ cs-tm_p.h: Makefile
  	HEADERS="$(tm_p_include_list)" DEFINES="" \
  	$(SHELL) $(srcdir)/mkconfig.sh tm_p.h
  
@@ -112,7 +112,7 @@ The following OS versions are implemented:
  # Don't automatically run autoconf, since configure.ac might be accidentally
  # newer than configure.  Also, this writes into the source directory which
  # might be on a read-only file system.  If configured for maintainer mode
-@@ -2109,6 +2123,12 @@ default-c.o: config/default-c.c
+@@ -2113,6 +2127,12 @@ default-c.o: config/default-c.c
  CFLAGS-prefix.o += -DPREFIX=\"$(prefix)\" -DBASEVER=$(BASEVER_s)
  prefix.o: $(BASEVER)
  
@@ -125,7 +125,7 @@ The following OS versions are implemented:
  # Language-independent files.
  
  DRIVER_DEFINES = \
-@@ -2397,6 +2417,15 @@ s-common-target-hooks-def-h: build/genho
+@@ -2401,6 +2421,15 @@ s-common-target-hooks-def-h: build/genho
  					     common/common-target-hooks-def.h
  	$(STAMP) s-common-target-hooks-def-h
  
@@ -141,7 +141,7 @@ The following OS versions are implemented:
  # check if someone mistakenly only changed tm.texi.
  # We use a different pathname here to avoid a circular dependency.
  s-tm-texi: $(srcdir)/doc/../doc/tm.texi
-@@ -2420,6 +2449,7 @@ s-tm-texi: build/genhooks$(build_exeext)
+@@ -2424,6 +2453,7 @@ s-tm-texi: build/genhooks$(build_exeext)
  	  && ( test $(srcdir)/doc/tm.texi -nt $(srcdir)/target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/c-family/c-target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/common/common-target.def \
@@ -149,7 +149,7 @@ The following OS versions are implemented:
  	  ); then \
  	  echo >&2 ; \
  	  echo You should edit $(srcdir)/doc/tm.texi.in rather than $(srcdir)/doc/tm.texi . >&2 ; \
-@@ -2557,13 +2587,14 @@ s-gtype: build/gengtype$(build_exeext) $
+@@ -2561,13 +2591,14 @@ s-gtype: build/gengtype$(build_exeext) $
                      -r gtype.state
  	$(STAMP) s-gtype
  
@@ -166,7 +166,7 @@ The following OS versions are implemented:
         cfn-operators.pd
  
  #
-@@ -2705,7 +2736,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
+@@ -2709,7 +2740,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
    coretypes.h $(GTM_H) errors.h $(READ_MD_H) $(GENSUPPORT_H)		\
    $(HASH_TABLE_H) inchash.h
  build/genhooks.o : genhooks.c $(TARGET_DEF) $(C_TARGET_DEF)		\
@@ -1292,7 +1292,7 @@ The following OS versions are implemented:
  tm_p_include_list
  tm_p_file_list
  tm_defines
-@@ -11798,6 +11801,7 @@ fi
+@@ -11901,6 +11904,7 @@ fi
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -1300,7 +1300,7 @@ The following OS versions are implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -12152,6 +12156,21 @@ for f in $tm_p_file; do
+@@ -12255,6 +12259,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -1322,25 +1322,25 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -18433,7 +18452,7 @@ else
+@@ -18536,7 +18555,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18436 "configure"
-+#line 18455 "configure"
+-#line 18539 "configure"
++#line 18558 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18539,7 +18558,7 @@ else
+@@ -18642,7 +18661,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18542 "configure"
-+#line 18561 "configure"
+-#line 18645 "configure"
++#line 18664 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -29411,6 +29430,9 @@ fi
+@@ -29516,6 +29535,9 @@ fi
  
  
  
@@ -1352,7 +1352,7 @@ The following OS versions are implemented:
  
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
-@@ -1724,6 +1724,7 @@ AC_SUBST(build_subdir)
+@@ -1726,6 +1726,7 @@ AC_SUBST(build_subdir)
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -1360,7 +1360,7 @@ The following OS versions are implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -1936,6 +1937,21 @@ for f in $tm_p_file; do
+@@ -1938,6 +1939,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -1382,7 +1382,7 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -6172,6 +6188,8 @@ AC_SUBST(tm_include_list)
+@@ -6174,6 +6190,8 @@ AC_SUBST(tm_include_list)
  AC_SUBST(tm_defines)
  AC_SUBST(tm_p_file_list)
  AC_SUBST(tm_p_include_list)
@@ -1391,7 +1391,7 @@ The following OS versions are implemented:
  AC_SUBST(xm_file_list)
  AC_SUBST(xm_include_list)
  AC_SUBST(xm_defines)
-@@ -6179,6 +6197,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -6181,6 +6199,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)

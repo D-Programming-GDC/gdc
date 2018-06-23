@@ -1,6 +1,6 @@
 --- a/gcc/Makefile.in
 +++ b/gcc/Makefile.in
-@@ -1067,6 +1067,10 @@ SYSLIBS = @GNAT_LIBEXC@
+@@ -1056,6 +1056,10 @@ SYSLIBS = @GNAT_LIBEXC@
  GNATBIND = @GNATBIND@
  GNATMAKE = @GNATMAKE@
  
@@ -13,7 +13,7 @@
  
 --- a/gcc/configure
 +++ b/gcc/configure
-@@ -805,6 +805,8 @@ EGREP
+@@ -802,6 +802,8 @@ EGREP
  GREP
  CXXCPP
  PICFLAG_FOR_TARGET
@@ -22,7 +22,7 @@
  GNATMAKE
  GNATBIND
  ac_ct_CXX
-@@ -5011,6 +5013,106 @@ else
+@@ -4999,6 +5001,106 @@ else
  fi
  
  
@@ -129,7 +129,7 @@
  # Do configure tests with the C++ compiler, since that's what we build with.
  ac_ext=cpp
  ac_cpp='$CXXCPP $CPPFLAGS'
-@@ -5029,6 +5131,7 @@ esac
+@@ -5017,6 +5119,7 @@ esac
  
  
  
@@ -137,30 +137,46 @@
  # Determine PICFLAG for target gnatlib.
  
  
-@@ -18448,7 +18551,7 @@ else
+@@ -18433,7 +18536,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18451 "configure"
-+#line 18554 "configure"
+-#line 18436 "configure"
++#line 18539 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18554,7 +18657,7 @@ else
+@@ -18539,7 +18642,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18557 "configure"
-+#line 18660 "configure"
+-#line 18542 "configure"
++#line 18645 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
+@@ -25217,6 +25320,7 @@ $as_echo "#define HAVE_AS_SPARC5_VIS4 1"
+ 
+ fi
+ 
++
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for SPARC6 instructions" >&5
+ $as_echo_n "checking assembler for SPARC6 instructions... " >&6; }
+ if test "${gcc_cv_as_sparc_sparc6+set}" = set; then :
+@@ -25253,6 +25357,7 @@ $as_echo "#define HAVE_AS_SPARC6 1" >>co
+ 
+ fi
+ 
++
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for LEON instructions" >&5
+ $as_echo_n "checking assembler for LEON instructions... " >&6; }
+ if test "${gcc_cv_as_sparc_leon+set}" = set; then :
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
 @@ -363,6 +363,7 @@ rm -f a.out a.exe b.out
  AC_PROG_CC
  AC_PROG_CXX
- ACX_PROG_GNAT([-I"$srcdir"/ada/libgnat])
+ ACX_PROG_GNAT([-I"$srcdir"/ada])
 +ACX_PROG_GDC([-I"$srcdir"/d])
  
  # Do configure tests with the C++ compiler, since that's what we build with.
