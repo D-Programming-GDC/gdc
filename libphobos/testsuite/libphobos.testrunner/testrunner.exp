@@ -31,7 +31,7 @@ proc unittest_run_tests { name prog } {
     foreach module [unittest_list_modules $prog] {
         set result [libphobos_load "$prog" "$module" ""]
         set status [lindex $result 0]
-        $status "libphobos.unittests/$name/$module"
+        $status "libphobos.testrunner/$name/$module"
     }
 }
 
