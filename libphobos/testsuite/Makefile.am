@@ -3,15 +3,12 @@
 AUTOMAKE_OPTIONS = foreign dejagnu
 
 # Setup the testing framework, if you have one
-EXPECT = `if [ -f $(top_builddir)/../expect/expect ] ; then \
-	    echo $(top_builddir)/../expect/expect ; \
-	  else echo expect ; fi`
+EXPECT = $(shell if test -f $(top_builddir)/../expect/expect; then \
+	   echo $(top_builddir)/../expect/expect; else echo expect; fi)
 
-RUNTEST = `if [ -f $(top_srcdir)/../dejagnu/runtest ] ; then \
-	       echo $(top_srcdir)/../dejagnu/runtest ; \
-	    else echo runtest; fi`
-
-AM_RUNTESTFLAGS =
+_RUNTEST = $(shell if test -f $(top_srcdir)/../dejagnu/runtest; then \
+	     echo $(top_srcdir)/../dejagnu/runtest; else echo runtest; fi)
+RUNTEST = "$(_RUNTEST) $(AM_RUNTESTFLAGS)"
 
 AM_MAKEFLAGS = "EXEEXT=$(EXEEXT)"
 
