@@ -20,6 +20,23 @@ AC_DEFUN([DRUNTIME_WERROR],
 ])
 
 
+# DRUNTIME_CONFIGURE
+# ------------------
+# Substitute absolute paths for srcdir and builddir.
+AC_DEFUN([DRUNTIME_CONFIGURE],
+[
+  # These need to be absolute paths, yet at the same time need to
+  # canonicalize only relative paths, because then amd will not unmount
+  # drives. Thus the use of PWDCMD: set it to 'pawd' or 'amq -w' if using amd.
+  libphobos_builddir=`${PWDCMD-pwd}`
+  case $srcdir in
+    [\\/$]* | ?:[\\/]*) libphobos_srcdir=${srcdir} ;;
+    *) libphobos_srcdir=`cd "$srcdir" && ${PWDCMD-pwd} || echo "$srcdir"` ;;
+  esac
+  AC_SUBST(libphobos_builddir)
+  AC_SUBST(libphobos_srcdir)
+])
+
 # DRUNTIME_MULTILIB
 # -----------------
 # Prepare the multilib_arg variable
