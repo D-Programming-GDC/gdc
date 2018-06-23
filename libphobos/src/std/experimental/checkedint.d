@@ -1,3 +1,4 @@
+// Written in the D programming language.
 /**
 $(SCRIPT inhibitQuickIndex = 1;)
 
@@ -187,6 +188,7 @@ and `>>>=` is larger than the largest value representable by `T`.)
 )
 )
 
+Source: $(PHOBOSSRC std/experimental/checkedint.d)
 */
 module std.experimental.checkedint;
 import std.traits : isFloatingPoint, isIntegral, isNumeric, isUnsigned, Unqual;
@@ -206,6 +208,44 @@ import std.traits : isFloatingPoint, isIntegral, isNumeric, isUnsigned, Unqual;
         return r;
     }
     assert(concatAndAdd([1, 2, 3], [4, 5], -1) == [0, 1, 2, 3, 4]);
+}
+
+
+/// `Saturate` stops at an overflow
+@safe unittest
+{
+    auto x = (cast(byte) 127).checked!Saturate;
+    assert(x == 127);
+    x++;
+    assert(x == 127);
+}
+
+/// `WithNaN` has a special "Not a Number" (NaN) value akin to the homonym value reserved for floating-point values
+@safe unittest
+{
+    auto x = 100.checked!WithNaN;
+    assert(x == 100);
+    x /= 0;
+    assert(x.isNaN);
+}
+
+/// `ProperCompare` fixes the comparison operators ==, !=, <, <=, >, and >= to return correct results
+@safe unittest
+{
+    uint x = 1;
+    auto y = x.checked!ProperCompare;
+    assert(x < -1); // built-in comparison
+    assert(y > -1); // ProperCompare
+}
+
+/// `Throw` fails every incorrect operation by throwing an exception
+@safe unittest
+{
+    import std.exception : assertThrown;
+    auto x = -1.checked!Throw;
+    assertThrown(x / 0);
+    assertThrown(x + int.min);
+    assertThrown(x == uint.max);
 }
 
 /**
@@ -1707,9 +1747,9 @@ static:
     */
     enum T defaultValue(T) = T.min == 0 ? T.max : T.min;
     /**
-    The maximum value representable is $(D T.max) for signed integrals, $(D
+    The maximum value representable is `T.max` for signed integrals, $(D
     T.max - 1) for unsigned integrals. The minimum value representable is $(D
-    T.min + 1) for signed integrals, $(D 0) for unsigned integrals.
+    T.min + 1) for signed integrals, `0` for unsigned integrals.
     */
     enum T max(T) = cast(T) (T.min == 0 ? T.max - 1 : T.max);
     /// ditto
@@ -2179,7 +2219,7 @@ static:
     Returns: The saturated result of the operator.
 
     */
-    typeof(~Lhs()) onOverflow(string x, Lhs)(Lhs lhs)
+    auto onOverflow(string x, Lhs)(Lhs lhs)
     {
         static assert(x == "-" || x == "++" || x == "--");
         return x == "--" ? Lhs.min : Lhs.max;

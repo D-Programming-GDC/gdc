@@ -47,39 +47,14 @@ CharMatcher[CodepointSet] matcherCache;
     }
 }
 
-@trusted auto memoizeExpr(string expr)()
+@property ref wordMatcher()()
 {
-    if (__ctfe)
-        return mixin(expr);
-    alias T = typeof(mixin(expr));
-    static T slot;
-    static bool initialized;
-    if (!initialized)
-    {
-        slot =  mixin(expr);
-        initialized = true;
-    }
-    return slot;
-}
-
-//property for \w character class
-@property CodepointSet wordCharacter()
-{
-    return memoizeExpr!("unicode.Alphabetic | unicode.Mn | unicode.Mc
-        | unicode.Me | unicode.Nd | unicode.Pc")();
-}
-
-@property CharMatcher wordMatcher()
-{
-    return memoizeExpr!("CharMatcher(wordCharacter)")();
+    static CharMatcher matcher = CharMatcher(wordCharacter);
+    return matcher;
 }
 
 // some special Unicode white space characters
 private enum NEL = '\u0085', LS = '\u2028', PS = '\u2029';
-
-// Characters that need escaping in string posed as regular expressions
-alias Escapables = AliasSeq!('[', ']', '\\', '^', '$', '.', '|', '?', ',', '-',
-    ';', ':', '#', '&', '%', '/', '<', '>', '`',  '*', '+', '(', ')', '{', '}',  '~');
 
 //Regular expression engine/parser options:
 // global - search  all nonoverlapping matches in input
@@ -229,7 +204,7 @@ bool isAtomIR(IR i)
 IR pairedIR(IR i)
 {
     assert(isStartIR(i) || isEndIR(i));
-    return cast(IR)(i ^ 0b11);
+    return cast(IR) (i ^ 0b11);
 }
 
 //encoded IR instruction
@@ -452,9 +427,140 @@ struct Group(DataIndex)
         writeln("\t", disassemble(slice, pc, dict));
 }
 
+// Encapsulates memory management, explicit ref counting
+// and the exact type of engine created
+// there is a single instance per engine combination type x Char
+// In future may also maintain a (TLS?) cache of memory
+interface MatcherFactory(Char)
+{
+@safe:
+    Matcher!Char create(const ref Regex!Char, in Char[] input) const;
+    Matcher!Char dup(Matcher!Char m, in Char[] input) const;
+    size_t incRef(Matcher!Char m) const;
+    size_t decRef(Matcher!Char m) const;
+}
+
+// Only memory management, no compile-time vs run-time specialities
+abstract class GenericFactory(alias EngineType, Char) : MatcherFactory!Char
+{
+    import core.stdc.stdlib : malloc, free;
+    import core.memory : GC;
+    // round up to next multiple of size_t for alignment purposes
+    enum classSize = (__traits(classInstanceSize, EngineType!Char) + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+
+    EngineType!Char construct(const ref Regex!Char re, in Char[] input, void[] memory) const;
+
+    override EngineType!Char create(const ref Regex!Char re, in Char[] input) const @trusted
+    {
+        immutable size = EngineType!Char.initialMemory(re) + classSize;
+        auto memory = enforce(malloc(size), "malloc failed")[0 .. size];
+        scope(failure) free(memory.ptr);
+        GC.addRange(memory.ptr, classSize);
+        auto engine = construct(re, input, memory);
+        assert(engine.refCount == 1);
+        assert(cast(void*) engine == memory.ptr);
+        return engine;
+    }
+
+    override EngineType!Char dup(Matcher!Char engine, in Char[] input) const @trusted
+    {
+        immutable size = EngineType!Char.initialMemory(engine.pattern) + classSize;
+        auto memory = enforce(malloc(size), "malloc failed")[0 .. size];
+        scope(failure) free(memory.ptr);
+        auto copy = construct(engine.pattern, input, memory);
+        GC.addRange(memory.ptr, classSize);
+        engine.dupTo(copy, memory[classSize .. size]);
+        assert(copy.refCount == 1);
+        return copy;
+    }
+
+    override size_t incRef(Matcher!Char m) const
+    {
+        return ++m.refCount;
+    }
+
+    override size_t decRef(Matcher!Char m) const  @trusted
+    {
+        assert(m.refCount != 0);
+        auto cnt = --m.refCount;
+        if (cnt == 0)
+        {
+            void* ptr = cast(void*) m;
+            GC.removeRange(ptr);
+            free(ptr);
+        }
+        return cnt;
+    }
+}
+
+// A factory for run-time engines
+class RuntimeFactory(alias EngineType, Char) : GenericFactory!(EngineType, Char)
+{
+    override EngineType!Char construct(const ref Regex!Char re, in Char[] input, void[] memory) const
+    {
+        import std.conv : emplace;
+        return emplace!(EngineType!Char)(memory[0 .. classSize],
+            re, Input!Char(input), memory[classSize .. $]);
+    }
+}
+
+// A factory for compile-time engine
+class CtfeFactory(alias EngineType, Char, alias func) : GenericFactory!(EngineType, Char)
+{
+    override EngineType!Char construct(const ref Regex!Char re, in Char[] input, void[] memory) const
+    {
+        import std.conv : emplace;
+        return emplace!(EngineType!Char)(memory[0 .. classSize],
+            re, &func, Input!Char(input), memory[classSize .. $]);
+    }
+}
+
+// A workaround for R-T enum re = regex(...)
+template defaultFactory(Char)
+{
+    @property MatcherFactory!Char defaultFactory(const ref Regex!Char re) @safe
+    {
+        import std.regex.internal.backtracking : BacktrackingMatcher;
+        import std.regex.internal.thompson : ThompsonMatcher;
+        import std.algorithm.searching : canFind;
+        static MatcherFactory!Char backtrackingFactory;
+        static MatcherFactory!Char thompsonFactory;
+        if (re.backrefed.canFind!"a != 0")
+        {
+            if (backtrackingFactory is null)
+                backtrackingFactory = new RuntimeFactory!(BacktrackingMatcher, Char);
+            return backtrackingFactory;
+        }
+        else
+        {
+            if (thompsonFactory is null)
+                thompsonFactory = new RuntimeFactory!(ThompsonMatcher, Char);
+            return thompsonFactory;
+        }
+    }
+}
+
+// Defining it as an interface has the undesired side-effect:
+// casting any class to an interface silently adjusts pointer to point to a nested vtbl
+abstract class Matcher(Char)
+{
+abstract:
+    // Get a (next) match
+    int match(Group!size_t[] matches);
+    // This only maintains internal ref-count,
+    // deallocation happens inside MatcherFactory
+    @property ref size_t refCount() @safe;
+    // Copy internal state to another engine, using memory arena 'memory'
+    void dupTo(Matcher!Char m, void[] memory);
+    // The pattern loaded
+    @property ref const(Regex!Char) pattern() @safe;
+    // Re-arm the engine with new Input
+    Matcher rearm(in Char[] stream);
+}
+
 /++
-    $(D Regex) object holds regular expression pattern in compiled form.
-    Instances of this object are constructed via calls to $(D regex).
+    `Regex` object holds regular expression pattern in compiled form.
+    Instances of this object are constructed via calls to `regex`.
     This is an intended form for caching and storage of frequently
     used regular expressions.
 +/
@@ -472,11 +578,11 @@ struct Regex(Char)
         static struct NamedGroupRange
         {
         private:
-            NamedGroup[] groups;
+            const(NamedGroup)[] groups;
             size_t start;
             size_t end;
         public:
-            this(NamedGroup[] g, size_t s, size_t e)
+            this(const(NamedGroup)[] g, size_t s, size_t e)
             {
                 assert(s <= e);
                 assert(e <= g.length);
@@ -514,7 +620,7 @@ struct Regex(Char)
 
 package(std.regex):
     import std.regex.internal.kickstart : Kickstart; //TODO: get rid of this dependency
-    NamedGroup[] dict;                     // maps name -> user group number
+    const(NamedGroup)[] dict;              // maps name -> user group number
     uint ngroup;                           // number of internal groups
     uint maxCounterDepth;                  // max depth of nested {n,m} repetitions
     uint hotspotTableSize;                 // number of entries in merge table
@@ -524,6 +630,36 @@ package(std.regex):
     public const(BitTable)[] filters;      // bloom filters for conditional loops
     uint[] backrefed;                      // bit array of backreferenced submatches
     Kickstart!Char kickstart;
+    MatcherFactory!Char factory;           // produces optimal matcher for this pattern
+    immutable(Char)[] pattern;             // copy of pattern to serve as cache key
+
+    const(Regex) withFactory(MatcherFactory!Char factory) pure const @trusted
+    {
+        auto r = cast() this;
+        r.factory = factory;
+        return r;
+    }
+
+    const(Regex) withFlags(uint newFlags) pure const @trusted
+    {
+        auto r = cast() this;
+        r.flags = newFlags;
+        return r;
+    }
+
+    const(Regex) withCode(const(Bytecode)[] code) pure const @trusted
+    {
+        auto r = cast() this;
+        r.ir = code.dup; // TODO: sidestep const instead?
+        return r;
+    }
+
+    const(Regex) withNGroup(uint nGroup) pure const @trusted
+    {
+        auto r = cast() this;
+        r.ngroup = nGroup;
+        return r;
+    }
 
     //bit access helper
     uint isBackref(uint n)
@@ -566,26 +702,6 @@ package(std.regex):
 
 }
 
-//@@@BUG@@@ (unreduced) - public makes it inaccessible in std.regex.package (!)
-/*public*/ struct StaticRegex(Char)
-{
-package(std.regex):
-    import std.regex.internal.backtracking : BacktrackingMatcher;
-    alias Matcher = BacktrackingMatcher!(true);
-    alias MatchFn = bool function(ref Matcher!Char) @trusted;
-    MatchFn nativeFn;
-public:
-    Regex!Char _regex;
-    alias _regex this;
-    this(Regex!Char re, MatchFn fn)
-    {
-        _regex = re;
-        nativeFn = fn;
-
-    }
-
-}
-
 // The stuff below this point is temporarrily part of IR module
 // but may need better place in the future (all internals)
 package(std.regex):
@@ -622,7 +738,7 @@ if (is(Char :dchar))
     @property bool atEnd(){
         return _index == _origin.length;
     }
-    bool search(Kickstart)(ref Kickstart kick, ref dchar res, ref size_t pos)
+    bool search(Kickstart)(ref const Kickstart kick, ref dchar res, ref size_t pos)
     {
         size_t idx = kick.search(_origin, _index);
         _index = idx;
@@ -652,6 +768,11 @@ struct BackLooperImpl(Input)
     {
         _origin = input._origin;
         _index = index;
+    }
+    this(String input)
+    {
+        _origin = input;
+        _index = input.length;
     }
     @trusted bool nextChar(ref dchar res,ref size_t pos)
     {
@@ -705,7 +826,7 @@ template BackLooper(E)
 }
 
 //
-@trusted uint lookupNamedGroup(String)(NamedGroup[] dict, String name)
+@trusted uint lookupNamedGroup(String)(const(NamedGroup)[] dict, String name)
 {//equal is @system?
     import std.algorithm.comparison : equal;
     import std.algorithm.iteration : map;
@@ -784,5 +905,216 @@ struct CharMatcher {
             return ascii[ch];
         else
             return trie[ch];
+    }
+}
+
+// Internal non-resizeble array, switches between inline storage and CoW
+// POD-only
+struct SmallFixedArray(T, uint SMALL=3)
+if (!hasElaborateDestructor!T)
+{
+    import core.stdc.stdlib : malloc, free;
+    static struct Payload
+    {
+        size_t refcount;
+        T[0] placeholder;
+        inout(T)* ptr() inout { return placeholder.ptr; }
+    }
+    static assert(Payload.sizeof == size_t.sizeof);
+    union
+    {
+        Payload* big;
+        T[SMALL] small;
+    }
+    size_t _sizeMask;
+    enum BIG_MASK = size_t(1)<<(8*size_t.sizeof-1);
+    enum SIZE_MASK = ~BIG_MASK;
+
+    @property bool isBig() const { return (_sizeMask & BIG_MASK) != 0; }
+    @property size_t length() const { return _sizeMask & SIZE_MASK; }
+
+    this(size_t size)
+    {
+        if (size <= SMALL)
+        {
+            small[] = T.init;
+            _sizeMask = size;
+        }
+        else
+        {
+            big = cast(Payload*) enforce(malloc(Payload.sizeof + T.sizeof*size), "Failed to malloc storage");
+            big.refcount = 1;
+            _sizeMask = size | BIG_MASK;
+        }
+    }
+
+    private @trusted @property inout(T)[] internalSlice() inout
+    {
+        return isBig ? big.ptr[0 .. length] : small[0 .. length];
+    }
+
+    this(this)
+    {
+        if (isBig)
+        {
+            big.refcount++;
+        }
+    }
+
+    bool opEquals(SmallFixedArray a)
+    {
+        return internalSlice[] == a.internalSlice[];
+    }
+
+    size_t toHash()
+    {
+        return hashOf(internalSlice[]);
+    }
+
+    T opIndex(size_t idx) inout
+    {
+        return internalSlice[idx];
+    }
+
+    // accesses big to test self-referencing so not @safe
+    @trusted ref opAssign(SmallFixedArray arr)
+    {
+        if (isBig)
+        {
+            if (arr.isBig)
+            {
+                if (big is arr.big) return this; // self-assign
+                else
+                {
+                    abandonRef();
+                    _sizeMask = arr._sizeMask;
+                    big = arr.big;
+                    big.refcount++;
+                }
+            }
+            else
+            {
+                abandonRef();
+                _sizeMask = arr._sizeMask;
+                small = arr.small;
+            }
+        }
+        else
+        {
+            if (arr.isBig)
+            {
+                _sizeMask = arr._sizeMask;
+                big = arr.big;
+                big.refcount++;
+            }
+            else
+            {
+                _sizeMask = arr._sizeMask;
+                small = arr.small;
+            }
+        }
+        return this;
+    }
+
+    void mutate(scope void delegate(T[]) filler)
+    {
+        if (isBig && big.refcount != 1) // copy on write
+        {
+            auto oldSizeMask = _sizeMask;
+            auto newbig = cast(Payload*) enforce(malloc(Payload.sizeof + T.sizeof*length), "Failed to malloc storage");
+            newbig.refcount = 1;
+            abandonRef();
+            big = newbig;
+            _sizeMask = oldSizeMask;
+        }
+        filler(internalSlice);
+    }
+
+    ~this()
+    {
+        if (isBig)
+        {
+            abandonRef();
+        }
+    }
+
+    @trusted private void abandonRef()
+    {
+        assert(isBig);
+        if (--big.refcount == 0)
+        {
+            free(big);
+            _sizeMask = 0;
+            assert(!isBig);
+        }
+    }
+}
+
+@system unittest
+{
+    alias SA = SmallFixedArray!(int, 2);
+    SA create(int[] data)
+    {
+        SA a = SA(data.length);
+        a.mutate((slice) { slice[] = data[]; });
+        assert(a.internalSlice == data);
+        return a;
+    }
+
+    {
+        SA a;
+        a = SA(1);
+        assert(a.length == 1);
+        a = SA.init;
+        assert(a.length == 0);
+    }
+
+    {
+        SA a, b, c, d;
+        assert(a.length == 0);
+        assert(a.internalSlice == b.internalSlice);
+        a = create([1]);
+        assert(a.internalSlice == [1]);
+        b = create([2, 3]);
+        assert(b.internalSlice == [2, 3]);
+        c = create([3, 4, 5]);
+        d = create([5, 6, 7, 8]);
+        assert(c.isBig);
+        a = c;
+        assert(a.isBig);
+        assert(a.big is c.big);
+        assert(a.big.refcount == 2);
+        assert(a.internalSlice == [3, 4, 5]);
+        assert(c.internalSlice == [3, 4, 5]);
+        a = b;
+        assert(!a.isBig);
+        assert(a.internalSlice == [2, 3]);
+        assert(c.big.refcount == 1);
+        a = c;
+        assert(c.big.refcount == 2);
+
+        // mutate copies on write if ref-count is not 1
+        a.mutate((slice){ slice[] = 1; });
+        assert(a.internalSlice == [1, 1, 1]);
+        assert(c.internalSlice == [3, 4, 5]);
+        assert(a.isBig && c.isBig);
+        assert(a.big.refcount == 1);
+        assert(c.big.refcount == 1);
+
+        auto e = d;
+        assert(e.big.refcount == 2);
+        auto f = d;
+        f = a;
+        assert(f.isBig);
+        assert(f.internalSlice == [1, 1, 1]);
+        assert(f.big.refcount == 2); // a & f
+        assert(e.big.refcount == 2); // d & e
+        a = c;
+        assert(f.big.refcount == 1); // f
+        assert(e.big.refcount == 2); // d & e
+        a = a;
+        a = a;
+        a = a;
+        assert(a.big.refcount == 2); // a & c
     }
 }

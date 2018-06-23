@@ -2,51 +2,51 @@
 
 /**
 Functions for starting and interacting with other processes, and for
-working with the current _process' execution environment.
+working with the current process' execution environment.
 
 Process_handling:
 $(UL $(LI
-    $(LREF spawnProcess) spawns a new _process, optionally assigning it an
+    $(LREF spawnProcess) spawns a new process, optionally assigning it an
     arbitrary set of standard input, output, and error streams.
-    The function returns immediately, leaving the child _process to execute
+    The function returns immediately, leaving the child process to execute
     in parallel with its parent.  All other functions in this module that
-    spawn processes are built around $(D spawnProcess).)
+    spawn processes are built around `spawnProcess`.)
 $(LI
-    $(LREF wait) makes the parent _process wait for a child _process to
+    $(LREF wait) makes the parent process wait for a child process to
     terminate.  In general one should always do this, to avoid
-    child processes becoming "zombies" when the parent _process exits.
+    child processes becoming "zombies" when the parent process exits.
     Scope guards are perfect for this – see the $(LREF spawnProcess)
-    documentation for examples.  $(LREF tryWait) is similar to $(D wait),
-    but does not block if the _process has not yet terminated.)
+    documentation for examples.  $(LREF tryWait) is similar to `wait`,
+    but does not block if the process has not yet terminated.)
 $(LI
-    $(LREF pipeProcess) also spawns a child _process which runs
+    $(LREF pipeProcess) also spawns a child process which runs
     in parallel with its parent.  However, instead of taking
     arbitrary streams, it automatically creates a set of
     pipes that allow the parent to communicate with the child
     through the child's standard input, output, and/or error streams.
-    This function corresponds roughly to C's $(D popen) function.)
+    This function corresponds roughly to C's `popen` function.)
 $(LI
-    $(LREF execute) starts a new _process and waits for it
+    $(LREF execute) starts a new process and waits for it
     to complete before returning.  Additionally, it captures
-    the _process' standard output and error streams and returns
+    the process' standard output and error streams and returns
     the output of these as a string.)
 $(LI
     $(LREF spawnShell), $(LREF pipeShell) and $(LREF executeShell) work like
-    $(D spawnProcess), $(D pipeProcess) and $(D execute), respectively,
+    `spawnProcess`, `pipeProcess` and `execute`, respectively,
     except that they take a single command string and run it through
     the current user's default command interpreter.
-    $(D executeShell) corresponds roughly to C's $(D system) function.)
+    `executeShell` corresponds roughly to C's `system` function.)
 $(LI
-    $(LREF kill) attempts to terminate a running _process.)
+    $(LREF kill) attempts to terminate a running process.)
 )
 
-The following table compactly summarises the different _process creation
+The following table compactly summarises the different process creation
 functions and how they relate to each other:
 $(BOOKTABLE,
     $(TR $(TH )
          $(TH Runs program directly)
          $(TH Runs shell command))
-    $(TR $(TD Low-level _process creation)
+    $(TR $(TD Low-level process creation)
          $(TD $(LREF spawnProcess))
          $(TD $(LREF spawnShell)))
     $(TR $(TD Automatic input/output redirection using pipes)
@@ -62,7 +62,7 @@ $(UL
 $(LI
     $(LREF pipe) is used to create unidirectional pipes.)
 $(LI
-    $(LREF environment) is an interface through which the current _process'
+    $(LREF environment) is an interface through which the current process'
     environment variables can be read and manipulated.)
 $(LI
     $(LREF escapeShellCommand) and $(LREF escapeShellFileName) are useful
@@ -78,10 +78,9 @@ Copyright:
 License:
    $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Source:
-    $(PHOBOSSRC std/_process.d)
+    $(PHOBOSSRC std/process.d)
 Macros:
-    OBJECTREF=$(D $(LINK2 object.html#$0,$0))
-    LREF=$(D $(LINK2 #.$0,$0))
+    OBJECTREF=$(REF1 $0, object)
 */
 module std.process;
 
@@ -161,24 +160,24 @@ private
 
 
 /**
-Spawns a new _process, optionally assigning it an arbitrary set of standard
+Spawns a new process, optionally assigning it an arbitrary set of standard
 input, output, and error streams.
 
-The function returns immediately, leaving the child _process to execute
+The function returns immediately, leaving the child process to execute
 in parallel with its parent.  It is recommended to always call $(LREF wait)
 on the returned $(LREF Pid) unless the process was spawned with
-$(D Config.detached) flag, as detailed in the documentation for $(D wait).
+`Config.detached` flag, as detailed in the documentation for `wait`.
 
 Command_line:
 There are four overloads of this function.  The first two take an array
-of strings, $(D args), which should contain the program name as the
+of strings, `args`, which should contain the program name as the
 zeroth element and any command-line arguments in subsequent elements.
 The third and fourth versions are included for convenience, and may be
 used when there are no command-line arguments.  They take a single string,
-$(D program), which specifies the program name.
+`program`, which specifies the program name.
 
-Unless a directory is specified in $(D args[0]) or $(D program),
-$(D spawnProcess) will search for the program in a platform-dependent
+Unless a directory is specified in `args[0]` or `program`,
+`spawnProcess` will search for the program in a platform-dependent
 manner.  On POSIX systems, it will look for the executable in the
 directories listed in the PATH environment variable, in the order
 they are listed.  On Windows, it will search for the executable in
@@ -208,19 +207,19 @@ if (wait(dmdPid) != 0)
 
 Environment_variables:
 By default, the child process inherits the environment of the parent
-process, along with any additional variables specified in the $(D env)
+process, along with any additional variables specified in the `env`
 parameter.  If the same variable exists in both the parent's environment
-and in $(D env), the latter takes precedence.
+and in `env`, the latter takes precedence.
 
-If the $(LREF Config.newEnv) flag is set in $(D config), the child
+If the $(LREF Config.newEnv) flag is set in `config`, the child
 process will $(I not) inherit the parent's environment.  Its entire
-environment will then be determined by $(D env).
+environment will then be determined by `env`.
 ---
 wait(spawnProcess("myapp", ["foo" : "bar"], Config.newEnv));
 ---
 
 Standard_streams:
-The optional arguments $(D stdin), $(D stdout) and $(D stderr) may
+The optional arguments `stdin`, `stdout` and `stderr` may
 be used to assign arbitrary $(REF File, std,stdio) objects as the standard
 input, output and error streams, respectively, of the child process.  The
 former must be opened for reading, while the latter two must be opened for
@@ -238,14 +237,14 @@ if (wait(pid) != 0)
     writeln("Compilation failed. See errors.log for details.");
 ---
 
-Note that if you pass a $(D File) object that is $(I not)
+Note that if you pass a `File` object that is $(I not)
 one of the standard input/output/error streams of the parent process,
 that stream will by default be $(I closed) in the parent process when
 this function returns.  See the $(LREF Config) documentation below for
 information about how to disable this behaviour.
 
-Beware of buffering issues when passing $(D File) objects to
-$(D spawnProcess).  The child process will inherit the low-level raw
+Beware of buffering issues when passing `File` objects to
+`spawnProcess`.  The child process will inherit the low-level raw
 read/write offset associated with the underlying file descriptor, but
 it will not be aware of any buffered data.  In cases where this matters
 (e.g. when a file should be aligned before being passed on to the
@@ -279,15 +278,15 @@ Throws:
 $(LREF ProcessException) on failure to start the process.$(BR)
 $(REF StdioException, std,stdio) on failure to pass one of the streams
     to the child process (Windows only).$(BR)
-$(REF RangeError, core,exception) if $(D args) is empty.
+$(REF RangeError, core,exception) if `args` is empty.
 */
-Pid spawnProcess(in char[][] args,
+Pid spawnProcess(scope const(char[])[] args,
                  File stdin = std.stdio.stdin,
                  File stdout = std.stdio.stdout,
                  File stderr = std.stdio.stderr,
                  const string[string] env = null,
                  Config config = Config.none,
-                 in char[] workDir = null)
+                 scope const char[] workDir = null)
     @trusted // TODO: Should be @safe
 {
     version (Windows)    auto  args2 = escapeShellArguments(args);
@@ -296,10 +295,10 @@ Pid spawnProcess(in char[][] args,
 }
 
 /// ditto
-Pid spawnProcess(in char[][] args,
+Pid spawnProcess(scope const(char[])[] args,
                  const string[string] env,
                  Config config = Config.none,
-                 in char[] workDir = null)
+                 scope const(char)[] workDir = null)
     @trusted // TODO: Should be @safe
 {
     return spawnProcess(args,
@@ -312,13 +311,13 @@ Pid spawnProcess(in char[][] args,
 }
 
 /// ditto
-Pid spawnProcess(in char[] program,
+Pid spawnProcess(scope const(char)[] program,
                  File stdin = std.stdio.stdin,
                  File stdout = std.stdio.stdout,
                  File stderr = std.stdio.stderr,
                  const string[string] env = null,
                  Config config = Config.none,
-                 in char[] workDir = null)
+                 scope const(char)[] workDir = null)
     @trusted
 {
     return spawnProcess((&program)[0 .. 1],
@@ -326,10 +325,10 @@ Pid spawnProcess(in char[] program,
 }
 
 /// ditto
-Pid spawnProcess(in char[] program,
+Pid spawnProcess(scope const(char)[] program,
                  const string[string] env,
                  Config config = Config.none,
-                 in char[] workDir = null)
+                 scope const(char)[] workDir = null)
     @trusted
 {
     return spawnProcess((&program)[0 .. 1], env, config, workDir);
@@ -351,13 +350,13 @@ envz should be a zero-terminated array of zero-terminated strings
 on the form "var=value".
 */
 version (Posix)
-private Pid spawnProcessImpl(in char[][] args,
+private Pid spawnProcessImpl(scope const(char[])[] args,
                              File stdin,
                              File stdout,
                              File stderr,
-                             const string[string] env,
+                             scope const string[string] env,
                              Config config,
-                             in char[] workDir)
+                             scope const(char)[] workDir)
     @trusted // TODO: Should be @safe
 {
     import core.exception : RangeError;
@@ -681,13 +680,13 @@ envz must be a pointer to a block of UTF-16 characters on the form
 "var1=value1\0var2=value2\0...varN=valueN\0\0".
 */
 version (Windows)
-private Pid spawnProcessImpl(in char[] commandLine,
+private Pid spawnProcessImpl(scope const(char)[] commandLine,
                              File stdin,
                              File stdout,
                              File stderr,
                              const string[string] env,
                              Config config,
-                             in char[] workDir)
+                             scope const(char)[] workDir)
     @trusted
 {
     import core.exception : RangeError;
@@ -887,7 +886,7 @@ version (Windows) @system unittest
 // Searches the PATH variable for the given executable file,
 // (checking that it is in fact executable).
 version (Posix)
-private string searchPathFor(in char[] executable)
+private string searchPathFor(scope const(char)[] executable)
     @trusted //TODO: @safe nothrow
 {
     import std.algorithm.iteration : splitter;
@@ -909,7 +908,7 @@ private string searchPathFor(in char[] executable)
 // Checks whether the file exists and can be executed by the
 // current user.
 version (Posix)
-private bool isExecutable(in char[] path) @trusted nothrow @nogc //TODO: @safe
+private bool isExecutable(scope const(char)[] path) @trusted nothrow @nogc //TODO: @safe
 {
     return (access(path.tempCString(), X_OK) == 0);
 }
@@ -987,47 +986,51 @@ version (Posix) @system unittest
     assert(execute(testDefaults.path).status == 0);
     assert(execute(testDefaults.path, null, Config.inheritFDs).status == 0);
 
-    // try /proc/<pid>/fd/ on linux
-    version (linux)
+    // Try a few different methods to check whether there are any
+    // incorrectly-open files.
+    void testFDs()
     {
-        TestScript proc = "ls /proc/$$/fd";
-        auto procRes = execute(proc.path, null);
-        if (procRes.status == 0)
+        // try /proc/<pid>/fd/ on linux
+        version (linux)
         {
-            auto fdStr = fd.to!string;
-            assert(!procRes.output.split.canFind(fdStr));
-            assert(execute(proc.path, null, Config.inheritFDs)
-                    .output.split.canFind(fdStr));
+            TestScript proc = "ls /proc/$$/fd";
+            auto procRes = execute(proc.path, null);
+            if (procRes.status == 0)
+            {
+                auto fdStr = fd.to!string;
+                assert(!procRes.output.split.canFind(fdStr));
+                assert(execute(proc.path, null, Config.inheritFDs)
+                        .output.split.canFind(fdStr));
+                return;
+            }
+        }
+
+        // try fuser (might sometimes need permissions)
+        TestScript fuser = "echo $$ && fuser -f " ~ path;
+        auto fuserRes = execute(fuser.path, null);
+        if (fuserRes.status == 0)
+        {
+            assert(!reverseArgs!canFind(fuserRes
+                        .output.findSplitBefore("\n").expand));
+            assert(reverseArgs!canFind(execute(fuser.path, null, Config.inheritFDs)
+                        .output.findSplitBefore("\n").expand));
             return;
         }
-    }
 
-    // try fuser (might sometimes need permissions)
-    TestScript fuser = "echo $$ && fuser -f " ~ path;
-    auto fuserRes = execute(fuser.path, null);
-    if (fuserRes.status == 0)
-    {
-        assert(!reverseArgs!canFind(fuserRes
-                    .output.findSplitBefore("\n").expand));
-        assert(reverseArgs!canFind(execute(fuser.path, null, Config.inheritFDs)
-                    .output.findSplitBefore("\n").expand));
-        return;
-    }
+        // last resort, try lsof (not available on all Posix)
+        TestScript lsof = "lsof -p$$";
+        auto lsofRes = execute(lsof.path, null);
+        if (lsofRes.status == 0)
+        {
+            assert(!lsofRes.output.canFind(path));
+            assert(execute(lsof.path, null, Config.inheritFDs).output.canFind(path));
+            return;
+        }
 
-    // last resort, try lsof (not available on all Posix)
-    TestScript lsof = "lsof -p$$";
-    auto lsofRes = execute(lsof.path, null);
-    if (lsofRes.status == 0)
-    {
-        assert(!lsofRes.output.canFind(path));
-        assert(execute(lsof.path, null, Config.inheritFDs).output.canFind(path));
-        return;
+        std.stdio.stderr.writeln(__FILE__, ':', __LINE__,
+                ": Warning: Couldn't find any way to check open files");
     }
-
-    std.stdio.stderr.writeln(__FILE__, ':', __LINE__,
-            ": Warning: Couldn't find any way to check open files");
-    // DON'T DO ANY MORE TESTS BELOW HERE IN THIS UNITTEST BLOCK, THE ABOVE
-    // TESTS RETURN ON SUCCESS
+    testFDs();
 }
 
 @system unittest // Environment variables in spawnProcess().
@@ -1188,13 +1191,16 @@ version (Posix) @system unittest
     // can't run in directory if user does not have search permission on this directory
     version(Posix)
     {
-        import core.sys.posix.sys.stat : S_IRUSR;
-        auto directoryNoSearch = uniqueTempPath();
-        mkdir(directoryNoSearch);
-        scope(exit) rmdirRecurse(directoryNoSearch);
-        setAttributes(directoryNoSearch, S_IRUSR);
-        assertThrown!ProcessException(spawnProcess(prog.path, null, Config.none, directoryNoSearch));
-        assertThrown!ProcessException(spawnProcess(prog.path, null, Config.detached, directoryNoSearch));
+        if (core.sys.posix.unistd.getuid() != 0)
+        {
+            import core.sys.posix.sys.stat : S_IRUSR;
+            auto directoryNoSearch = uniqueTempPath();
+            mkdir(directoryNoSearch);
+            scope(exit) rmdirRecurse(directoryNoSearch);
+            setAttributes(directoryNoSearch, S_IRUSR);
+            assertThrown!ProcessException(spawnProcess(prog.path, null, Config.none, directoryNoSearch));
+            assertThrown!ProcessException(spawnProcess(prog.path, null, Config.detached, directoryNoSearch));
+        }
     }
 }
 
@@ -1249,12 +1255,12 @@ version (Windows)
 A variation on $(LREF spawnProcess) that runs the given _command through
 the current user's preferred _command interpreter (aka. shell).
 
-The string $(D command) is passed verbatim to the shell, and is therefore
+The string `command` is passed verbatim to the shell, and is therefore
 subject to its rules about _command structure, argument/filename quoting
 and escaping of special characters.
 The path to the shell executable defaults to $(LREF nativeShell).
 
-In all other respects this function works just like $(D spawnProcess).
+In all other respects this function works just like `spawnProcess`.
 Please refer to the $(LREF spawnProcess) documentation for descriptions
 of the other function parameters, the return value and any exceptions
 that may be thrown.
@@ -1269,14 +1275,14 @@ See_also:
 $(LREF escapeShellCommand), which may be helpful in constructing a
 properly quoted and escaped shell _command line for the current platform.
 */
-Pid spawnShell(in char[] command,
+Pid spawnShell(scope const(char)[] command,
                File stdin = std.stdio.stdin,
                File stdout = std.stdio.stdout,
                File stderr = std.stdio.stderr,
-               const string[string] env = null,
+               scope const string[string] env = null,
                Config config = Config.none,
-               in char[] workDir = null,
-               string shellPath = nativeShell)
+               scope const(char)[] workDir = null,
+               scope string shellPath = nativeShell)
     @trusted // TODO: Should be @safe
 {
     version (Windows)
@@ -1299,11 +1305,11 @@ Pid spawnShell(in char[] command,
 }
 
 /// ditto
-Pid spawnShell(in char[] command,
-               const string[string] env,
+Pid spawnShell(scope const(char)[] command,
+               scope const string[string] env,
                Config config = Config.none,
-               in char[] workDir = null,
-               string shellPath = nativeShell)
+               scope const(char)[] workDir = null,
+               scope string shellPath = nativeShell)
     @trusted // TODO: Should be @safe
 {
     return spawnShell(command,
@@ -1355,7 +1361,8 @@ version (Windows)
 
 
 /**
-Flags that control the behaviour of $(LREF spawnProcess) and
+Flags that control the behaviour of process creation functions in this
+module. Most flags only apply to $(LREF spawnProcess) and
 $(LREF spawnShell).
 
 Use bitwise OR to combine flags.
@@ -1403,7 +1410,7 @@ enum Config
     /**
     On Windows, if the child process is a console application, this
     flag will prevent the creation of a console window.  Otherwise,
-    it will be ignored. On POSIX, $(D suppressConsole) has no effect.
+    it will be ignored. On POSIX, `suppressConsole` has no effect.
     */
     suppressConsole = 16,
 
@@ -1413,7 +1420,7 @@ enum Config
     to subtle bugs when pipes or multiple threads are involved,
     $(LREF spawnProcess) ensures that all file descriptors except the
     ones that correspond to standard input/output/error are closed
-    in the child process when it starts.  Use $(D inheritFDs) to prevent
+    in the child process when it starts.  Use `inheritFDs` to prevent
     this.
 
     On Windows, this option has no effect, and any handles which have been
@@ -1427,9 +1434,24 @@ enum Config
     $(LREF wait) to clean up the process resources.
 
     Note:
-    Calling $(LREF wait) or $(LREF kill) with the resulting $(D Pid) is invalid.
+    Calling $(LREF wait) or $(LREF kill) with the resulting `Pid` is invalid.
     */
     detached = 64,
+
+    /**
+    By default, the $(LREF execute) and $(LREF executeShell) functions
+    will capture child processes' both stdout and stderr. This can be
+    undesirable if the standard output is to be processed or otherwise
+    used by the invoking program, as `execute`'s result would then
+    contain a mix of output and warning/error messages.
+
+    Specify this flag when calling `execute` or `executeShell` to
+    cause invoked processes' stderr stream to be sent to $(REF stderr,
+    std,stdio), and only capture and return standard output.
+
+    This flag has no effect on $(LREF spawnProcess) or $(LREF spawnShell).
+    */
+    stderrPassThrough = 128,
 }
 
 
@@ -1453,9 +1475,9 @@ final class Pid
     An operating system handle to the process.
 
     This handle is used to specify the process in OS-specific APIs.
-    On POSIX, this function returns a $(D core.sys.posix.sys.types.pid_t)
+    On POSIX, this function returns a `core.sys.posix.sys.types.pid_t`
     with the same value as $(LREF Pid.processID), while on Windows it returns
-    a $(D core.sys.windows.windows.HANDLE).
+    a `core.sys.windows.windows.HANDLE`.
 
     Once $(LREF wait) has been called on the $(LREF Pid), this method
     will return an invalid handle.
@@ -1488,8 +1510,8 @@ private:
     version (Posix)
     int performWait(bool block) @trusted
     {
-        import std.exception : enforceEx;
-        enforceEx!ProcessException(owned, "Can't wait on a detached process");
+        import std.exception : enforce;
+        enforce!ProcessException(owned, "Can't wait on a detached process");
         if (_processID == terminated) return _exitCode;
         int exitCode;
         while (true)
@@ -1538,8 +1560,8 @@ private:
     {
         int performWait(bool block) @trusted
         {
-            import std.exception : enforceEx;
-            enforceEx!ProcessException(owned, "Can't wait on a detached process");
+            import std.exception : enforce;
+            enforce!ProcessException(owned, "Can't wait on a detached process");
             if (_processID == terminated) return _exitCode;
             assert(_handle != INVALID_HANDLE_VALUE);
             if (block)
@@ -1611,12 +1633,12 @@ private:
 
 
 /**
-Waits for the process associated with $(D pid) to terminate, and returns
+Waits for the process associated with `pid` to terminate, and returns
 its exit status.
 
 In general one should always _wait for child processes to terminate
 before exiting the parent process unless the process was spawned as detached
-(that was spawned with $(D Config.detached) flag).
+(that was spawned with `Config.detached` flag).
 Otherwise, they may become "$(HTTP en.wikipedia.org/wiki/Zombie_process,zombies)"
 – processes that are defunct, yet still occupy a slot in the OS process table.
 You should not and must not wait for detached processes, since you don't own them.
@@ -1630,8 +1652,8 @@ If the process is terminated by a signal, this function returns a
 negative number whose absolute value is the signal number.
 Since POSIX restricts normal exit codes to the range 0-255, a
 negative return value will always indicate termination by signal.
-Signal codes are defined in the $(D core.sys.posix.signal) module
-(which corresponds to the $(D signal.h) POSIX header).
+Signal codes are defined in the `core.sys.posix.signal` module
+(which corresponds to the `signal.h` POSIX header).
 
 Throws:
 $(LREF ProcessException) on failure or on attempt to wait for detached process.
@@ -1670,18 +1692,18 @@ int wait(Pid pid) @safe
 /**
 A non-blocking version of $(LREF wait).
 
-If the process associated with $(D pid) has already terminated,
-$(D tryWait) has the exact same effect as $(D wait).
-In this case, it returns a tuple where the $(D terminated) field
-is set to $(D true) and the $(D status) field has the same
-interpretation as the return value of $(D wait).
+If the process associated with `pid` has already terminated,
+`tryWait` has the exact same effect as `wait`.
+In this case, it returns a tuple where the `terminated` field
+is set to `true` and the `status` field has the same
+interpretation as the return value of `wait`.
 
 If the process has $(I not) yet terminated, this function differs
-from $(D wait) in that does not wait for this to happen, but instead
-returns immediately.  The $(D terminated) field of the returned
-tuple will then be set to $(D false), while the $(D status) field
-will always be 0 (zero).  $(D wait) or $(D tryWait) should then be
-called again on the same $(D Pid) at some later time; not only to
+from `wait` in that does not wait for this to happen, but instead
+returns immediately.  The `terminated` field of the returned
+tuple will then be set to `false`, while the `status` field
+will always be 0 (zero).  `wait` or `tryWait` should then be
+called again on the same `Pid` at some later time; not only to
 get the exit code, but also to avoid the process becoming a "zombie"
 when it finally terminates.  (See $(LREF wait) for details).
 
@@ -1705,9 +1727,9 @@ if (dmd.terminated)
 else writeln("Still compiling...");
 ...
 ---
-Note that in this example, the first $(D wait) call will have no
-effect if the process has already terminated by the time $(D tryWait)
-is called.  In the opposite case, however, the $(D scope) statement
+Note that in this example, the first `wait` call will have no
+effect if the process has already terminated by the time `tryWait`
+is called.  In the opposite case, however, the `scope` statement
 ensures that we always wait for the process if it hasn't terminated
 by the time we reach the end of the scope.
 */
@@ -1722,21 +1744,21 @@ auto tryWait(Pid pid) @safe
 
 
 /**
-Attempts to terminate the process associated with $(D pid).
+Attempts to terminate the process associated with `pid`.
 
-The effect of this function, as well as the meaning of $(D codeOrSignal),
+The effect of this function, as well as the meaning of `codeOrSignal`,
 is highly platform dependent.  Details are given below.  Common to all
 platforms is that this function only $(I initiates) termination of the process,
 and returns immediately.  It does not wait for the process to end,
 nor does it guarantee that the process does in fact get terminated.
 
-Always call $(LREF wait) to wait for a process to complete, even if $(D kill)
+Always call $(LREF wait) to wait for a process to complete, even if `kill`
 has been called on it.
 
 Windows_specific:
 The process will be
 $(LINK2 http://msdn.microsoft.com/en-us/library/windows/desktop/ms686714%28v=vs.100%29.aspx,
-forcefully and abruptly terminated).  If $(D codeOrSignal) is specified, it
+forcefully and abruptly terminated).  If `codeOrSignal` is specified, it
 must be a nonnegative number which will be used as the exit code of the process.
 If not, the process wil exit with code 1.  Do not use $(D codeOrSignal = 259),
 as this is a special value (aka. $(LINK2 http://msdn.microsoft.com/en-us/library/windows/desktop/ms683189.aspx,STILL_ACTIVE))
@@ -1749,15 +1771,15 @@ assert(wait(pid) == 10);
 
 POSIX_specific:
 A $(LINK2 http://en.wikipedia.org/wiki/Unix_signal,signal) will be sent to
-the process, whose value is given by $(D codeOrSignal).  Depending on the
+the process, whose value is given by `codeOrSignal`.  Depending on the
 signal sent, this may or may not terminate the process.  Symbolic constants
 for various $(LINK2 http://en.wikipedia.org/wiki/Unix_signal#POSIX_signals,
-POSIX signals) are defined in $(D core.sys.posix.signal), which corresponds to the
+POSIX signals) are defined in `core.sys.posix.signal`, which corresponds to the
 $(LINK2 http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html,
-$(D signal.h) POSIX header).  If $(D codeOrSignal) is omitted, the
-$(D SIGTERM) signal will be sent.  (This matches the behaviour of the
+`signal.h` POSIX header).  If `codeOrSignal` is omitted, the
+`SIGTERM` signal will be sent.  (This matches the behaviour of the
 $(LINK2 http://pubs.opengroup.org/onlinepubs/9699919799/utilities/kill.html,
-$(D _kill)) shell command.)
+`_kill`) shell command.)
 ---
 import core.sys.posix.signal : SIGKILL;
 auto pid = spawnProcess("some_app");
@@ -1784,8 +1806,8 @@ void kill(Pid pid)
 /// ditto
 void kill(Pid pid, int codeOrSignal)
 {
-    import std.exception : enforceEx;
-    enforceEx!ProcessException(pid.owned, "Can't kill detached process");
+    import std.exception : enforce;
+    enforce!ProcessException(pid.owned, "Can't kill detached process");
     version (Windows)
     {
         if (codeOrSignal < 0) throw new ProcessException("Invalid exit code");
@@ -2002,16 +2024,16 @@ private:
 Starts a new process, creating pipes to redirect its standard
 input, output and/or error streams.
 
-$(D pipeProcess) and $(D pipeShell) are convenient wrappers around
+`pipeProcess` and `pipeShell` are convenient wrappers around
 $(LREF spawnProcess) and $(LREF spawnShell), respectively, and
 automate the task of redirecting one or more of the child process'
 standard streams through pipes.  Like the functions they wrap,
 these functions return immediately, leaving the child process to
 execute in parallel with the invoking process.  It is recommended
 to always call $(LREF wait) on the returned $(LREF ProcessPipes.pid),
-as detailed in the documentation for $(D wait).
+as detailed in the documentation for `wait`.
 
-The $(D args)/$(D program)/$(D command), $(D env) and $(D config)
+The `args`/`program`/`command`, `env` and `config`
 parameters are forwarded straight to the underlying spawn functions,
 and we refer to their documentation for details.
 
@@ -2030,7 +2052,7 @@ env       = Additional environment variables for the child process.
             (See $(LREF spawnProcess) for details.)
 config    = Flags that control process creation. See $(LREF Config)
             for an overview of available flags, and note that the
-            $(D retainStd...) flags have no effect in this function.
+            `retainStd...` flags have no effect in this function.
 workDir   = The working directory for the new process.
             By default the child process inherits the parent's working
             directory.
@@ -2084,33 +2106,33 @@ wait(pipes.pid);
 
 ---
 */
-ProcessPipes pipeProcess(in char[][] args,
+ProcessPipes pipeProcess(scope const(char[])[] args,
                          Redirect redirect = Redirect.all,
                          const string[string] env = null,
                          Config config = Config.none,
-                         in char[] workDir = null)
+                         scope const(char)[] workDir = null)
     @safe
 {
     return pipeProcessImpl!spawnProcess(args, redirect, env, config, workDir);
 }
 
 /// ditto
-ProcessPipes pipeProcess(in char[] program,
+ProcessPipes pipeProcess(scope const(char)[] program,
                          Redirect redirect = Redirect.all,
                          const string[string] env = null,
                          Config config = Config.none,
-                         in char[] workDir = null)
+                         scope const(char)[] workDir = null)
     @safe
 {
     return pipeProcessImpl!spawnProcess(program, redirect, env, config, workDir);
 }
 
 /// ditto
-ProcessPipes pipeShell(in char[] command,
+ProcessPipes pipeShell(scope const(char)[] command,
                        Redirect redirect = Redirect.all,
                        const string[string] env = null,
                        Config config = Config.none,
-                       in char[] workDir = null,
+                       scope const(char)[] workDir = null,
                        string shellPath = nativeShell)
     @safe
 {
@@ -2128,7 +2150,7 @@ private ProcessPipes pipeProcessImpl(alias spawnFunc, Cmd, ExtraSpawnFuncArgs...
                                      Redirect redirectFlags,
                                      const string[string] env = null,
                                      Config config = Config.none,
-                                     in char[] workDir = null,
+                                     scope const(char)[] workDir = null,
                                      ExtraSpawnFuncArgs extraArgs = ExtraSpawnFuncArgs.init)
     @trusted //TODO: @safe
 {
@@ -2221,13 +2243,13 @@ enum Redirect
 
     /**
     Redirect the standard error stream into the standard output stream.
-    This can not be combined with $(D Redirect.stderr).
+    This can not be combined with `Redirect.stderr`.
     */
     stderrToStdout = 8,
 
     /**
     Redirect the standard output stream into the standard error stream.
-    This can not be combined with $(D Redirect.stdout).
+    This can not be combined with `Redirect.stdout`.
     */
     stdoutToStderr = 16,
 }
@@ -2381,7 +2403,7 @@ private:
 Executes the given program or shell command and returns its exit
 code and output.
 
-$(D execute) and $(D executeShell) start a new process using
+`execute` and `executeShell` start a new process using
 $(LREF spawnProcess) and $(LREF spawnShell), respectively, and wait
 for the process to complete before returning.  The functions capture
 what the child process prints to both its standard output and
@@ -2395,7 +2417,7 @@ if (ls.status != 0) writeln("Failed to retrieve file listing");
 else writeln(ls.output);
 ---
 
-The $(D args)/$(D program)/$(D command), $(D env) and $(D config)
+The `args`/`program`/`command`, `env` and `config`
 parameters are forwarded straight to the underlying spawn functions,
 and we refer to their documentation for details.
 
@@ -2411,7 +2433,7 @@ env       = Additional environment variables for the child process.
             (See $(LREF spawnProcess) for details.)
 config    = Flags that control process creation. See $(LREF Config)
             for an overview of available flags, and note that the
-            $(D retainStd...) flags have no effect in this function.
+            `retainStd...` flags have no effect in this function.
 maxOutput = The maximum number of bytes of output that should be
             captured.
 workDir   = The working directory for the new process.
@@ -2425,7 +2447,7 @@ Returns:
 An $(D std.typecons.Tuple!(int, "status", string, "output")).
 
 POSIX_specific:
-If the process is terminated by a signal, the $(D status) field of
+If the process is terminated by a signal, the `status` field of
 the return value will contain a negative number whose absolute
 value is the signal number.  (See $(LREF wait) for details.)
 
@@ -2433,33 +2455,33 @@ Throws:
 $(LREF ProcessException) on failure to start the process.$(BR)
 $(REF StdioException, std,stdio) on failure to capture output.
 */
-auto execute(in char[][] args,
+auto execute(scope const(char[])[] args,
              const string[string] env = null,
              Config config = Config.none,
              size_t maxOutput = size_t.max,
-             in char[] workDir = null)
+             scope const(char)[] workDir = null)
     @trusted //TODO: @safe
 {
     return executeImpl!pipeProcess(args, env, config, maxOutput, workDir);
 }
 
 /// ditto
-auto execute(in char[] program,
+auto execute(scope const(char)[] program,
              const string[string] env = null,
              Config config = Config.none,
              size_t maxOutput = size_t.max,
-             in char[] workDir = null)
+             scope const(char)[] workDir = null)
     @trusted //TODO: @safe
 {
     return executeImpl!pipeProcess(program, env, config, maxOutput, workDir);
 }
 
 /// ditto
-auto executeShell(in char[] command,
+auto executeShell(scope const(char)[] command,
                   const string[string] env = null,
                   Config config = Config.none,
                   size_t maxOutput = size_t.max,
-                  in char[] workDir = null,
+                  scope const(char)[] workDir = null,
                   string shellPath = nativeShell)
     @trusted //TODO: @safe
 {
@@ -2477,17 +2499,21 @@ private auto executeImpl(alias pipeFunc, Cmd, ExtraPipeFuncArgs...)(
     const string[string] env = null,
     Config config = Config.none,
     size_t maxOutput = size_t.max,
-    in char[] workDir = null,
+    scope const(char)[] workDir = null,
     ExtraPipeFuncArgs extraArgs = ExtraPipeFuncArgs.init)
 {
     import std.algorithm.comparison : min;
     import std.array : appender;
     import std.typecons : Tuple;
 
-    auto p = pipeFunc(commandLine, Redirect.stdout | Redirect.stderrToStdout,
+    auto redirect = (config & Config.stderrPassThrough)
+        ? Redirect.stdout
+        : Redirect.stdout | Redirect.stderrToStdout;
+
+    auto p = pipeFunc(commandLine, redirect,
                       env, config, workDir, extraArgs);
 
-    auto a = appender!(ubyte[])();
+    auto a = appender!string;
     enum size_t defaultChunkSize = 4096;
     immutable chunkSize = min(maxOutput, defaultChunkSize);
 
@@ -2506,7 +2532,7 @@ private auto executeImpl(alias pipeFunc, Cmd, ExtraPipeFuncArgs...)(
     // Exhaust the stream, if necessary.
     foreach (ubyte[] chunk; p.stdout.byChunk(defaultChunkSize)) { }
 
-    return Tuple!(int, "status", string, "output")(wait(p.pid), cast(string) a.data);
+    return Tuple!(int, "status", string, "output")(wait(p.pid), a.data);
 }
 
 @system unittest
@@ -2546,6 +2572,10 @@ private auto executeImpl(alias pipeFunc, Cmd, ExtraPipeFuncArgs...)(
     auto r3 = executeShell("exit 123");
     assert(r3.status == 123);
     assert(r3.output.empty);
+    auto r4 = executeShell("echo stderr test, please ignore 1>&2",
+        null, Config.stderrPassThrough);
+    assert(r4.status == 0);
+    assert(r4.output.empty);
 }
 
 @safe unittest
@@ -2609,7 +2639,7 @@ Determines the path to the current user's preferred command interpreter.
 On Windows, this function returns the contents of the COMSPEC environment
 variable, if it exists.  Otherwise, it returns the result of $(LREF nativeShell).
 
-On POSIX, $(D userShell) returns the contents of the SHELL environment
+On POSIX, `userShell` returns the contents of the SHELL environment
 variable, if it exists and is non-empty.  Otherwise, it returns the result of
 $(LREF nativeShell).
 */
@@ -2622,8 +2652,8 @@ $(LREF nativeShell).
 /**
 The platform-specific native shell path.
 
-This function returns $(D "cmd.exe") on Windows, $(D "/bin/sh") on POSIX, and
-$(D "/system/bin/sh") on Android.
+This function returns `"cmd.exe"` on Windows, `"/bin/sh"` on POSIX, and
+`"/system/bin/sh"` on Android.
 */
 @property string nativeShell() @safe @nogc pure nothrow
 {
@@ -2704,7 +2734,7 @@ version (Windows) private immutable string shellSwitch = "/C";
 // file. On Windows the file name gets a .cmd extension, while on
 // POSIX its executable permission bit is set.  The file is
 // automatically deleted when the object goes out of scope.
-version (unittest)
+version(unittest)
 private struct TestScript
 {
     this(string code) @system
@@ -2747,7 +2777,7 @@ private struct TestScript
     string path;
 }
 
-version (unittest)
+version(unittest)
 private string uniqueTempPath() @safe
 {
     import std.file : tempDir;
@@ -2790,7 +2820,7 @@ string url = "http://dlang.org/";
 executeShell(escapeShellCommand("wget", url, "-O", "dlang-index.html"));
 ---
 
-Concatenate multiple $(D escapeShellCommand) and
+Concatenate multiple `escapeShellCommand` and
 $(LREF escapeShellFileName) results to use shell redirection or
 piping operators.
 ---
@@ -2806,7 +2836,7 @@ Throws:
 $(OBJECTREF Exception) if any part of the command line contains unescapable
 characters (NUL on all platforms, as well as CR and LF on Windows).
 */
-string escapeShellCommand(in char[][] args...) @safe pure
+string escapeShellCommand(scope const(char[])[] args...) @safe pure
 {
     if (args.empty)
         return null;
@@ -2880,7 +2910,7 @@ private string escapeShellCommandString(string command) @safe pure
         return command;
 }
 
-private string escapeWindowsShellCommand(in char[] command) @safe pure
+private string escapeWindowsShellCommand(scope const(char)[] command) @safe pure
 {
     import std.array : appender;
     auto result = appender!string();
@@ -2911,7 +2941,7 @@ private string escapeWindowsShellCommand(in char[] command) @safe pure
     return result.data;
 }
 
-private string escapeShellArguments(in char[][] args...)
+private string escapeShellArguments(scope const(char[])[] args...)
     @trusted pure nothrow
 {
     import std.exception : assumeUnique;
@@ -2936,7 +2966,7 @@ private string escapeShellArguments(in char[][] args...)
     return assumeUnique(buf);
 }
 
-private auto escapeShellArgument(alias allocator)(in char[] arg) @safe nothrow
+private auto escapeShellArgument(alias allocator)(scope const(char)[] arg) @safe nothrow
 {
     // The unittest for this function requires special
     // preparation - see below.
@@ -2952,7 +2982,7 @@ Quotes a command-line argument in a manner conforming to the behavior of
 $(LINK2 http://msdn.microsoft.com/en-us/library/windows/desktop/bb776391(v=vs.85).aspx,
 CommandLineToArgvW).
 */
-string escapeWindowsArgument(in char[] arg) @trusted pure nothrow
+string escapeWindowsArgument(scope const(char)[] arg) @trusted pure nothrow
 {
     // Rationale for leaving this function as public:
     // this algorithm of escaping paths is also used in other software,
@@ -2969,7 +2999,7 @@ private char[] charAllocator(size_t size) @safe pure nothrow
 }
 
 
-private char[] escapeWindowsArgumentImpl(alias allocator)(in char[] arg)
+private char[] escapeWindowsArgumentImpl(alias allocator)(scope const(char)[] arg)
     @safe nothrow
 if (is(typeof(allocator(size_t.init)[0] = char.init)))
 {
@@ -3095,14 +3125,14 @@ version(Windows) version(unittest)
     }
 }
 
-private string escapePosixArgument(in char[] arg) @trusted pure nothrow
+private string escapePosixArgument(scope const(char)[] arg) @trusted pure nothrow
 {
     import std.exception : assumeUnique;
     auto buf = escapePosixArgumentImpl!charAllocator(arg);
     return assumeUnique(buf);
 }
 
-private char[] escapePosixArgumentImpl(alias allocator)(in char[] arg)
+private char[] escapePosixArgumentImpl(alias allocator)(scope const(char)[] arg)
     @safe nothrow
 if (is(typeof(allocator(size_t.init)[0] = char.init)))
 {
@@ -3138,7 +3168,7 @@ if (is(typeof(allocator(size_t.init)[0] = char.init)))
 Escapes a filename to be used for shell redirection with $(LREF spawnShell),
 $(LREF pipeShell) or $(LREF executeShell).
 */
-string escapeShellFileName(in char[] fileName) @trusted pure nothrow
+string escapeShellFileName(scope const(char)[] fileName) @trusted pure nothrow
 {
     // The unittest for this function requires special
     // preparation - see below.
@@ -3289,7 +3319,7 @@ abstract final class environment
 {
 static:
     /**
-    Retrieves the value of the environment variable with the given $(D name).
+    Retrieves the value of the environment variable with the given `name`.
     ---
     auto path = environment["PATH"];
     ---
@@ -3302,7 +3332,7 @@ static:
     See_also:
     $(LREF environment.get), which doesn't throw on failure.
     */
-    string opIndex(in char[] name) @safe
+    string opIndex(scope const(char)[] name) @safe
     {
         import std.exception : enforce;
         string value;
@@ -3311,10 +3341,10 @@ static:
     }
 
     /**
-    Retrieves the value of the environment variable with the given $(D name),
+    Retrieves the value of the environment variable with the given `name`,
     or a default value if the variable doesn't exist.
 
-    Unlike $(LREF environment.opIndex), this function never throws.
+    Unlike $(LREF environment.opIndex), this function never throws on Posix.
     ---
     auto sh = environment.get("SHELL", "/bin/sh");
     ---
@@ -3330,12 +3360,19 @@ static:
         // empty.
     }
     ---
+    Params:
+        name = name of the environment variable to retrieve
+        defaultValue = default value to return if the environment variable doesn't exist.
+
+    Returns:
+        the value of the environment variable if found, otherwise
+        `null` if the environment doesn't exist.
 
     Throws:
     $(REF UTFException, std,utf) if the variable contains invalid UTF-16
     characters (Windows only).
     */
-    string get(in char[] name, string defaultValue = null) @safe
+    string get(scope const(char)[] name, string defaultValue = null) @safe
     {
         string value;
         auto found = getImpl(name, value);
@@ -3343,9 +3380,9 @@ static:
     }
 
     /**
-    Assigns the given $(D value) to the environment variable with the given
-    $(D name).
-    If $(D value) is null the variable is removed from environment.
+    Assigns the given `value` to the environment variable with the given
+    `name`.
+    If `value` is null the variable is removed from environment.
 
     If the variable does not exist, it will be created. If it already exists,
     it will be overwritten.
@@ -3362,7 +3399,7 @@ static:
     multi-threaded programs. See e.g.
     $(LINK2 https://www.gnu.org/software/libc/manual/html_node/Environment-Access.html#Environment-Access, glibc).
     */
-    inout(char)[] opIndexAssign(inout char[] value, in char[] name) @trusted
+    inout(char)[] opIndexAssign(inout char[] value, scope const(char)[] name) @trusted
     {
         version (Posix)
         {
@@ -3397,7 +3434,7 @@ static:
     }
 
     /**
-    Removes the environment variable with the given $(D name).
+    Removes the environment variable with the given `name`.
 
     If the variable isn't in the environment, this function returns
     successfully without doing anything.
@@ -3407,7 +3444,7 @@ static:
     multi-threaded programs. See e.g.
     $(LINK2 https://www.gnu.org/software/libc/manual/html_node/Environment-Access.html#Environment-Access, glibc).
     */
-    void remove(in char[] name) @trusted nothrow @nogc // TODO: @safe
+    void remove(scope const(char)[] name) @trusted nothrow @nogc // TODO: @safe
     {
         version (Windows)    SetEnvironmentVariableW(name.tempCStringW(), null);
         else version (Posix) core.sys.posix.stdlib.unsetenv(name.tempCString());
@@ -3436,7 +3473,7 @@ static:
         doSomething(var);
     -------------
     */
-    bool opBinaryRight(string op : "in")(in char[] name) @trusted
+    bool opBinaryRight(string op : "in")(scope const(char)[] name) @trusted
     {
         version (Posix)
             return core.sys.posix.stdlib.getenv(name.tempCString()) !is null;
@@ -3462,7 +3499,7 @@ static:
     Windows_specific:
     While Windows environment variable names are case insensitive, D's
     built-in associative arrays are not.  This function will store all
-    variable names in uppercase (e.g. $(D PATH)).
+    variable names in uppercase (e.g. `PATH`).
 
     Throws:
     $(OBJECTREF Exception) if the environment variables could not
@@ -3532,7 +3569,7 @@ static:
 
 private:
     // Retrieves the environment variable, returns false on failure.
-    bool getImpl(in char[] name, out string value) @trusted
+    bool getImpl(scope const(char)[] name, out string value) @trusted
     {
         version (Windows)
         {
@@ -3725,7 +3762,7 @@ version (Posix)
 {
     import core.sys.posix.stdlib;
 }
-version (unittest)
+version(unittest)
 {
     import std.conv, std.file, std.random;
 }
@@ -3760,7 +3797,7 @@ private void toAStringz(in string[] a, const(char)**az)
 // Incorporating idea (for spawnvp() on Posix) from Dave Fladebo
 
 enum { _P_WAIT, _P_NOWAIT, _P_OVERLAY }
-version(Windows) extern(C) int spawnvp(int, in char *, in char **);
+version(Windows) extern(C) int spawnvp(int, scope const(char) *, scope const(char*)*);
 alias P_WAIT = _P_WAIT;
 alias P_NOWAIT = _P_NOWAIT;
 
@@ -3769,14 +3806,14 @@ alias P_NOWAIT = _P_NOWAIT;
 version (StdDdoc)
 {
     /**
-    Replaces the current process by executing a command, $(D pathname), with
-    the arguments in $(D argv).
+    Replaces the current process by executing a command, `pathname`, with
+    the arguments in `argv`.
 
-    $(BLUE This functions is Posix-Only.)
+    $(BLUE This function is Posix-Only.)
 
-    Typically, the first element of $(D argv) is
+    Typically, the first element of `argv` is
     the command being executed, i.e. $(D argv[0] == pathname). The 'p'
-    versions of $(D exec) search the PATH environment variable for $(D
+    versions of `exec` search the PATH environment variable for $(D
     pathname). The 'e' versions additionally take the new process'
     environment variables as an array of strings of the form key=value.
 
@@ -3788,7 +3825,7 @@ version (StdDdoc)
     These functions are only supported on POSIX platforms, as the Windows
     operating systems do not provide the ability to overwrite the current
     process image with another. In single-threaded programs it is possible
-    to approximate the effect of $(D execv*) by using $(LREF spawnProcess)
+    to approximate the effect of `execv*` by using $(LREF spawnProcess)
     and terminating the current process once the child process has returned.
     For example:
     ---
@@ -3804,16 +3841,16 @@ version (StdDdoc)
         _exit(wait(spawnProcess(commandLine)));
     }
     ---
-    This is, however, NOT equivalent to POSIX' $(D execv*).  For one thing, the
+    This is, however, NOT equivalent to POSIX' `execv*`.  For one thing, the
     executed program is started as a separate process, with all this entails.
     Secondly, in a multithreaded program, other threads will continue to do
     work while the current thread is waiting for the child process to complete.
 
     A better option may sometimes be to terminate the current program immediately
     after spawning the child process.  This is the behaviour exhibited by the
-    $(LINK2 http://msdn.microsoft.com/en-us/library/431x4c1w.aspx,$(D __exec))
+    $(LINK2 http://msdn.microsoft.com/en-us/library/431x4c1w.aspx,`__exec`)
     functions in Microsoft's C runtime library, and it is how D's now-deprecated
-    Windows $(D execv*) functions work. Example:
+    Windows `execv*` functions work. Example:
     ---
     auto commandLine = [ "program", "arg1", "arg2" ];
     version (Posix)
@@ -3860,10 +3897,10 @@ else version(Posix)
 // Move these C declarations to druntime if we decide to keep the D wrappers
 extern(C)
 {
-    int execv(in char *, in char **);
-    int execve(in char *, in char **, in char **);
-    int execvp(in char *, in char **);
-    version(Windows) int execvpe(in char *, in char **, in char **);
+    int execv(scope const(char) *, scope const(char *)*);
+    int execve(scope const(char)*, scope const(char*)*, scope const(char*)*);
+    int execvp(scope const(char)*, scope const(char*)*);
+    version(Windows) int execvpe(scope const(char)*, scope const(char*)*, scope const(char*)*);
 }
 
 private int execv_(in string pathname, in string[] argv)
@@ -3959,7 +3996,7 @@ version(StdDdoc)
     /****************************************
      * Start up the browser and set it to viewing the page at url.
      */
-    void browse(const(char)[] url);
+    void browse(scope const(char)[] url);
 }
 else
 version (Windows)
@@ -3969,7 +4006,7 @@ version (Windows)
     version (GNU) {}
     else pragma(lib,"shell32.lib");
 
-    void browse(const(char)[] url)
+    void browse(scope const(char)[] url)
     {
         ShellExecuteW(null, "open", url.tempCStringW(), null, null, SW_SHOWNORMAL);
     }
@@ -3980,7 +4017,7 @@ else version (OSX)
     import core.stdc.string;
     import core.sys.posix.unistd;
 
-    void browse(const(char)[] url) nothrow @nogc
+    void browse(scope const(char)[] url) nothrow @nogc
     {
         const(char)*[5] args;
 
@@ -4016,7 +4053,7 @@ else version (Posix)
     import core.stdc.string;
     import core.sys.posix.unistd;
 
-    void browse(const(char)[] url) nothrow @nogc
+    void browse(scope const(char)[] url) nothrow @nogc
     {
         const(char)*[3] args;
 

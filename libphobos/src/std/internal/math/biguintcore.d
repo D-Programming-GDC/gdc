@@ -35,43 +35,184 @@ module std.internal.math.biguintcore;
 
 version(D_InlineAsm_X86)
 {
-    import std.internal.math.biguintx86;
+    static import std.internal.math.biguintx86;
 }
-else
-{
-    import std.internal.math.biguintnoasm;
-}
+static import std.internal.math.biguintnoasm;
+
+import std.internal.math.biguintnoasm : BigDigit, KARATSUBALIMIT,
+    KARATSUBASQUARELIMIT;
 
 alias multibyteAdd = multibyteAddSub!('+');
 alias multibyteSub = multibyteAddSub!('-');
 
-
-import core.cpuid;
+private import std.traits;
+private import std.range.primitives;
 public import std.ascii : LetterCase;
 import std.range.primitives;
 import std.traits;
 
-shared static this()
-{
-    CACHELIMIT = core.cpuid.datacache[0].size*1024/2;
-}
-
 private:
+
+// dipatchers to the right low-level primitives. Added to allow BigInt CTFE for
+// 32 bit systems (issue 14767) although it's used by the other architectures too.
+// See comments below in case it has to be refactored.
+version(X86)
+uint multibyteAddSub(char op)(uint[] dest, const(uint)[] src1, const (uint)[] src2, uint carry)
+{
+    // must be checked before, otherwise D_InlineAsm_X86 is true.
+    if (__ctfe)
+        return std.internal.math.biguintnoasm.multibyteAddSub!op(dest, src1, src2, carry);
+    // Runtime.
+    else version(D_InlineAsm_X86)
+        return std.internal.math.biguintx86.multibyteAddSub!op(dest, src1, src2, carry);
+    // Runtime if no asm available.
+    else
+        return std.internal.math.biguintnoasm.multibyteAddSub!op(dest, src1, src2, carry);
+}
+// Any other architecture
+else alias multibyteAddSub = std.internal.math.biguintnoasm.multibyteAddSub;
+
+version(X86)
+uint multibyteIncrementAssign(char op)(uint[] dest, uint carry)
+{
+    if (__ctfe)
+        return std.internal.math.biguintnoasm.multibyteIncrementAssign!op(dest, carry);
+    else version(D_InlineAsm_X86)
+        return std.internal.math.biguintx86.multibyteIncrementAssign!op(dest, carry);
+    else
+        return std.internal.math.biguintnoasm.multibyteIncrementAssign!op(dest, carry);
+}
+else alias multibyteIncrementAssign = std.internal.math.biguintnoasm.multibyteIncrementAssign;
+
+version(X86)
+uint multibyteShl()(uint[] dest, const(uint)[] src, uint numbits)
+{
+    if (__ctfe)
+        return std.internal.math.biguintnoasm.multibyteShl(dest, src, numbits);
+    else version(D_InlineAsm_X86)
+        return std.internal.math.biguintx86.multibyteShl(dest, src, numbits);
+    else
+        return std.internal.math.biguintnoasm.multibyteShl(dest, src, numbits);
+}
+else alias multibyteShl = std.internal.math.biguintnoasm.multibyteShl;
+
+version(X86)
+void multibyteShr()(uint[] dest, const(uint)[] src, uint numbits)
+{
+    if (__ctfe)
+        std.internal.math.biguintnoasm.multibyteShr(dest, src, numbits);
+    else version(D_InlineAsm_X86)
+        std.internal.math.biguintx86.multibyteShr(dest, src, numbits);
+    else
+        std.internal.math.biguintnoasm.multibyteShr(dest, src, numbits);
+}
+else alias multibyteShr = std.internal.math.biguintnoasm.multibyteShr;
+
+version(X86)
+uint multibyteMul()(uint[] dest, const(uint)[] src, uint multiplier, uint carry)
+{
+    if (__ctfe)
+        return std.internal.math.biguintnoasm.multibyteMul(dest, src, multiplier, carry);
+    else version(D_InlineAsm_X86)
+        return std.internal.math.biguintx86.multibyteMul(dest, src, multiplier, carry);
+    else
+        return std.internal.math.biguintnoasm.multibyteMul(dest, src, multiplier, carry);
+}
+else alias multibyteMul = std.internal.math.biguintnoasm.multibyteMul;
+
+version(X86)
+uint multibyteMulAdd(char op)(uint[] dest, const(uint)[] src, uint multiplier, uint carry)
+{
+    if (__ctfe)
+        return std.internal.math.biguintnoasm.multibyteMulAdd!op(dest, src, multiplier, carry);
+    else version(D_InlineAsm_X86)
+        return std.internal.math.biguintx86.multibyteMulAdd!op(dest, src, multiplier, carry);
+    else
+        return std.internal.math.biguintnoasm.multibyteMulAdd!op(dest, src, multiplier, carry);
+}
+else alias multibyteMulAdd = std.internal.math.biguintnoasm.multibyteMulAdd;
+
+version(X86)
+void multibyteMultiplyAccumulate()(uint[] dest, const(uint)[] left, const(uint)[] right)
+{
+    if (__ctfe)
+        std.internal.math.biguintnoasm.multibyteMultiplyAccumulate(dest, left, right);
+    else version(D_InlineAsm_X86)
+        std.internal.math.biguintx86.multibyteMultiplyAccumulate(dest, left, right);
+    else
+        std.internal.math.biguintnoasm.multibyteMultiplyAccumulate(dest, left, right);
+}
+else alias multibyteMultiplyAccumulate = std.internal.math.biguintnoasm.multibyteMultiplyAccumulate;
+
+version(X86)
+uint multibyteDivAssign()(uint[] dest, uint divisor, uint overflow)
+{
+    if (__ctfe)
+        return std.internal.math.biguintnoasm.multibyteDivAssign(dest, divisor, overflow);
+    else version(D_InlineAsm_X86)
+        return std.internal.math.biguintx86.multibyteDivAssign(dest, divisor, overflow);
+    else
+        return std.internal.math.biguintnoasm.multibyteDivAssign(dest, divisor, overflow);
+}
+else alias multibyteDivAssign = std.internal.math.biguintnoasm.multibyteDivAssign;
+
+version(X86)
+void multibyteAddDiagonalSquares()(uint[] dest, const(uint)[] src)
+{
+    if (__ctfe)
+        std.internal.math.biguintnoasm.multibyteAddDiagonalSquares(dest, src);
+    else version(D_InlineAsm_X86)
+        std.internal.math.biguintx86.multibyteAddDiagonalSquares(dest, src);
+    else
+        std.internal.math.biguintnoasm.multibyteAddDiagonalSquares(dest, src);
+}
+else alias multibyteAddDiagonalSquares = std.internal.math.biguintnoasm.multibyteAddDiagonalSquares;
+
+version(X86)
+void multibyteTriangleAccumulate()(uint[] dest, const(uint)[] x)
+{
+    if (__ctfe)
+        std.internal.math.biguintnoasm.multibyteTriangleAccumulate(dest, x);
+    else version(D_InlineAsm_X86)
+        std.internal.math.biguintx86.multibyteTriangleAccumulate(dest, x);
+    else
+        std.internal.math.biguintnoasm.multibyteTriangleAccumulate(dest, x);
+}
+else alias multibyteTriangleAccumulate = std.internal.math.biguintnoasm.multibyteTriangleAccumulate;
+
+version(X86)
+void multibyteSquare()(BigDigit[] result, const(BigDigit)[] x)
+{
+    if (__ctfe)
+        std.internal.math.biguintnoasm.multibyteSquare(result, x);
+    else version(D_InlineAsm_X86)
+        std.internal.math.biguintx86.multibyteSquare(result, x);
+    else
+        std.internal.math.biguintnoasm.multibyteSquare(result, x);
+}
+else alias multibyteSquare = std.internal.math.biguintnoasm.multibyteSquare;
+
 // Limits for when to switch between algorithms.
-immutable size_t CACHELIMIT;   // Half the size of the data cache.
+// Half the size of the data cache.
+@nogc nothrow pure size_t getCacheLimit()
+{
+    import core.cpuid : dataCaches;
+    return (cast(size_t function() @nogc nothrow pure)
+        (() => dataCaches[0].size * 1024 / 2))();
+}
 enum size_t FASTDIVLIMIT = 100; // crossover to recursive division
 
 
 // These constants are used by shift operations
 static if (BigDigit.sizeof == int.sizeof)
 {
-    enum { LG2BIGDIGITBITS = 5, BIGDIGITSHIFTMASK = 31 };
+    enum { LG2BIGDIGITBITS = 5, BIGDIGITSHIFTMASK = 31 }
     alias BIGHALFDIGIT = ushort;
 }
 else static if (BigDigit.sizeof == long.sizeof)
 {
     alias BIGHALFDIGIT = uint;
-    enum { LG2BIGDIGITBITS = 6, BIGDIGITSHIFTMASK = 63 };
+    enum { LG2BIGDIGITBITS = 6, BIGDIGITSHIFTMASK = 63 }
 }
 else static assert(0, "Unsupported BigDigit size");
 
@@ -143,7 +284,7 @@ public:
     }
 
     // The value at (cast(ulong[]) data)[n]
-    ulong peekUlong(int n) pure nothrow const @safe @nogc
+    ulong peekUlong(size_t n) pure nothrow const @safe @nogc
     {
         static if (BigDigit.sizeof == int.sizeof)
         {
@@ -155,7 +296,8 @@ public:
             return data[n];
         }
     }
-    uint peekUint(int n) pure nothrow const @safe @nogc
+
+    uint peekUint(size_t n) pure nothrow const @safe @nogc
     {
         static if (BigDigit.sizeof == int.sizeof)
         {
@@ -167,7 +309,7 @@ public:
             return (n & 1) ? cast(uint)(x >> 32) : cast(uint) x;
         }
     }
-public:
+
     ///
     void opAssign(Tulong)(Tulong u) pure nothrow @safe if (is (Tulong == ulong))
     {
@@ -513,7 +655,7 @@ public:
         {   // perform a subtraction
             if (x.data.length > 2)
             {
-                r.data = subInt(x.data, y);
+                r.data = cast(immutable) subInt(x.data, y);
             }
             else
             {   // could change sign!
@@ -548,7 +690,7 @@ public:
         }
         else
         {
-            r.data = addInt(x.data, y);
+            r.data = cast(immutable) addInt(x.data, y);
         }
         return r;
     }
@@ -562,7 +704,7 @@ public:
         if (wantSub)
         {   // perform a subtraction
             bool negative;
-            r.data = sub(x.data, y.data, &negative);
+            r.data = cast(immutable) sub(x.data, y.data, &negative);
             *sign ^= negative;
             if (r.isZero())
             {
@@ -571,7 +713,7 @@ public:
         }
         else
         {
-            r.data = add(x.data, y.data);
+            r.data = cast(immutable) add(x.data, y.data);
         }
         return r;
     }
@@ -703,6 +845,29 @@ public:
         BigDigit [] rem = new BigDigit[y.data.length];
         divModInternal(result, rem, x.data, y.data);
         return BigUint(removeLeadingZeros(trustedAssumeUnique(rem)));
+    }
+
+    // Return x / y in quotient, x % y in remainder
+    static void divMod(BigUint x, BigUint y, out BigUint quotient, out BigUint remainder) pure nothrow
+    {
+        if (y.data.length > x.data.length)
+        {
+            quotient = 0uL;
+            remainder = x;
+        }
+        else if (y.data.length == 1)
+        {
+            quotient = divInt(x, y.data[0]);
+            remainder = BigUint([modInt(x, y.data[0])]);
+        }
+        else
+        {
+            BigDigit[] quot = new BigDigit[x.data.length - y.data.length + 1];
+            BigDigit[] rem = new BigDigit[y.data.length];
+            divModInternal(quot, rem, x.data, y.data);
+            quotient = BigUint(removeLeadingZeros(trustedAssumeUnique(quot)));
+            remainder = BigUint(removeLeadingZeros(trustedAssumeUnique(rem)));
+        }
     }
 
     // return x op y
@@ -1199,6 +1364,8 @@ int slowHighestPowerBelowUintMax(uint x) pure nothrow @safe
 
 /*  General unsigned subtraction routine for bigints.
  *  Sets result = x - y. If the result is negative, negative will be true.
+ * Returns:
+ *    unique memory
  */
 BigDigit [] sub(const BigDigit [] x, const BigDigit [] y, bool *negative)
 pure nothrow
@@ -1255,7 +1422,11 @@ pure nothrow
 }
 
 
-// return a + b
+/*
+ * return a + b
+ * Returns:
+ *    unique memory
+ */
 BigDigit [] add(const BigDigit [] a, const BigDigit [] b) pure nothrow
 {
     const(BigDigit) [] x, y;
@@ -1355,6 +1526,7 @@ void mulInternal(BigDigit[] result, const(BigDigit)[] x, const(BigDigit)[] y)
             return;
         }
 
+        immutable CACHELIMIT = getCacheLimit;
         if (x.length + y.length < CACHELIMIT)
             return mulSimple(result, x, y);
 
@@ -1402,59 +1574,76 @@ void mulInternal(BigDigit[] result, const(BigDigit)[] x, const(BigDigit)[] y)
         auto extra =  x.length % y.length;
         auto maxchunk = chunksize + extra;
         bool paddingY; // true = we're padding Y, false = we're padding X.
-        if (extra * extra * 2 < y.length*y.length)
+        bool isExtraSmall = extra * extra * 2 < y.length * y.length;
+        if (numchunks == 1 && isExtraSmall)
         {
-            // The leftover bit is small enough that it should be incorporated
-            // in the existing chunks.
-            // Make all the chunks a tiny bit bigger
-            // (We're padding y with zeros)
-            chunksize += extra / numchunks;
-            extra = x.length - chunksize*numchunks;
-            // there will probably be a few left over.
-            // Every chunk will either have size chunksize, or chunksize+1.
-            maxchunk = chunksize + 1;
-            paddingY = true;
-            assert(chunksize + extra + chunksize *(numchunks-1) == x.length );
+            // We divide (x_first_half * y) and (x_last_half * y)
+            // between 1.414:1 and 1.707:1 (1.707 = 1+1/sqrt(2)).
+            // (1.414 ~ 1.707)/2:1 is balanced.
+            BigDigit [] scratchbuff = new BigDigit[karatsubaRequiredBuffSize(y.length) + y.length];
+            BigDigit [] partial = scratchbuff[$ - y.length .. $];
+            mulKaratsuba(result[0 .. half + y.length], y, x[0 .. half], scratchbuff);
+            partial[] = result[half .. half + y.length];
+            mulKaratsuba(result[half .. $], y, x[half .. $], scratchbuff);
+            addAssignSimple(result[half .. half + y.length], partial);
+            () @trusted { GC.free(scratchbuff.ptr); } ();
         }
         else
         {
-            // the extra bit is large enough that it's worth making a new chunk.
-            // (This means we're padding x with zeros, when doing the first one).
-            maxchunk = chunksize;
-            ++numchunks;
-            paddingY = false;
-            assert(extra + chunksize *(numchunks-1) == x.length );
+            if (isExtraSmall)
+            {
+                // The leftover bit is small enough that it should be incorporated
+                // in the existing chunks.
+                // Make all the chunks a tiny bit bigger
+                // (We're padding y with zeros)
+                chunksize += extra / numchunks;
+                extra = x.length - chunksize*numchunks;
+                // there will probably be a few left over.
+                // Every chunk will either have size chunksize, or chunksize+1.
+                maxchunk = chunksize + 1;
+                paddingY = true;
+                assert(chunksize + extra + chunksize *(numchunks-1) == x.length );
+            }
+            else
+            {
+                // the extra bit is large enough that it's worth making a new chunk.
+                // (This means we're padding x with zeros, when doing the first one).
+                maxchunk = chunksize;
+                ++numchunks;
+                paddingY = false;
+                assert(extra + chunksize *(numchunks-1) == x.length );
+            }
+            // We make the buffer a bit bigger so we have space for the partial sums.
+            BigDigit [] scratchbuff = new BigDigit[karatsubaRequiredBuffSize(maxchunk) + y.length];
+            BigDigit [] partial = scratchbuff[$ - y.length .. $];
+            size_t done; // how much of X have we done so far?
+            if (paddingY)
+            {
+                // If the first chunk is bigger, do it first. We're padding y.
+                mulKaratsuba(result[0 .. y.length + chunksize + (extra > 0 ? 1 : 0 )],
+                    x[0 .. chunksize + (extra>0?1:0)], y, scratchbuff);
+                done = chunksize + (extra > 0 ? 1 : 0);
+                if (extra) --extra;
+            }
+            else
+            {   // We're padding X. Begin with the extra bit.
+                mulKaratsuba(result[0 .. y.length + extra], y, x[0 .. extra], scratchbuff);
+                done = extra;
+                extra = 0;
+            }
+            immutable basechunksize = chunksize;
+            while (done < x.length)
+            {
+                chunksize = basechunksize + (extra > 0 ? 1 : 0);
+                if (extra) --extra;
+                partial[] = result[done .. done+y.length];
+                mulKaratsuba(result[done .. done + y.length + chunksize],
+                        x[done .. done+chunksize], y, scratchbuff);
+                addAssignSimple(result[done .. done + y.length + chunksize], partial);
+                done += chunksize;
+            }
+            () @trusted { GC.free(scratchbuff.ptr); } ();
         }
-        // We make the buffer a bit bigger so we have space for the partial sums.
-        BigDigit [] scratchbuff = new BigDigit[karatsubaRequiredBuffSize(maxchunk) + y.length];
-        BigDigit [] partial = scratchbuff[$ - y.length .. $];
-        size_t done; // how much of X have we done so far?
-        if (paddingY)
-        {
-            // If the first chunk is bigger, do it first. We're padding y.
-            mulKaratsuba(result[0 .. y.length + chunksize + (extra > 0 ? 1 : 0 )],
-                x[0 .. chunksize + (extra>0?1:0)], y, scratchbuff);
-            done = chunksize + (extra > 0 ? 1 : 0);
-            if (extra) --extra;
-        }
-        else
-        {   // We're padding X. Begin with the extra bit.
-            mulKaratsuba(result[0 .. y.length + extra], y, x[0 .. extra], scratchbuff);
-            done = extra;
-            extra = 0;
-        }
-        immutable basechunksize = chunksize;
-        while (done < x.length)
-        {
-            chunksize = basechunksize + (extra > 0 ? 1 : 0);
-            if (extra) --extra;
-            partial[] = result[done .. done+y.length];
-            mulKaratsuba(result[done .. done + y.length + chunksize],
-                       x[done .. done+chunksize], y, scratchbuff);
-            addAssignSimple(result[done .. done + y.length + chunksize], partial);
-            done += chunksize;
-        }
-        () @trusted { GC.free(scratchbuff.ptr); } ();
     }
     else
     {
@@ -1703,7 +1892,7 @@ in
     static if (hasLength!Range)
         assert((data.length >= 2) || (data.length == 1 && s.length == 1));
 }
-body
+do
 {
     import std.conv : ConvException;
 
@@ -1843,7 +2032,7 @@ in
     assert(result.length == left.length + right.length);
     assert(right.length>1);
 }
-body
+do
 {
     result[left.length] = multibyteMul(result[0 .. left.length], left, right[0], 0);
     multibyteMultiplyAccumulate(result[1..$], left, right[1..$]);
@@ -1856,7 +2045,7 @@ in
     assert(result.length == 2*x.length);
     assert(x.length>1);
 }
-body
+do
 {
     multibyteSquare(result, x);
 }
@@ -1873,7 +2062,7 @@ in
     assert(left.length >= right.length);
     assert(right.length>0);
 }
-body
+do
 {
     uint carry = multibyteAdd(result[0 .. right.length],
             left[0 .. right.length], right, 0);
@@ -1895,7 +2084,7 @@ in
     assert(left.length >= right.length);
     assert(right.length>0);
 }
-body
+do
 {
     BigDigit carry = multibyteSub(result[0 .. right.length],
             left[0 .. right.length], right, 0);
@@ -1963,7 +2152,7 @@ bool less(const(BigDigit)[] x, const(BigDigit)[] y) pure nothrow
 bool inplaceSub(BigDigit[] result, const(BigDigit)[] x, const(BigDigit)[] y)
     pure nothrow
 {
-    assert(result.length == (x.length >= y.length) ? x.length : y.length);
+    assert(result.length == ((x.length >= y.length) ? x.length : y.length));
 
     size_t minlen;
     bool negative;
@@ -2021,7 +2210,7 @@ void mulKaratsuba(BigDigit [] result, const(BigDigit) [] x,
         const(BigDigit)[] y, BigDigit [] scratchbuff) pure nothrow
 {
     assert(x.length >= y.length);
-          assert(result.length < uint.max, "Operands too large");
+    assert(result.length < uint.max, "Operands too large");
     assert(result.length == x.length + y.length);
     if (x.length <= KARATSUBALIMIT)
     {
@@ -2373,7 +2562,7 @@ in
     assert((mayOverflow ? u.length-1 : u.length) >= v.length);
     assert(scratch.length >= quotient.length + (mayOverflow ? 0 : 1));
 }
-body
+do
 {
     if (quotient.length < FASTDIVLIMIT)
     {

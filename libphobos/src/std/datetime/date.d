@@ -1,18 +1,53 @@
 // Written in the D programming language
-
 /++
+
+$(SCRIPT inhibitQuickIndex = 1;)
+$(BOOKTABLE,
+$(TR $(TH Category) $(TH Functions))
+$(TR $(TD Main date types) $(TD
+    $(LREF Date)
+    $(LREF DateTime)
+))
+$(TR $(TD Other date types) $(TD
+    $(LREF Month)
+    $(LREF DayOfWeek)
+    $(LREF TimeOfDay)
+))
+$(TR $(TD Date checking) $(TD
+    $(LREF valid)
+    $(LREF validTimeUnits)
+    $(LREF yearIsLeapYear)
+    $(LREF isTimePoint)
+    $(LREF enforceValid)
+))
+$(TR $(TD Date conversion) $(TD
+    $(LREF daysToDayOfWeek)
+    $(LREF monthsToMonth)
+))
+$(TR $(TD Time units) $(TD
+    $(LREF cmpTimeUnits)
+    $(LREF timeStrings)
+))
+$(TR $(TD Other) $(TD
+    $(LREF AllowDayOverflow)
+    $(LREF DateTimeException)
+))
+)
+
     License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
-    Authors:   Jonathan M Davis
-    Source:    $(PHOBOSSRC std/datetime/_date.d)
+    Authors:   $(HTTP jmdavisprog.com, Jonathan M Davis)
+    Source:    $(PHOBOSSRC std/datetime/date.d)
 +/
 module std.datetime.date;
 
-import core.time;
+// Note: reconsider using specific imports below after
+// https://issues.dlang.org/show_bug.cgi?id=17630 has been fixed
+import core.time;// : TimeException;
 import std.traits : isSomeString, Unqual;
 import std.typecons : Flag;
+import std.range.primitives : isOutputRange;
 
 version(unittest) import std.exception : assertThrown;
-
 
 @safe unittest
 {
@@ -47,6 +82,13 @@ enum Month : ubyte
     dec      ///
 }
 
+///
+@safe pure unittest
+{
+    assert(Date(2018, 10, 1).month == Month.oct);
+    assert(DateTime(1, 1, 1).month == Month.jan);
+}
+
 
 /++
     Represents the 7 days of the Gregorian week (Sunday is 0).
@@ -62,6 +104,12 @@ enum DayOfWeek : ubyte
     sat      ///
 }
 
+///
+@safe pure unittest
+{
+    assert(Date(2018, 10, 1).dayOfWeek == DayOfWeek.mon);
+    assert(DateTime(5, 5, 5).dayOfWeek == DayOfWeek.thu);
+}
 
 /++
     In some date calculations, adding months or years can cause the date to fall
@@ -75,9 +123,9 @@ enum DayOfWeek : ubyte
 
     AllowDayOverflow only applies to calculations involving months or years.
 
-    If set to $(D AllowDayOverflow.no), then day overflow is not allowed.
+    If set to `AllowDayOverflow.no`, then day overflow is not allowed.
 
-    Otherwise, if set to $(D AllowDayOverflow.yes), then day overflow is
+    Otherwise, if set to `AllowDayOverflow.yes`, then day overflow is
     allowed.
   +/
 alias AllowDayOverflow = Flag!"allowDayOverflow";
@@ -85,26 +133,27 @@ alias AllowDayOverflow = Flag!"allowDayOverflow";
 
 /++
     Array of the strings representing time units, starting with the smallest
-    unit and going to the largest. It does not include $(D "nsecs").
+    unit and going to the largest. It does not include `"nsecs"`.
 
-   Includes $(D "hnsecs") (hecto-nanoseconds (100 ns)),
-   $(D "usecs") (microseconds), $(D "msecs") (milliseconds), $(D "seconds"),
-   $(D "minutes"), $(D "hours"), $(D "days"), $(D "weeks"), $(D "months"), and
-   $(D "years")
+    Includes `"hnsecs"` (hecto-nanoseconds (100 ns)),
+    `"usecs"` (microseconds), `"msecs"` (milliseconds), `"seconds"`,
+    `"minutes"`, `"hours"`, `"days"`, `"weeks"`, `"months"`, and
+    `"years"`
   +/
 immutable string[] timeStrings = ["hnsecs", "usecs", "msecs", "seconds", "minutes",
                                   "hours", "days", "weeks", "months", "years"];
 
 
 /++
-   Combines the $(REF Date,std,datetime,date) and
-   $(REF TimeOfDay,std,datetime,date) structs to give an object which holds
-   both the date and the time. It is optimized for calendar-based operations and
-   has no concept of time zone. For an object which is optimized for time
-   operations based on the system time, use $(REF SysTime,std,datetime,systime).
-   $(REF SysTime,std,datetime,systime) has a concept of time zone and has much
-   higher precision (hnsecs). $(D DateTime) is intended primarily for
-   calendar-based uses rather than precise time operations.
+    Combines the $(REF Date,std,datetime,date) and
+    $(REF TimeOfDay,std,datetime,date) structs to give an object which holds
+    both the date and the time. It is optimized for calendar-based operations
+    and has no concept of time zone. For an object which is optimized for time
+    operations based on the system time, use
+    $(REF SysTime,std,datetime,systime). $(REF SysTime,std,datetime,systime) has
+    a concept of time zone and has much higher precision (hnsecs). `DateTime`
+    is intended primarily for calendar-based uses rather than precise time
+    operations.
   +/
 struct DateTime
 {
@@ -175,7 +224,7 @@ public:
 
 
     /++
-        Compares this $(LREF DateTime) with the given $(D DateTime.).
+        Compares this $(LREF DateTime) with the given `DateTime.`.
 
         Returns:
             $(BOOKTABLE,
@@ -571,7 +620,7 @@ public:
         Year B.C. of the Gregorian Calendar counting year 0 as 1 B.C.
 
         Throws:
-            $(REF DateTimeException,std,datetime,date) if $(D isAD) is true.
+            $(REF DateTimeException,std,datetime,date) if `isAD` is true.
      +/
     @property short yearBC() const @safe pure
     {
@@ -1143,8 +1192,8 @@ public:
         affect larger units. For instance, rolling a $(LREF DateTime) one
         year's worth of days gets the exact same $(LREF DateTime).
 
-        Accepted units are $(D "days"), $(D "minutes"), $(D "hours"),
-        $(D "minutes"), and $(D "seconds").
+        Accepted units are `"days"`, `"minutes"`, `"hours"`,
+        `"minutes"`, and `"seconds"`.
 
         Params:
             units = The units to add.
@@ -1191,7 +1240,7 @@ public:
     }
 
 
-    // Shares documentation with "days" version.
+    /// ditto
     ref DateTime roll(string units)(long value) @safe pure nothrow @nogc
         if (units == "hours" ||
             units == "minutes" ||
@@ -2063,6 +2112,7 @@ public:
     }
 
 
+    import core.time : Duration;
     /++
         Gives the result of adding or subtracting a $(REF Duration, core,time)
         from this $(LREF DateTime).
@@ -2107,6 +2157,8 @@ public:
 
     @safe unittest
     {
+        import core.time : dur;
+
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
 
         assert(dt + dur!"weeks"(7) == DateTime(Date(1999, 8, 24), TimeOfDay(12, 30, 33)));
@@ -2154,32 +2206,6 @@ public:
         assert(idt - duration == DateTime(1999, 7, 6, 12, 30, 21));
     }
 
-    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
-    deprecated("Use Duration instead of TickDuration.")
-    DateTime opBinary(string op)(in TickDuration td) const @safe pure nothrow @nogc
-        if (op == "+" || op == "-")
-    {
-        DateTime retval = this;
-        immutable seconds = td.seconds;
-        mixin("return retval._addSeconds(" ~ op ~ "seconds);");
-    }
-
-    deprecated @safe unittest
-    {
-        // This probably only runs in cases where gettimeofday() is used, but it's
-        // hard to do this test correctly with variable ticksPerSec.
-        if (TickDuration.ticksPerSec == 1_000_000)
-        {
-            auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-
-            assert(dt + TickDuration.from!"usecs"(7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
-            assert(dt + TickDuration.from!"usecs"(-7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
-
-            assert(dt - TickDuration.from!"usecs"(-7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
-            assert(dt - TickDuration.from!"usecs"(7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
-        }
-    }
-
 
     /++
         Gives the result of adding or subtracting a duration from this
@@ -2198,25 +2224,21 @@ public:
             duration = The duration to add to or subtract from this
                        $(LREF DateTime).
       +/
-    ref DateTime opOpAssign(string op, D)(in D duration) @safe pure nothrow @nogc
-        if ((op == "+" || op == "-") &&
-           (is(Unqual!D == Duration) ||
-            is(Unqual!D == TickDuration)))
+    ref DateTime opOpAssign(string op)(Duration duration) @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
     {
+        import core.time : convert;
         import std.format : format;
 
         DateTime retval = this;
-
-        static if (is(Unqual!D == Duration))
-            immutable hnsecs = duration.total!"hnsecs";
-        else static if (is(Unqual!D == TickDuration))
-            immutable hnsecs = duration.hnsecs;
+        immutable hnsecs = duration.total!"hnsecs";
 
         mixin(format(`return _addSeconds(convert!("hnsecs", "seconds")(%shnsecs));`, op));
     }
 
     @safe unittest
     {
+        import core.time : dur;
         assert(DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33)) + dur!"weeks"(7) ==
                DateTime(Date(1999, 8, 24), TimeOfDay(12, 30, 33)));
         assert(DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33)) + dur!"weeks"(-7) ==
@@ -2298,48 +2320,6 @@ public:
         static assert(!__traits(compiles, idt -= duration));
     }
 
-    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
-    deprecated("Use Duration instead of TickDuration.")
-    ref DateTime opOpAssign(string op)(TickDuration td) @safe pure nothrow @nogc
-        if (op == "+" || op == "-")
-    {
-        DateTime retval = this;
-        immutable seconds = td.seconds;
-        mixin("return _addSeconds(" ~ op ~ "seconds);");
-    }
-
-    deprecated @safe unittest
-    {
-        // This probably only runs in cases where gettimeofday() is used, but it's
-        // hard to do this test correctly with variable ticksPerSec.
-        if (TickDuration.ticksPerSec == 1_000_000)
-        {
-            {
-                auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-                dt += TickDuration.from!"usecs"(7_000_000);
-                assert(dt == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
-            }
-
-            {
-                auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-                dt += TickDuration.from!"usecs"(-7_000_000);
-                assert(dt == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
-            }
-
-            {
-                auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-                dt -= TickDuration.from!"usecs"(-7_000_000);
-                assert(dt == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
-            }
-
-            {
-                auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-                dt -= TickDuration.from!"usecs"(7_000_000);
-                assert(dt == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
-            }
-        }
-    }
-
 
     /++
         Gives the difference between two $(LREF DateTime)s.
@@ -2356,6 +2336,7 @@ public:
         immutable dateResult = _date - rhs.date;
         immutable todResult = _tod - rhs._tod;
 
+        import core.time : dur;
         return dur!"hnsecs"(dateResult.total!"hnsecs" + todResult.total!"hnsecs");
     }
 
@@ -2363,6 +2344,7 @@ public:
     {
         auto dt = DateTime(1999, 7, 6, 12, 30, 33);
 
+        import core.time : dur;
         assert(DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33)) - DateTime(Date(1998, 7, 6), TimeOfDay(12, 30, 33)) ==
                dur!"seconds"(31_536_000));
         assert(DateTime(Date(1998, 7, 6), TimeOfDay(12, 30, 33)) - DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33)) ==
@@ -2863,24 +2845,39 @@ public:
 
 
     /++
-        Converts this $(LREF DateTime) to a string with the format YYYYMMDDTHHMMSS.
+        Converts this $(LREF DateTime) to a string with the format `YYYYMMDDTHHMMSS`.
+        If `writer` is set, the resulting string will be written directly to it.
+
+        Params:
+            writer = A `char` accepting
+            $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toISOString() const @safe pure nothrow
     {
-        import std.format : format;
+        import std.array : appender;
+        auto w = appender!string();
+        w.reserve(18);
         try
-        {
-            return format!("%sT%02d%02d%02d")(
-                _date.toISOString(),
-                _tod._hour,
-                _tod._minute,
-                _tod._second
-            );
-        }
+            toISOString(w);
         catch (Exception e)
-        {
-            assert(0, "format() threw.");
-        }
+            assert(0, "toISOString() threw.");
+        return w.data;
+    }
+
+    /// ditto
+    void toISOString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        import std.format : formattedWrite;
+        _date.toISOString(writer);
+        formattedWrite!("T%02d%02d%02d")(
+            writer,
+            _tod._hour,
+            _tod._minute,
+            _tod._second
+        );
     }
 
     ///
@@ -2925,24 +2922,39 @@ public:
 
     /++
         Converts this $(LREF DateTime) to a string with the format
-        YYYY-MM-DDTHH:MM:SS.
+        `YYYY-MM-DDTHH:MM:SS`. If `writer` is set, the resulting
+        string will be written directly to it.
+
+        Params:
+            writer = A `char` accepting
+            $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toISOExtString() const @safe pure nothrow
     {
-        import std.format : format;
+        import std.array : appender;
+        auto w = appender!string();
+        w.reserve(20);
         try
-        {
-            return format!("%sT%02d:%02d:%02d")(
-                _date.toISOExtString(),
-                _tod._hour,
-                _tod._minute,
-                _tod._second
-            );
-        }
+            toISOExtString(w);
         catch (Exception e)
-        {
-            assert(0, "format() threw.");
-        }
+            assert(0, "toISOExtString() threw.");
+        return w.data;
+    }
+
+    /// ditto
+    void toISOExtString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        import std.format : formattedWrite;
+        _date.toISOExtString(writer);
+        formattedWrite!("T%02d:%02d:%02d")(
+            writer,
+            _tod._hour,
+            _tod._minute,
+            _tod._second
+        );
     }
 
     ///
@@ -2986,24 +2998,39 @@ public:
 
     /++
         Converts this $(LREF DateTime) to a string with the format
-        YYYY-Mon-DD HH:MM:SS.
+        `YYYY-Mon-DD HH:MM:SS`. If `writer` is set, the resulting
+        string will be written directly to it.
+
+        Params:
+            writer = A `char` accepting
+            $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toSimpleString() const @safe pure nothrow
     {
-        import std.format : format;
+        import std.array : appender;
+        auto w = appender!string();
+        w.reserve(22);
         try
-        {
-            return format!("%s %02d:%02d:%02d")(
-                _date.toSimpleString(),
-                _tod._hour,
-                _tod._minute,
-                _tod._second
-            );
-        }
+            toSimpleString(w);
         catch (Exception e)
-        {
-            assert(0, "format() threw.");
-        }
+            assert(0, "toSimpleString() threw.");
+        return w.data;
+    }
+
+    /// ditto
+    void toSimpleString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        import std.format : formattedWrite;
+        _date.toSimpleString(writer);
+        formattedWrite!(" %02d:%02d:%02d")(
+            writer,
+            _tod._hour,
+            _tod._minute,
+            _tod._second
+        );
     }
 
     ///
@@ -3084,7 +3111,12 @@ public:
         assert(idt.toString());
     }
 
-
+    /// ditto
+    void toString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        toSimpleString(writer);
+    }
 
     /++
         Creates a $(LREF DateTime) from a string with the format YYYYMMDDTHHMMSS.
@@ -3105,11 +3137,12 @@ public:
         import std.exception : enforce;
         import std.format : format;
         import std.string : strip;
+        import std.utf : byCodeUnit;
 
         auto str = strip(isoString);
 
         enforce(str.length >= 15, new DateTimeException(format("Invalid ISO String: %s", isoString)));
-        auto t = str.countUntil('T');
+        auto t = str.byCodeUnit.countUntil('T');
 
         enforce(t != -1, new DateTimeException(format("Invalid ISO String: %s", isoString)));
 
@@ -3177,9 +3210,9 @@ public:
     {
         import std.conv : to;
         import std.meta : AliasSeq;
-        foreach (C; AliasSeq!(char, wchar, dchar))
+        static foreach (C; AliasSeq!(char, wchar, dchar))
         {
-            foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
+            static foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
                 assert(DateTime.fromISOString(to!S("20121221T141516")) == DateTime(2012, 12, 21, 14, 15, 16));
         }
     }
@@ -3205,11 +3238,12 @@ public:
         import std.exception : enforce;
         import std.format : format;
         import std.string : strip;
+        import std.utf : byCodeUnit;
 
         auto str = strip(isoExtString);
 
         enforce(str.length >= 15, new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-        auto t = str.countUntil('T');
+        auto t = str.byCodeUnit.countUntil('T');
 
         enforce(t != -1, new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
 
@@ -3276,9 +3310,9 @@ public:
     {
         import std.conv : to;
         import std.meta : AliasSeq;
-        foreach (C; AliasSeq!(char, wchar, dchar))
+        static foreach (C; AliasSeq!(char, wchar, dchar))
         {
-            foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
+            static foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
                 assert(DateTime.fromISOExtString(to!S("2012-12-21T14:15:16")) == DateTime(2012, 12, 21, 14, 15, 16));
         }
     }
@@ -3304,11 +3338,12 @@ public:
         import std.exception : enforce;
         import std.format : format;
         import std.string : strip;
+        import std.utf : byCodeUnit;
 
         auto str = strip(simpleString);
 
         enforce(str.length >= 15, new DateTimeException(format("Invalid string format: %s", simpleString)));
-        auto t = str.countUntil(' ');
+        auto t = str.byCodeUnit.countUntil(' ');
 
         enforce(t != -1, new DateTimeException(format("Invalid string format: %s", simpleString)));
 
@@ -3379,9 +3414,9 @@ public:
     {
         import std.conv : to;
         import std.meta : AliasSeq;
-        foreach (C; AliasSeq!(char, wchar, dchar))
+        static foreach (C; AliasSeq!(char, wchar, dchar))
         {
-            foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
+            static foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
                 assert(DateTime.fromSimpleString(to!S("2012-Dec-21 14:15:16")) == DateTime(2012, 12, 21, 14, 15, 16));
         }
     }
@@ -3397,7 +3432,7 @@ public:
         assert(result._date == Date.min);
         assert(result._tod == TimeOfDay.min);
     }
-    body
+    do
     {
         auto dt = DateTime.init;
         dt._date._year = short.min;
@@ -3424,7 +3459,7 @@ public:
         assert(result._date == Date.max);
         assert(result._tod == TimeOfDay.max);
     }
-    body
+    do
     {
         auto dt = DateTime.init;
         dt._date._year = short.max;
@@ -3457,6 +3492,7 @@ private:
       +/
     ref DateTime _addSeconds(long seconds) return @safe pure nothrow @nogc
     {
+        import core.time : convert;
         long hnsecs = convert!("seconds", "hnsecs")(seconds);
         hnsecs += convert!("hours", "hnsecs")(_tod._hour);
         hnsecs += convert!("minutes", "hnsecs")(_tod._minute);
@@ -3658,6 +3694,29 @@ private:
     TimeOfDay _tod;
 }
 
+///
+@safe pure unittest
+{
+    import core.time : days, seconds;
+
+    auto dt = DateTime(2000, 6, 1, 10, 30, 0);
+
+    assert(dt.date == Date(2000, 6, 1));
+    assert(dt.timeOfDay == TimeOfDay(10, 30, 0));
+    assert(dt.dayOfYear == 153);
+    assert(dt.dayOfWeek == DayOfWeek.thu);
+
+    dt += 10.days + 100.seconds;
+    assert(dt == DateTime(2000, 6, 11, 10, 31, 40));
+
+    assert(dt.toISOExtString() == "2000-06-11T10:31:40");
+    assert(dt.toISOString() == "20000611T103140");
+    assert(dt.toSimpleString() == "2000-Jun-11 10:31:40");
+
+    assert(DateTime.fromISOExtString("2018-01-01T12:00:00") == DateTime(2018, 1, 1, 12, 0, 0));
+    assert(DateTime.fromISOString("20180101T120000") == DateTime(2018, 1, 1, 12, 0, 0));
+    assert(DateTime.fromSimpleString("2018-Jan-01 12:00:00") == DateTime(2018, 1, 1, 12, 0, 0));
+}
 
 /++
     Represents a date in the
@@ -3665,10 +3724,10 @@ private:
     Gregorian Calendar) ranging from 32,768 B.C. to 32,767 A.D. Positive years
     are A.D. Non-positive years are B.C.
 
-    Year, month, and day are kept separately internally so that $(D Date) is
+    Year, month, and day are kept separately internally so that `Date` is
     optimized for calendar-based operations.
 
-    $(D Date) uses the Proleptic Gregorian Calendar, so it assumes the Gregorian
+    `Date` uses the Proleptic Gregorian Calendar, so it assumes the Gregorian
     leap year calculations for its entire length. As per
     $(HTTP en.wikipedia.org/wiki/ISO_8601, ISO 8601), it treats 1 B.C. as
     year 0, i.e. 1 B.C. is 0, 2 B.C. is -1, etc. Use $(LREF yearBC) to use B.C.
@@ -4090,7 +4149,7 @@ public:
         Year B.C. of the Gregorian Calendar counting year 0 as 1 B.C.
 
         Throws:
-            $(REF DateTimeException,std,datetime,date) if $(D isAD) is true.
+            $(REF DateTimeException,std,datetime,date) if `isAD` is true.
      +/
     @property ushort yearBC() const @safe pure
     {
@@ -5811,10 +5870,10 @@ public:
         affect larger units. For instance, rolling a $(LREF Date) one
         year's worth of days gets the exact same $(LREF Date).
 
-        The only accepted units are $(D "days").
+        The only accepted units are `"days"`.
 
         Params:
-            units = The units to add. Must be $(D "days").
+            units = The units to add. Must be `"days"`.
             days  = The number of days to add to this $(LREF Date).
       +/
     ref Date roll(string units)(long days) @safe pure nothrow @nogc
@@ -6039,7 +6098,7 @@ public:
         static assert(!__traits(compiles, idate.roll!"days"(12)));
     }
 
-
+    import core.time : Duration;
     /++
         Gives the result of adding or subtracting a $(REF Duration, core,time)
         from
@@ -6079,6 +6138,7 @@ public:
     {
         auto date = Date(1999, 7, 6);
 
+        import core.time : dur;
         assert(date + dur!"weeks"(7) == Date(1999, 8, 24));
         assert(date + dur!"weeks"(-7) == Date(1999, 5, 18));
         assert(date + dur!"days"(7) == Date(1999, 7, 13));
@@ -6127,32 +6187,6 @@ public:
         assert(idate - duration == Date(1999, 6, 24));
     }
 
-    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
-    deprecated("Use Duration instead of TickDuration.")
-    Date opBinary(string op)(TickDuration td) const @safe pure nothrow @nogc
-        if (op == "+" || op == "-")
-    {
-        Date retval = this;
-        immutable days = convert!("hnsecs", "days")(td.hnsecs);
-        mixin("return retval._addDays(" ~ op ~ "days);");
-    }
-
-    deprecated @safe unittest
-    {
-        // This probably only runs in cases where gettimeofday() is used, but it's
-        // hard to do this test correctly with variable ticksPerSec.
-        if (TickDuration.ticksPerSec == 1_000_000)
-        {
-            auto date = Date(1999, 7, 6);
-
-            assert(date + TickDuration.from!"usecs"(86_400_000_000) == Date(1999, 7, 7));
-            assert(date + TickDuration.from!"usecs"(-86_400_000_000) == Date(1999, 7, 5));
-
-            assert(date - TickDuration.from!"usecs"(-86_400_000_000) == Date(1999, 7, 7));
-            assert(date - TickDuration.from!"usecs"(86_400_000_000) == Date(1999, 7, 5));
-        }
-    }
-
 
     /++
         Gives the result of adding or subtracting a $(REF Duration, core,time)
@@ -6179,6 +6213,7 @@ public:
 
     @safe unittest
     {
+        import core.time : dur;
         assert(Date(1999, 7, 6) + dur!"weeks"(7) == Date(1999, 8, 24));
         assert(Date(1999, 7, 6) + dur!"weeks"(-7) == Date(1999, 5, 18));
         assert(Date(1999, 7, 6) + dur!"days"(7) == Date(1999, 7, 13));
@@ -6234,47 +6269,6 @@ public:
         static assert(!__traits(compiles, idate -= duration));
     }
 
-    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
-    deprecated("Use Duration instead of TickDuration.")
-    ref Date opOpAssign(string op)(TickDuration td) @safe pure nothrow @nogc
-        if (op == "+" || op == "-")
-    {
-        immutable days = convert!("seconds", "days")(td.seconds);
-        mixin("return _addDays(" ~ op ~ "days);");
-    }
-
-    deprecated @safe unittest
-    {
-        // This probably only runs in cases where gettimeofday() is used, but it's
-        // hard to do this test correctly with variable ticksPerSec.
-        if (TickDuration.ticksPerSec == 1_000_000)
-        {
-            {
-                auto date = Date(1999, 7, 6);
-                date += TickDuration.from!"usecs"(86_400_000_000);
-                assert(date == Date(1999, 7, 7));
-            }
-
-            {
-                auto date = Date(1999, 7, 6);
-                date += TickDuration.from!"usecs"(-86_400_000_000);
-                assert(date == Date(1999, 7, 5));
-            }
-
-            {
-                auto date = Date(1999, 7, 6);
-                date -= TickDuration.from!"usecs"(-86_400_000_000);
-                assert(date == Date(1999, 7, 7));
-            }
-
-            {
-                auto date = Date(1999, 7, 6);
-                date -= TickDuration.from!"usecs"(86_400_000_000);
-                assert(date == Date(1999, 7, 5));
-            }
-        }
-    }
-
 
     /++
         Gives the difference between two $(LREF Date)s.
@@ -6288,6 +6282,7 @@ public:
     Duration opBinary(string op)(in Date rhs) const @safe pure nothrow @nogc
         if (op == "-")
     {
+        import core.time : dur;
         return dur!"days"(this.dayOfGregorianCal - rhs.dayOfGregorianCal);
     }
 
@@ -6295,6 +6290,7 @@ public:
     {
         auto date = Date(1999, 7, 6);
 
+        import core.time : dur;
         assert(Date(1999, 7, 6) - Date(1998, 7, 6) == dur!"days"(365));
         assert(Date(1998, 7, 6) - Date(1999, 7, 6) == dur!"days"(-365));
         assert(Date(1999, 6, 6) - Date(1999, 5, 6) == dur!"days"(31));
@@ -7167,27 +7163,25 @@ public:
 
 
     /++
-        Converts this $(LREF Date) to a string with the format YYYYMMDD.
+        Converts this $(LREF Date) to a string with the format `YYYYMMDD`.
+        If `writer` is set, the resulting string will be written directly
+        to it.
+
+        Params:
+            writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toISOString() const @safe pure nothrow
     {
-        import std.format : format;
+        import std.array : appender;
+        auto w = appender!string();
+        w.reserve(8);
         try
-        {
-            if (_year >= 0)
-            {
-                if (_year < 10_000)
-                    return format("%04d%02d%02d", _year, _month, _day);
-                else
-                    return format("+%05d%02d%02d", _year, _month, _day);
-            }
-            else if (_year > -10_000)
-                return format("%05d%02d%02d", _year, _month, _day);
-            else
-                return format("%06d%02d%02d", _year, _month, _day);
-        }
+            toISOString(w);
         catch (Exception e)
-            assert(0, "format() threw.");
+            assert(0, "toISOString() threw.");
+        return w.data;
     }
 
     ///
@@ -7222,28 +7216,56 @@ public:
         assert(idate.toISOString() == "19990706");
     }
 
+    /// ditto
+    void toISOString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        import std.format : formattedWrite;
+        if (_year >= 0)
+        {
+            if (_year < 10_000)
+                formattedWrite(writer, "%04d%02d%02d", _year, _month, _day);
+            else
+                formattedWrite(writer, "+%05d%02d%02d", _year, _month, _day);
+        }
+        else if (_year > -10_000)
+            formattedWrite(writer, "%05d%02d%02d", _year, _month, _day);
+        else
+            formattedWrite(writer, "%06d%02d%02d", _year, _month, _day);
+    }
+
+    @safe pure unittest
+    {
+        import std.array : appender;
+
+        auto w = appender!(char[])();
+        Date(2010, 7, 4).toISOString(w);
+        assert(w.data == "20100704");
+        w.clear();
+        Date(1998, 12, 25).toISOString(w);
+        assert(w.data == "19981225");
+    }
+
     /++
-        Converts this $(LREF Date) to a string with the format YYYY-MM-DD.
+        Converts this $(LREF Date) to a string with the format `YYYY-MM-DD`.
+        If `writer` is set, the resulting string will be written directly
+        to it.
+
+        Params:
+            writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toISOExtString() const @safe pure nothrow
     {
-        import std.format : format;
+        import std.array : appender;
+        auto w = appender!string();
+        w.reserve(10);
         try
-        {
-            if (_year >= 0)
-            {
-                if (_year < 10_000)
-                    return format("%04d-%02d-%02d", _year, _month, _day);
-                else
-                    return format("+%05d-%02d-%02d", _year, _month, _day);
-            }
-            else if (_year > -10_000)
-                return format("%05d-%02d-%02d", _year, _month, _day);
-            else
-                return format("%06d-%02d-%02d", _year, _month, _day);
-        }
+            toISOExtString(w);
         catch (Exception e)
-            assert(0, "format() threw.");
+            assert(0, "toISOExtString() threw.");
+        return w.data;
     }
 
     ///
@@ -7278,28 +7300,56 @@ public:
         assert(idate.toISOExtString() == "1999-07-06");
     }
 
+    /// ditto
+    void toISOExtString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        import std.format : formattedWrite;
+        if (_year >= 0)
+        {
+            if (_year < 10_000)
+                formattedWrite(writer, "%04d-%02d-%02d", _year, _month, _day);
+            else
+                formattedWrite(writer, "+%05d-%02d-%02d", _year, _month, _day);
+        }
+        else if (_year > -10_000)
+            formattedWrite(writer, "%05d-%02d-%02d", _year, _month, _day);
+        else
+            formattedWrite(writer, "%06d-%02d-%02d", _year, _month, _day);
+    }
+
+    @safe pure unittest
+    {
+        import std.array : appender;
+
+        auto w = appender!(char[])();
+        Date(2010, 7, 4).toISOExtString(w);
+        assert(w.data == "2010-07-04");
+        w.clear();
+        Date(-4, 1, 5).toISOExtString(w);
+        assert(w.data == "-0004-01-05");
+    }
+
     /++
-        Converts this $(LREF Date) to a string with the format YYYY-Mon-DD.
+        Converts this $(LREF Date) to a string with the format `YYYY-Mon-DD`.
+        If `writer` is set, the resulting string will be written directly
+        to it.
+
+        Params:
+            writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toSimpleString() const @safe pure nothrow
     {
-        import std.format : format;
+        import std.array : appender;
+        auto w = appender!string();
+        w.reserve(11);
         try
-        {
-            if (_year >= 0)
-            {
-                if (_year < 10_000)
-                    return format("%04d-%s-%02d", _year, monthToString(_month), _day);
-                else
-                    return format("+%05d-%s-%02d", _year, monthToString(_month), _day);
-            }
-            else if (_year > -10_000)
-                return format("%05d-%s-%02d", _year, monthToString(_month), _day);
-            else
-                return format("%06d-%s-%02d", _year, monthToString(_month), _day);
-        }
+            toSimpleString(w);
         catch (Exception e)
-            assert(0, "format() threw.");
+            assert(0, "toSimpleString() threw.");
+        return w.data;
     }
 
     ///
@@ -7334,6 +7384,35 @@ public:
         assert(idate.toSimpleString() == "1999-Jul-06");
     }
 
+    /// ditto
+    void toSimpleString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        import std.format : formattedWrite;
+        if (_year >= 0)
+        {
+            if (_year < 10_000)
+                formattedWrite(writer, "%04d-%s-%02d", _year, monthToString(_month), _day);
+            else
+                formattedWrite(writer, "+%05d-%s-%02d", _year, monthToString(_month), _day);
+        }
+        else if (_year > -10_000)
+            formattedWrite(writer, "%05d-%s-%02d", _year, monthToString(_month), _day);
+        else
+            formattedWrite(writer, "%06d-%s-%02d", _year, monthToString(_month), _day);
+    }
+
+    @safe pure unittest
+    {
+        import std.array : appender;
+
+        auto w = appender!(char[])();
+        Date(9, 12, 4).toSimpleString(w);
+        assert(w.data == "0009-Dec-04");
+        w.clear();
+        Date(-10000, 10, 20).toSimpleString(w);
+        assert(w.data == "-10000-Oct-20");
+    }
 
     /++
         Converts this $(LREF Date) to a string.
@@ -7373,6 +7452,12 @@ public:
         assert(idate.toString());
     }
 
+    /// ditto
+    void toString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        toSimpleString(writer);
+    }
 
     /++
         Creates a $(LREF Date) from a string with the format YYYYMMDD. Whitespace
@@ -7508,9 +7593,9 @@ public:
     {
         import std.conv : to;
         import std.meta : AliasSeq;
-        foreach (C; AliasSeq!(char, wchar, dchar))
+        static foreach (C; AliasSeq!(char, wchar, dchar))
         {
-            foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
+            static foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
                 assert(Date.fromISOString(to!S("20121221")) == Date(2012, 12, 21));
         }
     }
@@ -7532,40 +7617,37 @@ public:
     static Date fromISOExtString(S)(in S isoExtString) @safe pure
         if (isSomeString!(S))
     {
-        import std.algorithm.searching : all, startsWith;
-        import std.ascii : isDigit;
-        import std.conv : to;
-        import std.exception : enforce;
+        import std.algorithm.searching : startsWith;
+        import std.conv : to, ConvException;
         import std.format : format;
         import std.string : strip;
 
-        auto dstr = to!dstring(strip(isoExtString));
+        auto str = strip(isoExtString);
+        short year;
+        ubyte month, day;
 
-        enforce(dstr.length >= 10, new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
+        if (str.length < 10 || str[$-3] != '-' || str[$-6] != '-')
+            throw new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString));
 
-        auto day = dstr[$-2 .. $];
-        auto month = dstr[$-5 .. $-3];
-        auto year = dstr[0 .. $-6];
-
-        enforce(dstr[$-3] == '-', new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-        enforce(dstr[$-6] == '-', new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-        enforce(all!isDigit(day),
-                new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-        enforce(all!isDigit(month),
-                new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-
-        if (year.length > 4)
+        auto yearStr = str[0 .. $-6];
+        auto signAtBegining = cast(bool) yearStr.startsWith('-', '+');
+        if ((yearStr.length > 4) != signAtBegining)
         {
-            enforce(year.startsWith('-', '+'),
-                    new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-            enforce(all!isDigit(year[1..$]),
-                    new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
+            throw new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString));
         }
-        else
-            enforce(all!isDigit(year),
-                    new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
 
-        return Date(to!short(year), to!ubyte(month), to!ubyte(day));
+        try
+        {
+            day = to!ubyte(str[$-2 .. $]);
+            month = to!ubyte(str[$-5 .. $-3]);
+            year = to!short(yearStr);
+        }
+        catch (ConvException)
+        {
+            throw new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString));
+        }
+
+        return Date(year, month, day);
     }
 
     ///
@@ -7649,9 +7731,9 @@ public:
     {
         import std.conv : to;
         import std.meta : AliasSeq;
-        foreach (C; AliasSeq!(char, wchar, dchar))
+        static foreach (C; AliasSeq!(char, wchar, dchar))
         {
-            foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
+            static foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
                 assert(Date.fromISOExtString(to!S("2012-12-21")) == Date(2012, 12, 21));
         }
     }
@@ -7673,37 +7755,37 @@ public:
     static Date fromSimpleString(S)(in S simpleString) @safe pure
         if (isSomeString!(S))
     {
-        import std.algorithm.searching : all, startsWith;
-        import std.ascii : isDigit;
-        import std.conv : to;
-        import std.exception : enforce;
+        import std.algorithm.searching : startsWith;
+        import std.conv : to, ConvException;
         import std.format : format;
         import std.string : strip;
 
-        auto dstr = to!dstring(strip(simpleString));
+        auto str = strip(simpleString);
 
-        enforce(dstr.length >= 11, new DateTimeException(format("Invalid string format: %s", simpleString)));
+        if (str.length < 11 || str[$-3] != '-' || str[$-7] != '-')
+            throw new DateTimeException(format!"Invalid string format: %s"(simpleString));
 
-        auto day = dstr[$-2 .. $];
-        auto month = monthFromString(to!string(dstr[$-6 .. $-3]));
-        auto year = dstr[0 .. $-7];
-
-        enforce(dstr[$-3] == '-', new DateTimeException(format("Invalid string format: %s", simpleString)));
-        enforce(dstr[$-7] == '-', new DateTimeException(format("Invalid string format: %s", simpleString)));
-        enforce(all!isDigit(day), new DateTimeException(format("Invalid string format: %s", simpleString)));
-
-        if (year.length > 4)
+        int year;
+        uint day;
+        auto month = monthFromString(str[$ - 6 .. $ - 3]);
+        auto yearStr = str[0 .. $ - 7];
+        auto signAtBegining = cast(bool) yearStr.startsWith('-', '+');
+        if ((yearStr.length > 4) != signAtBegining)
         {
-            enforce(year.startsWith('-', '+'),
-                    new DateTimeException(format("Invalid string format: %s", simpleString)));
-            enforce(all!isDigit(year[1..$]),
-                    new DateTimeException(format("Invalid string format: %s", simpleString)));
+            throw new DateTimeException(format!"Invalid string format: %s"(simpleString));
         }
-        else
-            enforce(all!isDigit(year),
-                    new DateTimeException(format("Invalid string format: %s", simpleString)));
 
-        return Date(to!short(year), month, to!ubyte(day));
+        try
+        {
+            day = to!uint(str[$ - 2 .. $]);
+            year = to!int(yearStr);
+        }
+        catch (ConvException)
+        {
+            throw new DateTimeException(format!"Invalid string format: %s"(simpleString));
+        }
+
+        return Date(year, month, day);
     }
 
     ///
@@ -7787,9 +7869,9 @@ public:
     {
         import std.conv : to;
         import std.meta : AliasSeq;
-        foreach (C; AliasSeq!(char, wchar, dchar))
+        static foreach (C; AliasSeq!(char, wchar, dchar))
         {
-            foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
+            static foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
                 assert(Date.fromSimpleString(to!S("2012-Dec-21")) == Date(2012, 12, 21));
         }
     }
@@ -7867,7 +7949,7 @@ package:
         decrease) to the month would cause it to overflow (or underflow) the
         current year.
 
-        $(D _addDays(numDays)) is effectively equivalent to
+        `_addDays(numDays)` is effectively equivalent to
         $(D date.dayOfGregorianCal = date.dayOfGregorianCal + days).
 
         Params:
@@ -8050,6 +8132,28 @@ package:
     short _year  = 1;
     Month _month = Month.jan;
     ubyte _day   = 1;
+}
+
+///
+@safe pure unittest
+{
+    import core.time : days;
+
+    auto d = Date(2000, 6, 1);
+
+    assert(d.dayOfYear == 153);
+    assert(d.dayOfWeek == DayOfWeek.thu);
+
+    d += 10.days;
+    assert(d == Date(2000, 6, 11));
+
+    assert(d.toISOExtString() == "2000-06-11");
+    assert(d.toISOString() == "20000611");
+    assert(d.toSimpleString() == "2000-Jun-11");
+
+    assert(Date.fromISOExtString("2018-01-01") == Date(2018, 1, 1));
+    assert(Date.fromISOString("20180101") == Date(2018, 1, 1));
+    assert(Date.fromSimpleString("2018-Jan-01") == Date(2018, 1, 1));
 }
 
 
@@ -8342,7 +8446,7 @@ public:
         one hours's worth of minutes gets the exact same
         $(LREF TimeOfDay).
 
-        Accepted units are $(D "hours"), $(D "minutes"), and $(D "seconds").
+        Accepted units are `"hours"`, `"minutes"`, and `"seconds"`.
 
         Params:
             units = The units to add.
@@ -8352,6 +8456,7 @@ public:
     ref TimeOfDay roll(string units)(long value) @safe pure nothrow @nogc
         if (units == "hours")
     {
+        import core.time : dur;
         return this += dur!"hours"(value);
     }
 
@@ -8396,7 +8501,7 @@ public:
     }
 
 
-    // Shares documentation with "hours" version.
+    /// ditto
     ref TimeOfDay roll(string units)(long value) @safe pure nothrow @nogc
         if (units == "minutes" || units == "seconds")
     {
@@ -8576,6 +8681,7 @@ public:
     }
 
 
+    import core.time : Duration;
     /++
         Gives the result of adding or subtracting a $(REF Duration, core,time)
         from this $(LREF TimeOfDay).
@@ -8620,6 +8726,7 @@ public:
     {
         auto tod = TimeOfDay(12, 30, 33);
 
+        import core.time : dur;
         assert(tod + dur!"hours"(7) == TimeOfDay(19, 30, 33));
         assert(tod + dur!"hours"(-7) == TimeOfDay(5, 30, 33));
         assert(tod + dur!"minutes"(7) == TimeOfDay(12, 37, 33));
@@ -8660,32 +8767,6 @@ public:
         assert(itod - duration == TimeOfDay(1, 30, 33));
     }
 
-    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
-    deprecated("Use Duration instead of TickDuration.")
-    TimeOfDay opBinary(string op)(TickDuration td) const @safe pure nothrow @nogc
-        if (op == "+" || op == "-")
-    {
-        TimeOfDay retval = this;
-        immutable seconds = td.seconds;
-        mixin("return retval._addSeconds(" ~ op ~ "seconds);");
-    }
-
-    deprecated @safe unittest
-    {
-        // This probably only runs in cases where gettimeofday() is used, but it's
-        // hard to do this test correctly with variable ticksPerSec.
-        if (TickDuration.ticksPerSec == 1_000_000)
-        {
-            auto tod = TimeOfDay(12, 30, 33);
-
-            assert(tod + TickDuration.from!"usecs"(7_000_000) == TimeOfDay(12, 30, 40));
-            assert(tod + TickDuration.from!"usecs"(-7_000_000) == TimeOfDay(12, 30, 26));
-
-            assert(tod - TickDuration.from!"usecs"(-7_000_000) == TimeOfDay(12, 30, 40));
-            assert(tod - TickDuration.from!"usecs"(7_000_000) == TimeOfDay(12, 30, 26));
-        }
-    }
-
 
     /++
         Gives the result of adding or subtracting a $(REF Duration, core,time)
@@ -8713,6 +8794,7 @@ public:
 
     @safe unittest
     {
+        import core.time : dur;
         auto duration = dur!"hours"(12);
 
         assert(TimeOfDay(12, 30, 33) + dur!"hours"(7) == TimeOfDay(19, 30, 33));
@@ -8755,47 +8837,6 @@ public:
         static assert(!__traits(compiles, itod -= duration));
     }
 
-    // Explicitly undocumented. It will be removed in January 2018. @@@DEPRECATED_2018-01@@@
-    deprecated("Use Duration instead of TickDuration.")
-    ref TimeOfDay opOpAssign(string op)(TickDuration td) @safe pure nothrow @nogc
-        if (op == "+" || op == "-")
-    {
-        immutable seconds = td.seconds;
-        mixin("return _addSeconds(" ~ op ~ "seconds);");
-    }
-
-    deprecated @safe unittest
-    {
-        // This probably only runs in cases where gettimeofday() is used, but it's
-        // hard to do this test correctly with variable ticksPerSec.
-        if (TickDuration.ticksPerSec == 1_000_000)
-        {
-            {
-                auto tod = TimeOfDay(12, 30, 33);
-                tod += TickDuration.from!"usecs"(7_000_000);
-                assert(tod == TimeOfDay(12, 30, 40));
-            }
-
-            {
-                auto tod = TimeOfDay(12, 30, 33);
-                tod += TickDuration.from!"usecs"(-7_000_000);
-                assert(tod == TimeOfDay(12, 30, 26));
-            }
-
-            {
-                auto tod = TimeOfDay(12, 30, 33);
-                tod -= TickDuration.from!"usecs"(-7_000_000);
-                assert(tod == TimeOfDay(12, 30, 40));
-            }
-
-            {
-                auto tod = TimeOfDay(12, 30, 33);
-                tod -= TickDuration.from!"usecs"(7_000_000);
-                assert(tod == TimeOfDay(12, 30, 26));
-            }
-        }
-    }
-
 
     /++
         Gives the difference between two $(LREF TimeOfDay)s.
@@ -8816,6 +8857,7 @@ public:
         immutable lhsSec = _hour * 3600 + _minute * 60 + _second;
         immutable rhsSec = rhs._hour * 3600 + rhs._minute * 60 + rhs._second;
 
+        import core.time : dur;
         return dur!"seconds"(lhsSec - rhsSec);
     }
 
@@ -8823,6 +8865,7 @@ public:
     {
         auto tod = TimeOfDay(12, 30, 33);
 
+        import core.time : dur;
         assert(TimeOfDay(7, 12, 52) - TimeOfDay(12, 30, 33) == dur!"seconds"(-19_061));
         assert(TimeOfDay(12, 30, 33) - TimeOfDay(7, 12, 52) == dur!"seconds"(19_061));
         assert(TimeOfDay(12, 30, 33) - TimeOfDay(14, 30, 33) == dur!"seconds"(-7200));
@@ -8849,15 +8892,32 @@ public:
 
 
     /++
-        Converts this $(LREF TimeOfDay) to a string with the format HHMMSS.
+        Converts this $(LREF TimeOfDay) to a string with the format `HHMMSS`.
+        If `writer` is set, the resulting string will be written directly to it.
+
+        Params:
+            writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toISOString() const @safe pure nothrow
     {
-        import std.format : format;
+        import std.array : appender;
+        auto w = appender!string();
+        w.reserve(6);
         try
-            return format("%02d%02d%02d", _hour, _minute, _second);
+            toISOString(w);
         catch (Exception e)
-            assert(0, "format() threw.");
+            assert(0, "toISOString() threw.");
+        return w.data;
+    }
+
+    /// ditto
+    void toISOString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        import std.format : formattedWrite;
+        formattedWrite(writer, "%02d%02d%02d", _hour, _minute, _second);
     }
 
     ///
@@ -8879,15 +8939,32 @@ public:
 
 
     /++
-        Converts this $(LREF TimeOfDay) to a string with the format HH:MM:SS.
+        Converts this $(LREF TimeOfDay) to a string with the format `HH:MM:SS`.
+        If `writer` is set, the resulting string will be written directly to it.
+
+        Params:
+            writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toISOExtString() const @safe pure nothrow
     {
-        import std.format : format;
+        import std.array : appender;
+        auto w = appender!string();
+        w.reserve(8);
         try
-            return format("%02d:%02d:%02d", _hour, _minute, _second);
+            toISOExtString(w);
         catch (Exception e)
-            assert(0, "format() threw.");
+            assert(0, "toISOExtString() threw.");
+        return w.data;
+    }
+
+    /// ditto
+    void toISOExtString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        import std.format : formattedWrite;
+        formattedWrite(writer, "%02d:%02d:%02d", _hour, _minute, _second);
     }
 
     ///
@@ -8930,10 +9007,22 @@ public:
         `fromISOString` and `fromISOExtString`.
 
         The format returned by toString may or may not change in the future.
+
+        Params:
+            writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
+        Returns:
+            A `string` when not using an output range; `void` otherwise.
       +/
     string toString() const @safe pure nothrow
     {
         return toISOExtString();
+    }
+
+    /// ditto
+    void toString(W)(ref W writer) const
+    if (isOutputRange!(W, char))
+    {
+        toISOExtString(writer);
     }
 
     @safe unittest
@@ -9063,9 +9152,9 @@ public:
     {
         import std.conv : to;
         import std.meta : AliasSeq;
-        foreach (C; AliasSeq!(char, wchar, dchar))
+        static foreach (C; AliasSeq!(char, wchar, dchar))
         {
-            foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
+            static foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
                 assert(TimeOfDay.fromISOString(to!S("141516")) == TimeOfDay(14, 15, 16));
         }
     }
@@ -9087,31 +9176,29 @@ public:
     static TimeOfDay fromISOExtString(S)(in S isoExtString) @safe pure
         if (isSomeString!S)
     {
-        import std.algorithm.searching : all;
-        import std.ascii : isDigit;
-        import std.conv : to;
-        import std.exception : enforce;
-        import std.format : format;
+        import std.conv : ConvException, text, to;
         import std.string : strip;
 
-        auto dstr = to!dstring(strip(isoExtString));
+        auto str = strip(isoExtString);
+        int hours, minutes, seconds;
 
-        enforce(dstr.length == 8, new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
+        if (str.length != 8 || str[2] != ':' || str[5] != ':')
+            throw new DateTimeException(text("Invalid ISO Extended String: ", isoExtString));
 
-        auto hours = dstr[0 .. 2];
-        auto minutes = dstr[3 .. 5];
-        auto seconds = dstr[6 .. $];
+        try
+        {
+            // cast to int from uint is used because it checks for
+            // non digits without extra loops
+            hours = cast(int) to!uint(str[0 .. 2]);
+            minutes = cast(int) to!uint(str[3 .. 5]);
+            seconds = cast(int) to!uint(str[6 .. $]);
+        }
+        catch (ConvException)
+        {
+            throw new DateTimeException(text("Invalid ISO Extended String: ", isoExtString));
+        }
 
-        enforce(dstr[2] == ':', new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-        enforce(dstr[5] == ':', new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-        enforce(all!isDigit(hours),
-                new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-        enforce(all!isDigit(minutes),
-                new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-        enforce(all!isDigit(seconds),
-                new DateTimeException(format("Invalid ISO Extended String: %s", isoExtString)));
-
-        return TimeOfDay(to!int(hours), to!int(minutes), to!int(seconds));
+        return TimeOfDay(hours, minutes, seconds);
     }
 
     ///
@@ -9190,9 +9277,9 @@ public:
     {
         import std.conv : to;
         import std.meta : AliasSeq;
-        foreach (C; AliasSeq!(char, wchar, dchar))
+        static foreach (C; AliasSeq!(char, wchar, dchar))
         {
-            foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
+            static foreach (S; AliasSeq!(C[], const(C)[], immutable(C)[]))
                 assert(TimeOfDay.fromISOExtString(to!S("14:15:16")) == TimeOfDay(14, 15, 16));
         }
     }
@@ -9252,6 +9339,7 @@ private:
       +/
     ref TimeOfDay _addSeconds(long seconds) return @safe pure nothrow @nogc
     {
+        import core.time : convert;
         long hnsecs = convert!("seconds", "hnsecs")(seconds);
         hnsecs += convert!("hours", "hnsecs")(_hour);
         hnsecs += convert!("minutes", "hnsecs")(_minute);
@@ -9377,6 +9465,22 @@ package:
     enum ubyte maxSecond = 60 - 1;
 }
 
+///
+@safe pure unittest
+{
+    import core.time : minutes, seconds;
+
+    auto t = TimeOfDay(12, 30, 0);
+
+    t += 10.minutes + 100.seconds;
+    assert(t == TimeOfDay(12, 41, 40));
+
+    assert(t.toISOExtString() == "12:41:40");
+    assert(t.toISOString() == "124140");
+
+    assert(TimeOfDay.fromISOExtString("15:00:00") == TimeOfDay(15, 0, 0));
+    assert(TimeOfDay.fromISOString("015000") == TimeOfDay(1, 50, 0));
+}
 
 /++
     Returns whether the given value is valid for the given unit type when in a
@@ -9447,7 +9551,7 @@ if (units == "days")
                 thrown.
 
     Throws:
-        $(LREF DateTimeException) if $(D valid!units(value)) is false.
+        $(LREF DateTimeException) if `valid!units(value)` is false.
   +/
 void enforceValid(string units)(int value, string file = __FILE__, size_t line = __LINE__) @safe pure
 if (units == "months" ||
@@ -9479,8 +9583,26 @@ if (units == "months" ||
     }
 }
 
+///
+@safe pure unittest
+{
+    import std.exception : assertThrown, assertNotThrown;
+
+    assertNotThrown(enforceValid!"months"(10));
+    assertNotThrown(enforceValid!"seconds"(40));
+
+    assertThrown!DateTimeException(enforceValid!"months"(0));
+    assertThrown!DateTimeException(enforceValid!"hours"(24));
+    assertThrown!DateTimeException(enforceValid!"minutes"(60));
+    assertThrown!DateTimeException(enforceValid!"seconds"(60));
+}
+
 
 /++
+    Because the validity of the day number depends on both on the year
+    and month of which the day is occurring, take all three variables
+    to validate the day.
+
     Params:
         units = The units of time to validate.
         year  = The year of the day to validate.
@@ -9500,6 +9622,20 @@ if (units == "days")
     import std.format : format;
     if (!valid!"days"(year, month, day))
         throw new DateTimeException(format("%s is not a valid day in %s in %s", day, month, year), file, line);
+}
+
+///
+@safe pure unittest
+{
+    import std.exception : assertThrown, assertNotThrown;
+
+    assertNotThrown(enforceValid!"days"(2000, Month.jan, 1));
+    // leap year
+    assertNotThrown(enforceValid!"days"(2000, Month.feb, 29));
+
+    assertThrown!DateTimeException(enforceValid!"days"(2001, Month.feb, 29));
+    assertThrown!DateTimeException(enforceValid!"days"(2000, Month.jan, 32));
+    assertThrown!DateTimeException(enforceValid!"days"(2000, Month.apr, 31));
 }
 
 
@@ -9725,19 +9861,19 @@ bool yearIsLeapYear(int year) @safe pure nothrow @nogc
     Whether the given type defines all of the necessary functions for it to
     function as a time point.
 
-    1. $(D T) must define a static property named $(D min) which is the smallest
-       value of $(D T) as $(D Unqual!T).
+    1. `T` must define a static property named `min` which is the smallest
+       value of `T` as `Unqual!T`.
 
-    2. $(D T) must define a static property named $(D max) which is the largest
-       value of $(D T) as $(D Unqual!T).
+    2. `T` must define a static property named `max` which is the largest
+       value of `T` as `Unqual!T`.
 
-    3. $(D T) must define an $(D opBinary) for addition and subtraction that
-       accepts $(REF Duration, core,time) and returns $(D Unqual!T).
+    3. `T` must define an `opBinary` for addition and subtraction that
+       accepts $(REF Duration, core,time) and returns `Unqual!T`.
 
-    4. $(D T) must define an $(D opOpAssign) for addition and subtraction that
+    4. `T` must define an `opOpAssign` for addition and subtraction that
        accepts $(REF Duration, core,time) and returns $(D ref Unqual!T).
 
-    5. $(D T) must define a $(D opBinary) for subtraction which accepts $(D T)
+    5. `T` must define a `opBinary` for subtraction which accepts `T`
        and returns returns $(REF Duration, core,time).
   +/
 template isTimePoint(T)
@@ -9771,12 +9907,8 @@ private:
                                              is(typeof(U.init -= Duration.init) == U) &&
                                              is(typeof(
                                              {
-                                                 // Until the overload with TickDuration is removed, this is ambiguous.
-                                                 //alias add = U.opOpAssign!"+";
-                                                 //alias sub = U.opOpAssign!"-";
-                                                 U u;
-                                                 auto ref add() { return u += Duration.init; }
-                                                 auto ref sub() { return u -= Duration.init; }
+                                                 alias add = U.opOpAssign!"+";
+                                                 alias sub = U.opOpAssign!"-";
                                                  alias FA = FunctionAttribute;
                                                  static assert((functionAttributes!add & FA.ref_) != 0);
                                                  static assert((functionAttributes!sub & FA.ref_) != 0);
@@ -9809,13 +9941,13 @@ private:
     import std.datetime.systime;
     import std.meta : AliasSeq;
 
-    foreach (TP; AliasSeq!(Date, DateTime, SysTime, TimeOfDay))
+    static foreach (TP; AliasSeq!(Date, DateTime, SysTime, TimeOfDay))
     {
         static assert(isTimePoint!(const TP), TP.stringof);
         static assert(isTimePoint!(immutable TP), TP.stringof);
     }
 
-    foreach (T; AliasSeq!(float, string, Duration, Interval!Date, PosInfInterval!Date, NegInfInterval!Date))
+    static foreach (T; AliasSeq!(float, string, Duration, Interval!Date, PosInfInterval!Date, NegInfInterval!Date))
         static assert(!isTimePoint!T, T.stringof);
 }
 
@@ -9823,7 +9955,7 @@ private:
 /++
     Whether all of the given strings are valid units of time.
 
-    $(D "nsecs") is not considered a valid unit of time. Nothing in std.datetime
+    `"nsecs"` is not considered a valid unit of time. Nothing in std.datetime
     can handle precision greater than hnsecs, and the few functions in core.time
     which deal with "nsecs" deal with it explicitly.
   +/
@@ -9848,8 +9980,8 @@ bool validTimeUnits(string[] units...) @safe pure nothrow @nogc
 
 
 /++
-    Compares two time unit strings. $(D "years") are the largest units and
-    $(D "hnsecs") are the smallest.
+    Compares two time unit strings. `"years"` are the largest units and
+    `"hnsecs"` are the smallest.
 
     Returns:
         $(BOOKTABLE,
@@ -9868,12 +10000,11 @@ int cmpTimeUnits(string lhs, string rhs) @safe pure
     import std.exception : enforce;
     import std.format : format;
 
-    auto tstrings = timeStrings;
-    immutable indexOfLHS = countUntil(tstrings, lhs);
-    immutable indexOfRHS = countUntil(tstrings, rhs);
+    immutable indexOfLHS = countUntil(timeStrings, lhs);
+    immutable indexOfRHS = countUntil(timeStrings, rhs);
 
-    enforce(indexOfLHS != -1, format("%s is not a valid TimeString", lhs));
-    enforce(indexOfRHS != -1, format("%s is not a valid TimeString", rhs));
+    enforce!DateTimeException(indexOfLHS != -1, format("%s is not a valid TimeString", lhs));
+    enforce!DateTimeException(indexOfRHS != -1, format("%s is not a valid TimeString", rhs));
 
     if (indexOfLHS < indexOfRHS)
         return -1;
@@ -9886,9 +10017,13 @@ int cmpTimeUnits(string lhs, string rhs) @safe pure
 ///
 @safe pure unittest
 {
+    import std.exception : assertThrown;
+
     assert(cmpTimeUnits("hours", "hours") == 0);
     assert(cmpTimeUnits("hours", "weeks") < 0);
     assert(cmpTimeUnits("months", "seconds") > 0);
+
+    assertThrown!DateTimeException(cmpTimeUnits("month", "second"));
 }
 
 @safe unittest
@@ -9911,11 +10046,11 @@ int cmpTimeUnits(string lhs, string rhs) @safe pure
 
 
 /++
-    Compares two time unit strings at compile time. $(D "years") are the largest
-    units and $(D "hnsecs") are the smallest.
+    Compares two time unit strings at compile time. `"years"` are the largest
+    units and `"hnsecs"` are the smallest.
 
-    This template is used instead of $(D cmpTimeUnits) because exceptions
-    can't be thrown at compile time and $(D cmpTimeUnits) must enforce that
+    This template is used instead of `cmpTimeUnits` because exceptions
+    can't be thrown at compile time and `cmpTimeUnits` must enforce that
     the strings it's given are valid time unit strings. This template uses a
     template constraint instead.
 
@@ -9932,6 +10067,13 @@ if (validTimeUnits(lhs, rhs))
     enum CmpTimeUnits = cmpTimeUnitsCTFE(lhs, rhs);
 }
 
+///
+@safe pure unittest
+{
+    static assert(CmpTimeUnits!("years", "weeks") > 0);
+    static assert(CmpTimeUnits!("days", "days") == 0);
+    static assert(CmpTimeUnits!("seconds", "hours") < 0);
+}
 
 // Helper function for CmpTimeUnits.
 private int cmpTimeUnitsCTFE(string lhs, string rhs) @safe pure nothrow @nogc
@@ -9951,26 +10093,16 @@ private int cmpTimeUnitsCTFE(string lhs, string rhs) @safe pure nothrow @nogc
 
 @safe unittest
 {
-    import std.format : format;
-    import std.meta : AliasSeq;
-
-    static string genTest(size_t index)
+    static foreach (i; 0 .. timeStrings.length)
     {
-        auto currUnits = timeStrings[index];
-        auto test = format(`assert(CmpTimeUnits!("%s", "%s") == 0);`, currUnits, currUnits);
+        static assert(CmpTimeUnits!(timeStrings[i], timeStrings[i]) == 0);
 
-        foreach (units; timeStrings[index + 1 .. $])
-            test ~= format(`assert(CmpTimeUnits!("%s", "%s") == -1);`, currUnits, units);
+        static foreach (next; timeStrings[i + 1 .. $])
+            static assert(CmpTimeUnits!(timeStrings[i], next) == -1);
 
-        foreach (units; timeStrings[0 .. index])
-            test ~= format(`assert(CmpTimeUnits!("%s", "%s") == 1);`, currUnits, units);
-
-        return test;
+        static foreach (prev; timeStrings[0 .. i])
+            static assert(CmpTimeUnits!(timeStrings[i], prev) == 1);
     }
-
-    static assert(timeStrings.length == 10);
-    foreach (n; AliasSeq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
-        mixin(genTest(n));
 }
 
 
@@ -10005,7 +10137,7 @@ in
 {
     assert(valid!"months"(month));
 }
-body
+do
 {
     switch (month)
     {
@@ -10232,7 +10364,8 @@ string monthToString(Month month) @safe pure
         $(REF DateTimeException,std,datetime,date) if the given month is not a
         valid month string.
   +/
-Month monthFromString(string monthStr) @safe pure
+Month monthFromString(T)(T monthStr) @safe pure
+if (isSomeString!T)
 {
     import std.format : format;
     switch (monthStr)
@@ -10262,25 +10395,23 @@ Month monthFromString(string monthStr) @safe pure
         case "Dec":
             return Month.dec;
         default:
-            throw new DateTimeException(format("Invalid month %s", monthStr));
+            throw new DateTimeException(format!"Invalid month %s"(monthStr));
     }
 }
 
 @safe unittest
 {
-    import std.stdio : writeln;
+    import std.conv : to;
     import std.traits : EnumMembers;
     foreach (badStr; ["Ja", "Janu", "Januar", "Januarys", "JJanuary", "JANUARY",
                       "JAN", "january", "jaNuary", "jaN", "jaNuaRy", "jAn"])
     {
-        scope(failure) writeln(badStr);
-        assertThrown!DateTimeException(monthFromString(badStr));
+        assertThrown!DateTimeException(monthFromString(badStr), badStr);
     }
 
     foreach (month; EnumMembers!Month)
     {
-        scope(failure) writeln(month);
-        assert(monthFromString(monthToString(month)) == month);
+        assert(monthFromString(monthToString(month)) == month, month.to!string);
     }
 }
 
