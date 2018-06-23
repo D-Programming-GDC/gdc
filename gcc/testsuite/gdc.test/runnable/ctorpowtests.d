@@ -156,7 +156,8 @@ static assert(bazra(14)==64);
 
 void moreCommaTests()
 {
-   auto k = (containsAsm(), containsAsm());
+   (containsAsm(), containsAsm());
+   auto k = containsAsm();
    for (int i=0; i< k^^2; i+=StructWithCtor(1).n) {}
 }
 

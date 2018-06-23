@@ -10,6 +10,30 @@ static assert(true, "message");
 
 alias double mydbl;
 
+alias fl1 = function ()
+    in {}
+    in (true)
+    out (; true)
+    out (r; true)
+    out
+    {
+    }
+    out (r)
+    {
+    }
+    do
+    {
+        return 2;
+    };
+
+alias fl2 = function ()
+    in (true)
+    out(; true)
+    out(r; true)
+    {
+        return 2;
+    };
+
 int testmain()
 in
 {
@@ -23,7 +47,7 @@ body
 {
     float f = float.infinity;
     int i = cast(int) f;
-    writeln((i,1),2);
+    writeln(i,1,2);
     writeln(cast(int)float.max);
     assert(i == cast(int)float.max);
     assert(i == 0x80000000);
@@ -58,7 +82,7 @@ template Foo(T, int V)
         d--;
 
     asm
-    {	naked ;
+    {   naked ;
         mov EAX, 3;
     }
 
@@ -133,11 +157,11 @@ template Foo(T, int V)
     }
 
     try
-	    bar(1, 2);
+        bar(1, 2);
     catch(Object o)
-	    x++;
+        x++;
     finally
-	    x--;
+        x--;
 
     Object o;
     synchronized (o)
@@ -244,6 +268,7 @@ class Test
 
     pure nothrow @safe @nogc unittest {}
     pure nothrow @safe @nogc invariant {}
+    pure nothrow @safe @nogc invariant (true);
 
     pure nothrow @safe @nogc new (size_t sz) { return null; }
     pure nothrow @safe @nogc delete (void* p) { }
@@ -518,4 +543,41 @@ struct Foo3A(T)
 {
     @disable this(this);
     @disable this();
+}
+
+// return ref, return scope, return ref scope
+ref int foo(return ref int a) @safe
+{
+    return a;
+}
+
+int* foo(return scope int* a) @safe
+{
+    return a;
+}
+
+ref int* foo(scope return ref int* a) @safe
+{
+    return a;
+}
+
+struct SafeS
+{
+@safe:
+    ref SafeS foo() return
+    {
+        return this;
+    }
+
+    SafeS foo2() return scope
+    {
+        return this;
+    }
+
+    ref SafeS foo3() return scope
+    {
+        return this;
+    }
+
+    int* p;
 }

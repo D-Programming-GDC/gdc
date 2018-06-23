@@ -1,5 +1,5 @@
 // PERMUTE_ARGS:
-// REQUIRED_ARGS: -o- -X -Xf${RESULTS_DIR}/compilable/json.out
+// REQUIRED_ARGS: -dip1000 -o- -X -Xf${RESULTS_DIR}/compilable/json.out
 // POST_SCRIPT: compilable/extra-files/json-postscript.sh
 // EXTRA_SOURCES: imports/jsonimport1.d imports/jsonimport2.d imports/jsonimport3.d imports/jsonimport4.d
 
@@ -30,21 +30,38 @@ class Bar2 : Bar!1, Baz!(int, 2, null) {
 }
 
 class Bar3 : Bar2 {
-	private int val;
+    private int val;
     this(int i) { val = i; }
 
     protected override Foo!int baz() { return Foo!int(val); }
 }
 
 struct Foo2 {
-	Bar2 bar2;
-	union U {
-		struct {
-			short s;
-			int i;
-		}
-		Object o;
-	}
+    Bar2 bar2;
+    union U {
+        struct {
+            short s;
+            int i;
+        }
+        Object o;
+    }
+}
+
+struct Foo3(bool b) {
+    version(D_Ddoc) {
+        /// Doc 1
+        void method1();
+    }
+    static if (b) {
+        /// Doc 2
+        void method2();
+    } else {
+        /// Doc 3
+        void method3();
+    }
+
+    /// Doc 4
+    void method4();
 }
 
 /++
@@ -52,26 +69,26 @@ struct Foo2 {
  +/
 @trusted myInt bar(ref uint blah, Bar2 foo = new Bar3(7)) // bug 4477
 {
-	return -1;
+    return -1;
 }
 
 @property int outer() nothrow
 in {
-	assert(true);
+    assert(true);
 }
 out(result) {
-	assert(result == 18);
+    assert(result == 18);
 }
 body {
-	int x = 8;
-	int inner(void* v) nothrow
-	{
-		int y = 2;
-		assert(true);
-		return x + y;
-	}
-	int z = inner(null);
-	return x + z;
+    int x = 8;
+    int inner(void* v) nothrow
+    {
+        int y = 2;
+        assert(true);
+        return x + y;
+    }
+    int z = inner(null);
+    return x + z;
 }
 
 /** Issue 9484 - selective and renamed imports */
@@ -111,3 +128,77 @@ enum Numbers
 }
 
 template IncludeConstraint(T) if (T == string) {}
+
+static foreach(enum i; 0..3)
+{
+    mixin("int a" ~ i.stringof ~ " = 1;");
+}
+
+alias Seq(T...) = T;
+
+static foreach(int i, alias a; Seq!(a0, a1, a2))
+{
+	mixin("alias b" ~ i.stringof ~ " = a;");
+}
+
+// return ref, return scope, return ref scope
+ref int foo(return ref int a) @safe
+{
+	return a;
+}
+
+int* foo(return scope int* a) @safe
+{
+	return a;
+}
+
+ref int* foo(scope return ref int* a) @safe
+{
+	return a;
+}
+
+struct SafeS
+{
+@safe:
+    ref SafeS foo() return
+    {
+        return this;
+    }
+
+    SafeS foo2() return scope
+    {
+        return this;
+    }
+
+    ref SafeS foo3() return scope
+    {
+        return this;
+    }
+
+	int* p;
+}
+
+extern int vlinkageDefault;
+extern(D) int vlinkageD;
+extern(C) int vlinakgeC;
+extern(C++) __gshared int vlinkageCpp;
+extern(Windows) int vlinkageWindows;
+extern(Pascal) int vlinkagePascal;
+extern(Objective-C) int vlinkageObjc;
+
+extern int flinkageDefault();
+extern(D) int flinkageD();
+extern(C) int linakgeC();
+extern(C++) int flinkageCpp();
+extern(Windows) int flinkageWindows();
+extern(Pascal) int flinkagePascal();
+extern(Objective-C) int flinkageObjc();
+
+mixin template test18211(int n)
+{
+    static foreach (i; 0 .. n>10 ? 10 : n)
+    {
+        mixin("enum x" ~ cast(char)('0' + i));
+    }
+    static if (true) {}
+}
