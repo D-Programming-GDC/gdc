@@ -14,22 +14,15 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-load_lib libphobos.exp
 load_lib libphobos-dg.exp
 
-global shouldfail
 set dg-output-text [list]
-
-# If a testcase doesn't have special options, use these.
-if ![info exists DEFAULT_DFLAGS] then {
-    set DEFAULT_DFLAGS "-g"
-}
 
 # Arguments to pass to the test program, expected output, and return code.
 set cycle_test_list [list \
     { ignore ""  0 } \
     { abort "object.Error@.*: Cyclic dependency between module mod. and mod." 1 } \
-    { print "Cyclic dependency between module mod3 and mod1" 0 } \
+    { print "Cyclic dependency between module mod. and mod." 0 } \
     { deprecate "Deprecation 16211 warning:" 0 } \
 ]
 
@@ -48,9 +41,7 @@ foreach cycle_test $cycle_test_list {
     set expected_fail [lindex $cycle_test 2]
 
     foreach test $tests {
-        if $expected_fail {
-            set shouldfail 1
-        }
+        set shouldfail $expected_fail
         dg-test $test "" $DEFAULT_DFLAGS
     }
 

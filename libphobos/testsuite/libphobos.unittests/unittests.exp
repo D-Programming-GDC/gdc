@@ -14,7 +14,10 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-load_lib libphobos.exp
+# Immediately exit if we can't run target executables.
+if { ![isnative] } {
+    return
+}
 
 proc unittest_list_modules { prog } {
     # Running the test runner without arguments prints a list of all
