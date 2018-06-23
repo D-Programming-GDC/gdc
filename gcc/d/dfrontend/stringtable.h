@@ -54,12 +54,6 @@ public:
     StringValue *insert(const char *s, size_t len, void *ptrvalue);
     StringValue *update(const char *s, d_size_t len);
     int apply(int (*fp)(StringValue *));
-
-private:
-    uint32_t allocValue(const char *p, size_t length, void *ptrvalue);
-    StringValue *getValue(uint32_t validx);
-    size_t findSlot(hash_t hash, const char *s, size_t len);
-    void grow();
 };
 
 #endif

@@ -23,8 +23,6 @@
 class Nspace : public ScopeDsymbol
 {
   public:
-    Nspace(Loc loc, Identifier *ident, Dsymbols *members);
-
     Dsymbol *syntaxCopy(Dsymbol *s);
     void addMember(Scope *sc, ScopeDsymbol *sds);
     void setScope(Scope *sc);

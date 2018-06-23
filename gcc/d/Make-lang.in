@@ -48,28 +48,44 @@ gdc-cross$(exeext): gdc$(exeext)
 # Filter out pedantic and virtual overload warnings.
 d-warn = $(filter-out -pedantic -Woverloaded-virtual, $(STRICT_WARN))
 
-# Also filter out warnings for missing format attributes in the D Frontend.
-DMD_WARN_CXXFLAGS = $(filter-out -Wmissing-format-attribute, $(WARN_CXXFLAGS))
-DMD_COMPILE = $(subst $(WARN_CXXFLAGS), $(DMD_WARN_CXXFLAGS), $(COMPILE))
-DMDGEN_COMPILE = $(subst $(COMPILER), $(COMPILER_FOR_BUILD), $(DMD_COMPILE))
+# D compiler and flags for building the front-end.
+ALL_DFLAGS = $(DFLAGS-$@) $(GDCFLAGS) -fversion=IN_GCC $(PICFLAG) \
+	$(COVERAGE_FLAGS) -Wall
+DCOMPILE.base = $(GDC) $(NO_PIE_CFLAGS) -c $(ALL_DFLAGS) -o $@
+DCOMPILE = $(DCOMPILE.base) -MT $@ -MMD -MP -MF $(@D)/$(DEPDIR)/$(*F).TPo
+DPOSTCOMPILE = @mv $(@D)/$(DEPDIR)/$(*F).TPo $(@D)/$(DEPDIR)/$(*F).Po
+DLINKER = $(GDC) $(NO_PIE_FLAG) -lstdc++
+
+# Like LINKER, but use a mutex for serializing front end links.
+ifeq (@DO_LINK_MUTEX@,true)
+DLLINKER = $(SHELL) $(srcdir)/lock-and-run.sh linkfe.lck $(DLINKER)
+else
+DLLINKER = $(DLINKER)
+endif
 
 # D Frontend object files.
 D_FRONTEND_OBJS = \
 	d/aav.o \
 	d/access.o \
+	d/aggregate.o \
 	d/aliasthis.o \
 	d/apply.o \
 	d/argtypes.o \
+	d/array.o \
 	d/arrayop.o \
+	d/arraytypes.o \
 	d/attrib.o \
+	d/astcodegen.o \
 	d/blockexit.o \
+	d/builtin.o \
 	d/canthrow.o \
-	d/checkedint.o \
 	d/clone.o \
+	d/complex.o \
 	d/cond.o \
 	d/constfold.o \
 	d/cppmangle.o \
 	d/ctfeexpr.o \
+	d/ctfloat.o \
 	d/dcast.o \
 	d/dclass.o \
 	d/declaration.o \
@@ -87,17 +103,24 @@ D_FRONTEND_OBJS = \
 	d/dtemplate.o \
 	d/dversion.o \
 	d/entity.o \
+	d/errors.o \
 	d/escape.o \
 	d/expression.o \
 	d/expressionsem.o \
 	d/file.o \
 	d/filename.o \
 	d/func.o \
+	d/globals.o \
+	d/gluelayer.o \
+	d/hash.o \
 	d/hdrgen.o \
+	d/id.o \
 	d/identifier.o \
+	d/impcnvtab.o \
 	d/imphint.o \
 	d/init.o \
 	d/initsem.o \
+	d/inline.o \
 	d/intrange.o \
 	d/json.o \
 	d/lexer.o \
@@ -116,20 +139,19 @@ D_FRONTEND_OBJS = \
 	d/sideeffect.o \
 	d/speller.o \
 	d/statement.o \
+	d/statement_rewrite_walker.o \
 	d/statementsem.o \
 	d/staticassert.o \
 	d/staticcond.o \
 	d/stringtable.o \
+	d/target.o \
 	d/tokens.o \
 	d/traits.o \
 	d/typesem.o \
-	d/unittests.o \
+	d/typinf.o \
 	d/utf.o \
-	d/utils.o
-
-# D Frontend generated files.
-D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
-D_GENERATED_OBJS = d/id.o d/impcnvtab.o
+	d/utils.o \
+	d/visitor.o
 
 # Language-specific object files for D.
 D_OBJS = \
@@ -139,12 +161,12 @@ D_OBJS = \
 	d/intrinsics.o d/modules.o d/runtime.o d/toir.o d/typeinfo.o d/types.o
 
 # All language-specific object files for D.
-D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_GENERATED_OBJS) $(D_OBJS) $(D_TARGET_OBJS)
+D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_OBJS) $(D_TARGET_OBJS)
 
 d_OBJS = $(D_ALL_OBJS) d/d-spec.o
 
 cc1d$(exeext): $(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBDEPS)
-	+$(LLINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+	+$(DLLINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 		$(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBS) $(BACKENDLIBS)
 
 # Documentation.
@@ -274,7 +296,6 @@ d.uninstall:
 d.mostlyclean:
 	-rm -f d/*$(objext)
 	-rm -f d/*$(coverageexts)
-	-rm -f $(D_GENERATED_SRCS) verstr.h
 	-rm -f d/gdc$(exeext) gdc-cross$(exeext) d/cc1d$(exeext)
 d.clean:
 d.distclean:
@@ -297,36 +318,13 @@ d.stagefeedback: stagefeedback-start
 	-mv d/*$(objext) stagefeedback/d
 
 # Include the dfrontend and build directories for headers.
-D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
-
-CFLAGS-d/id.o += $(D_INCLUDES)
-CFLAGS-d/impcnvtab.o += $(D_INCLUDES)
+D_INCLUDES = -I$(srcdir)/d -J$(srcdir)/d/ddmd/ddoc
 
 # Override build rules for D frontend.
-d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS) d/verstr.h
-	$(DMD_COMPILE) $(D_INCLUDES) $<
-	$(POSTCOMPILE)
+d/%.o: d/ddmd/%.d
+	$(DCOMPILE) $(D_INCLUDES) $<
+	$(DPOSTCOMPILE)
 
-# Generated programs.
-d/idgen: d/idgen.dmdgen.o
-	+$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
-
-d/impcvgen: d/impcnvgen.dmdgen.o
-	+$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
-
-# Generated sources.
-d/id.c: d/idgen
-	cd d && ./idgen
-
-# idgen also generates id.h; just verify it exists.
-d/id.h: d/id.c
-
-d/impcnvtab.c: d/impcvgen
-	cd d && ./impcvgen
-
-d/verstr.h: d/VERSION
-	cat $^ > $@
-
-d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
-	$(DMDGEN_COMPILE) $(D_INCLUDES) $<
-	$(POSTCOMPILE)
+d/%.o: d/ddmd/root/%.d
+	$(DCOMPILE) $(D_INCLUDES) $<
+	$(DPOSTCOMPILE)

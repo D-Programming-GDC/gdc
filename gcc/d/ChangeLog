@@ -1,3 +1,37 @@
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Makefile.in (d.mostlyclean): Remove cleanup of verstr.h.
+
+2018-06-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Makefile.in (DMD_WARN_CXXFLAGS, DMD_COMPILE)
+	(DMDGEN_COMPILE): Remove variables.
+	(ALL_DFLAGS, DCOMPILE.base, DCOMPILE, DPOSTCOMPILE, DLINKER)
+	(DLLINKER): New variables.
+	(D_FRONTEND_OBJS): Add new frontend objects.
+	(D_GENERATED_SRCS, D_GENERATED_OBJS): Remove variables.
+	(D_ALL_OBJS): Remove D_GENERATED_OBJS.
+	(cc1d): Use DLLINKER command to produce compiler.
+	(d.mostlyclean): Remove generated sources.
+	(CFLAGS-d/id.o, CFLAGS-d/impcnvtab.o): Remove recipes.
+	(d/%.o): Use DCOMPILE and DPOSTCOMPILE to build frontend.
+	(d/idgen, d/impcvgen, d/id.c, d/id.h, d/impcnvtab.c)
+	(d/verstr.h): Remove recipes.
+	* config-lang.in (boot_language): New variable.
+	* d-frontend.cc (inlineCopy): Remove function.
+	(global): Remove variable.
+	* d-diagnostics.cc (error, errorSupplemental): Remove functions.
+	(warning, warningSupplemental): Likewise.
+	(deprecation, deprecationSupplemental): Likewise.
+	* d-lang.cc (d_init_options): Initialize D runtime.
+	* d-longdouble.cc (CTFloat::zero, CTFloat::one, CTFloat::minusone)
+	(CTFloat::half): Remove variables.
+	* d-target.cc (Target::ptrsize, Target::c_longsize, Target::realsize)
+	(Target::realpad, Target::realalignsize, Target::reverseCppOverloads)
+	(Target::cppExceptions, Target::classinfosize)
+	(Target::maxStaticDataSize): Remove variables.
+	* verstr.h: New file.
+
 2018-05-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(StringExp)): Copy string literal from
