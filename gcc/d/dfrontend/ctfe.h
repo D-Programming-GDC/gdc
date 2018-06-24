@@ -43,7 +43,6 @@ class ClassReferenceExp : public Expression
 {
 public:
     StructLiteralExp *value;
-    ClassReferenceExp(Loc loc, StructLiteralExp *lit, Type *type);
     ClassDeclaration *originalClass();
 
     /// Return index of the field, or -1 if not found
@@ -73,7 +72,6 @@ class VoidInitExp : public Expression
 public:
     VarDeclaration *var;
 
-    VoidInitExp(VarDeclaration *var, Type *type);
     const char *toChars();
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -88,7 +86,6 @@ class ThrownExceptionExp : public Expression
 {
 public:
     ClassReferenceExp *thrown; // the thing being tossed
-    ThrownExceptionExp(Loc loc, ClassReferenceExp *victim);
     const char *toChars();
     /// Generate an error message when this exception is not caught
     void generateUncaughtError();

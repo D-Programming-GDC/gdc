@@ -40,17 +40,6 @@ along with GCC; see the file COPYING3.  If not see
 /* Implements the Target interface defined by the front end.
    Used for retrieving target-specific information.  */
 
-/* Type size information used by frontend.  */
-int Target::ptrsize;
-int Target::c_longsize;
-int Target::realsize;
-int Target::realpad;
-int Target::realalignsize;
-bool Target::reverseCppOverloads;
-bool Target::cppExceptions;
-int Target::classinfosize;
-unsigned long long Target::maxStaticDataSize;
-
 /* Floating point constants for for .max, .min, and other properties.  */
 template <typename T> real_t Target::FPTypeProperties<T>::max;
 template <typename T> real_t Target::FPTypeProperties<T>::min_normal;

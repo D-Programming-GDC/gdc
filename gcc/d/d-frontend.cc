@@ -38,8 +38,6 @@ along with GCC; see the file COPYING3.  If not see
 /* Implements the Global interface defined by the frontend.
    Used for managing the state of the current compilation.  */
 
-Global global;
-
 void
 Global::_init (void)
 {
@@ -531,12 +529,4 @@ getTypeInfoType (Type *type, Scope *sc)
   gcc_assert (type->ty != Terror);
   create_typeinfo (type, sc ? sc->_module->importedFrom : NULL);
   return type->vtinfo->type;
-}
-
-/* Return an inlined copy of a default argument for a function parameter.  */
-
-Expression *
-inlineCopy (Expression *e, Scope *)
-{
-  return e->copy ();
 }

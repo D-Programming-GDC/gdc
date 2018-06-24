@@ -47,7 +47,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-frontend.h"
-#include "id.h"
 
 
 /* Array of D frontend type/decl nodes.  */
@@ -257,6 +256,9 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
     }
 }
 
+extern "C" int rt_init();
+extern "C" void gc_disable();
+
 /* Implements the lang_hooks.init_options routine for language D.
    This initializes the global state for the D frontend before calling
    the option handlers.  */
@@ -264,6 +266,10 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 static void
 d_init_options (unsigned int, cl_decoded_option *decoded_options)
 {
+  /* Initialize the D runtime.  */
+  rt_init ();
+  gc_disable ();
+
   /* Set default values.  */
   global._init ();
 

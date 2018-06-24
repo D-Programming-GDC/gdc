@@ -27,8 +27,6 @@ private:
     size_t len;
 
 public:
-    Identifier(const char *string, size_t length, int value);
-    Identifier(const char *string);
     static Identifier* create(const char *string);
     bool equals(RootObject *o);
     int compare(RootObject *o);
@@ -42,7 +40,6 @@ public:
     static Identifier *generateId(const char *prefix);
     static Identifier *generateId(const char *prefix, size_t i);
     static Identifier *idPool(const char *s, size_t len);
-    static Identifier *idPool(const char *s, size_t len, int value);
 
     static inline Identifier *idPool(const char *s)
     {
@@ -52,6 +49,11 @@ public:
     static bool isValidIdentifier(const char *p);
     static Identifier *lookup(const char *s, size_t len);
     static void initTable();
+};
+
+struct Id
+{
+  static void initialize();
 };
 
 #endif /* DMD_IDENTIFIER_H */

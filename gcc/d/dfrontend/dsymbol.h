@@ -108,11 +108,7 @@ struct Prot
     PROTKIND kind;
     Package *pkg;
 
-    Prot();
-    Prot(PROTKIND kind);
-
     bool isMoreRestrictiveThan(const Prot other) const;
-    bool operator==(const Prot& other) const;
     bool isSubsetOf(const Prot& other) const;
 };
 
@@ -172,8 +168,6 @@ public:
     UserAttributeDeclaration *userAttribDecl;   // user defined attributes
     UnitTestDeclaration *ddocUnittest; // !=NULL means there's a ddoc unittest associated with this symbol (only use this with ddoc)
 
-    Dsymbol();
-    Dsymbol(Identifier *);
     static Dsymbol *create(Identifier *);
     const char *toChars();
     virtual const char *toPrettyCharsHelper(); // helper to print fully qualified (template) arguments
@@ -308,8 +302,6 @@ private:
     BitArray accessiblePackages, privateAccessiblePackages;
 
 public:
-    ScopeDsymbol();
-    ScopeDsymbol(Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Dsymbol *search(Loc loc, Identifier *ident, int flags = SearchLocalsOnly);
     OverloadSet *mergeOverloadSet(Identifier *ident, OverloadSet *os, Dsymbol *s);
@@ -339,7 +331,6 @@ class WithScopeSymbol : public ScopeDsymbol
 public:
     WithStatement *withstate;
 
-    WithScopeSymbol(WithStatement *withstate);
     Dsymbol *search(Loc loc, Identifier *ident, int flags = SearchLocalsOnly);
 
     WithScopeSymbol *isWithScopeSymbol() { return this; }
@@ -356,9 +347,6 @@ public:
     TupleDeclaration *td;       // for tuples of objects
     Scope *sc;
 
-    ArrayScopeSymbol(Scope *sc, Expression *e);
-    ArrayScopeSymbol(Scope *sc, TypeTuple *t);
-    ArrayScopeSymbol(Scope *sc, TupleDeclaration *td);
     Dsymbol *search(Loc loc, Identifier *ident, int flags = IgnoreNone);
 
     ArrayScopeSymbol *isArrayScopeSymbol() { return this; }
@@ -372,7 +360,6 @@ class OverloadSet : public Dsymbol
 public:
     Dsymbols a;         // array of Dsymbols
 
-    OverloadSet(Identifier *ident, OverloadSet *os = NULL);
     void push(Dsymbol *s);
     OverloadSet *isOverloadSet() { return this; }
     const char *kind();
@@ -400,8 +387,6 @@ class DsymbolTable : public RootObject
 {
 public:
     AA *tab;
-
-    DsymbolTable();
 
     // Look up Identifier. Return Dsymbol if found, NULL if not.
     Dsymbol *lookup(Identifier const * const ident);
