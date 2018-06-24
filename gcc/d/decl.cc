@@ -57,7 +57,7 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Return identifier for the external mangled name of DECL.  */
 
-static const char *
+const char *
 mangle_decl (Dsymbol *decl)
 {
   if (decl->isFuncDeclaration ())

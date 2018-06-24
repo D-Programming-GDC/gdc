@@ -3,6 +3,16 @@
 	* d-spec.c: Include opt-suggestions.h containing option_proposer used by
 	gcc.h.
 
+2018-06-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (lang_identifier): Add daggregate field.
+	(IDENTIFIER_DAGGREGATE): New macro.
+	(mangle_decl): Declare.
+	* decl.cc (mangle_decl): Remove static linkage.
+	* types.cc (TypeVisitor::visit(TypeStruct)): Handle duplicate
+	declarations of type symbol.
+	(TypeVisitor::visit(TypeClass)): Likewise.
+
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* verstr.h: Update to 2.081.0-beta.2

@@ -852,11 +852,26 @@ public:
 
   void visit (TypeStruct *t)
   {
+    /* Merge types in the backend if the frontend did not itself do so.  */
+    tree deco = get_identifier (mangle_decl (t->sym));
+    if (IDENTIFIER_DAGGREGATE (deco))
+      {
+	AggregateDeclaration *ad = IDENTIFIER_DAGGREGATE (deco);
+	gcc_assert (ad->isStructDeclaration ());
+
+	/* Non-templated variables shouldn't be defined twice.  */
+	if (!t->sym->isInstantiated ())
+	  ScopeDsymbol::multiplyDefined (t->sym->loc, t->sym, ad);
+
+	t->ctype = build_ctype (ad->type);
+	return;
+      }
+
     /* Need to set this right away in case of self-references.  */
     t->ctype = make_node (t->sym->isUnionDeclaration ()
 			  ? UNION_TYPE : RECORD_TYPE);
     d_keep (t->ctype);
-
+    IDENTIFIER_DAGGREGATE (deco) = t->sym;
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
 
     if (t->sym->members)
@@ -898,11 +913,27 @@ public:
 
   void visit (TypeClass *t)
   {
+    /* Merge types in the backend if the frontend did not itself do so.  */
+    tree deco = get_identifier (mangle_decl (t->sym));
+    if (IDENTIFIER_DAGGREGATE (deco))
+      {
+	AggregateDeclaration *ad = IDENTIFIER_DAGGREGATE (deco);
+	gcc_assert (ad->isClassDeclaration ());
+
+	/* Non-templated variables shouldn't be defined twice.  */
+	if (!t->sym->isInstantiated ())
+	  ScopeDsymbol::multiplyDefined (t->sym->loc, t->sym, ad);
+
+	t->ctype = build_ctype (ad->type);
+	return;
+      }
+
     /* Need to set ctype right away in case of self-references to
        the type during this call.  */
     tree basetype = make_node (RECORD_TYPE);
     t->ctype = build_pointer_type (basetype);
     d_keep (t->ctype);
+    IDENTIFIER_DAGGREGATE (deco) = t->sym;
 
     /* Note that lang_specific data is assigned to both the reference
        and the underlying record type.  */
