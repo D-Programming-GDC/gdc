@@ -130,7 +130,6 @@ public:
     int inuse;                  // used to detect cycles
     const char *mangleOverride;      // overridden symbol with pragma(mangle, "...")
 
-    Declaration(Identifier *id);
     void semantic(Scope *sc);
     const char *kind();
     d_uns64 size(Loc loc);
@@ -180,7 +179,6 @@ public:
 
     TypeTuple *tupletype;       // !=NULL if this is a type tuple
 
-    TupleDeclaration(Loc loc, Identifier *ident, Objects *objects);
     Dsymbol *syntaxCopy(Dsymbol *);
     const char *kind();
     Type *getType();
@@ -200,8 +198,6 @@ public:
     Dsymbol *overnext;          // next in overload list
     Dsymbol *_import;           // !=NULL if unresolved internal alias for selective import
 
-    AliasDeclaration(Loc loc, Identifier *ident, Type *type);
-    AliasDeclaration(Loc loc, Identifier *ident, Dsymbol *s);
     static AliasDeclaration *create(Loc loc, Identifier *id, Type *type);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
@@ -226,7 +222,6 @@ public:
     Dsymbol *aliassym;
     bool hasOverloads;
 
-    OverDeclaration(Identifier *ident, Dsymbol *s, bool hasOverloads = true);
     const char *kind();
     void semantic(Scope *sc);
     bool equals(RootObject *o);
@@ -269,7 +264,6 @@ public:
     Expression *edtor;          // if !=NULL, does the destruction of the variable
     IntRange *range;            // if !NULL, the variable is known to be within the range
 
-    VarDeclaration(Loc loc, Type *t, Identifier *id, Initializer *init);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
@@ -307,8 +301,6 @@ class SymbolDeclaration : public Declaration
 public:
     StructDeclaration *dsym;
 
-    SymbolDeclaration(Loc loc, StructDeclaration *dsym);
-
     // Eliminate need for dynamic_cast
     SymbolDeclaration *isSymbolDeclaration() { return (SymbolDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -319,7 +311,6 @@ class TypeInfoDeclaration : public VarDeclaration
 public:
     Type *tinfo;
 
-    TypeInfoDeclaration(Type *tinfo);
     static TypeInfoDeclaration *create(Type *tinfo);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
@@ -332,7 +323,6 @@ public:
 class TypeInfoStructDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoStructDeclaration(Type *tinfo);
     static TypeInfoStructDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -341,7 +331,6 @@ public:
 class TypeInfoClassDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoClassDeclaration(Type *tinfo);
     static TypeInfoClassDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -350,7 +339,6 @@ public:
 class TypeInfoInterfaceDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoInterfaceDeclaration(Type *tinfo);
     static TypeInfoInterfaceDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -359,7 +347,6 @@ public:
 class TypeInfoPointerDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoPointerDeclaration(Type *tinfo);
     static TypeInfoPointerDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -368,7 +355,6 @@ public:
 class TypeInfoArrayDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoArrayDeclaration(Type *tinfo);
     static TypeInfoArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -377,7 +363,6 @@ public:
 class TypeInfoStaticArrayDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoStaticArrayDeclaration(Type *tinfo);
     static TypeInfoStaticArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -386,7 +371,6 @@ public:
 class TypeInfoAssociativeArrayDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoAssociativeArrayDeclaration(Type *tinfo);
     static TypeInfoAssociativeArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -395,7 +379,6 @@ public:
 class TypeInfoEnumDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoEnumDeclaration(Type *tinfo);
     static TypeInfoEnumDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -404,7 +387,6 @@ public:
 class TypeInfoFunctionDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoFunctionDeclaration(Type *tinfo);
     static TypeInfoFunctionDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -413,7 +395,6 @@ public:
 class TypeInfoDelegateDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoDelegateDeclaration(Type *tinfo);
     static TypeInfoDelegateDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -422,7 +403,6 @@ public:
 class TypeInfoTupleDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoTupleDeclaration(Type *tinfo);
     static TypeInfoTupleDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -431,7 +411,6 @@ public:
 class TypeInfoConstDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoConstDeclaration(Type *tinfo);
     static TypeInfoConstDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -440,7 +419,6 @@ public:
 class TypeInfoInvariantDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoInvariantDeclaration(Type *tinfo);
     static TypeInfoInvariantDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -449,7 +427,6 @@ public:
 class TypeInfoSharedDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoSharedDeclaration(Type *tinfo);
     static TypeInfoSharedDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -458,7 +435,6 @@ public:
 class TypeInfoWildDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoWildDeclaration(Type *tinfo);
     static TypeInfoWildDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -467,7 +443,6 @@ public:
 class TypeInfoVectorDeclaration : public TypeInfoDeclaration
 {
 public:
-    TypeInfoVectorDeclaration(Type *tinfo);
     static TypeInfoVectorDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
@@ -478,7 +453,6 @@ public:
 class ThisDeclaration : public VarDeclaration
 {
 public:
-    ThisDeclaration(Loc loc, Type *t);
     Dsymbol *syntaxCopy(Dsymbol *);
     ThisDeclaration *isThisDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -602,7 +576,6 @@ public:
 
     unsigned flags;                     // FUNCFLAGxxxxx
 
-    FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageClass storage_class, Type *type);
     static FuncDeclaration *create(Loc loc, Loc endloc, Identifier *id, StorageClass storage_class, Type *type);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
@@ -692,8 +665,6 @@ public:
     FuncDeclaration *funcalias;
     bool hasOverloads;
 
-    FuncAliasDeclaration(Identifier *ident, FuncDeclaration *funcalias, bool hasOverloads = true);
-
     FuncAliasDeclaration *isFuncAliasDeclaration() { return this; }
     const char *kind();
 
@@ -710,8 +681,6 @@ public:
     // backend
     bool deferToObj;
 
-    FuncLiteralDeclaration(Loc loc, Loc endloc, Type *type, TOK tok,
-        ForeachStatement *fes, Identifier *id = NULL);
     Dsymbol *syntaxCopy(Dsymbol *);
     bool isNested();
     AggregateDeclaration *isThis();
@@ -730,7 +699,6 @@ public:
 class CtorDeclaration : public FuncDeclaration
 {
 public:
-    CtorDeclaration(Loc loc, Loc endloc, StorageClass stc, Type *type);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     const char *kind();
@@ -746,7 +714,6 @@ public:
 class PostBlitDeclaration : public FuncDeclaration
 {
 public:
-    PostBlitDeclaration(Loc loc, Loc endloc, StorageClass stc, Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     bool isVirtual();
@@ -761,8 +728,6 @@ public:
 class DtorDeclaration : public FuncDeclaration
 {
 public:
-    DtorDeclaration(Loc loc, Loc endloc);
-    DtorDeclaration(Loc loc, Loc endloc, StorageClass stc, Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     const char *kind();
@@ -779,8 +744,6 @@ public:
 class StaticCtorDeclaration : public FuncDeclaration
 {
 public:
-    StaticCtorDeclaration(Loc loc, Loc endloc, StorageClass stc);
-    StaticCtorDeclaration(Loc loc, Loc endloc, const char *name, StorageClass stc);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     AggregateDeclaration *isThis();
@@ -796,7 +759,6 @@ public:
 class SharedStaticCtorDeclaration : public StaticCtorDeclaration
 {
 public:
-    SharedStaticCtorDeclaration(Loc loc, Loc endloc, StorageClass stc);
     Dsymbol *syntaxCopy(Dsymbol *);
 
     SharedStaticCtorDeclaration *isSharedStaticCtorDeclaration() { return this; }
@@ -808,8 +770,6 @@ class StaticDtorDeclaration : public FuncDeclaration
 public:
     VarDeclaration *vgate;      // 'gate' variable
 
-    StaticDtorDeclaration(Loc loc, Loc endloc, StorageClass stc);
-    StaticDtorDeclaration(Loc loc, Loc endloc, const char *name, StorageClass stc);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     AggregateDeclaration *isThis();
@@ -825,7 +785,6 @@ public:
 class SharedStaticDtorDeclaration : public StaticDtorDeclaration
 {
 public:
-    SharedStaticDtorDeclaration(Loc loc, Loc endloc, StorageClass stc);
     Dsymbol *syntaxCopy(Dsymbol *);
 
     SharedStaticDtorDeclaration *isSharedStaticDtorDeclaration() { return this; }
@@ -835,7 +794,6 @@ public:
 class InvariantDeclaration : public FuncDeclaration
 {
 public:
-    InvariantDeclaration(Loc loc, Loc endloc, StorageClass stc, Identifier *id = NULL);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     bool isVirtual();
@@ -854,7 +812,6 @@ public:
     // toObjFile() these nested functions after this one
     FuncDeclarations deferredNested;
 
-    UnitTestDeclaration(Loc loc, Loc endloc, StorageClass stc, char *codedoc);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     AggregateDeclaration *isThis();
@@ -872,7 +829,6 @@ public:
     Parameters *parameters;
     int varargs;
 
-    NewDeclaration(Loc loc, Loc endloc, StorageClass stc, Parameters *arguments, int varargs);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     const char *kind();
@@ -890,7 +846,6 @@ class DeleteDeclaration : public FuncDeclaration
 public:
     Parameters *parameters;
 
-    DeleteDeclaration(Loc loc, Loc endloc, StorageClass stc, Parameters *arguments);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     const char *kind();

@@ -1,0 +1,191 @@
+--- a/gcc/Makefile.in
++++ b/gcc/Makefile.in
+@@ -1056,6 +1056,10 @@ SYSLIBS = @GNAT_LIBEXC@
+ GNATBIND = @GNATBIND@
+ GNATMAKE = @GNATMAKE@
+ 
++# Used from d/Make-lang.in
++GDC = @GDC@
++GDCFLAGS = @GDCFLAGS@
++
+ # Libs needed (at present) just for jcf-dump.
+ LDEXP_LIB = @LDEXP_LIB@
+ 
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -802,6 +802,8 @@ EGREP
+ GREP
+ CXXCPP
+ PICFLAG_FOR_TARGET
++GDCFLAGS
++GDC
+ GNATMAKE
+ GNATBIND
+ ac_ct_CXX
+@@ -4999,6 +5001,106 @@ else
+ fi
+ 
+ 
++
++if test -n "$ac_tool_prefix"; then
++  # Extract the first word of "${ac_tool_prefix}gdc", so it can be a program name with args.
++set dummy ${ac_tool_prefix}gdc; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if test "${ac_cv_prog_GDC+set}" = set; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$GDC"; then
++  ac_cv_prog_GDC="$GDC" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++    ac_cv_prog_GDC="${ac_tool_prefix}gdc"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++GDC=$ac_cv_prog_GDC
++if test -n "$GDC"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GDC" >&5
++$as_echo "$GDC" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++
++fi
++if test -z "$ac_cv_prog_GDC"; then
++  ac_ct_GDC=$GDC
++  # Extract the first word of "gdc", so it can be a program name with args.
++set dummy gdc; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if test "${ac_cv_prog_ac_ct_GDC+set}" = set; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$ac_ct_GDC"; then
++  ac_cv_prog_ac_ct_GDC="$ac_ct_GDC" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++    ac_cv_prog_ac_ct_GDC="gdc"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++ac_ct_GDC=$ac_cv_prog_ac_ct_GDC
++if test -n "$ac_ct_GDC"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_ct_GDC" >&5
++$as_echo "$ac_ct_GDC" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++  if test "x$ac_ct_GDC" = x; then
++    GDC="no"
++  else
++    case $cross_compiling:$ac_tool_warned in
++yes:)
++{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
++$as_echo "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
++ac_tool_warned=yes ;;
++esac
++    GDC=$ac_ct_GDC
++  fi
++else
++  GDC="$ac_cv_prog_GDC"
++fi
++
++if test "x$GDC" != xno; then
++  have_gdc=yes
++else
++  have_gdc=no
++fi
++
++
+ # Do configure tests with the C++ compiler, since that's what we build with.
+ ac_ext=cpp
+ ac_cpp='$CXXCPP $CPPFLAGS'
+@@ -5017,6 +5119,7 @@ esac
+ 
+ 
+ 
++
+ # Determine PICFLAG for target gnatlib.
+ 
+ 
+@@ -18433,7 +18536,7 @@ else
+   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
+   lt_status=$lt_dlunknown
+   cat > conftest.$ac_ext <<_LT_EOF
+-#line 18436 "configure"
++#line 18539 "configure"
+ #include "confdefs.h"
+ 
+ #if HAVE_DLFCN_H
+@@ -18539,7 +18642,7 @@ else
+   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
+   lt_status=$lt_dlunknown
+   cat > conftest.$ac_ext <<_LT_EOF
+-#line 18542 "configure"
++#line 18645 "configure"
+ #include "confdefs.h"
+ 
+ #if HAVE_DLFCN_H
+@@ -25217,6 +25320,7 @@ $as_echo "#define HAVE_AS_SPARC5_VIS4 1"
+ 
+ fi
+ 
++
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for SPARC6 instructions" >&5
+ $as_echo_n "checking assembler for SPARC6 instructions... " >&6; }
+ if test "${gcc_cv_as_sparc_sparc6+set}" = set; then :
+@@ -25253,6 +25357,7 @@ $as_echo "#define HAVE_AS_SPARC6 1" >>co
+ 
+ fi
+ 
++
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for LEON instructions" >&5
+ $as_echo_n "checking assembler for LEON instructions... " >&6; }
+ if test "${gcc_cv_as_sparc_leon+set}" = set; then :
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -363,6 +363,7 @@ rm -f a.out a.exe b.out
+ AC_PROG_CC
+ AC_PROG_CXX
+ ACX_PROG_GNAT([-I"$srcdir"/ada])
++ACX_PROG_GDC([-I"$srcdir"/d])
+ 
+ # Do configure tests with the C++ compiler, since that's what we build with.
+ AC_LANG(C++)
+@@ -376,6 +377,7 @@ case "$CC" in
+ esac
+ AC_SUBST(CFLAGS)
+ AC_SUBST(CXXFLAGS)
++AC_SUBST(GDCFLAGS)
+ 
+ # Determine PICFLAG for target gnatlib.
+ GCC_PICFLAG_FOR_TARGET
