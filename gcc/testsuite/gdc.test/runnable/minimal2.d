@@ -1,5 +1,6 @@
 // DFLAGS:
-// REQUIRED_ARGS: -defaultlib= runnable/extra-files/minimal/object.d
+// REQUIRED_ARGS: -defaultlib=
+// EXTRA_SOURCES: extra-files/minimal/object.d
 
 // This test ensures that interfaces and classes can be used in a minimal
 // runtime as long as they only contain shared static members.  Non-shared
@@ -29,7 +30,15 @@ void poorMansAssert(bool condition)
 {
     if (!condition)
     {
-        asm {hlt;}
+        version (GNU)
+        {
+            import gcc.builtins;
+            __builtin_trap();
+        }
+        else
+        {
+            asm {hlt;}
+        }
     }
 }
 

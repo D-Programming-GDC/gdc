@@ -13,7 +13,7 @@ shared static this()
 
 void main()
 {
-    import module_with_tests;
+    import module_with_tests = imports.module_with_tests;
     foreach(i, ut; __traits(getUnitTests, module_with_tests)) {
         try
         {

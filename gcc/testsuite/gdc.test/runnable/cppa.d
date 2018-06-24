@@ -1,5 +1,6 @@
 // PERMUTE_ARGS: -g -version=PULL8152
 // EXTRA_CPP_SOURCES: extra-files/cppb.cpp
+// EXTRA_FILES: extra-files/cppb.h
 
 import core.stdc.stdio;
 import core.stdc.stdarg;
