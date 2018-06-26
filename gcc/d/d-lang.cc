@@ -364,7 +364,7 @@ d_init (void)
 
   d_init_builtins ();
 
-  if (flag_exceptions)
+  if (global.params.useExceptions)
     using_eh_for_cleanups ();
 
   if (!supports_one_only ())
@@ -479,8 +479,16 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ddocfiles.push (arg);
       break;
 
+    case OPT_fdruntime:
+      global.params.betterC = !value;
+      break;
+
     case OPT_fdump_d_original:
       global.params.vcg_ast = value;
+      break;
+
+    case OPT_fexceptions:
+      global.params.useExceptions = value;
       break;
 
     case OPT_fignore_unknown_pragmas:
@@ -498,7 +506,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fmoduleinfo:
-      global.params.betterC = !value;
+      global.params.useModuleInfo = value;
       break;
 
     case OPT_fonly_:
@@ -519,6 +527,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_frelease:
       global.params.release = value;
+      break;
+
+    case OPT_frtti:
+      global.params.useTypeInfo = value;
       break;
 
     case OPT_fswitch_errors:
@@ -740,6 +752,18 @@ d_post_options (const char ** fn)
 
       if (!global_options_set.x_flag_switch_errors)
 	global.params.useSwitchError = false;
+    }
+
+  if (global.params.betterC)
+    {
+      if (!global_options_set.x_flag_moduleinfo)
+	global.params.useModuleInfo = false;
+
+      if (!global_options_set.x_flag_rtti)
+	global.params.useTypeInfo = false;
+
+      if (!global_options_set.x_flag_exceptions)
+	global.params.useExceptions = false;
     }
 
   /* Error about use of deprecated features.  */

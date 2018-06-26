@@ -307,7 +307,8 @@ public:
       return;
 
     /* Generate TypeInfo.  */
-    create_typeinfo (d->type, NULL);
+    if (have_typeinfo_p (Type::dtypeinfo))
+      create_typeinfo (d->type, NULL);
 
     /* Generate static initialiser.  */
     d->sinit = aggregate_initializer_decl (d);
@@ -338,26 +339,11 @@ public:
       d->xhash->accept (this);
   }
 
-  /* Write out compiler generated TypeInfo, initializer and vtables for the
-     given class declaration, walking over all static members.  */
+  /* Finish semantic analysis of functions in vtbl for class CD.  */
 
-  void visit (ClassDeclaration *d)
+  bool finish_vtable (ClassDeclaration *d)
   {
-    if (d->type->ty == Terror)
-      {
-	d->error ("had semantic errors when compiling");
-	return;
-      }
-
-    if (!d->members)
-      return;
-
-    /* Put out the members.  */
-    for (size_t i = 0; i < d->members->dim; i++)
-      {
-	Dsymbol *member = (*d->members)[i];
-	member->accept (this);
-      }
+    bool has_errors = false;
 
     /* Finish semantic analysis of functions in vtbl[].  */
     for (size_t i = d->vtblOffset (); i < d->vtbl.dim; i++)
@@ -367,7 +353,9 @@ public:
 	if (!fd || (!fd->fbody && d->isAbstract ()))
 	  continue;
 
-	fd->functionSemantic ();
+	/* Ensure function has a return value.  */
+	if (!fd->functionSemantic ())
+	  has_errors = true;
 
 	/* No name hiding to check for.  */
 	if (!d->isFuncHidden (fd) || fd->isFuture ())
@@ -408,10 +396,40 @@ public:
 		    error ("use of %s is hidden by %s",
 			   fd->toPrettyChars (), d->toChars ());
 		  }
+		has_errors = true;
 		break;
 	      }
 	  }
       }
+
+    return !has_errors;
+  }
+
+  /* Write out compiler generated TypeInfo, initializer and vtables for the
+     given class declaration, walking over all static members.  */
+
+  void visit (ClassDeclaration *d)
+  {
+    if (d->type->ty == Terror)
+      {
+	d->error ("had semantic errors when compiling");
+	return;
+      }
+
+    if (!d->members)
+      return;
+
+    /* Put out the members.  */
+    for (size_t i = 0; i < d->members->dim; i++)
+      {
+	Dsymbol *member = (*d->members)[i];
+	member->accept (this);
+      }
+
+    /* If something goes wrong during final semantic pass, don't bother with
+       the rest as we may have incomplete info.  */
+    if (!this->finish_vtable (d))
+      return;
 
     /* Generate C symbols.  */
     d->csym = get_classinfo_decl (d);
@@ -425,7 +443,9 @@ public:
     d_finish_decl (d->sinit);
 
     /* Put out the TypeInfo.  */
-    create_typeinfo (d->type, NULL);
+    if (have_typeinfo_p (Type::dtypeinfo))
+      create_typeinfo (d->type, NULL);
+
     DECL_INITIAL (d->csym) = layout_classinfo (d);
     d_linkonce_linkage (d->csym);
     d_finish_decl (d->csym);
@@ -484,8 +504,11 @@ public:
     d->csym = get_classinfo_decl (d);
 
     /* Put out the TypeInfo.  */
-    create_typeinfo (d->type, NULL);
-    d->type->vtinfo->accept (this);
+    if (have_typeinfo_p (Type::dtypeinfo))
+      {
+	create_typeinfo (d->type, NULL);
+	d->type->vtinfo->accept (this);
+      }
 
     DECL_INITIAL (d->csym) = layout_classinfo (d);
     d_linkonce_linkage (d->csym);
@@ -515,7 +538,8 @@ public:
       return;
 
     /* Generate TypeInfo.  */
-    create_typeinfo (d->type, NULL);
+    if (have_typeinfo_p (Type::dtypeinfo))
+      create_typeinfo (d->type, NULL);
 
     TypeEnum *tc = (TypeEnum *) d->type;
     if (tc->sym->members && !d->type->isZeroInit ())
@@ -1943,6 +1967,110 @@ get_vtable_decl (ClassDeclaration *decl)
   DECL_USER_ALIGN (vtblsym->csym) = true;
 
   return vtblsym->csym;
+}
+
+/* Helper function of build_class_instance.  Find the field inside aggregate
+   TYPE identified by IDENT at field OFFSET.  */
+
+static tree
+find_aggregate_field (tree type, tree ident, tree offset)
+{
+  tree fields = TYPE_FIELDS (type);
+
+  for (tree field = fields; field != NULL_TREE; field = TREE_CHAIN (field))
+    {
+      if (DECL_NAME (field) == NULL_TREE
+	  && RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	  && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	{
+	  /* Search nesting anonymous structs and unions.  */
+	  tree vfield = find_aggregate_field (TREE_TYPE (field),
+					      ident, offset);
+	  if (vfield != NULL_TREE)
+	    return vfield;
+	}
+      else if (DECL_NAME (field) == ident
+	       && (offset == NULL_TREE
+		   || DECL_FIELD_OFFSET (field) == offset))
+	{
+	  /* Found matching field at offset.  */
+	  return field;
+	}
+    }
+
+  return NULL_TREE;
+}
+
+/* Helper function of build_new_class_expr.  Return a constructor that matches
+   the layout of the class expression EXP.  */
+
+static tree
+build_class_instance (ClassReferenceExp *exp)
+{
+  ClassDeclaration *cd = exp->originalClass ();
+  tree type = TREE_TYPE (build_ctype (exp->value->stype));
+  vec<constructor_elt, va_gc> *ve = NULL;
+
+  /* The set base vtable field.  */
+  tree vptr = build_address (get_vtable_decl (cd));
+  CONSTRUCTOR_APPEND_ELT (ve, TYPE_FIELDS (type), vptr);
+
+  /* Go through the inheritance graph from top to bottom.  This will add all
+     values to the constructor out of order, however build_struct_literal
+     will re-order all values before returning the finished literal.  */
+  for (ClassDeclaration *bcd = cd; bcd != NULL; bcd = bcd->baseClass)
+    {
+      /* Anonymous vtable interface fields are layed out before the fields of
+	 each class.  The interface offset is used to determine where to put
+	 the classinfo offset reference.  */
+      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *bc = (*bcd->vtblInterfaces)[i];
+
+	  for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
+	    {
+	      gcc_assert (cd2 != NULL);
+
+	      unsigned csymoffset = base_vtable_offset (cd2, bc);
+	      if (csymoffset != (unsigned) ~0)
+		{
+		  tree csym = build_address (get_classinfo_decl (cd2));
+		  csym = build_offset (csym, size_int (csymoffset));
+
+		  tree field = find_aggregate_field (type, NULL_TREE,
+						     size_int (bc->offset));
+		  gcc_assert (field != NULL_TREE);
+
+		  CONSTRUCTOR_APPEND_ELT (ve, field, csym);
+		  break;
+		}
+	    }
+	}
+
+      /* Generate initial values of all fields owned by current class.
+	 Use both the name and offset to find the right field.  */
+      for (size_t i = 0; i < bcd->fields.dim; i++)
+	{
+	  VarDeclaration *vfield = bcd->fields[i];
+	  int index = exp->findFieldIndexByName (vfield);
+	  gcc_assert (index != -1);
+
+	  Expression *value = (*exp->value->elements)[index];
+	  if (!value)
+	    continue;
+
+	  /* Use find_aggregate_field to get the overridden field decl,
+	     instead of the field associated with the base class.  */
+	  tree field = get_symbol_decl (bcd->fields[i]);
+	  field = find_aggregate_field (type, DECL_NAME (field),
+					DECL_FIELD_OFFSET (field));
+	  gcc_assert (field != NULL_TREE);
+
+	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
+	}
+    }
+
+  return build_struct_literal (type, ve);
 }
 
 /* Get the VAR_DECL of a class instance representing EXPR as static data.

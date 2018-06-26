@@ -1110,7 +1110,7 @@ public:
     InterfaceDeclaration *id = cd->isInterfaceDeclaration ();
     tree arg = build_expr_dtor (s->exp);
 
-    if (!flag_exceptions)
+    if (!global.params.useExceptions)
       {
 	static int warned = 0;
 	if (!warned)

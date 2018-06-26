@@ -438,6 +438,8 @@ d_init_versions (void)
     VersionCondition::addPredefinedGlobalIdent ("assert");
   if (global.params.useArrayBounds == CHECKENABLEoff)
     VersionCondition::addPredefinedGlobalIdent ("D_NoBoundsChecks");
+  if (global.params.betterC)
+    VersionCondition::addPredefinedGlobalIdent ("D_BetterC");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
 

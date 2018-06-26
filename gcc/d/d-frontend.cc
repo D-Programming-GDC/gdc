@@ -19,6 +19,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
+#include "dfrontend/aggregate.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
@@ -453,8 +454,39 @@ genCmain (Scope *sc)
 /* Build and return typeinfo type for TYPE.  */
 
 Type *
-getTypeInfoType (Loc, Type *type, Scope *sc)
+getTypeInfoType (Loc loc, Type *type, Scope *sc)
 {
+  if (!global.params.useTypeInfo)
+    {
+      /* Even when compiling without RTTI we should still be able to evaluate
+	 TypeInfo at compile-time, just not at runtime.  */
+      if (!sc || !(sc->flags & SCOPEctfe))
+	{
+	  static int warned = 0;
+
+	  if (!warned)
+	    {
+	      type->error (loc, "`object.TypeInfo` cannot be used with "
+				"-fno-rtti");
+	      warned = 1;
+	    }
+	}
+    }
+
+  if (Type::dtypeinfo == NULL
+      || (Type::dtypeinfo->storage_class & STCtemp))
+    {
+      /* If TypeInfo has not been declared, warn about each location once.  */
+      static Loc warnloc;
+
+      if (!loc.equals (warnloc))
+	{
+	  type->error (loc, "`object.TypeInfo` could not be found, "
+			    "but is implicitly used");
+	  warnloc = loc;
+	}
+    }
+
   gcc_assert (type->ty != Terror);
   create_typeinfo (type, sc ? sc->_module->importedFrom : NULL);
   return type->vtinfo->type;

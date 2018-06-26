@@ -209,6 +209,10 @@ fdoc-inc=
 D Joined RejectNegative
 -fdoc-inc=<file>	Include a Ddoc macro <file>.
 
+fdruntime
+D
+Assume that standard D runtime libraries and \"D main\" exist.
+
 fdump-d-original
 D
 Display the frontend AST after parsing and semantic passes.
@@ -238,7 +242,7 @@ D Joined RejectNegative
 -fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
 
 fmoduleinfo
-D
+D Var(flag_moduleinfo)
 Generate ModuleInfo struct for output module.
 
 fonly=
@@ -260,6 +264,10 @@ This switch is deprecated; do not use.
 frelease
 D
 Compile release version.
+
+frtti
+D
+; Documented in C
 
 fswitch-errors
 D Var(flag_switch_errors)

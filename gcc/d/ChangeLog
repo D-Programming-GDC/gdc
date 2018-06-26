@@ -3,6 +3,43 @@
 	* d-spec.c: Include opt-suggestions.h containing option_proposer used by
 	gcc.h.
 
+2018-06-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (d_init_versions): Add version D_BetterC.
+	* d-codegen.cc (find_aggregate_field): Move to decl.cc
+	(build_class_instance): Move to decl.cc, make static.
+	* d-frontend.cc (getTypeInfoType): Issue warning when -fno-rtti.
+	* d-lang.cc (d_init): Check for global useExceptions.
+	(d_handle_option): Handle OPT_fdruntime, OPT_fexceptions, OPT_frtti.
+	(d_post_options): Set flags if -fno-druntime was given.
+	* d-tree.h (build_class_instance): Remove declaration.
+	(have_typeinfo_p): Add declaration.
+	(build_typeinfo): Update signature.
+	* decl.cc (DeclVisitor::finish_vtable): New function.
+	(DeclVisitor::visit(StructDeclaration)): Generate typeinfo only if
+	found in library.
+	(DeclVisitor::visit(EnumDeclaration)): Likewise.
+	(DeclVisitor::visit(InterfaceDeclaration)): Likewise.
+	(DeclVisitor::visit(ClassDeclaration)): Likewise.
+	Exit early if semantic error occurred during final semantic.
+	* decl.cc: Update all callers of build_typeinfo.
+	* lang.opt (fdruntime): New option.
+	(fmoduleinfo): Add flag for option.
+	(frtti): New option.
+	* modules.cc (build_module_tree): Check for global useModuleInfo.
+	* toir.cc (IRVisitor::visit(ThrowStatement)): Check for global
+	useExceptions.
+	* typeinfo.cc: Include options.h.
+	(make_frontend_typeinfo): Set members and storage class fields on
+	compiler-generated typeinfo.
+	(have_typeinfo_p): New function.
+	(TypeInfoVisitor::layout_base): Add reference to vtable only if
+	typeinfo found in library.
+	(TypeInfoVisitor::visit): Update all callers of build_typeinfo.
+	(TypeInfoVisitor::visit(TypeInfoClassDeclaration)): Always set RTInfo
+	field, even if null.
+	(build_typeinfo): Add error if -fno-rtti passed on commandline.
+
 2018-06-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* types.cc (TypeVisitor::visit(TypeClass)): Handle get_symbol_decl
