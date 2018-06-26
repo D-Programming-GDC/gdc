@@ -32,11 +32,11 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 #include "toplev.h"
 #include "stor-layout.h"
+#include "config.h"
 
 #include "d-tree.h"
 #include "d-frontend.h"
 #include "d-target.h"
-
 
 /* D returns type information to the user as TypeInfo class objects, and can
    be retrieved for any type using `typeid()'.  We also use type information
@@ -60,90 +60,67 @@ along with GCC; see the file COPYING3.  If not see
    has no declaration.  We however only need the addresses of such incomplete
    TypeInfo objects for static initialization.  */
 
-enum tinfo_kind
-{
-  TK_TYPEINFO_TYPE,		/* object.TypeInfo  */
-  TK_CLASSINFO_TYPE,		/* object.TypeInfo_Class  */
-  TK_INTERFACE_TYPE,		/* object.TypeInfo_Interface  */
-  TK_STRUCT_TYPE,		/* object.TypeInfo_Struct  */
-  TK_POINTER_TYPE,		/* object.TypeInfo_Pointer  */
-  TK_ARRAY_TYPE,		/* object.TypeInfo_Array  */
-  TK_STATICARRAY_TYPE,		/* object.TypeInfo_StaticArray  */
-  TK_ASSOCIATIVEARRAY_TYPE,	/* object.TypeInfo_AssociativeArray  */
-  TK_VECTOR_TYPE,		/* object.TypeInfo_Vector  */
-  TK_ENUMERAL_TYPE,		/* object.TypeInfo_Enum  */
-  TK_FUNCTION_TYPE,		/* object.TypeInfo_Function  */
-  TK_DELEGATE_TYPE,		/* object.TypeInfo_Delegate  */
-  TK_TYPELIST_TYPE,		/* object.TypeInfo_Tuple  */
-  TK_CONST_TYPE,		/* object.TypeInfo_Const  */
-  TK_IMMUTABLE_TYPE,		/* object.TypeInfo_Invariant  */
-  TK_SHARED_TYPE,		/* object.TypeInfo_Shared  */
-  TK_INOUT_TYPE,		/* object.TypeInfo_Inout  */
-  TK_CPPTI_TYPE,		/* object.__cpp_type_info_ptr  */
-  TK_END,
-};
-
 /* An array of all internal TypeInfo derived types we need.
    The TypeInfo and ClassInfo types are created early, the
    remainder are generated as needed.  */
 
-static GTY(()) tree tinfo_types[TK_END];
+static GTY(()) tree tinfo_types[D_TK_END];
 
 /* Return the kind of TypeInfo used to describe TYPE.  */
 
-static tinfo_kind
+static d_tinfo_kind
 get_typeinfo_kind (Type *type)
 {
   /* Check head shared/const modifiers first.  */
   if (type->isShared ())
-    return TK_SHARED_TYPE;
+    return D_TK_SHARED_TYPE;
   else if (type->isConst ())
-    return TK_CONST_TYPE;
+    return D_TK_CONST_TYPE;
   else if (type->isImmutable ())
-    return TK_IMMUTABLE_TYPE;
+    return D_TK_IMMUTABLE_TYPE;
   else if (type->isWild ())
-    return TK_INOUT_TYPE;
+    return D_TK_INOUT_TYPE;
 
   switch (type->ty)
     {
     case Tpointer:
-      return TK_POINTER_TYPE;
+      return D_TK_POINTER_TYPE;
 
     case  Tarray:
-      return TK_ARRAY_TYPE;
+      return D_TK_ARRAY_TYPE;
 
     case Tsarray:
-      return TK_STATICARRAY_TYPE;
+      return D_TK_STATICARRAY_TYPE;
 
     case Taarray:
-      return TK_ASSOCIATIVEARRAY_TYPE;
+      return D_TK_ASSOCIATIVEARRAY_TYPE;
 
     case Tstruct:
-      return TK_STRUCT_TYPE;
+      return D_TK_STRUCT_TYPE;
 
     case Tvector:
-      return TK_VECTOR_TYPE;
+      return D_TK_VECTOR_TYPE;
 
     case Tenum:
-      return TK_ENUMERAL_TYPE;
+      return D_TK_ENUMERAL_TYPE;
 
     case Tfunction:
-      return TK_FUNCTION_TYPE;
+      return D_TK_FUNCTION_TYPE;
 
     case Tdelegate:
-      return TK_DELEGATE_TYPE;
+      return D_TK_DELEGATE_TYPE;
 
     case Ttuple:
-      return TK_TYPELIST_TYPE;
+      return D_TK_TYPELIST_TYPE;
 
     case Tclass:
       if (((TypeClass *) type)->sym->isInterfaceDeclaration ())
-	return TK_INTERFACE_TYPE;
+	return D_TK_INTERFACE_TYPE;
       else
-	return TK_CLASSINFO_TYPE;
+	return D_TK_CLASSINFO_TYPE;
 
     default:
-      return TK_TYPEINFO_TYPE;
+      return D_TK_TYPEINFO_TYPE;
     }
 }
 
@@ -152,7 +129,7 @@ get_typeinfo_kind (Type *type)
    the `object.d' module.  */
 
 static void
-make_internal_typeinfo (tinfo_kind tk, Identifier *ident, ...)
+make_internal_typeinfo (d_tinfo_kind tk, Identifier *ident, ...)
 {
   va_list ap;
 
@@ -167,10 +144,25 @@ make_internal_typeinfo (tinfo_kind tk, Identifier *ident, ...)
   tree field_type = va_arg (ap, tree);
   while (field_type != NULL_TREE)
     {
-      tree field = create_field_decl (field_type, NULL, 1, 1);
-      DECL_CHAIN (field) = fields;
-      fields = field;
-      field_type = va_arg (ap, tree);
+      tree next_field = NULL_TREE;
+      if (TREE_CODE (field_type) == TREE_LIST)
+	{
+	  next_field = TREE_CHAIN (field_type);
+	  field_type = TREE_VALUE (field_type);
+	}
+
+      if (field_type != void_type_node)
+	{
+	  tree field = create_field_decl (field_type, NULL, 1, 1);
+	  DECL_CHAIN (field) = fields;
+	  fields = field;
+	  field_type = TREE_CHAIN (field_type);
+	}
+
+      if (next_field == NULL_TREE)
+	field_type = va_arg (ap, tree);
+      else
+	field_type = next_field;
     }
 
   /* Create the TypeInfo type.  */
@@ -214,15 +206,18 @@ create_tinfo_types (Module *mod)
 {
   /* Build the internal TypeInfo and ClassInfo types.
      See TypeInfoVisitor for documentation of field layout.  */
-  make_internal_typeinfo (TK_TYPEINFO_TYPE, Identifier::idPool ("TypeInfo"),
+  make_internal_typeinfo (D_TK_TYPEINFO_TYPE, Identifier::idPool ("TypeInfo"),
+			  targetdm.d_vaarg_ti_types (D_TK_TYPEINFO_TYPE),
 			  NULL);
 
-  make_internal_typeinfo (TK_CLASSINFO_TYPE,
+  make_internal_typeinfo (D_TK_CLASSINFO_TYPE,
 			  Identifier::idPool ("TypeInfo_Class"),
 			  array_type_node, array_type_node, array_type_node,
 			  array_type_node, ptr_type_node, ptr_type_node,
 			  ptr_type_node, uint_type_node, ptr_type_node,
-			  array_type_node, ptr_type_node, ptr_type_node, NULL);
+			  array_type_node, ptr_type_node, ptr_type_node,
+			  targetdm.d_vaarg_ti_types (D_TK_CLASSINFO_TYPE),
+			  NULL);
 
   /* Create all frontend TypeInfo classes declarations.  We rely on all
      existing, even if only just as stubs.  */
@@ -342,7 +337,7 @@ class TypeInfoVisitor : public Visitor
 
   tree layout_interfaces (ClassDeclaration *cd)
   {
-    size_t offset = int_size_in_bytes (tinfo_types[TK_CLASSINFO_TYPE]);
+    size_t offset = int_size_in_bytes (tinfo_types[D_TK_CLASSINFO_TYPE]);
     tree csym = build_address (get_classinfo_decl (cd));
 
     /* Put out the offset to where vtblInterfaces are written.  */
@@ -421,7 +416,7 @@ class TypeInfoVisitor : public Visitor
     /* First entry is struct Interface reference.  */
     if (id->vtblOffset ())
       {
-	size_t offset = int_size_in_bytes (tinfo_types[TK_CLASSINFO_TYPE]);
+	size_t offset = int_size_in_bytes (tinfo_types[D_TK_CLASSINFO_TYPE]);
 	offset += (index * int_size_in_bytes (vtbl_interface_type_node));
 	tree value = build_offset (build_address (get_classinfo_decl (bcd)),
 				   size_int (offset));
@@ -570,6 +565,13 @@ public:
       }
     else
       this->layout_field (null_array_node);
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of TypeInfo_Pointer is:
@@ -587,6 +589,13 @@ public:
 
     /* TypeInfo for pointer-to type.  */
     this->layout_field (build_typeinfo (ti->next));
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of TypeInfo_Array is:
@@ -604,6 +613,13 @@ public:
 
     /* TypeInfo for array of type.  */
     this->layout_field (build_typeinfo (ti->next));
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of TypeInfo_StaticArray is:
@@ -625,6 +641,14 @@ public:
 
     /* Static array length.  */
     this->layout_field (size_int (ti->dim->toInteger ()));
+
+    /* Add target specific TypeInfo fields */
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of TypeInfo_AssociativeArray is:
@@ -646,6 +670,13 @@ public:
 
     /* TypeInfo for index of type.  */
     this->layout_field (build_typeinfo (ti->index));
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of TypeInfo_Vector is:
@@ -663,6 +694,13 @@ public:
 
     /* TypeInfo for equivalent static array.  */
     this->layout_field (build_typeinfo (ti->basetype));
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of TypeInfo_Function is:
@@ -684,6 +722,13 @@ public:
 
     /* Mangled name of function declaration.  */
     this->layout_string (d->tinfo->deco);
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of TypeInfo_Delegate is:
@@ -705,6 +750,13 @@ public:
 
     /* Mangled name of delegate declaration.  */
     this->layout_string (d->tinfo->deco);
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of ClassInfo/TypeInfo_Class is:
@@ -734,6 +786,13 @@ public:
 
     /* The vtable for ClassInfo.  */
     this->layout_base (Type::typeinfoclass);
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
 
     if (!cd->members)
       return;
@@ -930,6 +989,13 @@ public:
     /* TypeInfo for class inheriting the interface.  */
     tree tidecl = get_typeinfo_decl (ti->sym->vclassinfo);
     this->layout_field (build_address (tidecl));
+
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
   }
 
   /* Layout of TypeInfo_Struct is:
@@ -1038,6 +1104,13 @@ public:
 	this->layout_field (arg2type);
       }
 
+    tree target_field = targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
+
     /* immutable(void)* xgetRTInfo;  */
     if (sd->getRTInfo)
       this->layout_field (build_expr (sd->getRTInfo, true));
@@ -1080,6 +1153,13 @@ public:
     tree ptr = build_address (decl);
     this->layout_field (d_array_value (array_type_node, length, ptr));
 
+    tree target_field = /*targetdm.d_vaarg_ti_values (get_typeinfo_kind(ti), build_ctype (ti));*/ NULL_TREE;
+    while (target_field != NULL_TREE)
+      {
+	this->layout_field(TREE_VALUE(target_field));
+	target_field = TREE_CHAIN (target_field);
+      }
+
     d_pushdecl (decl);
     rest_of_decl_compilation (decl, 1, 0);
   }
@@ -1118,7 +1198,7 @@ layout_classinfo (ClassDeclaration *cd)
 static tree
 layout_classinfo_interfaces (ClassDeclaration *decl)
 {
-  tree type = tinfo_types[TK_CLASSINFO_TYPE];
+  tree type = tinfo_types[D_TK_CLASSINFO_TYPE];
   size_t structsize = int_size_in_bytes (type);
 
   if (decl->vtblInterfaces->dim)
@@ -1167,7 +1247,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 
 	  if (id->vtbl.dim && offset != ~0u)
 	    {
-	      if (type == tinfo_types[TK_CLASSINFO_TYPE])
+	      if (type == tinfo_types[D_TK_CLASSINFO_TYPE])
 		type = copy_aggregate_type (type);
 
 	      tree vtbldomain = build_index_type (size_int (id->vtbl.dim - 1));
@@ -1181,7 +1261,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
     }
 
   /* Update the type size and record mode for the classinfo type.  */
-  if (type != tinfo_types[TK_CLASSINFO_TYPE])
+  if (type != tinfo_types[D_TK_CLASSINFO_TYPE])
     finish_aggregate_type (structsize, TYPE_ALIGN_UNIT (type), type, NULL);
 
   return type;
@@ -1349,13 +1429,15 @@ get_cpp_typeinfo_decl (ClassDeclaration *decl)
   if (decl->cpp_type_info_ptr_sym)
     return decl->cpp_type_info_ptr_sym;
 
-  if (!tinfo_types[TK_CPPTI_TYPE])
-    make_internal_typeinfo (TK_CPPTI_TYPE,
+  if (!tinfo_types[D_TK_CPPTI_TYPE])
+    make_internal_typeinfo (D_TK_CPPTI_TYPE,
 			    Identifier::idPool ("__cpp_type_info_ptr"),
-			    ptr_type_node, NULL);
+			    ptr_type_node,
+			    targetdm.d_vaarg_ti_types (D_TK_CPPTI_TYPE),
+			    NULL);
 
   tree ident = mangle_internal_decl (decl, "_cpp_type_info_ptr", "");
-  tree type = tinfo_types[TK_CPPTI_TYPE];
+  tree type = tinfo_types[D_TK_CPPTI_TYPE];
 
   decl->cpp_type_info_ptr_sym = declare_extern_var (ident, type);
   DECL_LANG_SPECIFIC (decl->cpp_type_info_ptr_sym) = build_lang_decl (NULL);
@@ -1384,55 +1466,57 @@ create_typeinfo (Type *type, Module *mod)
 
   if (!t->vtinfo)
     {
-      tinfo_kind tk = get_typeinfo_kind (t);
+      d_tinfo_kind tk = get_typeinfo_kind (t);
+      tree target_fields = targetdm.d_vaarg_ti_types (tk);
+
       switch (tk)
 	{
-	case TK_SHARED_TYPE:
-	case TK_CONST_TYPE:
-	case TK_IMMUTABLE_TYPE:
-	case TK_INOUT_TYPE:
-	case TK_POINTER_TYPE:
-	case TK_ARRAY_TYPE:
-	case TK_VECTOR_TYPE:
-	case TK_INTERFACE_TYPE:
+	case D_TK_SHARED_TYPE:
+	case D_TK_CONST_TYPE:
+	case D_TK_IMMUTABLE_TYPE:
+	case D_TK_INOUT_TYPE:
+	case D_TK_POINTER_TYPE:
+	case D_TK_ARRAY_TYPE:
+	case D_TK_VECTOR_TYPE:
+	case D_TK_INTERFACE_TYPE:
 	  /* Kinds of TypeInfo that add one extra pointer field.  */
-	  if (tk == TK_SHARED_TYPE)
+	  if (tk == D_TK_SHARED_TYPE)
 	    {
 	      /* Does both 'shared' and 'shared const'.  */
 	      t->vtinfo = TypeInfoSharedDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Shared");
 	    }
-	  else if (tk == TK_CONST_TYPE)
+	  else if (tk == D_TK_CONST_TYPE)
 	    {
 	      t->vtinfo = TypeInfoConstDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Const");
 	    }
-	  else if (tk == TK_IMMUTABLE_TYPE)
+	  else if (tk == D_TK_IMMUTABLE_TYPE)
 	    {
 	      t->vtinfo = TypeInfoInvariantDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Invariant");
 	    }
-	  else if (tk == TK_INOUT_TYPE)
+	  else if (tk == D_TK_INOUT_TYPE)
 	    {
 	      t->vtinfo = TypeInfoWildDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Wild");
 	    }
-	  else if (tk == TK_POINTER_TYPE)
+	  else if (tk == D_TK_POINTER_TYPE)
 	    {
 	      t->vtinfo = TypeInfoPointerDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Pointer");
 	    }
-	  else if (tk == TK_ARRAY_TYPE)
+	  else if (tk == D_TK_ARRAY_TYPE)
 	    {
 	      t->vtinfo = TypeInfoArrayDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Array");
 	    }
-	  else if (tk == TK_VECTOR_TYPE)
+	  else if (tk == D_TK_VECTOR_TYPE)
 	    {
 	      t->vtinfo = TypeInfoVectorDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Vector");
 	    }
-	  else if (tk == TK_INTERFACE_TYPE)
+	  else if (tk == D_TK_INTERFACE_TYPE)
 	    {
 	      t->vtinfo = TypeInfoInterfaceDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Interface");
@@ -1441,30 +1525,31 @@ create_typeinfo (Type *type, Module *mod)
 	    gcc_unreachable ();
 
 	  if (!tinfo_types[tk])
-	    make_internal_typeinfo (tk, ident, ptr_type_node, NULL);
+	    make_internal_typeinfo (tk, ident, ptr_type_node,
+	    target_fields, NULL);
 	  break;
 
-	case TK_STATICARRAY_TYPE:
+	case D_TK_STATICARRAY_TYPE:
 	  if (!tinfo_types[tk])
 	    {
 	      ident = Identifier::idPool ("TypeInfo_StaticArray");
 	      make_internal_typeinfo (tk, ident, ptr_type_node, size_type_node,
-				      NULL);
+	      target_fields, NULL);
 	    }
 	  t->vtinfo = TypeInfoStaticArrayDeclaration::create (t);
 	  break;
 
-	case TK_ASSOCIATIVEARRAY_TYPE:
+	case D_TK_ASSOCIATIVEARRAY_TYPE:
 	  if (!tinfo_types[tk])
 	    {
 	      ident = Identifier::idPool ("TypeInfo_AssociativeArray");
 	      make_internal_typeinfo (tk, ident, ptr_type_node, ptr_type_node,
-				      NULL);
+				      target_fields, NULL);
 	    }
 	  t->vtinfo = TypeInfoAssociativeArrayDeclaration::create (t);
 	  break;
 
-	case TK_STRUCT_TYPE:
+	case D_TK_STRUCT_TYPE:
 	  if (!tinfo_types[tk])
 	    {
 	      /* Some ABIs add extra TypeInfo fields on the end.  */
@@ -1477,31 +1562,32 @@ create_typeinfo (Type *type, Module *mod)
 				      ptr_type_node, ptr_type_node,
 				      size_type_node, ptr_type_node,
 				      ptr_type_node, size_type_node,
-				      ptr_type_node, argtype, argtype, NULL);
+				      target_fields, ptr_type_node, NULL);
 	    }
 	  t->vtinfo = TypeInfoStructDeclaration::create (t);
 	  break;
 
-	case TK_ENUMERAL_TYPE:
+	case D_TK_ENUMERAL_TYPE:
 	  if (!tinfo_types[tk])
 	    {
 	      ident = Identifier::idPool ("TypeInfo_Enum");
 	      make_internal_typeinfo (tk, ident,
 				      ptr_type_node, array_type_node,
-				      array_type_node, NULL);
+				      array_type_node,
+				      target_fields, NULL);
 	    }
 	  t->vtinfo = TypeInfoEnumDeclaration::create (t);
 	  break;
 
-	case TK_FUNCTION_TYPE:
-	case TK_DELEGATE_TYPE:
+	case D_TK_FUNCTION_TYPE:
+	case D_TK_DELEGATE_TYPE:
 	  /* Functions and delegates share a common TypeInfo layout.  */
-	  if (tk == TK_FUNCTION_TYPE)
+	  if (tk == D_TK_FUNCTION_TYPE)
 	    {
 	      t->vtinfo = TypeInfoFunctionDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Function");
 	    }
-	  else if (tk == TK_DELEGATE_TYPE)
+	  else if (tk == D_TK_DELEGATE_TYPE)
 	    {
 	      t->vtinfo = TypeInfoDelegateDeclaration::create (t);
 	      ident = Identifier::idPool ("TypeInfo_Delegate");
@@ -1512,20 +1598,22 @@ create_typeinfo (Type *type, Module *mod)
 	  if (!tinfo_types[tk])
 	    {
 	      make_internal_typeinfo (tk, ident, ptr_type_node,
-				      array_type_node, NULL);
+				      array_type_node,
+				      target_fields, NULL);
 	    }
 	  break;
 
-	case TK_TYPELIST_TYPE:
+	case D_TK_TYPELIST_TYPE:
 	  if (!tinfo_types[tk])
 	    {
 	      ident = Identifier::idPool ("TypeInfo_Tuple");
-	      make_internal_typeinfo (tk, ident, array_type_node, NULL);
+	      make_internal_typeinfo (tk, ident, array_type_node,
+	      target_fields, NULL);
 	    }
 	  t->vtinfo = TypeInfoTupleDeclaration::create (t);
 	  break;
 
-	case TK_CLASSINFO_TYPE:
+	case D_TK_CLASSINFO_TYPE:
 	  t->vtinfo = TypeInfoClassDeclaration::create (t);
 	  break;
 

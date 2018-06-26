@@ -73,4 +73,11 @@ class TypeInfo_d : TypeInfo
         // 2 means arg to function is passed in XMM registers
         override @property uint flags() const { return 2; }
     }
+    version (AArch64)
+    {
+        override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+        {
+            return AArch64ArgInfo(true);
+        }
+    }
 }

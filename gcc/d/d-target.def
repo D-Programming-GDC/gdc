@@ -56,5 +56,29 @@ DEFHOOK
  unsigned, (void),
  hook_uint_void_0)
 
+/* The types of extra fields to store in TypeInfo for va_arg implementation.  */
+DEFHOOK
+(d_vaarg_ti_types,
+ "Returns types of target-specific fields which need to be inserted into\
+ TypeInfo to support the va_arg variant taking a TypeInfo argument.\
+ The va_arg imlementation can be found in core/stdc/stdarg.d. This function's\
+ first parameter is a @code{tinfo_kind} as fields can be differnt depending\
+ on the kind of TypeInfo. Returns a @code{TREE_LIST} of types and void_zero_node\
+ if no extra fields are needed.",
+ tree, (d_tinfo_kind),
+ d_default_vaarg_ti_types)
+
+/* The initializer values of extra fields to store in TypeInfo.  */
+DEFHOOK
+(d_vaarg_ti_values,
+ "Returns initial values for target-specific fields which need to be inserted\
+ into TypeInfo to support the va_arg variant taking a TypeInfo argument.\
+ The va_arg imlementation can be found in core/stdc/stdarg.d. This function's\
+ first parameter is a @code{tree} for the type described by the TypeInfo\
+ instance. Returns a @code{TREE_LIST} of initial values and NULL_TREE\
+ if no extra fields are needed.",
+ tree, (d_tinfo_kind, tree),
+ d_default_vaarg_ti_values)
+
 /* Close the 'struct gcc_targetdm' definition.  */
 HOOK_VECTOR_END (C90_EMPTY_HACK)

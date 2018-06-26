@@ -71,4 +71,12 @@ class TypeInfo_r : TypeInfo
         arg2 = typeid(double);
         return 0;
     }
+    version (AArch64)
+    {
+        override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+        {
+            return AArch64ArgInfo(cast(AArch64ArgFlag)(AArch64ArgFlag.isAggregate
+                | AArch64ArgFlag.isHA), false, 8, 2);
+        }
+    }
 }

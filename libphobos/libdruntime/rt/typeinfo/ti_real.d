@@ -64,4 +64,12 @@ class TypeInfo_e : TypeInfo
     {
         return F.alignof;
     }
+
+    version (AArch64)
+    {
+        override AArch64ArgInfo argTypes() @safe @nogc nothrow pure const
+        {
+            return AArch64ArgInfo(true);
+        }
+    }
 }
