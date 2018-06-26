@@ -939,9 +939,10 @@ public:
     for (size_t i = 0; i < t->sym->vtbl.dim; i++)
       {
 	FuncDeclaration *fd = t->sym->vtbl[i]->isFuncDeclaration ();
-	tree method = fd ? get_symbol_decl (fd) : NULL_TREE;
+	tree method = fd ? get_symbol_decl (fd) : error_mark_node;
 
-	if (method && DECL_CONTEXT (method) == basetype
+	if (!error_operand_p (method)
+	    && DECL_CONTEXT (method) == basetype
 	    && !chain_member (method, TYPE_FIELDS (basetype)))
 	  TYPE_FIELDS (basetype) = chainon (TYPE_FIELDS (basetype), method);
       }

@@ -9,6 +9,11 @@
 	* d-spec.c: Include opt-suggestions.h containing option_proposer used by
 	gcc.h.
 
+2018-06-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc (TypeVisitor::visit(TypeClass)): Handle get_symbol_decl
+	returning an error_mark_node.
+
 2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* decl.cc (DeclVisitor::visit(FuncDeclaration)): Move function
