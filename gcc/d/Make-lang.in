@@ -49,8 +49,11 @@ gdc-cross$(exeext): gdc$(exeext)
 d-warn = $(filter-out -pedantic -Woverloaded-virtual, $(STRICT_WARN))
 
 # D compiler and flags for building the front-end.
+WARN_DFLAGS = -Wall -Wdeprecated $(NOCOMMON_FLAG)
+
 ALL_DFLAGS = $(DFLAGS-$@) $(GDCFLAGS) -fversion=IN_GCC $(PICFLAG) \
-	$(COVERAGE_FLAGS) -Wall
+	$(ALIASING_FLAGS) $(COVERAGE_FLAGS) $(WARN_DFLAGS)
+
 DCOMPILE.base = $(GDC) $(NO_PIE_CFLAGS) -c $(ALL_DFLAGS) -o $@
 DCOMPILE = $(DCOMPILE.base) -MT $@ -MMD -MP -MF $(@D)/$(DEPDIR)/$(*F).TPo
 DPOSTCOMPILE = @mv $(@D)/$(DEPDIR)/$(*F).TPo $(@D)/$(DEPDIR)/$(*F).Po

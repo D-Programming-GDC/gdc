@@ -3,6 +3,11 @@
 	* d-spec.c: Include opt-suggestions.h containing option_proposer used by
 	gcc.h.
 
+2018-06-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (WARN_DFLAGS): New variable.
+	(ALL_DFLAGS): Use coverage and warn flags.
+
 2018-06-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc (d_init_versions): Add version D_BetterC.
