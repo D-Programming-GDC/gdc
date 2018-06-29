@@ -1,5 +1,5 @@
 // REQUIRED_ARGS: -Icompilable/imports -c -o-
-// EXTRA_SOURCES: imports/a18911.d
+// EXTRA_FILES: imports/a18911.d
 
 import a18911;
 
