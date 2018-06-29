@@ -5,6 +5,18 @@
 
 2018-06-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-frontend.cc (eval_builtin): Allow both gcc and frontend builtins.
+	* intrinsics.cc (call_builtin_fn): Use convert.
+	(expand_intrinsic_sqrt): Use fold_convert.
+	(expand_intrinsic_copysign): New function.
+	(expand_intrinsic_pow): New function.
+	(maybe_expand_intrinsic): Handle many math intrinsics.
+	* intrinsics.def (EXPM1, EXP2, LOG, LOG2, LOG10, ROUND, FLOORF),
+	(FLOOR, FLOORL, CEILF, CEIL, CEILL, TRUNC, FMIN, FMAX, COPYSIGN),
+	(POW, FMA): Add math intrinsics.
+
+2018-06-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* Make-lang.in (WARN_DFLAGS): New variable.
 	(ALL_DFLAGS): Use coverage and warn flags.
 
