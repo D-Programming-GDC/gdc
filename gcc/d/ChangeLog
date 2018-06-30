@@ -3,6 +3,14 @@
 	* d-spec.c: Include opt-suggestions.h containing option_proposer used by
 	gcc.h.
 
+2018-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc (Target::_init): Set int64Mangle, uint64Mangle,
+	twoDtorInVariable.
+	* typeinfo.cc (TypeInfoVisitor::visit(TypeInfoClassDeclaration)): Use
+	tidtor symbol for destructor.
+	(TypeInfoVisitor::visit(TypeInfoClassDeclaration)): Likewise.
+
 2018-06-30  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(FuncExp)): Don't error about nested

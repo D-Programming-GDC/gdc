@@ -119,12 +119,14 @@ void
 Target::_init (void)
 {
   /* Map D frontend type and sizes to GCC backend types.  */
+  Target::ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
   Target::realsize = int_size_in_bytes (long_double_type_node);
   Target::realpad = (Target::realsize -
 		     (TYPE_PRECISION (long_double_type_node) / BITS_PER_UNIT));
   Target::realalignsize = TYPE_ALIGN_UNIT (long_double_type_node);
-  Target::reverseCppOverloads = false;
-  Target::cppExceptions = true;
+
+  /* Size of runtime TypeInfo object.  */
+  Target::classinfosize = 19 * Target::ptrsize;
 
   /* Allow data sizes up to half of the address space.  */
   Target::maxStaticDataSize = tree_to_shwi (TYPE_MAX_VALUE (ptrdiff_type_node));
@@ -146,10 +148,16 @@ Target::_init (void)
   Type::tptrdiff_t = Type::basic[Tptrdiff_t];
   Type::thash_t = Type::tsize_t;
 
-  Target::ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
+  /* Set-up target C ABI.  */
   Target::c_longsize = int_size_in_bytes (long_integer_type_node);
+  Target::c_long_doublesize = int_size_in_bytes (long_double_type_node);
 
-  Target::classinfosize = 19 * Target::ptrsize;
+  /* Set-up target C++ ABI.  */
+  Target::reverseCppOverloads = false;
+  Target::cppExceptions = true;
+  Target::int64Mangle = 'l';
+  Target::uint64Mangle = 'm';
+  Target::twoDtorInVtable = true;
 
   /* Initialize all compile-time properties for floating point types.
      Should ensure that our real_t type is able to represent real_value.  */
