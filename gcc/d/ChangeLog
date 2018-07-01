@@ -5,6 +5,10 @@
 
 2018-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* verstr.h: Update to 2.081.0-rc.1
+
+2018-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* decl.cc (walk_pragma_cdtor): New function.
 	(DeclVisitor::visit(PragmaDeclaration)): Handle pragma crt_constructor
 	and crt_destructor.

@@ -979,7 +979,7 @@ extern (C++) class ClassDeclaration : AggregateDeclaration
     {
         if (!vtblsym)
         {
-            auto vtype = Type.tvoidptr.immutableOf();
+            auto vtype = Type.tvoidptr.immutableOf().sarrayOf(vtbl.dim);
             auto var = new VarDeclaration(loc, vtype, Identifier.idPool("__vtbl"), null, STC.immutable_ | STC.static_);
             var.addMember(null, this);
             var.isdataseg = 1;
