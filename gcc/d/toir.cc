@@ -984,7 +984,8 @@ public:
     Type *type = this->func_->tintro != NULL
       ? this->func_->tintro->nextOf () : tf->nextOf ();
 
-    if (this->func_->isMain () && type->toBasetype ()->ty == Tvoid)
+    if ((this->func_->isMain () || this->func_->isCMain ())
+	&& type->toBasetype ()->ty == Tvoid)
       type = Type::tint32;
 
     if (this->func_->nrvo_can && this->func_->nrvo_var)

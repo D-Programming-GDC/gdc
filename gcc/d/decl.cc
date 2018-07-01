@@ -1129,10 +1129,11 @@ get_symbol_decl (Declaration *decl)
 	      DECL_VIRTUAL_P (decl->csym) = 1;
 	    }
 	}
-      else if (fd->isMain ())
+      else if (fd->isMain () || fd->isCMain ())
 	{
 	  /* The main function is named 'D main' to distinguish from C main.  */
-	  DECL_NAME (decl->csym) = get_identifier (fd->toPrettyChars (true));
+	  if (fd->isMain ())
+	    DECL_NAME (decl->csym) = get_identifier (fd->toPrettyChars (true));
 
 	  /* 'void main' is implicitly converted to returning an int.  */
 	  newfntype = build_function_type (int_type_node,
