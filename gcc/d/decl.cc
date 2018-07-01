@@ -109,6 +109,58 @@ gcc_attribute_p (Dsymbol *decl)
   return false;
 }
 
+/* Subroutine of pragma declaration visitor for marking the function in the
+   defined in SYM as a global constructor or destructor.  If ISCTOR is true,
+   then we're applying pragma(crt_constructor).  */
+
+static int
+apply_pragma_crt (Dsymbol *sym, bool isctor)
+{
+  AttribDeclaration *ad = sym->isAttribDeclaration ();
+  if (ad != NULL)
+    {
+      int nested = 0;
+
+      /* Walk all declarations of the attribute scope.  */
+      Dsymbols *ds = ad->include (NULL);
+      if (ds)
+	{
+	  for (size_t i = 0; i < ds->dim; i++)
+	    nested += apply_pragma_crt ((*ds)[i], isctor);
+	}
+
+      return nested;
+    }
+
+  FuncDeclaration *fd = sym->isFuncDeclaration ();
+  if (fd != NULL)
+    {
+      tree decl = get_decl_tree (fd);
+
+      /* Apply flags to the function.  */
+      if (isctor)
+	{
+	  DECL_STATIC_CONSTRUCTOR (decl) = 1;
+	  decl_init_priority_insert (decl, DEFAULT_INIT_PRIORITY);
+	}
+      else
+	{
+	  DECL_STATIC_DESTRUCTOR (decl) = 1;
+	  decl_fini_priority_insert (decl, DEFAULT_INIT_PRIORITY);
+	}
+
+      if (fd->linkage != LINKc)
+	{
+	  fd->error ("must be `extern(C)` for `pragma(%s)`",
+		     isctor ? "crt_constructor" : "crt_destructor");
+	}
+
+      return 1;
+    }
+
+  return 0;
+}
+
 /* Implements the visitor interface to lower all Declaration AST classes
    emitted from the D Front-end to GCC trees.
    All visit methods accept one parameter D, which holds the frontend AST
@@ -219,7 +271,7 @@ public:
   }
 
   /* Pragmas are a way to pass special information to the compiler and to add
-     vendor specific extensions to D.  We don't do anything here, yet.  */
+     vendor specific extensions to D.  */
 
   void visit (PragmaDeclaration *d)
   {
@@ -234,6 +286,18 @@ public:
       }
 
     visit ((AttribDeclaration *) d);
+
+    /* Handle pragma(crt_constructor) and pragma(crt_destructor).  Apply flag
+       to indicate that the functions enclosed should run automatically at the
+       beginning or end of execution.  */
+    if (d->ident == Identifier::idPool ("crt_constructor")
+	|| d->ident == Identifier::idPool ("crt_destructor"))
+      {
+	bool isctor = (d->ident == Identifier::idPool ("crt_constructor"));
+
+	if (apply_pragma_crt (d, isctor) > 1)
+	  d->error ("can only apply to a single declaration");
+      }
   }
 
   /* Walk over all members in the namespace scope.  */
@@ -461,7 +525,7 @@ public:
       {
 	FuncDeclaration *fd = d->vtbl[i]->isFuncDeclaration ();
 
-	if (fd && (fd->fbody || !d->isAbstract()))
+	if (fd && (fd->fbody || !d->isAbstract ()))
 	  {
 	    CONSTRUCTOR_APPEND_ELT (elms, size_int (i),
 				    build_address (get_symbol_decl (fd)));
