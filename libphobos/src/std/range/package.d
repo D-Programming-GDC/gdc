@@ -7590,7 +7590,7 @@ if (isForwardRange!Source && hasLength!Source)
     assert(equal(chunks, [[1], [2], [3], [], []]));
 }
 
-/*
+/**
 A fixed-sized sliding window iteration
 of size `windowSize` over a `source` range by a custom `stepSize`.
 
@@ -7614,8 +7614,6 @@ Returns: Range of all sliding windows with propagated bi-directionality,
 
 See_Also: $(LREF chunks)
 */
-// Explicitly set to private to delay the release until 2.076
-private
 auto slide(Flag!"withFewerElements" f = Yes.withFewerElements,
             Source)(Source source, size_t windowSize, size_t stepSize = 1)
     if (isForwardRange!Source)
