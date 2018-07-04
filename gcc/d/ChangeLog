@@ -1,3 +1,16 @@
+2018-07-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (d_init_versions): Update condition for enabling
+	version assert.
+	* d-lang.cc (d_init_options): Remove setting of flags that are default
+	initialized statically.
+	(d_init_options_struct): Update condition for setting bounds check.
+	(d_handle_option): Update condition for setting flags for enabling
+	asserts and switch errors.
+	(d_post_options): Likewise.
+	* expr.cc (ExprVisitor::visit(AssertExp)): Update condition for
+	generating assert code.
+
 2018-07-04  Eugene Wissner  <belka@caraus.de>
 
 	* d-spec.c: Include opt-suggestions.h containing option_proposer used by

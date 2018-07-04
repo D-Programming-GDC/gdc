@@ -274,23 +274,11 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global._init ();
 
   global.compiler.vendor = lang_hooks.name;
-
   global.params.argv0 = xstrdup (decoded_options[0].arg);
-  global.params.link = true;
-  global.params.useAssert = true;
-  global.params.useInvariants = true;
-  global.params.useIn = true;
-  global.params.useOut = true;
-  global.params.useArrayBounds = CHECKENABLEdefault;
-  global.params.useSwitchError = true;
-  global.params.useInline = false;
-  global.params.warnings = 0;
-  global.params.obj = true;
-  global.params.useDeprecated = 1;
-  global.params.hdrStripPlainFunctions = true;
-  global.params.betterC = false;
-  global.params.allInst = false;
   global.params.errorLimit = flag_max_errors;
+
+  /* Silently allow deprecations unless -Wdeprecated.  */
+  global.params.useDeprecated = 1;
 
   global.params.imppath = new Strings ();
   global.params.fileImppath = new Strings ();
@@ -326,7 +314,7 @@ d_init_options_struct (gcc_options *opts)
   opts->frontend_set_flag_errno_math = true;
 
   /* Keep in sync with existing -fbounds-check flag.  */
-  opts->x_flag_bounds_check = global.params.useArrayBounds;
+  opts->x_flag_bounds_check = (global.params.useArrayBounds == CHECKENABLEon);
 
   /* D says that signed overflow is precisely defined.  */
   opts->x_flag_wrapv = 1;
@@ -411,7 +399,8 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fassert:
-      global.params.useAssert = value;
+      global.params.useAssert = value
+	? CHECKENABLEon : CHECKENABLEoff;
       break;
 
     case OPT_fbounds_check:
@@ -534,7 +523,8 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fswitch_errors:
-      global.params.useSwitchError = value;
+      global.params.useSwitchError = value
+	? CHECKENABLEon : CHECKENABLEoff;
       break;
 
     case OPT_ftransition_all:
@@ -736,6 +726,23 @@ d_post_options (const char ** fn)
       flag_bounds_check = !global.params.release;
     }
 
+  /* Assert code is generated if unittests are being compiled also, even if
+     release mode is turned on.  */
+  if (global.params.useAssert == CHECKENABLEdefault)
+    {
+      if (global.params.useUnitTests || !global.params.release)
+	global.params.useAssert = CHECKENABLEon;
+      else
+	global.params.useAssert = CHECKENABLEoff;
+    }
+
+  /* Checks for switches without a default are turned off in release mode.  */
+  if (global.params.useSwitchError == CHECKENABLEdefault)
+    {
+      global.params.useSwitchError = global.params.release
+	? CHECKENABLEoff : CHECKENABLEon;
+    }
+
   if (global.params.release)
     {
       if (!global_options_set.x_flag_invariants)
@@ -746,12 +753,6 @@ d_post_options (const char ** fn)
 
       if (!global_options_set.x_flag_postconditions)
 	global.params.useOut = false;
-
-      if (!global_options_set.x_flag_assert)
-	global.params.useAssert = false;
-
-      if (!global_options_set.x_flag_switch_errors)
-	global.params.useSwitchError = false;
     }
 
   if (global.params.betterC)
@@ -776,9 +777,6 @@ d_post_options (const char ** fn)
 
   if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
     flag_excess_precision_cmdline = EXCESS_PRECISION_STANDARD;
-
-  if (global.params.useUnitTests)
-    global.params.useAssert = true;
 
   global.params.symdebug = write_symbols != NO_DEBUG;
   global.params.useInline = flag_inline_functions;

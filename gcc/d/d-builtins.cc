@@ -434,7 +434,7 @@ d_init_versions (void)
     VersionCondition::addPredefinedGlobalIdent ("D_Ddoc");
   if (global.params.useUnitTests)
     VersionCondition::addPredefinedGlobalIdent ("unittest");
-  if (global.params.useAssert)
+  if (global.params.useAssert == CHECKENABLEon)
     VersionCondition::addPredefinedGlobalIdent ("assert");
   if (global.params.useArrayBounds == CHECKENABLEoff)
     VersionCondition::addPredefinedGlobalIdent ("D_NoBoundsChecks");
