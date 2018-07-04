@@ -50,7 +50,7 @@ This implements building of libphobos library in GCC.
  dependencies = { module=install-target-libsanitizer; on=install-target-libstdc++-v3; };
  dependencies = { module=install-target-libsanitizer; on=install-target-libgcc; };
  dependencies = { module=install-target-libvtv; on=install-target-libstdc++-v3; };
-@@ -597,6 +609,8 @@ languages = { language=go;	gcc-check-tar
+@@ -598,6 +610,8 @@ languages = { language=go;	gcc-check-tar
  				lib-check-target=check-gotools; };
  languages = { language=brig;	gcc-check-target=check-brig;
  				lib-check-target=check-target-libhsail-rt; };
@@ -811,7 +811,7 @@ This implements building of libphobos library in GCC.
  .PHONY: configure-target-libtermcap maybe-configure-target-libtermcap
  maybe-configure-target-libtermcap:
  @if gcc-bootstrap
-@@ -52325,6 +52828,14 @@ check-gcc-brig:
+@@ -52329,6 +52832,14 @@ check-gcc-brig:
  	(cd gcc && $(MAKE) $(GCC_FLAGS_TO_PASS) check-brig);
  check-brig: check-gcc-brig check-target-libhsail-rt
  
@@ -826,7 +826,7 @@ This implements building of libphobos library in GCC.
  
  # The gcc part of install-no-fixedincludes, which relies on an intimate
  # knowledge of how a number of gcc internal targets (inter)operate.  Delegate.
-@@ -55517,6 +56028,7 @@ configure-target-libgfortran: stage_last
+@@ -55521,6 +56032,7 @@ configure-target-libgfortran: stage_last
  configure-target-libobjc: stage_last
  configure-target-libgo: stage_last
  configure-target-libhsail-rt: stage_last
@@ -834,7 +834,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: stage_last
  configure-target-winsup: stage_last
  configure-target-libgloss: stage_last
-@@ -55551,6 +56063,7 @@ configure-target-libgfortran: maybe-all-
+@@ -55555,6 +56067,7 @@ configure-target-libgfortran: maybe-all-
  configure-target-libobjc: maybe-all-gcc
  configure-target-libgo: maybe-all-gcc
  configure-target-libhsail-rt: maybe-all-gcc
@@ -842,7 +842,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-gcc
  configure-target-winsup: maybe-all-gcc
  configure-target-libgloss: maybe-all-gcc
-@@ -56667,6 +57180,11 @@ configure-target-libgo: maybe-all-target
+@@ -56550,6 +57063,11 @@ configure-target-libgo: maybe-configure-
  all-target-libgo: maybe-all-target-libbacktrace
  all-target-libgo: maybe-all-target-libffi
  all-target-libgo: maybe-all-target-libatomic
@@ -852,9 +852,9 @@ This implements building of libphobos library in GCC.
 +all-target-libphobos: maybe-all-target-zlib
 +all-target-libphobos: maybe-all-target-libatomic
  configure-target-libstdc++-v3: maybe-configure-target-libgomp
- 
  configure-stage1-target-libstdc++-v3: maybe-configure-stage1-target-libgomp
-@@ -56716,6 +57234,7 @@ all-target-liboffloadmic: maybe-all-targ
+ configure-stage2-target-libstdc++-v3: maybe-configure-stage2-target-libgomp
+@@ -56593,6 +57111,7 @@ all-stageautofeedback-target-libstdc++-v
  install-target-libgo: maybe-install-target-libatomic
  install-target-libgfortran: maybe-install-target-libquadmath
  install-target-libgfortran: maybe-install-target-libgcc
@@ -862,7 +862,7 @@ This implements building of libphobos library in GCC.
  install-target-libsanitizer: maybe-install-target-libstdc++-v3
  install-target-libsanitizer: maybe-install-target-libgcc
  install-target-libvtv: maybe-install-target-libstdc++-v3
-@@ -56790,6 +57309,7 @@ configure-target-libgfortran: maybe-all-
+@@ -56717,6 +57236,7 @@ configure-target-libgfortran: maybe-all-
  configure-target-libobjc: maybe-all-target-libgcc
  configure-target-libgo: maybe-all-target-libgcc
  configure-target-libhsail-rt: maybe-all-target-libgcc
@@ -870,7 +870,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-target-libgcc
  configure-target-winsup: maybe-all-target-libgcc
  configure-target-libgloss: maybe-all-target-libgcc
-@@ -56828,6 +57348,8 @@ configure-target-libgo: maybe-all-target
+@@ -56755,6 +57275,8 @@ configure-target-libgo: maybe-all-target
  
  configure-target-libhsail-rt: maybe-all-target-newlib maybe-all-target-libgloss
  
@@ -1109,7 +1109,7 @@ This implements building of libphobos library in GCC.
  		;;
  	    esac
  	    ;;
-@@ -7640,6 +7648,7 @@ done
+@@ -7650,6 +7658,7 @@ done
  
  
  
@@ -1117,7 +1117,7 @@ This implements building of libphobos library in GCC.
  # Generate default definitions for YACC, M4, LEX and other programs that run
  # on the build machine.  These are used if the Makefile can't locate these
  # programs in objdir.
-@@ -10694,6 +10703,167 @@ fi
+@@ -10704,6 +10713,167 @@ fi
  
  
  
@@ -1285,7 +1285,7 @@ This implements building of libphobos library in GCC.
  cat > conftest.c << \EOF
  #ifdef __GNUC__
    gcc_yay;
-@@ -14084,6 +14254,51 @@ $as_echo "pre-installed in $ac_dir" >&6;
+@@ -14094,6 +14264,51 @@ $as_echo "pre-installed in $ac_dir" >&6;
      { $as_echo "$as_me:${as_lineno-$LINENO}: result: host tool" >&5
  $as_echo "host tool" >&6; }
    else
@@ -1374,7 +1374,7 @@ This implements building of libphobos library in GCC.
  		;;
  	    esac
  	    ;;
-@@ -3225,6 +3228,7 @@ AC_SUBST(CXX_FOR_BUILD)
+@@ -3235,6 +3238,7 @@ AC_SUBST(CXX_FOR_BUILD)
  AC_SUBST(DLLTOOL_FOR_BUILD)
  AC_SUBST(GFORTRAN_FOR_BUILD)
  AC_SUBST(GOC_FOR_BUILD)
@@ -1382,7 +1382,7 @@ This implements building of libphobos library in GCC.
  AC_SUBST(LDFLAGS_FOR_BUILD)
  AC_SUBST(LD_FOR_BUILD)
  AC_SUBST(NM_FOR_BUILD)
-@@ -3334,6 +3338,7 @@ NCN_STRICT_CHECK_TARGET_TOOLS(CXX_FOR_TA
+@@ -3344,6 +3348,7 @@ NCN_STRICT_CHECK_TARGET_TOOLS(CXX_FOR_TA
  NCN_STRICT_CHECK_TARGET_TOOLS(GCC_FOR_TARGET, gcc, ${CC_FOR_TARGET})
  NCN_STRICT_CHECK_TARGET_TOOLS(GFORTRAN_FOR_TARGET, gfortran)
  NCN_STRICT_CHECK_TARGET_TOOLS(GOC_FOR_TARGET, gccgo)
@@ -1390,7 +1390,7 @@ This implements building of libphobos library in GCC.
  
  ACX_CHECK_INSTALLED_TARGET_TOOL(AR_FOR_TARGET, ar)
  ACX_CHECK_INSTALLED_TARGET_TOOL(AS_FOR_TARGET, as)
-@@ -3367,6 +3372,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_T
+@@ -3377,6 +3382,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_T
  		[gcc/gfortran -B$$r/$(HOST_SUBDIR)/gcc/], fortran)
  GCC_TARGET_TOOL(gccgo, GOC_FOR_TARGET, GOC,
  		[gcc/gccgo -B$$r/$(HOST_SUBDIR)/gcc/], go)
