@@ -1,5 +1,10 @@
 2018-07-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-builtins.cc (d_build_builtins_module): Export __builtin_clonglong
+	and __builtin_culonglong to gcc builtins module.
+
+2018-07-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-builtins.cc (d_init_versions): Update condition for enabling
 	version assert.
 	* d-lang.cc (d_init_options): Remove setting of flags that are default
