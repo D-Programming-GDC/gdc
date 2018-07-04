@@ -1464,8 +1464,8 @@ The following OS versions are implemented:
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18554 "configure"
-+#line 18573 "configure"
+-#line 18566 "configure"
++#line 18585 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
@@ -1473,8 +1473,8 @@ The following OS versions are implemented:
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18660 "configure"
-+#line 18679 "configure"
+-#line 18672 "configure"
++#line 18691 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
