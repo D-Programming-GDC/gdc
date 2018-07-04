@@ -287,11 +287,15 @@ List all usages of complex or imaginary types.
 
 ftransition=dip1000
 D RejectNegative
-Implement http://wiki.dlang.org/DIP1000 (experimental)
+Implement DIP1000: Scoped pointers (experimental)
+
+ftransition=dip1008
+D RejectNegative
+Implement DIP1008: Allow exceptions in @nogc code (experimental)
 
 ftransition=dip25
 D RejectNegative
-Implement http://wiki.dlang.org/DIP25 (experimental)
+Implement DIP25: Sealed references (experimental)
 
 ftransition=field
 D RejectNegative
@@ -300,6 +304,10 @@ List all non-mutable fields which occupy an object instance.
 ftransition=import
 D RejectNegative
 Revert to single phase name lookup.
+
+ftransition=intpromote
+D RejectNegative
+Use C-style integral promotion for unary '+', '-' and '~'.
 
 ftransition=nogc
 D RejectNegative

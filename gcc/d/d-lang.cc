@@ -546,6 +546,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useDIP25 = value;
       break;
 
+    case OPT_ftransition_dip1008:
+      global.params.ehnogc = value;
+      break;
+
     case OPT_ftransition_dip25:
       global.params.useDIP25 = value;
       break;
@@ -556,6 +560,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_ftransition_import:
       global.params.bug10378 = value;
+      break;
+
+    case OPT_ftransition_intpromote:
+      global.params.fix16997 = value;
       break;
 
     case OPT_ftransition_nogc:
