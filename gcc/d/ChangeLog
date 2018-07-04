@@ -11,6 +11,11 @@
 	(d.mostlyclean): Remove cleanup of verstr.h.
 	* verstr.h: New file.
 
+2018-07-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (d_build_builtins_module): Export __builtin_clonglong
+	and __builtin_culonglong to gcc builtins module.
+
 2018-07-04  Eugene Wissner  <belka@caraus.de>
 
 	* d-spec.c: Include opt-suggestions.h containing option_proposer used by
