@@ -237,6 +237,10 @@ finvariants
 D Var(flag_invariants)
 Generate code for class invariant contracts.
 
+fmain
+D RejectNegative
+Generate a default D main() function when compiling.
+
 fmodule-file=
 D Joined RejectNegative
 -fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
