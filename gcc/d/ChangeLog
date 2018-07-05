@@ -11,6 +11,13 @@
 	(d.mostlyclean): Remove cleanup of verstr.h.
 	* verstr.h: New file.
 
+2018-07-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (deps_write): Ignore __main module.
+	(d_handle_option): Handle -fmain option.
+	(d_parse_file): Generate D main function if requested.
+	* lang.opt (fmain): New option.
+
 2018-07-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc (d_build_builtins_module): Export __builtin_clonglong

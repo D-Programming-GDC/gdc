@@ -218,7 +218,8 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 	Module *m = depmod->aimports[i];
 
 	/* Ignore compiler-generated modules.  */
-	if (m->ident == Identifier::idPool ("__entrypoint")
+	if ((m->ident == Identifier::idPool ("__entrypoint")
+	     || m->ident == Identifier::idPool ("__main"))
 	    && m->parent == NULL)
 	  continue;
 
@@ -485,6 +486,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_finvariants:
       global.params.useInvariants = value;
+      break;
+
+    case OPT_fmain:
+      global.params.addMain = value;
       break;
 
     case OPT_fmodule_file_:
@@ -1065,6 +1070,19 @@ d_parse_file (void)
 	  /* Remove M from list of modules.  */
 	  modules.remove (i);
 	  i--;
+	}
+    }
+
+  /* Load the module containing D main.  */
+  if (global.params.addMain)
+    {
+      unsigned errors = global.startGagging ();
+      Module *m = Module::load (Loc (), NULL, Identifier::idPool ("__main"));
+
+      if (! global.endGagging (errors))
+	{
+	  m->importedFrom = m;
+	  modules.push (m);
 	}
     }
 
