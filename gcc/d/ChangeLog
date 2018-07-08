@@ -1,5 +1,9 @@
 2018-07-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* verstr.h: Update to 2.081.1
+
+2018-07-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc: Include id.h.
 
 2018-07-06  Iain Buclaw  <ibuclaw@gdcproject.org>

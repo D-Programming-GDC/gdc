@@ -2937,6 +2937,7 @@ public:
             auto sle = cast(StructLiteralExp)pue.exp();
             sle.type = e.type;
             sle.ownedByCtfe = OwnedBy.ctfe;
+            sle.origin = e.origin;
             result = sle;
         }
         else
