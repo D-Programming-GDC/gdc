@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- a/gcc/config/powerpcspe/powerpcspe.c
 +++ b/gcc/config/powerpcspe/powerpcspe.c
-@@ -32034,11 +32034,12 @@ rs6000_output_function_epilogue (FILE *f
+@@ -32035,11 +32035,12 @@ rs6000_output_function_epilogue (FILE *f
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -21,7 +21,7 @@ relevant documentation about the GDC front end.
        else if (! strcmp (language_string, "GNU F77")
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -28486,11 +28486,12 @@ rs6000_output_function_epilogue (FILE *f
+@@ -28490,11 +28490,12 @@ rs6000_output_function_epilogue (FILE *f
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -93,7 +93,7 @@ relevant documentation about the GDC front end.
  in the @file{gcc} subdirectory of the object directory.  You can also
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -1404,6 +1404,15 @@ Go source code.
+@@ -1406,6 +1406,15 @@ Go source code.
  @item @var{file}.brig
  BRIG files (binary representation of HSAIL).
  
@@ -109,7 +109,7 @@ relevant documentation about the GDC front end.
  @item @var{file}.ads
  Ada source code file that contains a library unit declaration (a
  declaration of a package, subprogram, or generic, or a generic
-@@ -1450,6 +1459,7 @@ objective-c  objective-c-header  objecti
+@@ -1452,6 +1461,7 @@ objective-c  objective-c-header  objecti
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -209,6 +209,30 @@ relevant documentation about the GDC front end.
  	return;
        if (TREE_STATIC (decl) && decl_function_context (decl))
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
+@@ -29110,6 +29122,7 @@ prune_unused_types_walk_local_classes (d
+     case DW_TAG_structure_type:
+     case DW_TAG_union_type:
+     case DW_TAG_class_type:
++    case DW_TAG_interface_type:
+       break;
+ 
+     case DW_TAG_subprogram:
+@@ -29143,6 +29156,7 @@ prune_unused_types_walk (dw_die_ref die)
+     case DW_TAG_structure_type:
+     case DW_TAG_union_type:
+     case DW_TAG_class_type:
++    case DW_TAG_interface_type:
+       if (die->die_perennial_p)
+ 	break;
+ 
+@@ -29169,7 +29183,6 @@ prune_unused_types_walk (dw_die_ref die)
+     case DW_TAG_volatile_type:
+     case DW_TAG_typedef:
+     case DW_TAG_array_type:
+-    case DW_TAG_interface_type:
+     case DW_TAG_friend:
+     case DW_TAG_enumeration_type:
+     case DW_TAG_subroutine_type:
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
 @@ -1306,6 +1306,7 @@ static const struct compiler default_com
