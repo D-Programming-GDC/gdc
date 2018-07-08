@@ -22,6 +22,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dfrontend/aggregate.h"
 #include "dfrontend/cond.h"
 #include "dfrontend/hdrgen.h"
+#include "dfrontend/id.h"
 #include "dfrontend/json.h"
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"

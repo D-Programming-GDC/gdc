@@ -51,9 +51,4 @@ public:
     static void initTable();
 };
 
-struct Id
-{
-  static void initialize();
-};
-
 #endif /* DMD_IDENTIFIER_H */
