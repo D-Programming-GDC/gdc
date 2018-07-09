@@ -374,7 +374,7 @@ The following OS versions are implemented:
  /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -555,6 +555,9 @@ enum aarch64_parse_opt_result aarch64_pa
+@@ -554,6 +554,9 @@ enum aarch64_parse_opt_result aarch64_pa
  std::string aarch64_get_extension_string_for_isa_flags (unsigned long,
  							unsigned long);
  
@@ -1562,7 +1562,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10619,6 +10628,22 @@ unloaded. The default is to return false
+@@ -10627,6 +10636,22 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1610,7 +1610,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7275,6 +7284,16 @@ floating-point support; they are not inc
+@@ -7277,6 +7286,16 @@ floating-point support; they are not inc
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  
