@@ -2509,7 +2509,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: check-target-libatomic maybe-check-target-libatomic
-@@ -56022,13 +58383,29 @@ configure-stagetrain-target-libgcc: mayb
+@@ -56026,13 +58387,29 @@ configure-stagetrain-target-libgcc: mayb
  configure-stagefeedback-target-libgcc: maybe-all-stagefeedback-gcc
  configure-stageautoprofile-target-libgcc: maybe-all-stageautoprofile-gcc
  configure-stageautofeedback-target-libgcc: maybe-all-stageautofeedback-gcc
@@ -2541,7 +2541,7 @@ This implements building of self hosted D compiler in GCC.
  configure-target-libtermcap: stage_last
  configure-target-winsup: stage_last
  configure-target-libgloss: stage_last
-@@ -56046,7 +58423,15 @@ configure-stagefeedback-target-libgomp:
+@@ -56050,7 +58427,15 @@ configure-stagefeedback-target-libgomp:
  configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-gcc
  configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-gcc
  configure-target-libitm: stage_last
@@ -2558,7 +2558,7 @@ This implements building of self hosted D compiler in GCC.
  @endif gcc-bootstrap
  
  @if gcc-no-bootstrap
-@@ -57181,10 +59566,40 @@ all-target-libgo: maybe-all-target-libba
+@@ -57064,10 +59449,40 @@ all-target-libgo: maybe-all-target-libba
  all-target-libgo: maybe-all-target-libffi
  all-target-libgo: maybe-all-target-libatomic
  configure-target-libphobos: maybe-configure-target-libbacktrace
@@ -2597,9 +2597,9 @@ This implements building of self hosted D compiler in GCC.
 +all-stageautoprofile-target-libphobos: maybe-all-stageautoprofile-target-libatomic
 +all-stageautofeedback-target-libphobos: maybe-all-stageautofeedback-target-libatomic
  configure-target-libstdc++-v3: maybe-configure-target-libgomp
- 
  configure-stage1-target-libstdc++-v3: maybe-configure-stage1-target-libgomp
-@@ -57285,6 +59700,24 @@ configure-stagetrain-target-libvtv: mayb
+ configure-stage2-target-libstdc++-v3: maybe-configure-stage2-target-libgomp
+@@ -57212,6 +59627,24 @@ configure-stagetrain-target-libvtv: mayb
  configure-stagefeedback-target-libvtv: maybe-all-stagefeedback-target-libgcc
  configure-stageautoprofile-target-libvtv: maybe-all-stageautoprofile-target-libgcc
  configure-stageautofeedback-target-libvtv: maybe-all-stageautofeedback-target-libgcc
@@ -2624,7 +2624,7 @@ This implements building of self hosted D compiler in GCC.
  configure-stage1-target-libgomp: maybe-all-stage1-target-libgcc
  configure-stage2-target-libgomp: maybe-all-stage2-target-libgcc
  configure-stage3-target-libgomp: maybe-all-stage3-target-libgcc
-@@ -57294,6 +59727,15 @@ configure-stagetrain-target-libgomp: may
+@@ -57221,6 +59654,15 @@ configure-stagetrain-target-libgomp: may
  configure-stagefeedback-target-libgomp: maybe-all-stagefeedback-target-libgcc
  configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-target-libgcc
  configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-target-libgcc
