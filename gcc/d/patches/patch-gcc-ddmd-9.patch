@@ -3,7 +3,7 @@ This implements building of self hosted D compiler in GCC back end.
 
 --- a/gcc/Makefile.in
 +++ b/gcc/Makefile.in
-@@ -1067,6 +1067,10 @@ SYSLIBS = @GNAT_LIBEXC@
+@@ -1069,6 +1069,10 @@ SYSLIBS = @GNAT_LIBEXC@
  GNATBIND = @GNATBIND@
  GNATMAKE = @GNATMAKE@
  
@@ -16,7 +16,7 @@ This implements building of self hosted D compiler in GCC back end.
  
 --- a/gcc/configure
 +++ b/gcc/configure
-@@ -805,6 +805,8 @@ EGREP
+@@ -806,6 +806,8 @@ EGREP
  GREP
  CXXCPP
  PICFLAG_FOR_TARGET
@@ -25,7 +25,7 @@ This implements building of self hosted D compiler in GCC back end.
  GNATMAKE
  GNATBIND
  ac_ct_CXX
-@@ -5011,6 +5013,106 @@ else
+@@ -5014,6 +5016,106 @@ else
  fi
  
  
@@ -132,7 +132,7 @@ This implements building of self hosted D compiler in GCC back end.
  # Do configure tests with the C++ compiler, since that's what we build with.
  ac_ext=cpp
  ac_cpp='$CXXCPP $CPPFLAGS'
-@@ -5029,6 +5131,7 @@ esac
+@@ -5032,6 +5134,7 @@ esac
  
  
  
@@ -140,7 +140,7 @@ This implements building of self hosted D compiler in GCC back end.
  # Determine PICFLAG for target gnatlib.
  
  
-@@ -18448,7 +18551,7 @@ else
+@@ -18460,7 +18563,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
@@ -149,7 +149,7 @@ This implements building of self hosted D compiler in GCC back end.
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18554,7 +18657,7 @@ else
+@@ -18566,7 +18669,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
