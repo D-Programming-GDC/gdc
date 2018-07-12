@@ -497,23 +497,14 @@ public:
 	gcc_unreachable ();
       }
 
+    /* For static and dynamic arrays, the relational op is turned into a
+       library call.  It is not lowered during codegen.  */
     if ((tb1->ty == Tsarray || tb1->ty == Tarray)
 	&& (tb2->ty == Tsarray || tb2->ty == Tarray))
       {
-	/* For static and dynamic arrays, the result of the relational op is
-	   the result of the operator applied to the first non-equal element
-	   of the array.  If two arrays compare equal, but are of different
-	   lengths, the shorter array compares as less than the longer.  */
-	Type *telem = tb1->nextOf ()->toBasetype ();
-
-	tree call = build_libcall (LIBCALL_ADCMP2, Type::tint32, 3,
-				   d_array_convert (e->e1),
-				   d_array_convert (e->e2),
-				   build_typeinfo (e->loc, telem->arrayOf ()));
-	result = build_boolop (code, call, integer_zero_node);
-
-	this->result_ = d_convert (build_ctype (e->type), result);
-	return;
+	::error ("cannot handle comparison of type `%s == %s`",
+		 tb1->toChars (), tb2->toChars ());
+	gcc_unreachable ();
       }
 
     /* Simple comparison.  */

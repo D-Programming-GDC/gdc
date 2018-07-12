@@ -1,3 +1,17 @@
+2018-07-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(CmpExp)): Remove lowering of static and
+	dynamic array comparisons.
+	* runtime.def (ADCMP2): Remove define.
+	(SWITCH_STRING): Likewise.
+	(SWITCH_USTRING): Likewise.
+	(SWITCH_DSTRING): Likewise.
+	(SWITCH_ERROR): Likewise.
+	* toir.cc (IRVisitor::visit(SwitchStatement)): Remove lowering of
+	string switch statements.
+	(IRVisitor::visit(SwitchErrorStatement)): Remove lowering of throwing
+	SwitchErrors.
+
 2018-07-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (CHECKING_DFLAGS): New variable.
