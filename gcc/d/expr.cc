@@ -1220,7 +1220,10 @@ public:
 
 	if (!e->indexIsInBounds && array_bounds_check ())
 	  {
-	    tree tassert = d_assert_call (e->loc, LIBCALL_ARRAY_BOUNDS);
+	    tree tassert = (global.params.checkAction == CHECKACTION_C)
+	      ? build_call_expr (builtin_decl_explicit (BUILT_IN_TRAP), 0)
+	      : d_assert_call (e->loc, LIBCALL_ARRAY_BOUNDS);
+
 	    result = d_save_expr (result);
 	    result = build_condition (TREE_TYPE (result),
 				      d_truthvalue_conversion (result),
@@ -1960,7 +1963,8 @@ public:
     tree assert_pass = void_node;
     tree assert_fail;
 
-    if (global.params.useAssert == CHECKENABLEon)
+    if (global.params.useAssert == CHECKENABLEon
+	&& global.params.checkAction == CHECKACTION_D)
       {
 	/* Generate: ((bool) e1  ? (void)0 : _d_assert (...))
 		 or: (e1 != null ? e1._invariant() : _d_assert (...))  */
@@ -2003,6 +2007,13 @@ public:
 		  }
 	      }
 	  }
+      }
+    else if (global.params.useAssert == CHECKENABLEon
+	     && global.params.checkAction == CHECKACTION_C)
+      {
+	/* Generate: __builtin_trap()  */
+	tree fn = builtin_decl_explicit (BUILT_IN_TRAP);
+	assert_fail = build_call_expr (fn, 0);
       }
     else
       {

@@ -779,6 +779,8 @@ d_post_options (const char ** fn)
 
       if (!global_options_set.x_flag_exceptions)
 	global.params.useExceptions = false;
+
+      global.params.checkAction = CHECKACTION_C;
     }
 
   /* Error about use of deprecated features.  */
