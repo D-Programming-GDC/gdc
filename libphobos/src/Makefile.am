@@ -1,5 +1,5 @@
 # Makefile for the Phobos standard library.
-# Copyright (C) 2012-2017 Free Software Foundation, Inc.
+# Copyright (C) 2012-2018 Free Software Foundation, Inc.
 #
 # GCC is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,26 +29,10 @@ AM_CFLAGS=@DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
 AM_DFLAGS=$(phobos_compiler_pic_flag)
 
 # Install all D files
-ALL_PHOBOS_INSTALL_DSOURCES = $(PHOBOS_DSOURCES) $(PHOBOS_DSOURCES_STDC) \
-	$(PHOBOS_DSOURCES_FREEBSD) $(PHOBOS_DSOURCES_OSX) \
-	$(PHOBOS_DSOURCES_WINDOWS) $(PHOBOS_DSOURCES_LINUX)
-
+ALL_PHOBOS_INSTALL_DSOURCES = $(PHOBOS_DSOURCES)
 
 # Setup source files depending on configure
-ALL_PHOBOS_COMPILE_DSOURCES = $(PHOBOS_DSOURCES) $(PHOBOS_DSOURCES_STDC)
-# OS specific sources
-if DRUNTIME_OS_DARWIN
-    ALL_PHOBOS_COMPILE_DSOURCES += $(PHOBOS_DSOURCES_OSX)
-endif
-if DRUNTIME_OS_FREEBSD
-    ALL_PHOBOS_COMPILE_DSOURCES += $(PHOBOS_DSOURCES_FREEBSD)
-endif
-if DRUNTIME_OS_LINUX
-    ALL_PHOBOS_COMPILE_DSOURCES += $(PHOBOS_DSOURCES_LINUX)
-endif
-if DRUNTIME_OS_MINGW
-    ALL_PHOBOS_COMPILE_DSOURCES += $(PHOBOS_DSOURCES_WINDOWS)
-endif
+ALL_PHOBOS_COMPILE_DSOURCES = $(PHOBOS_DSOURCES)
 
 ALL_PHOBOS_SOURCES = $(ALL_PHOBOS_COMPILE_DSOURCES)
 PHOBOS_TEST_LOBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.lo)
@@ -145,9 +129,11 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/datetime/timezone.d std/demangle.d std/digest/crc.d \
 	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
 	std/digest/murmurhash.d std/digest/package.d std/digest/ripemd.d \
-	std/digest/sha.d std/encoding.d std/exception.d \
+	std/digest/sha.d std/encoding.d std/exception.d std/experimental/all.d \
 	std/experimental/allocator/building_blocks/affix_allocator.d \
+	std/experimental/allocator/building_blocks/aligned_block_list.d \
 	std/experimental/allocator/building_blocks/allocator_list.d \
+	std/experimental/allocator/building_blocks/ascending_page_allocator.d \
 	std/experimental/allocator/building_blocks/bitmapped_block.d \
 	std/experimental/allocator/building_blocks/bucketizer.d \
 	std/experimental/allocator/building_blocks/fallback_allocator.d \
@@ -188,24 +174,9 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
-	std/regex/internal/thompson.d std/regex/package.d std/signals.d \
-	std/socket.d std/stdint.d std/stdio.d std/string.d std/system.d \
-	std/traits.d std/typecons.d std/typetuple.d std/uni.d std/uri.d \
-	std/utf.d std/uuid.d std/variant.d std/windows/charset.d \
-	std/windows/iunknown.d std/windows/registry.d std/windows/syserror.d \
+	std/regex/internal/tests2.d std/regex/internal/thompson.d \
+	std/regex/package.d std/signals.d std/socket.d std/stdint.d \
+	std/stdio.d std/string.d std/system.d std/traits.d std/typecons.d \
+	std/typetuple.d std/uni.d std/uri.d std/utf.d std/uuid.d std/variant.d \
+	std/windows/charset.d std/windows/registry.d std/windows/syserror.d \
 	std/xml.d std/zip.d std/zlib.d
-
-PHOBOS_DSOURCES_FREEBSD = std/c/freebsd/socket.d
-
-PHOBOS_DSOURCES_LINUX = std/c/linux/linux.d std/c/linux/linuxextern.d \
-	std/c/linux/pthread.d std/c/linux/socket.d std/c/linux/termios.d \
-	std/c/linux/tipc.d
-
-PHOBOS_DSOURCES_OSX = std/c/osx/socket.d
-
-PHOBOS_DSOURCES_STDC = std/c/fenv.d std/c/locale.d std/c/math.d \
-	std/c/process.d std/c/stdarg.d std/c/stddef.d std/c/stdio.d \
-	std/c/stdlib.d std/c/string.d std/c/time.d std/c/wcharh.d
-
-PHOBOS_DSOURCES_WINDOWS = std/c/windows/com.d std/c/windows/stat.d \
-	std/c/windows/windows.d std/c/windows/winsock.d

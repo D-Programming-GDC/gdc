@@ -19,11 +19,11 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/module.h"
-#include "dfrontend/mtype.h"
-#include "dfrontend/tokens.h"
-#include "dfrontend/target.h"
+#include "dmd/aggregate.h"
+#include "dmd/module.h"
+#include "dmd/mtype.h"
+#include "dmd/tokens.h"
+#include "dmd/target.h"
 
 #include "tree.h"
 #include "memmodel.h"
@@ -119,12 +119,14 @@ void
 Target::_init (void)
 {
   /* Map D frontend type and sizes to GCC backend types.  */
+  Target::ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
   Target::realsize = int_size_in_bytes (long_double_type_node);
   Target::realpad = (Target::realsize -
 		     (TYPE_PRECISION (long_double_type_node) / BITS_PER_UNIT));
   Target::realalignsize = TYPE_ALIGN_UNIT (long_double_type_node);
-  Target::reverseCppOverloads = false;
-  Target::cppExceptions = true;
+
+  /* Size of runtime TypeInfo object.  */
+  Target::classinfosize = 19 * Target::ptrsize;
 
   /* Allow data sizes up to half of the address space.  */
   Target::maxStaticDataSize = tree_to_shwi (TYPE_MAX_VALUE (ptrdiff_type_node));
@@ -146,10 +148,16 @@ Target::_init (void)
   Type::tptrdiff_t = Type::basic[Tptrdiff_t];
   Type::thash_t = Type::tsize_t;
 
-  Target::ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
+  /* Set-up target C ABI.  */
   Target::c_longsize = int_size_in_bytes (long_integer_type_node);
+  Target::c_long_doublesize = int_size_in_bytes (long_double_type_node);
 
-  Target::classinfosize = 19 * Target::ptrsize;
+  /* Set-up target C++ ABI.  */
+  Target::reverseCppOverloads = false;
+  Target::cppExceptions = true;
+  Target::int64Mangle = 'l';
+  Target::uint64Mangle = 'm';
+  Target::twoDtorInVtable = true;
 
   /* Initialize all compile-time properties for floating point types.
      Should ensure that our real_t type is able to represent real_value.  */
@@ -394,18 +402,10 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
       /* Logical operators must have a result type of bool.  */
       return false;
 
-    case TOKue:
-    case TOKlg:
-    case TOKule:
-    case TOKul:
-    case TOKuge:
-    case TOKug:
     case TOKle:
     case TOKlt:
     case TOKge:
     case TOKgt:
-    case TOKleg:
-    case TOKunord:
     case TOKequal:
     case TOKnotequal:
     case TOKidentity:
@@ -418,13 +418,6 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
     }
 
   return true;
-}
-
-/* Apply any target-specific prefixes based on the given linkage.  */
-
-void
-Target::prefixName (OutBuffer *, LINK)
-{
 }
 
 /* Return the symbol mangling of S for C++ linkage. */
@@ -458,10 +451,53 @@ Target::cppTypeMangle (Type *type)
     return NULL;
 }
 
+/* Return the type that will really be used for passing the given parameter
+   ARG to an extern(C++) function.  */
+
+Type *
+Target::cppParameterType (Parameter *arg)
+{
+    Type *t = arg->type->merge2 ();
+    if (arg->storageClass & (STCout | STCref))
+      t = t->referenceTo ();
+    else if (arg->storageClass & STClazy)
+      {
+	// Mangle as delegate
+	Type *td = TypeFunction::create (NULL, t, 0, LINKd);
+	td = TypeDelegate::create (td);
+	t = t->merge2 ();
+      }
+
+    // Could be a va_list, which we mangle as a pointer.
+    if (t->ty == Tsarray && Type::tvalist->ty == Tsarray)
+      {
+	Type *tb = t->toBasetype ()->mutableOf ();
+	if (tb == Type::tvalist)
+	  {
+	    tb = t->nextOf ()->pointerTo ();
+	    t = tb->castMod (t->mod);
+	  }
+      }
+
+    return t;
+}
+
 /* Return the default system linkage for the target.  */
 
 LINK
 Target::systemLinkage (void)
 {
   return LINKc;
+}
+
+/* Determine return style of function, whether in registers or through a
+   hidden pointer to the caller's stack.  */
+
+bool
+Target::isReturnOnStack (TypeFunction *, bool)
+{
+  /* Need the backend type to determine this, but this is called from the
+     frontend before semantic processing is finished.  An accurate value
+     is not currently needed anyway.  */
+  return true;
 }

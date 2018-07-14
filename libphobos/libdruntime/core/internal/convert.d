@@ -3,7 +3,7 @@
  * This module provides functions to converting different values to const(ubyte)[]
  *
  * Copyright: Copyright Igor Stepanov 2013-2013.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Igor Stepanov
  * Source: $(DRUNTIMESRC core/internal/_convert.d)
  */
@@ -403,8 +403,8 @@ version(unittest)
 
         testNumberConvert!("real.min_normal/2");
         testNumberConvert!("real.min_normal/2UL^^63");
-        //testNumberConvert!("real.min_normal/19"); // XGDC: ct[0] == 0, rt[0] == 27
-        //testNumberConvert!("real.min_normal/17"); // XGDC: ct[0= == 128, rt[0] == 136
+        testNumberConvert!("real.min_normal/19");
+        testNumberConvert!("real.min_normal/17");
 
         /**Test imaginary values: convert algorithm is same with real values*/
         testNumberConvert!("0.0Fi");
@@ -412,8 +412,8 @@ version(unittest)
         testNumberConvert!("0.0Li");
 
         /**True random values*/
-        //testNumberConvert!("-0x9.0f7ee55df77618fp-13829L"); //XGDC: ct[0,1] == [0,96], rt[0,1] == [143,97]
-        //testNumberConvert!("0x7.36e6e2640120d28p+8797L"); // XGDC: ct[0,1] == [0,24], rt[0,1] == [80,26]
+        testNumberConvert!("-0x9.0f7ee55df77618fp-13829L");
+        testNumberConvert!("0x7.36e6e2640120d28p+8797L");
         testNumberConvert!("-0x1.05df6ce4702ccf8p+15835L");
         testNumberConvert!("0x9.54bb0d88806f714p-7088L");
 
@@ -549,18 +549,26 @@ const(ubyte)[] toUbyte(T)(ref T val) if (is(Unqual!T == cfloat) || is(Unqual!T =
 }
 
 @trusted pure nothrow
-const(ubyte)[] toUbyte(T)(ref T val) if (is(T == enum) && is(typeof(toUbyte(cast(V)val)) == const(ubyte)[]))
+const(ubyte)[] toUbyte(T)(ref T val) if (is(T V == enum) && is(typeof(toUbyte(cast(V)val)) == const(ubyte)[]))
 {
     if (__ctfe)
     {
         static if (is(T V == enum)){}
-        V e_val = val;
-        return toUbyte(e_val);
+        return toUbyte(cast(V) val);
     }
     else
     {
         return (cast(const(ubyte)*)&val)[0 .. T.sizeof];
     }
+}
+
+nothrow pure @safe unittest
+{
+    // Issue 19008 - check toUbyte works on enums.
+    enum Month : uint { jan = 1}
+    Month m = Month.jan;
+    const bytes = toUbyte(m);
+    enum ctfe_works = (() => { Month x = Month.jan; return toUbyte(x).length > 0; })();
 }
 
 private bool isNonReference(T)()

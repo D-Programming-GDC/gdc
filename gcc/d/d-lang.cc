@@ -19,13 +19,14 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/cond.h"
-#include "dfrontend/hdrgen.h"
-#include "dfrontend/json.h"
-#include "dfrontend/module.h"
-#include "dfrontend/mtype.h"
-#include "dfrontend/target.h"
+#include "dmd/aggregate.h"
+#include "dmd/cond.h"
+#include "dmd/hdrgen.h"
+#include "dmd/id.h"
+#include "dmd/json.h"
+#include "dmd/module.h"
+#include "dmd/mtype.h"
+#include "dmd/target.h"
 
 #include "opts.h"
 #include "alias.h"
@@ -217,7 +218,8 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 	Module *m = depmod->aimports[i];
 
 	/* Ignore compiler-generated modules.  */
-	if (m->ident == Identifier::idPool ("__entrypoint")
+	if ((m->ident == Identifier::idPool ("__entrypoint")
+	     || m->ident == Identifier::idPool ("__main"))
 	    && m->parent == NULL)
 	  continue;
 
@@ -274,27 +276,11 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global._init ();
 
   global.compiler.vendor = lang_hooks.name;
-
   global.params.argv0 = xstrdup (decoded_options[0].arg);
-  global.params.link = true;
-  global.params.useAssert = true;
-  global.params.useInvariants = true;
-  global.params.useIn = true;
-  global.params.useOut = true;
-  global.params.useArrayBounds = BOUNDSCHECKdefault;
-  global.params.useSwitchError = true;
-  global.params.useInline = false;
-  global.params.warnings = 0;
-  global.params.obj = true;
-  global.params.useDeprecated = 1;
-  global.params.hdrStripPlainFunctions = true;
-  global.params.betterC = false;
-  global.params.allInst = false;
+  global.params.errorLimit = flag_max_errors;
 
-  global.params.linkswitches = new Strings ();
-  global.params.libfiles = new Strings ();
-  global.params.objfiles = new Strings ();
-  global.params.ddocfiles = new Strings ();
+  /* Silently allow deprecations unless -Wdeprecated.  */
+  global.params.useDeprecated = 1;
 
   global.params.imppath = new Strings ();
   global.params.fileImppath = new Strings ();
@@ -330,7 +316,7 @@ d_init_options_struct (gcc_options *opts)
   opts->frontend_set_flag_errno_math = true;
 
   /* Keep in sync with existing -fbounds-check flag.  */
-  opts->x_flag_bounds_check = global.params.useArrayBounds;
+  opts->x_flag_bounds_check = (global.params.useArrayBounds == CHECKENABLEon);
 
   /* D says that signed overflow is precisely defined.  */
   opts->x_flag_wrapv = 1;
@@ -368,7 +354,7 @@ d_init (void)
 
   d_init_builtins ();
 
-  if (flag_exceptions)
+  if (global.params.useExceptions)
     using_eh_for_cleanups ();
 
   if (!supports_one_only ())
@@ -415,17 +401,18 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fassert:
-      global.params.useAssert = value;
+      global.params.useAssert = value
+	? CHECKENABLEon : CHECKENABLEoff;
       break;
 
     case OPT_fbounds_check:
       global.params.useArrayBounds = value
-	? BOUNDSCHECKon : BOUNDSCHECKoff;
+	? CHECKENABLEon : CHECKENABLEoff;
       break;
 
     case OPT_fbounds_check_:
-      global.params.useArrayBounds = (value == 2) ? BOUNDSCHECKon
-	: (value == 1) ? BOUNDSCHECKsafeonly : BOUNDSCHECKoff;
+      global.params.useArrayBounds = (value == 2) ? CHECKENABLEon
+	: (value == 1) ? CHECKENABLEsafeonly : CHECKENABLEoff;
       break;
 
     case OPT_fdebug:
@@ -438,14 +425,16 @@ d_handle_option (size_t scode, const char *arg, int value,
 	  int level = integral_argument (arg);
 	  if (level != -1)
 	    {
-	      DebugCondition::setGlobalLevel (level);
+	      global.params.debuglevel = level;
 	      break;
 	    }
 	}
 
       if (Identifier::isValidIdentifier (CONST_CAST (char *, arg)))
 	{
-	  DebugCondition::addGlobalIdent (arg);
+	  if (!global.params.debugids)
+	    global.params.debugids = new Strings ();
+	  global.params.debugids->push (arg);
 	  break;
 	}
 
@@ -478,11 +467,19 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fdoc_inc_:
-      global.params.ddocfiles->push (arg);
+      global.params.ddocfiles.push (arg);
+      break;
+
+    case OPT_fdruntime:
+      global.params.betterC = !value;
       break;
 
     case OPT_fdump_d_original:
       global.params.vcg_ast = value;
+      break;
+
+    case OPT_fexceptions:
+      global.params.useExceptions = value;
       break;
 
     case OPT_fignore_unknown_pragmas:
@@ -493,6 +490,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
+    case OPT_fmain:
+      global.params.addMain = value;
+      break;
+
     case OPT_fmodule_file_:
       global.params.modFileAliasStrings->push (arg);
       if (!strchr (arg, '='))
@@ -500,7 +501,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fmoduleinfo:
-      global.params.betterC = !value;
+      global.params.useModuleInfo = value;
       break;
 
     case OPT_fonly_:
@@ -523,8 +524,13 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.release = value;
       break;
 
+    case OPT_frtti:
+      global.params.useTypeInfo = value;
+      break;
+
     case OPT_fswitch_errors:
-      global.params.useSwitchError = value;
+      global.params.useSwitchError = value
+	? CHECKENABLEon : CHECKENABLEoff;
       break;
 
     case OPT_ftransition_all:
@@ -546,6 +552,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useDIP25 = value;
       break;
 
+    case OPT_ftransition_dip1008:
+      global.params.ehnogc = value;
+      break;
+
     case OPT_ftransition_dip25:
       global.params.useDIP25 = value;
       break;
@@ -556,6 +566,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_ftransition_import:
       global.params.bug10378 = value;
+      break;
+
+    case OPT_ftransition_intpromote:
+      global.params.fix16997 = value;
       break;
 
     case OPT_ftransition_nogc:
@@ -576,14 +590,16 @@ d_handle_option (size_t scode, const char *arg, int value,
 	  int level = integral_argument (arg);
 	  if (level != -1)
 	    {
-	      VersionCondition::setGlobalLevel (level);
+	      global.params.versionlevel = level;
 	      break;
 	    }
 	}
 
       if (Identifier::isValidIdentifier (CONST_CAST (char *, arg)))
 	{
-	  VersionCondition::addGlobalIdent (arg);
+	  if (!global.params.versionids)
+	    global.params.versionids = new Strings ();
+	  global.params.versionids->push (arg);
 	  break;
 	}
 
@@ -717,11 +733,28 @@ d_post_options (const char ** fn)
   *fn = filename;
 
   /* Release mode doesn't turn off bounds checking for safe functions.  */
-  if (global.params.useArrayBounds == BOUNDSCHECKdefault)
+  if (global.params.useArrayBounds == CHECKENABLEdefault)
     {
       global.params.useArrayBounds = global.params.release
-	? BOUNDSCHECKsafeonly : BOUNDSCHECKon;
+	? CHECKENABLEsafeonly : CHECKENABLEon;
       flag_bounds_check = !global.params.release;
+    }
+
+  /* Assert code is generated if unittests are being compiled also, even if
+     release mode is turned on.  */
+  if (global.params.useAssert == CHECKENABLEdefault)
+    {
+      if (global.params.useUnitTests || !global.params.release)
+	global.params.useAssert = CHECKENABLEon;
+      else
+	global.params.useAssert = CHECKENABLEoff;
+    }
+
+  /* Checks for switches without a default are turned off in release mode.  */
+  if (global.params.useSwitchError == CHECKENABLEdefault)
+    {
+      global.params.useSwitchError = global.params.release
+	? CHECKENABLEoff : CHECKENABLEon;
     }
 
   if (global.params.release)
@@ -734,12 +767,20 @@ d_post_options (const char ** fn)
 
       if (!global_options_set.x_flag_postconditions)
 	global.params.useOut = false;
+    }
 
-      if (!global_options_set.x_flag_assert)
-	global.params.useAssert = false;
+  if (global.params.betterC)
+    {
+      if (!global_options_set.x_flag_moduleinfo)
+	global.params.useModuleInfo = false;
 
-      if (!global_options_set.x_flag_switch_errors)
-	global.params.useSwitchError = false;
+      if (!global_options_set.x_flag_rtti)
+	global.params.useTypeInfo = false;
+
+      if (!global_options_set.x_flag_exceptions)
+	global.params.useExceptions = false;
+
+      global.params.checkAction = CHECKACTION_C;
     }
 
   /* Error about use of deprecated features.  */
@@ -748,16 +789,14 @@ d_post_options (const char ** fn)
 
   /* Make -fmax-errors visible to frontend's diagnostic machinery.  */
   if (global_options_set.x_flag_max_errors)
-    global.errorLimit = flag_max_errors;
+    global.params.errorLimit = flag_max_errors;
 
   if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
     flag_excess_precision_cmdline = EXCESS_PRECISION_STANDARD;
 
-  if (global.params.useUnitTests)
-    global.params.useAssert = true;
-
   global.params.symdebug = write_symbols != NO_DEBUG;
   global.params.useInline = flag_inline_functions;
+  global.params.showColumns = flag_show_column;
 
   if (global.params.useInline)
     global.params.hdrStripPlainFunctions = false;
@@ -766,6 +805,25 @@ d_post_options (const char ** fn)
 
   /* Has no effect yet.  */
   global.params.pic = flag_pic != 0;
+
+  /* Add in versions given on the command line.  */
+  if (global.params.versionids)
+    {
+      for (size_t i = 0; i < global.params.versionids->dim; i++)
+	{
+	  const char *s = (*global.params.versionids)[i];
+	  VersionCondition::addGlobalIdent (s);
+	}
+    }
+
+  if (global.params.debugids)
+    {
+      for (size_t i = 0; i < global.params.debugids->dim; i++)
+	{
+	  const char *s = (*global.params.debugids)[i];
+	  DebugCondition::addGlobalIdent (s);
+	}
+    }
 
   if (warn_return_type == -1)
     warn_return_type = 0;
@@ -966,18 +1024,21 @@ d_parse_file (void)
 {
   if (global.params.verbose)
     {
-      fprintf (global.stdmsg, "binary    %s\n", global.params.argv0);
-      fprintf (global.stdmsg, "version   %s\n", global.version);
+      message ("binary    %s", global.params.argv0);
+      message ("version   %s", global.version);
 
-      if (global.params.versionids)
+      if (global.versionids)
 	{
-	  fprintf (global.stdmsg, "predefs  ");
-	  for (size_t i = 0; i < global.params.versionids->dim; i++)
+	  OutBuffer buf;
+	  buf.writestring ("predefs  ");
+	  for (size_t i = 0; i < global.versionids->dim; i++)
 	    {
-	      const char *s = (*global.params.versionids)[i];
-	      fprintf (global.stdmsg, " %s", s);
+	      Identifier *id = (*global.versionids)[i];
+	      buf.writestring (" ");
+	      buf.writestring (id->toChars ());
 	    }
-	  fprintf (global.stdmsg, "\n");
+
+	  message ("%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
 
@@ -1052,7 +1113,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "parse     %s\n", m->toChars ());
+	message ("parse     %s", m->toChars ());
 
       if (!Module::rootModule)
 	Module::rootModule = m;
@@ -1067,6 +1128,19 @@ d_parse_file (void)
 	  /* Remove M from list of modules.  */
 	  modules.remove (i);
 	  i--;
+	}
+    }
+
+  /* Load the module containing D main.  */
+  if (global.params.addMain)
+    {
+      unsigned errors = global.startGagging ();
+      Module *m = Module::load (Loc (), NULL, Identifier::idPool ("__main"));
+
+      if (! global.endGagging (errors))
+	{
+	  m->importedFrom = m;
+	  modules.push (m);
 	}
     }
 
@@ -1085,7 +1159,7 @@ d_parse_file (void)
 	    continue;
 
 	  if (global.params.verbose)
-	    fprintf (global.stdmsg, "import    %s\n", m->toChars ());
+	    message ("import    %s", m->toChars ());
 
 	  genhdrfile (m);
 	}
@@ -1100,7 +1174,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "importall %s\n", m->toChars ());
+	message ("importall %s", m->toChars ());
 
       m->importAll (NULL);
     }
@@ -1116,9 +1190,9 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic  %s\n", m->toChars ());
+	message ("semantic  %s", m->toChars ());
 
-      m->semantic (NULL);
+      dsymbolSemantic (m, NULL);
     }
 
   /* Do deferred semantic analysis.  */
@@ -1147,9 +1221,9 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic2 %s\n", m->toChars ());
+	message ("semantic2 %s", m->toChars ());
 
-      m->semantic2 (NULL);
+      semantic2 (m, NULL);
     }
 
   Module::runDeferredSemantic2 ();
@@ -1163,9 +1237,9 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic3 %s\n", m->toChars ());
+	message ("semantic3 %s", m->toChars ());
 
-      m->semantic3 (NULL);
+      semantic3 (m, NULL);
     }
 
   Module::runDeferredSemantic3 ();
@@ -1206,7 +1280,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fdeps);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf->offset, (char *) buf->data);
+	message ("%.*s", (int) buf->offset, (char *) buf->data);
     }
 
   /* Make dependencies.  */
@@ -1229,7 +1303,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fdeps);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	message ("%.*s", (int) buf.offset, (char *) buf.data);
     }
 
   /* Generate JSON files.  */
@@ -1249,7 +1323,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fjson);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	message ("%.*s", (int) buf.offset, (char *) buf.data);
     }
 
   /* Generate Ddoc files.  */
@@ -1275,7 +1349,7 @@ d_parse_file (void)
 	  hgs.fullDump = true;
 
 	  toCBuffer (m, &buf, &hgs);
-	  fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	  message ("%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
 
@@ -1286,7 +1360,7 @@ d_parse_file (void)
 	continue;
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "code      %s\n", m->toChars ());
+	message ("code      %s", m->toChars ());
 
       if (!flag_syntax_only)
 	{
@@ -1757,7 +1831,7 @@ d_build_eh_runtime_type (tree type)
   ClassDeclaration *cd = ((TypeClass *) t)->sym;
   tree decl;
 
-  if (cd->cpp)
+  if (cd->isCPPclass ())
     decl = get_cpp_typeinfo_decl (cd);
   else
     decl = get_classinfo_decl (cd);

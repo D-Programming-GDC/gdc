@@ -22,7 +22,7 @@
  * Copyright: Copyright Sean Kelly 2009 - 2014.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Sean Kelly, Alex Rønne Petersen, Martin Nowak
- * Source:    $(PHOBOSSRC std/_concurrency.d)
+ * Source:    $(PHOBOSSRC std/concurrency.d)
  */
 /*          Copyright Sean Kelly 2009 - 2014.
  * Distributed under the Boost Software License, Version 1.0.
@@ -199,7 +199,7 @@ static ~this()
 // Exceptions
 
 /**
- * Thrown on calls to $(D receiveOnly) if a message other than the type
+ * Thrown on calls to `receiveOnly` if a message other than the type
  * the receiving thread expected is sent.
  */
 class MessageMismatch : Exception
@@ -212,7 +212,7 @@ class MessageMismatch : Exception
 }
 
 /**
- * Thrown on calls to $(D receive) if the thread that spawned the receiving
+ * Thrown on calls to `receive` if the thread that spawned the receiving
  * thread has terminated and no more messages exist.
  */
 class OwnerTerminated : Exception
@@ -264,7 +264,7 @@ class PriorityMessageException : Exception
 
 /**
  * Thrown on mailbox crowding if the mailbox is configured with
- * $(D OnCrowding.throwException).
+ * `OnCrowding.throwException`.
  */
 class MailboxFull : Exception
 {
@@ -279,7 +279,7 @@ class MailboxFull : Exception
 }
 
 /**
- * Thrown when a Tid is missing, e.g. when $(D ownerTid) doesn't
+ * Thrown when a Tid is missing, e.g. when `ownerTid` doesn't
  * find an owner thread.
  */
 class TidMissingException : Exception
@@ -355,7 +355,7 @@ public:
 /**
  * Return the Tid of the thread which spawned the caller's thread.
  *
- * Throws: A $(D TidMissingException) exception if
+ * Throws: A `TidMissingException` exception if
  * there is no owner thread.
  */
 @property Tid ownerTid()
@@ -412,10 +412,10 @@ private template isSpawnable(F, T...)
  * Starts fn(args) in a new logical thread.
  *
  * Executes the supplied function in a new logical thread represented by
- * $(D Tid).  The calling thread is designated as the owner of the new thread.
- * When the owner thread terminates an $(D OwnerTerminated) message will be
- * sent to the new thread, causing an $(D OwnerTerminated) exception to be
- * thrown on $(D receive()).
+ * `Tid`.  The calling thread is designated as the owner of the new thread.
+ * When the owner thread terminates an `OwnerTerminated` message will be
+ * sent to the new thread, causing an `OwnerTerminated` exception to be
+ * thrown on `receive()`.
  *
  * Params:
  *  fn   = The function to execute.
@@ -425,44 +425,65 @@ private template isSpawnable(F, T...)
  *  A Tid representing the new logical thread.
  *
  * Notes:
- *  $(D args) must not have unshared aliasing.  In other words, all arguments
- *  to $(D fn) must either be $(D shared) or $(D immutable) or have no
+ *  `args` must not have unshared aliasing.  In other words, all arguments
+ *  to `fn` must either be `shared` or `immutable` or have no
  *  pointer indirection.  This is necessary for enforcing isolation among
  *  threads.
- *
- * Example:
- * ---
- * import std.stdio, std.concurrency;
- *
- * void f1(string str)
- * {
- *     writeln(str);
- * }
- *
- * void f2(char[] str)
- * {
- *     writeln(str);
- * }
- *
- * void main()
- * {
- *     auto str = "Hello, world";
- *
- *     // Works:  string is immutable.
- *     auto tid1 = spawn(&f1, str);
- *
- *     // Fails:  char[] has mutable aliasing.
- *     auto tid2 = spawn(&f2, str.dup);
- *
- *     // New thread with anonymous function
- *     spawn({ writeln("This is so great!"); });
- * }
- * ---
  */
-Tid spawn(F, T...)(F fn, T args) if (isSpawnable!(F, T))
+Tid spawn(F, T...)(F fn, T args)
+if (isSpawnable!(F, T))
 {
     static assert(!hasLocalAliasing!(T), "Aliases to mutable thread-local data not allowed.");
     return _spawn(false, fn, args);
+}
+
+///
+@system unittest
+{
+    static void f(string msg)
+    {
+        assert(msg == "Hello World");
+    }
+
+    auto tid = spawn(&f, "Hello World");
+}
+
+/// Fails: char[] has mutable aliasing.
+@system unittest
+{
+    string msg = "Hello, World!";
+
+    static void f1(string msg) {}
+    static assert(!__traits(compiles, spawn(&f1, msg.dup)));
+    static assert( __traits(compiles, spawn(&f1, msg.idup)));
+
+    static void f2(char[] msg) {}
+    static assert(!__traits(compiles, spawn(&f2, msg.dup)));
+    static assert(!__traits(compiles, spawn(&f2, msg.idup)));
+}
+
+/// New thread with anonymous function
+@system unittest
+{
+    spawn({
+        ownerTid.send("This is so great!");
+    });
+    assert(receiveOnly!string == "This is so great!");
+}
+
+@system unittest
+{
+    import core.thread : thread_joinAll;
+
+    __gshared string receivedMessage;
+    static void f1(string msg)
+    {
+        receivedMessage = msg;
+    }
+
+    auto tid1 = spawn(&f1, "Hello World");
+    thread_joinAll;
+    assert(receivedMessage == "Hello World");
 }
 
 /**
@@ -484,7 +505,8 @@ Tid spawn(F, T...)(F fn, T args) if (isSpawnable!(F, T))
  * Returns:
  *  A Tid representing the new thread.
  */
-Tid spawnLinked(F, T...)(F fn, T args) if (isSpawnable!(F, T))
+Tid spawnLinked(F, T...)(F fn, T args)
+if (isSpawnable!(F, T))
 {
     static assert(!hasLocalAliasing!(T), "Aliases to mutable thread-local data not allowed.");
     return _spawn(true, fn, args);
@@ -493,7 +515,8 @@ Tid spawnLinked(F, T...)(F fn, T args) if (isSpawnable!(F, T))
 /*
  *
  */
-private Tid _spawn(F, T...)(bool linked, F fn, T args) if (isSpawnable!(F, T))
+private Tid _spawn(F, T...)(bool linked, F fn, T args)
+if (isSpawnable!(F, T))
 {
     // TODO: MessageList and &exec should be shared.
     auto spawnTid = Tid(new MessageBox);
@@ -568,7 +591,7 @@ private Tid _spawn(F, T...)(bool linked, F fn, T args) if (isSpawnable!(F, T))
  * Places the values as a message at the back of tid's message queue.
  *
  * Sends the supplied value to the thread represented by tid.  As with
- * $(REF spawn, std,concurrency), $(D T) must not have unshared aliasing.
+ * $(REF spawn, std,concurrency), `T` must not have unshared aliasing.
  */
 void send(T...)(Tid tid, T vals)
 {
@@ -579,7 +602,7 @@ void send(T...)(Tid tid, T vals)
 /**
  * Places the values as a message on the front of tid's message queue.
  *
- * Send a message to $(D tid) but place it at the front of $(D tid)'s message
+ * Send a message to `tid` but place it at the front of `tid`'s message
  * queue instead of at the back.  This function is typically used for
  * out-of-band communication, to signal exceptional conditions, etc.
  */
@@ -615,32 +638,10 @@ private void _send(T...)(MsgType type, Tid tid, T vals)
  * a message against a set of delegates and executing the first match found.
  *
  * If a delegate that accepts a $(REF Variant, std,variant) is included as
- * the last argument to $(D receive), it will match any message that was not
+ * the last argument to `receive`, it will match any message that was not
  * matched by an earlier delegate.  If more than one argument is sent,
- * the $(D Variant) will contain a $(REF Tuple, std,typecons) of all values
+ * the `Variant` will contain a $(REF Tuple, std,typecons) of all values
  * sent.
- *
- * Example:
- * ---
- * import std.stdio;
- * import std.variant;
- * import std.concurrency;
- *
- * void spawnedFunction()
- * {
- *     receive(
- *         (int i) { writeln("Received an int."); },
- *         (float f) { writeln("Received a float."); },
- *         (Variant v) { writeln("Received some other type."); }
- *     );
- * }
- *
- * void main()
- * {
- *      auto tid = spawn(&spawnedFunction);
- *      send(tid, 42);
- * }
- * ---
  */
 void receive(T...)( T ops )
 in
@@ -649,13 +650,45 @@ in
            "Cannot receive a message until a thread was spawned "
            ~ "or thisTid was passed to a running thread.");
 }
-body
+do
 {
     checkops( ops );
 
     thisInfo.ident.mbox.get( ops );
 }
 
+///
+@system unittest
+{
+    import std.variant : Variant;
+
+    auto process = ()
+    {
+        receive(
+            (int i) { ownerTid.send(1); },
+            (double f) { ownerTid.send(2); },
+            (Variant v) { ownerTid.send(3); }
+        );
+    };
+
+    {
+        auto tid = spawn(process);
+        send(tid, 42);
+        assert(receiveOnly!int == 1);
+    }
+
+    {
+        auto tid = spawn(process);
+        send(tid, 3.14);
+        assert(receiveOnly!int == 2);
+    }
+
+    {
+        auto tid = spawn(process);
+        send(tid, "something else");
+        assert(receiveOnly!int == 3);
+    }
+}
 
 @safe unittest
 {
@@ -677,7 +710,7 @@ body
 }
 
 // Make sure receive() works with free functions as well.
-version (unittest)
+version(unittest)
 {
     private void receiveFunction(int x) {}
 }
@@ -705,31 +738,13 @@ private template receiveOnlyRet(T...)
 }
 
 /**
- * Receives only messages with arguments of types $(D T).
+ * Receives only messages with arguments of types `T`.
  *
- * Throws:  $(D MessageMismatch) if a message of types other than $(D T)
+ * Throws:  `MessageMismatch` if a message of types other than `T`
  *          is received.
  *
- * Returns: The received message.  If $(D T.length) is greater than one,
+ * Returns: The received message.  If `T.length` is greater than one,
  *          the message will be packed into a $(REF Tuple, std,typecons).
- *
- * Example:
- * ---
- * import std.concurrency;
- *
- * void spawnedFunc()
- * {
- *     auto msg = receiveOnly!(int, string)();
- *     assert(msg[0] == 42);
- *     assert(msg[1] == "42");
- * }
- *
- * void main()
- * {
- *     auto tid = spawn(&spawnedFunc);
- *     send(tid, 42, "42");
- * }
- * ---
  */
 receiveOnlyRet!(T) receiveOnly(T...)()
 in
@@ -737,7 +752,7 @@ in
     assert(thisInfo.ident.mbox !is null,
         "Cannot receive a message until a thread was spawned or thisTid was passed to a running thread.");
 }
-body
+do
 {
     import std.format : format;
     import std.typecons : Tuple;
@@ -765,6 +780,42 @@ body
         return ret;
 }
 
+///
+@system unittest
+{
+    auto tid = spawn(
+    {
+        assert(receiveOnly!int == 42);
+    });
+    send(tid, 42);
+}
+
+///
+@system unittest
+{
+    auto tid = spawn(
+    {
+        assert(receiveOnly!string == "text");
+    });
+    send(tid, "text");
+}
+
+///
+@system unittest
+{
+    struct Record { string name; int age; }
+
+    auto tid = spawn(
+    {
+        auto msg = receiveOnly!(double, Record);
+        assert(msg[0] == 0.5);
+        assert(msg[1].name == "Alice");
+        assert(msg[1].age == 31);
+    });
+
+    send(tid, 0.5, Record("Alice", 31));
+}
+
 @system unittest
 {
     static void t1(Tid mainTid)
@@ -790,10 +841,10 @@ body
  * Tries to receive but will give up if no matches arrive within duration.
  * Won't wait at all if provided $(REF Duration, core,time) is negative.
  *
- * Same as $(D receive) except that rather than wait forever for a message,
+ * Same as `receive` except that rather than wait forever for a message,
  * it waits until either it receives a message or the given
- * $(REF Duration, core,time) has passed. It returns $(D true) if it received a
- * message and $(D false) if it timed out waiting for one.
+ * $(REF Duration, core,time) has passed. It returns `true` if it received a
+ * message and `false` if it timed out waiting for one.
  */
 bool receiveTimeout(T...)(Duration duration, T ops)
 in
@@ -801,7 +852,7 @@ in
     assert(thisInfo.ident.mbox !is null,
         "Cannot receive a message until a thread was spawned or thisTid was passed to a running thread.");
 }
-body
+do
 {
     checkops(ops);
 
@@ -1464,35 +1515,6 @@ private interface IsGenerator {}
 /**
  * A Generator is a Fiber that periodically returns values of type T to the
  * caller via yield.  This is represented as an InputRange.
- *
- * Example:
- * ---
- * import std.concurrency;
- * import std.stdio;
- *
- *
- * void main()
- * {
- *     auto tid = spawn(
- *     {
- *         while (true)
- *         {
- *             writeln(receiveOnly!int());
- *         }
- *     });
- *
- *     auto r = new Generator!int(
- *     {
- *         foreach (i; 1 .. 10)
- *             yield(i);
- *     });
- *
- *     foreach (e; r)
- *     {
- *         tid.send(e);
- *     }
- * }
- * ---
  */
 class Generator(T) :
     Fiber, IsGenerator, InputRange!T
@@ -1533,6 +1555,27 @@ class Generator(T) :
     }
 
     /**
+     * Initializes a generator object which is associated with a static
+     * D function.  The function will be called once to prepare the range
+     * for iteration.
+     *
+     * Params:
+     *  fn = The fiber function.
+     *  sz = The stack size for this fiber.
+     *  guardPageSize = size of the guard page to trap fiber's stack
+     *                  overflows. Refer to $(REF Fiber, core,thread)'s
+     *                  documentation for more details.
+     *
+     * In:
+     *  fn must not be null.
+     */
+    this(void function() fn, size_t sz, size_t guardPageSize)
+    {
+        super(fn, sz, guardPageSize);
+        call();
+    }
+
+    /**
      * Initializes a generator object which is associated with a dynamic
      * D function.  The function will be called once to prepare the range
      * for iteration.
@@ -1564,6 +1607,27 @@ class Generator(T) :
     this(void delegate() dg, size_t sz)
     {
         super(dg, sz);
+        call();
+    }
+
+    /**
+     * Initializes a generator object which is associated with a dynamic
+     * D function.  The function will be called once to prepare the range
+     * for iteration.
+     *
+     * Params:
+     *  dg = The fiber function.
+     *  sz = The stack size for this fiber.
+     *  guardPageSize = size of the guard page to trap fiber's stack
+     *                  overflows. Refer to $(REF Fiber, core,thread)'s
+     *                  documentation for more details.
+     *
+     * In:
+     *  dg must not be null.
+     */
+    this(void delegate() dg, size_t sz, size_t guardPageSize)
+    {
+        super(dg, sz, guardPageSize);
         call();
     }
 
@@ -1632,6 +1696,28 @@ class Generator(T) :
     }
 private:
     T* m_value;
+}
+
+///
+@system unittest
+{
+    auto tid = spawn({
+        int i;
+        while (i < 9)
+            i = receiveOnly!int;
+
+        ownerTid.send(i * 2);
+    });
+
+    auto r = new Generator!int({
+        foreach (i; 1 .. 10)
+            yield(i);
+    });
+
+    foreach (e; r)
+        tid.send(e);
+
+    assert(receiveOnly!int == 18);
 }
 
 /**
@@ -2337,12 +2423,11 @@ private
     }
 }
 
-version (unittest)
+@system unittest
 {
-    import std.stdio;
     import std.typecons : tuple, Tuple;
 
-    void testfn(Tid tid)
+    static void testfn(Tid tid)
     {
         receive((float val) { assert(0); }, (int val, int val2) {
             assert(val == 42 && val2 == 86);
@@ -2357,7 +2442,7 @@ version (unittest)
         prioritySend(tid, "done");
     }
 
-    void runTest(Tid tid)
+    static void runTest(Tid tid)
     {
         send(tid, 42, 86);
         send(tid, tuple(42, 86));
@@ -2366,7 +2451,7 @@ version (unittest)
         receive((string val) { assert(val == "done"); });
     }
 
-    void simpleTest()
+    static void simpleTest()
     {
         auto tid = spawn(&testfn, thisTid);
         runTest(tid);
@@ -2377,28 +2462,22 @@ version (unittest)
         runTest(tid);
     }
 
-    @system unittest
-    {
-        simpleTest();
-    }
+    simpleTest();
 
-    @system unittest
-    {
-        scheduler = new ThreadScheduler;
-        simpleTest();
-        scheduler = null;
-    }
+    scheduler = new ThreadScheduler;
+    simpleTest();
+    scheduler = null;
 }
 
-private @property Mutex initOnceLock()
+private @property shared(Mutex) initOnceLock()
 {
-    __gshared Mutex lock;
-    if (auto mtx = cast() atomicLoad!(MemoryOrder.acq)(*cast(shared)&lock))
+    static shared Mutex lock;
+    if (auto mtx = atomicLoad!(MemoryOrder.acq)(lock))
         return mtx;
-    auto mtx = new Mutex;
-    if (cas(cast(shared)&lock, cast(shared) null, cast(shared) mtx))
+    auto mtx = new shared Mutex;
+    if (cas(&lock, cast(shared) null, mtx))
         return mtx;
-    return cast() atomicLoad!(MemoryOrder.acq)(*cast(shared)&lock);
+    return atomicLoad!(MemoryOrder.acq)(lock);
 }
 
 /**
@@ -2429,7 +2508,7 @@ auto ref initOnce(alias var)(lazy typeof(var) init)
     {
         static MySingleton instance()
         {
-            static __gshared MySingleton inst;
+            __gshared MySingleton inst;
             return initOnce!inst(new MySingleton);
         }
     }
@@ -2443,14 +2522,14 @@ auto ref initOnce(alias var)(lazy typeof(var) init)
     {
         static MySingleton instance()
         {
-            static __gshared MySingleton inst;
+            __gshared MySingleton inst;
             return initOnce!inst(new MySingleton);
         }
 
     private:
         this() { val = ++cnt; }
         size_t val;
-        static __gshared size_t cnt;
+        __gshared size_t cnt;
     }
 
     foreach (_; 0 .. 10)
@@ -2476,7 +2555,7 @@ auto ref initOnce(alias var)(lazy typeof(var) init)
  * Returns:
  *   A reference to the initialized variable
  */
-auto ref initOnce(alias var)(lazy typeof(var) init, Mutex mutex)
+auto ref initOnce(alias var)(lazy typeof(var) init, shared Mutex mutex)
 {
     // check that var is global, can't take address of a TLS variable
     static assert(is(typeof({ __gshared p = &var; })),
@@ -2488,7 +2567,7 @@ auto ref initOnce(alias var)(lazy typeof(var) init, Mutex mutex)
     {
         synchronized (mutex)
         {
-            if (!atomicLoad!(MemoryOrder.acq)(flag))
+            if (!atomicLoad!(MemoryOrder.raw)(flag))
             {
                 var = init;
                 atomicStore!(MemoryOrder.rel)(flag, true);
@@ -2498,14 +2577,20 @@ auto ref initOnce(alias var)(lazy typeof(var) init, Mutex mutex)
     return var;
 }
 
+/// ditto
+auto ref initOnce(alias var)(lazy typeof(var) init, Mutex mutex)
+{
+    return initOnce!var(init, cast(shared) mutex);
+}
+
 /// Use a separate mutex when init blocks on another thread that might also call initOnce.
 @system unittest
 {
     import core.sync.mutex : Mutex;
 
     static shared bool varA, varB;
-    __gshared Mutex m;
-    m = new Mutex;
+    static shared Mutex m;
+    m = new shared Mutex;
 
     spawn({
         // use a different mutex for varB to avoid a dead-lock
@@ -2528,4 +2613,18 @@ auto ref initOnce(alias var)(lazy typeof(var) init, Mutex mutex)
     initOnce!b(true);
     static assert(!__traits(compiles, initOnce!c(true))); // TLS
     static assert(!__traits(compiles, initOnce!d(true))); // local variable
+}
+
+// test ability to send shared arrays
+@system unittest
+{
+    static shared int[] x = new shared(int)[1];
+    auto tid = spawn({
+        auto arr = receiveOnly!(shared(int)[]);
+        arr[0] = 5;
+        ownerTid.send(true);
+    });
+    tid.send(x);
+    receiveOnly!(bool);
+    assert(x[0] == 5);
 }

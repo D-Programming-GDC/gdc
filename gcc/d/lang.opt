@@ -209,6 +209,10 @@ fdoc-inc=
 D Joined RejectNegative
 -fdoc-inc=<file>	Include a Ddoc macro <file>.
 
+fdruntime
+D
+Assume that standard D runtime libraries and \"D main\" exist.
+
 fdump-d-original
 D
 Display the frontend AST after parsing and semantic passes.
@@ -233,12 +237,16 @@ finvariants
 D Var(flag_invariants)
 Generate code for class invariant contracts.
 
+fmain
+D RejectNegative
+Generate a default D main() function when compiling.
+
 fmodule-file=
 D Joined RejectNegative
 -fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
 
 fmoduleinfo
-D
+D Var(flag_moduleinfo)
 Generate ModuleInfo struct for output module.
 
 fonly=
@@ -261,6 +269,10 @@ frelease
 D
 Compile release version.
 
+frtti
+D
+; Documented in C
+
 fswitch-errors
 D Var(flag_switch_errors)
 Generate code for switches without a default case.
@@ -279,11 +291,15 @@ List all usages of complex or imaginary types.
 
 ftransition=dip1000
 D RejectNegative
-Implement http://wiki.dlang.org/DIP1000 (experimental)
+Implement DIP1000: Scoped pointers (experimental)
+
+ftransition=dip1008
+D RejectNegative
+Implement DIP1008: Allow exceptions in @nogc code (experimental)
 
 ftransition=dip25
 D RejectNegative
-Implement http://wiki.dlang.org/DIP25 (experimental)
+Implement DIP25: Sealed references (experimental)
 
 ftransition=field
 D RejectNegative
@@ -292,6 +308,10 @@ List all non-mutable fields which occupy an object instance.
 ftransition=import
 D RejectNegative
 Revert to single phase name lookup.
+
+ftransition=intpromote
+D RejectNegative
+Use C-style integral promotion for unary '+', '-' and '~'.
 
 ftransition=nogc
 D RejectNegative

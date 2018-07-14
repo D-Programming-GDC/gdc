@@ -1,23 +1,23 @@
 // Written in the D programming language.
 
 /** This module contains the $(LREF Complex) type, which is used to represent
-    _complex numbers, along with related mathematical operations and functions.
+    complex numbers, along with related mathematical operations and functions.
 
     $(LREF Complex) will eventually
     $(DDLINK deprecate, Deprecated Features, replace)
-    the built-in types $(D cfloat), $(D cdouble), $(D creal), $(D ifloat),
-    $(D idouble), and $(D ireal).
+    the built-in types `cfloat`, `cdouble`, `creal`, `ifloat`,
+    `idouble`, and `ireal`.
 
     Authors:    Lars Tandle Kyllingstad, Don Clugston
     Copyright:  Copyright (c) 2010, Lars T. Kyllingstad.
     License:    $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0)
-    Source:     $(PHOBOSSRC std/_complex.d)
+    Source:     $(PHOBOSSRC std/complex.d)
 */
 module std.complex;
 
 import std.traits;
 
-/** Helper function that returns a _complex number with the specified
+/** Helper function that returns a complex number with the specified
     real and imaginary parts.
 
     Params:
@@ -28,10 +28,10 @@ import std.traits;
         im = (optional) imaginary part of complex number, 0 if omitted.
 
     Returns:
-        $(D Complex) instance with real and imaginary parts set
-        to the values provided as input.  If neither $(D re) nor
-        $(D im) are floating-point numbers, the return type will
-        be $(D Complex!double).  Otherwise, the return type is
+        `Complex` instance with real and imaginary parts set
+        to the values provided as input.  If neither `re` nor
+        `im` are floating-point numbers, the return type will
+        be `Complex!double`.  Otherwise, the return type is
         deduced using $(D std.traits.CommonType!(R, I)).
 */
 auto complex(R)(R re)  @safe pure nothrow @nogc
@@ -93,8 +93,8 @@ if (is(R : double) && is(I : double))
 }
 
 
-/** A complex number parametrised by a type $(D T), which must be either
-    $(D float), $(D double) or $(D real).
+/** A complex number parametrised by a type `T`, which must be either
+    `float`, `double` or `real`.
 */
 struct Complex(T)
 if (isFloatingPoint!T)
@@ -146,8 +146,7 @@ if (isFloatingPoint!T)
     }
 
     /// ditto
-    void toString(Writer, Char)(scope Writer w,
-                        FormatSpec!Char formatSpec) const
+    void toString(Writer, Char)(scope Writer w, const ref FormatSpec!Char formatSpec) const
         if (isOutputRange!(Writer, const(Char)[]))
     {
         import std.format : formatValue;
@@ -822,7 +821,6 @@ Complex!(CommonType!(T, U)) fromPolar(T, U)(T modulus, U argument)
 */
 Complex!T sin(T)(Complex!T z)  @safe pure nothrow @nogc
 {
-    import std.math : expi, coshisinh;
     auto cs = expi(z.re);
     auto csh = coshisinh(z.im);
     return typeof(return)(cs.im * csh.re, cs.re * csh.im);
@@ -840,7 +838,6 @@ Complex!T sin(T)(Complex!T z)  @safe pure nothrow @nogc
 /// ditto
 Complex!T cos(T)(Complex!T z)  @safe pure nothrow @nogc
 {
-    import std.math : expi, coshisinh;
     auto cs = expi(z.re);
     auto csh = coshisinh(z.im);
     return typeof(return)(cs.re * csh.re, - cs.im * csh.im);
@@ -850,19 +847,23 @@ Complex!T cos(T)(Complex!T z)  @safe pure nothrow @nogc
 @safe pure nothrow unittest
 {
     import std.complex;
-    import std.math;
     assert(cos(complex(0.0)) == 1.0);
-    assert(cos(complex(1.3L)) == std.math.cos(1.3L));
-    assert(cos(complex(0, 5.2L)) == cosh(5.2L));
 }
 
+deprecated
+@safe pure nothrow unittest
+{
+    import std.math;
+    assert(cos(complex(0, 5.2L)) == cosh(5.2L));
+    assert(cos(complex(1.3L)) == std.math.cos(1.3L));
+}
 
 /**
     Params: y = A real number.
     Returns: The value of cos(y) + i sin(y).
 
     Note:
-    $(D expi) is included here for convenience and for easy migration of code
+    `expi` is included here for convenience and for easy migration of code
     that uses $(REF _expi, std,math).  Unlike $(REF _expi, std,math), which uses the
     x87 $(I fsincos) instruction when possible, this function is no faster
     than calculating cos(y) and sin(y) separately.
@@ -876,15 +877,68 @@ Complex!real expi(real y)  @trusted pure nothrow @nogc
 ///
 @safe pure nothrow unittest
 {
+    import std.math : cos, sin;
+    assert(expi(0.0L) == 1.0L);
+    assert(expi(1.3e5L) == complex(cos(1.3e5L), sin(1.3e5L)));
+}
+
+deprecated
+@safe pure nothrow unittest
+{
     static import std.math;
 
     assert(expi(1.3e5L) == complex(std.math.cos(1.3e5L), std.math.sin(1.3e5L)));
-    assert(expi(0.0L) == 1.0L);
     auto z1 = expi(1.234);
     auto z2 = std.math.expi(1.234);
     assert(z1.re == z2.re && z1.im == z2.im);
 }
 
+/**
+    Params: y = A real number.
+    Returns: The value of cosh(y) + i sinh(y)
+
+    Note:
+    `coshisinh` is included here for convenience and for easy migration of code
+    that uses $(REF _coshisinh, std,math).
+*/
+Complex!real coshisinh(real y) @safe pure nothrow @nogc
+{
+    static import std.math;
+    if (std.math.fabs(y) <= 0.5)
+        return Complex!real(std.math.cosh(y), std.math.sinh(y));
+    else
+    {
+        auto z = std.math.exp(y);
+        auto zi = 0.5 / z;
+        z = 0.5 * z;
+        return Complex!real(z + zi, z - zi);
+    }
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import std.math : cosh, sinh;
+    assert(coshisinh(3.0L) == complex(cosh(3.0L), sinh(3.0L)));
+}
+
+deprecated
+@safe pure nothrow @nogc unittest
+{
+    static import std.math;
+    assert(coshisinh(3.0L) == complex(std.math.cosh(3.0L), std.math.sinh(3.0L)));
+    auto z1 = coshisinh(1.234);
+    auto z2 = std.math.coshisinh(1.234);
+    static if (real.mant_dig == 53)
+    {
+        assert(std.math.feqrel(z1.re, z2.re) >= real.mant_dig - 1 &&
+               std.math.feqrel(z1.im, z2.im) >= real.mant_dig - 1);
+    }
+    else
+    {
+        assert(z1.re == z2.re && z1.im == z2.im);
+    }
+}
 
 /**
     Params: z = A complex number.

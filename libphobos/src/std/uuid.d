@@ -68,11 +68,11 @@ $(TR $(TDNW UUID namespaces)
  *
  * For efficiency, UUID is implemented as a struct. UUIDs are therefore empty if not explicitly
  * initialized. An UUID is empty if $(MYREF3 UUID.empty, empty) is true. Empty UUIDs are equal to
- * $(D UUID.init), which is a UUID with all 16 bytes set to 0.
+ * `UUID.init`, which is a UUID with all 16 bytes set to 0.
  * Use UUID's constructors or the UUID generator functions to get an initialized UUID.
  *
  * This is a port of $(LINK2 http://www.boost.org/doc/libs/1_42_0/libs/uuid/uuid.html,
- * boost._uuid) from the Boost project with some minor additions and API
+ * boost.uuid) from the Boost project with some minor additions and API
  * changes for a more D-like API.
  *
  * Standards:
@@ -84,11 +84,11 @@ $(TR $(TDNW UUID namespaces)
  * Copyright: Copyright Johannes Pfau 2011 - .
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Johannes Pfau
- * Source:    $(PHOBOSSRC std/_uuid.d)
+ * Source:    $(PHOBOSSRC std/uuid.d)
  *
  * Macros:
  * MYREF2 = <a href="#$2">$(TT $1)</a>&nbsp;
- * MYREF3 = <a href="#$2">$(D $1)</a>
+ * MYREF3 = <a href="#$2">`$1`</a>
  */
 /*          Copyright Johannes Pfau 2011 - 2012.
  * Distributed under the Boost Software License, Version 1.0.
@@ -178,7 +178,7 @@ public struct UUID
          *
          * Note:
          * All of these UUID versions can be read and processed by
-         * $(D std.uuid), but only version 3, 4 and 5 UUIDs can be generated.
+         * `std.uuid`, but only version 3, 4 and 5 UUIDs can be generated.
          */
         enum Version
         {
@@ -404,13 +404,13 @@ public struct UUID
         {
             import std.conv : to;
             import std.exception;
-            import std.meta;
+            import std.meta : AliasSeq;
 
-            foreach (S; AliasSeq!(char[], const(char)[], immutable(char)[],
+            static foreach (S; AliasSeq!(char[], const(char)[], immutable(char)[],
                                   wchar[], const(wchar)[], immutable(wchar)[],
                                   dchar[], const(dchar)[], immutable(dchar)[],
                                   immutable(char[]), immutable(wchar[]), immutable(dchar[])))
-            {
+            {{
                 //Test valid, working cases
                 assert(UUID(to!S("00000000-0000-0000-0000-000000000000")).empty);
 
@@ -456,7 +456,7 @@ public struct UUID
                     == UUID(cast(ubyte[16])[0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,0x01,
                     0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]));
             }
-        }
+        }}
 
         /**
          * Returns true if and only if the UUID is equal
@@ -911,8 +911,8 @@ public struct UUID
         @safe pure nothrow @nogc unittest
         {
             import std.meta : AliasSeq;
-            foreach (Char; AliasSeq!(char, wchar, dchar))
-            {
+            static foreach (Char; AliasSeq!(char, wchar, dchar))
+            {{
                 alias String = immutable(Char)[];
                 //CTFE
                 enum String s = "8ab3060e-2cba-4f23-b74c-b52db3bdfb46";
@@ -926,7 +926,7 @@ public struct UUID
                 Char[36] str;
                 id.toString(str[]);
                 assert(str == s);
-            }
+            }}
         }
 
         @system pure nothrow @nogc unittest
@@ -952,7 +952,7 @@ public struct UUID
             assert(u1.toString() == "8ab3060e-2cba-4f23-b74c-b52db3bdfb46");
 
             char[] buf;
-            void sink(const(char)[] data)
+            void sink(scope const(char)[] data)
             {
                 buf ~= data;
             }
@@ -961,10 +961,23 @@ public struct UUID
         }
 }
 
+///
+@safe unittest
+{
+    UUID id;
+    assert(id.empty);
+
+    id = randomUUID;
+    assert(!id.empty);
+
+    id = UUID(cast(ubyte[16]) [138, 179, 6, 14, 44, 186, 79,
+        35, 183, 76, 181, 45, 179, 189, 251, 70]);
+    assert(id.toString() == "8ab3060e-2cba-4f23-b74c-b52db3bdfb46");
+}
 
 /**
  * This function generates a name based (Version 3) UUID from a namespace UUID and a name.
- * If no namespace UUID was passed, the empty UUID $(D UUID.init) is used.
+ * If no namespace UUID was passed, the empty UUID `UUID.init` is used.
  *
  * Note:
  * The default namespaces ($(LREF dnsNamespace), ...) defined by
@@ -980,8 +993,8 @@ public struct UUID
  * RFC 4122 isn't very clear on how UUIDs should be generated from names.
  * It is possible that different implementations return different UUIDs
  * for the same input, so be warned. The implementation for UTF-8 strings
- * and byte arrays used by $(D std.uuid) is compatible with Boost's implementation.
- * $(D std.uuid) guarantees that the same input to this function will generate
+ * and byte arrays used by `std.uuid` is compatible with Boost's implementation.
+ * `std.uuid` guarantees that the same input to this function will generate
  * the same output at any time, on any system (this especially means endianness
  * doesn't matter).
  *
@@ -1078,7 +1091,7 @@ public struct UUID
  /**
  * This function generates a name based (Version 5) UUID from a namespace
  * UUID and a name.
- * If no namespace UUID was passed, the empty UUID $(D UUID.init) is used.
+ * If no namespace UUID was passed, the empty UUID `UUID.init` is used.
  *
  * Note:
  * The default namespaces ($(LREF dnsNamespace), ...) defined by
@@ -1091,8 +1104,8 @@ public struct UUID
  * RFC 4122 isn't very clear on how UUIDs should be generated from names.
  * It is possible that different implementations return different UUIDs
  * for the same input, so be warned. The implementation for UTF-8 strings
- * and byte arrays used by $(D std.uuid) is compatible with Boost's implementation.
- * $(D std.uuid) guarantees that the same input to this function will generate
+ * and byte arrays used by `std.uuid` is compatible with Boost's implementation.
+ * `std.uuid` guarantees that the same input to this function will generate
  * the same output at any time, on any system (this especially means endianness
  * doesn't matter).
  *
@@ -1104,13 +1117,13 @@ public struct UUID
  * for strings and wstrings. It's always possible to pass wstrings and dstrings
  * by using the ubyte[] function overload (but be aware of endianness issues!).
  */
-@safe pure nothrow @nogc UUID sha1UUID(in char[] name, const UUID namespace = UUID.init)
+@safe pure nothrow @nogc UUID sha1UUID(scope const(char)[] name, scope const UUID namespace = UUID.init)
 {
     return sha1UUID(cast(const(ubyte[]))name, namespace);
 }
 
 /// ditto
-@safe pure nothrow @nogc UUID sha1UUID(in ubyte[] data, const UUID namespace = UUID.init)
+@safe pure nothrow @nogc UUID sha1UUID(scope const(ubyte)[] data, scope const UUID namespace = UUID.init)
 {
     import std.digest.sha : SHA1;
 
@@ -1527,12 +1540,12 @@ if (isInputRange!Range
             return parseUUID(to!T(input));
     }
 
-    foreach (S; AliasSeq!(char[], const(char)[], immutable(char)[],
+    static foreach (S; AliasSeq!(char[], const(char)[], immutable(char)[],
                           wchar[], const(wchar)[], immutable(wchar)[],
                           dchar[], const(dchar)[], immutable(dchar)[],
                           immutable(char[]), immutable(wchar[]), immutable(dchar[]),
                           TestForwardRange, TestInputRange))
-    {
+    {{
         //Verify examples.
         auto id = parseHelper!S("8AB3060E-2CBA-4F23-b74c-B52Db3BDFB46");
         //no dashes
@@ -1608,7 +1621,7 @@ if (isInputRange!Range
         //multiple trailing/leading characters
         assert(parseHelper!S("///8ab3060e2cba4f23b74cb52db3bdfb46||")
             == parseUUID("8ab3060e-2cba-4f23-b74c-b52db3bdfb46"));
-    }
+    }}
 }
 
 /**
