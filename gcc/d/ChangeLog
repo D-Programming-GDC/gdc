@@ -1,3 +1,8 @@
+2018-07-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc (same_type_p): Check type codes match before checking
+	equivalence.
+
 2018-07-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(CmpExp)): Remove lowering of static and
