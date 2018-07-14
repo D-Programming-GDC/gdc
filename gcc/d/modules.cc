@@ -19,8 +19,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/declaration.h"
-#include "dfrontend/module.h"
+#include "dmd/declaration.h"
+#include "dmd/module.h"
 
 #include "tree.h"
 #include "fold-const.h"

@@ -237,7 +237,7 @@ d.srcextra:
 
 d.tags: force
 	cd $(srcdir)/d; \
-	etags -o TAGS.sub *.c *.cc *.h dfrontend/*.h dfrontend/*.c; \
+	etags -o TAGS.sub *.c *.cc *.h dmd/*.h; \
 	etags --include TAGS.sub --include ../TAGS.sub
 
 d.man: doc/gdc.1

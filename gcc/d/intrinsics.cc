@@ -19,9 +19,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/declaration.h"
-#include "dfrontend/module.h"
-#include "dfrontend/template.h"
+#include "dmd/declaration.h"
+#include "dmd/module.h"
+#include "dmd/template.h"
 
 #include "tm.h"
 #include "function.h"

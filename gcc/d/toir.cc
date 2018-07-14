@@ -19,10 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/declaration.h"
-#include "dfrontend/init.h"
-#include "dfrontend/statement.h"
+#include "dmd/aggregate.h"
+#include "dmd/declaration.h"
+#include "dmd/init.h"
+#include "dmd/statement.h"
 
 #include "tree.h"
 #include "tree-iterator.h"

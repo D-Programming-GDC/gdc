@@ -19,8 +19,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/globals.h"
-#include "dfrontend/errors.h"
+#include "dmd/globals.h"
+#include "dmd/errors.h"
 
 #include "tree.h"
 #include "options.h"

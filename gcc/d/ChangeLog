@@ -1,5 +1,28 @@
 2018-07-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* Make-lang.in (d.tags): Rename dfrontend to dmd.
+	* d-attribs.c: Rename dfrontend includes to dmd.
+	* d-builtins.cc: Likewise.
+	* d-codegen.cc: Likewise.
+	* d-convert.cc: Likewise.
+	* d-diagnostic.cc: Likewise.
+	* d-frontend.cc: Likewise.
+	* d-incpath.cc: Likewise.
+	* d-lang.cc: Likewise.
+	* d-longdouble.cc: Likewise.
+	* d-target.cc: Likewise.
+	* decl.cc: Likewise.
+	* expr.cc: Likewise.
+	* imports.cc: Likewise.
+	* intrinsics.cc: Likewise.
+	* modules.cc: Likewise.
+	* runtime.cc: Likewise.
+	* toir.cc: Likewise.
+	* typeinfo.cc: Likewise.
+	* types.cc: Likewise.
+
+2018-07-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* types.cc (same_type_p): Check type codes match before checking
 	equivalence.
 
