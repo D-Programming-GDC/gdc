@@ -97,7 +97,7 @@ same_type_p (Type *t1, Type *t2)
     return true;
 
   /* Types are mutably the same type.  */
-  if (tb1->immutableOf ()->equals (tb2->immutableOf ()))
+  if (tb1->ty == tb2->ty && tb1->equivalent (tb2))
     return true;
 
   return false;
