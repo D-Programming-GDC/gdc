@@ -601,7 +601,7 @@ The following OS versions are implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- a/gcc/config/arm/t-arm
 +++ b/gcc/config/arm/t-arm
-@@ -144,4 +144,8 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(
+@@ -152,6 +152,10 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/arm/arm-c.c
  
@@ -610,6 +610,8 @@ The following OS versions are implemented:
 +	$(POSTCOMPILE)
 +
  arm-common.o: arm-cpu-cdata.h
+ 
+ driver-arm.o: arm-native.h
 --- /dev/null
 +++ b/gcc/config/default-d.c
 @@ -0,0 +1,25 @@
@@ -1371,7 +1373,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/sparc/sparc-protos.h
 +++ b/gcc/config/sparc/sparc-protos.h
-@@ -111,4 +111,7 @@ unsigned int sparc_regmode_natural_size
+@@ -110,4 +110,7 @@ unsigned int sparc_regmode_natural_size
  
  extern rtl_opt_pass *make_pass_work_around_errata (gcc::context *);
  
@@ -1562,7 +1564,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10627,6 +10636,22 @@ unloaded. The default is to return false
+@@ -10643,6 +10652,22 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1610,7 +1612,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7277,6 +7286,16 @@ floating-point support; they are not inc
+@@ -7279,6 +7288,16 @@ floating-point support; they are not inc
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  
