@@ -1214,8 +1214,16 @@ get_symbol_decl (Declaration *decl)
 	  d_keep (newfntype);
 	}
 
-      /* Miscellaneous function flags.  */
-      if (fd->isMember2 () || fd->isFuncLiteralDeclaration ())
+      /* In [pragma/inline], The attribute pragma(inline) affects whether a
+	 function should be inlined or not.  */
+      if (fd->inlining == PINLINEnever)
+	DECL_UNINLINABLE (decl->csym) = 1;
+      else if (fd->inlining == PINLINEalways)
+	{
+	  DECL_DECLARED_INLINE_P (decl->csym) = 1;
+	  DECL_DISREGARD_INLINE_LIMITS (decl->csym) = 1;
+	}
+      else if (fd->isMember2 () || fd->isFuncLiteralDeclaration ())
 	{
 	  /* See grokmethod in cp/decl.c.  Maybe we shouldn't be setting inline
 	     flags without reason or proper handling.  */
@@ -1329,6 +1337,16 @@ get_symbol_decl (Declaration *decl)
 	    TREE_STATIC (decl->csym) = 1;
 	  else
 	    DECL_EXTERNAL (decl->csym) = 1;
+	}
+
+      /* Don't keep functions declared pragma(inline, true) unless
+	 the user wants us to keep all inline functions.  */
+      if (fd && fd->inlining == PINLINEalways && TREE_PUBLIC (decl->csym))
+	{
+	  if (flag_keep_inline_functions)
+	    mark_needed (decl->csym);
+
+	  d_comdat_linkage (decl->csym);
 	}
     }
 
