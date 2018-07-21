@@ -1,3 +1,11 @@
+2018-07-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decl.cc (get_symbol_decl): Set all generated static symbols as
+	DECL_EXTERNAL. Move logic for determining TREE_STATIC ...
+	(start_function): ... here.
+	(reset_decl_tls_model): New function.
+	(d_finish_decl): Call it on finished variables.
+
 2018-07-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (d.tags): Rename dfrontend to dmd.
