@@ -883,6 +883,7 @@ class AddrExp : public UnaExp
 {
 public:
     AddrExp(Loc loc, Expression *e);
+    AddrExp(Loc loc, Expression *e, Type *t);
 
     void accept(Visitor *v) { v->visit(this); }
 };
