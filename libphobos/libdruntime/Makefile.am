@@ -19,7 +19,7 @@
 include $(top_srcdir)/d_rules.am
 
 # Make sure GDC can find libdruntime include files
-D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) -I .
+D_EXTRA_DFLAGS=-nostdinc -I $(srcdir) -I .
 
 # D flags for compilation
 AM_DFLAGS=$(phobos_compiler_pic_flag)
