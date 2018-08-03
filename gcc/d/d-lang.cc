@@ -395,7 +395,7 @@ d_init_ts (void)
    Handles D specific options.  Return false if we didn't do anything.  */
 
 static bool
-d_handle_option (size_t scode, const char *arg, int value,
+d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
 		 int kind ATTRIBUTE_UNUSED,
 		 location_t loc ATTRIBUTE_UNUSED,
 		 const cl_option_handlers *handlers ATTRIBUTE_UNUSED)

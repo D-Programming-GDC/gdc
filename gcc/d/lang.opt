@@ -102,6 +102,18 @@ Wall
 D
 ; Documented in C
 
+Walloca
+D
+; Documented in C
+
+Walloca-larger-than=
+D
+; Documented in C
+
+Wno-alloca-larger-than
+D
+; Documented in C
+
 Wcast-result
 D Warning Var(warn_cast_result)
 Warn about casts that will produce a null result.
