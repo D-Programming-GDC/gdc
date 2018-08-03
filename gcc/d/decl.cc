@@ -1301,35 +1301,12 @@ get_symbol_decl (Declaration *decl)
       if (!fd || !fd->isNested ())
 	TREE_PUBLIC (decl->csym) = 1;
 
-      /* Check if the declaration is a template, and whether it will be emitted
-	 in the current compilation or not.  */
-      TemplateInstance *ti = decl->isInstantiated ();
-      if (ti)
-	{
-	  if (!DECL_EXTERNAL (decl->csym) && ti->needsCodegen ())
-	    {
-	      /* Warn about templates instantiated in this compilation.  */
-	      if (ti == decl->parent)
-		{
-		  warning (OPT_Wtemplates, "%s %s instantiated",
-			   ti->kind (), ti->toPrettyChars (false));
-		}
+      TREE_STATIC (decl->csym) = 1;
+      /* The decl has not been defined -- yet.  */
+      DECL_EXTERNAL (decl->csym) = 1;
 
-	      TREE_STATIC (decl->csym) = 1;
-	    }
-	  else
-	    DECL_EXTERNAL (decl->csym) = 1;
-
-	  d_linkonce_linkage (decl->csym);
-	}
-      else
-	{
-	  if (!DECL_EXTERNAL (decl->csym)
-	      && decl->getModule () && decl->getModule ()->isRoot ())
-	    TREE_STATIC (decl->csym) = 1;
-	  else
-	    DECL_EXTERNAL (decl->csym) = 1;
-	}
+      if (decl->isInstantiated ())
+	d_linkonce_linkage (decl->csym);
     }
 
   /* Symbol is going in thread local storage.  */
@@ -1521,6 +1498,16 @@ get_decl_tree (Declaration *decl)
   return t;
 }
 
+/* Update the TLS model on variable DECL, typically after the linkage
+   has been modified.  */
+
+static void
+reset_decl_tls_model (tree decl)
+{
+  if (DECL_THREAD_LOCAL_P (decl))
+    set_decl_tls_model (decl, decl_default_tls_model (decl));
+}
+
 /* Finish up a variable declaration and compile it all the way to
    the assembler language output.  */
 
@@ -1532,6 +1519,7 @@ d_finish_decl (tree decl)
   /* We are sending this symbol to object file, can't be extern.  */
   TREE_STATIC (decl) = 1;
   DECL_EXTERNAL (decl) = 0;
+  reset_decl_tls_model (decl);
   relayout_decl (decl);
 
   if (flag_checking && DECL_INITIAL (decl))
@@ -1827,19 +1815,26 @@ start_function (FuncDeclaration *fd)
 {
   tree fndecl = get_symbol_decl (fd);
 
-  /* If we are generating the function, but it's really extern.
-     Such as external inlinable functions or thunk aliases.  */
-  if (!fd->isInstantiated () && fd->getModule ()
-      && !fd->getModule ()->isRoot ())
+  /* Function has been defined, check now whether we intend to send it to
+     object file, or it really is extern.  Such as inlinable functions from
+     modules not in this compilation, or thunk aliases.  */
+  TemplateInstance *ti = fd->isInstantiated ();
+  if (ti && ti->needsCodegen ())
     {
-      TREE_STATIC (fndecl) = 0;
-      DECL_EXTERNAL (fndecl) = 1;
+      /* Warn about templates instantiated in this compilation.  */
+      if (ti == fd->parent)
+	{
+	  warning (OPT_Wtemplates, "%s %qs instantiated",
+		   ti->kind (), ti->toPrettyChars (false));
+	}
+
+      DECL_EXTERNAL (fndecl) = 0;
     }
   else
     {
-      /* This function exists in static storage.  */
-      TREE_STATIC (fndecl) = 1;
-      DECL_EXTERNAL (fndecl) = 0;
+      Module *md = fd->getModule ();
+      if (md && md->isRoot ())
+	DECL_EXTERNAL (fndecl) = 0;
     }
 
   DECL_INITIAL (fndecl) = error_mark_node;
