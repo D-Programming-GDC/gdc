@@ -882,7 +882,7 @@ void json_generate(OutBuffer *buf, Modules *modules)
     {
         Module *m = (*modules)[i];
         if (global.params.verbose)
-            fprintf(global.stdmsg, "json gen %s\n", m->toChars());
+            message("json gen %s", m->toChars());
         m->accept(&json);
     }
     json.arrayEnd();

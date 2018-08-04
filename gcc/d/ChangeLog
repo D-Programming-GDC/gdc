@@ -1,3 +1,116 @@
+2018-07-23  Eugene Wissner  <belka@caraus.de>
+	* d-lang.cc (d_handle_option): Change function argument to HOST_WIDE_INT.
+	* lang.opt (Walloca-larger-than=, Wno-alloca-larger-than): New options.
+	* opt.texi (Walloca-larger-than=, Wno-alloca-larger-than): Likewise.
+
+2018-07-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decl.cc (get_symbol_decl): Set all generated static symbols as
+	DECL_EXTERNAL. Move logic for determining TREE_STATIC ...
+	(start_function): ... here.
+	(d_finish_decl): Update TLS model after finishing variable linkage.
+
+2018-07-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc (same_type_p): Check type codes match before checking
+	equivalence.
+
+2018-07-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Makefile.in (d/verstr.h): Remove recipe.
+	(d.mostlyclean): Remove cleanup of verstr.h.
+	* verstr.h: New file.
+
+2018-07-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (lower_struct_comparison): Evaluate side effects of
+	empty struct.
+	(build_struct_comparison): Likewise.
+
+2018-07-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* typeinfo.cc (TypeInfoVisitor::layout_interfaces): Only generate an
+	interface vtable for classes.
+	(TypeInfoVisitor::visit(TypeInfoClassDeclaration)): Likewise.
+
+2018-07-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (deps_write): Ignore __main module.
+	(d_handle_option): Handle -fmain option.
+	(d_parse_file): Generate D main function if requested.
+	* lang.opt (fmain): New option.
+
+2018-07-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (d_build_builtins_module): Export __builtin_clonglong
+	and __builtin_culonglong to gcc builtins module.
+
+2018-07-04  Eugene Wissner  <belka@caraus.de>
+
+	* d-spec.c: Include opt-suggestions.h containing option_proposer used by
+	gcc.h.
+
+2018-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decl.cc (get_symbol_decl): Implicitly convert return type of 'void'
+	main to 'int' for both C and D entry functions.
+	* toir.cc (IRVisitor::visit(ReturnStatement)): Likewise.
+
+2018-06-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(FuncExp)): Don't error about nested
+	delegate literals.
+
+2018-06-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-frontend.cc (eval_builtin): Allow both gcc and frontend builtins.
+	* intrinsics.cc (call_builtin_fn): Use convert.
+	(expand_intrinsic_sqrt): Use fold_convert.
+	(expand_intrinsic_copysign): New function.
+	(expand_intrinsic_pow): New function.
+	(maybe_expand_intrinsic): Handle many math intrinsics.
+	* intrinsics.def (EXPM1, EXP2, LOG, LOG2, LOG10, ROUND, FLOORF),
+	(FLOOR, FLOORL, CEILF, CEIL, CEILL, TRUNC, FMIN, FMAX, COPYSIGN),
+	(POW, FMA): Add math intrinsics.
+
+2018-06-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc (TypeVisitor::visit(TypeClass)): Handle get_symbol_decl
+	returning an error_mark_node.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decl.cc (DeclVisitor::visit(FuncDeclaration)): Move function
+	unnesting to...
+	(get_symbol_decl): ... here.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_post_options): Set global showColumns parameter.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc (expand_format): Handle whitespace format specifier.
+	(d_diagnostic_report_diagnostic): Change signature, updated all
+	callers.  Handle writing messages verbatim.
+	(vmessage): New function.
+	* d-lang.cc (d_parse_file): Use message to emit verbose diagnostics.
+	* decl.cc (DeclVisitor::visit(FuncDeclaration)): Likewise.
+	(get_symbol_decl): Likewise.
+
+2018-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_frontend_type): Use Type::merge2 to merge
+	generated front-end types.
+	* d-codegen.cc (declaration_type): Likewise.
+	(type_passed_as): Likewise.
+	* d-convert.cc (convert_expr): Use ClassDeclaration::isCPPclass.
+	* d-lang.cc (d_build_eh_runtime_type): Likewise.
+	* toir.cc (IRVisitor::visit): Use ClassDecalration::isCPPclass.
+	* typeinfo.cc (TypeInfoVisitor::visit): Use Type::merge2 to merge
+	generated front-end types.
+	* types.cc (layout_aggregate_type): Use ClassDeclaration::isCPPclass.
+
 2018-05-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(StringExp)): Copy string literal from

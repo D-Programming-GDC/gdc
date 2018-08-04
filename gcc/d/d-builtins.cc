@@ -232,7 +232,7 @@ build_frontend_type (tree type)
 	  sdecl->sizeok = SIZEOKdone;
 	  sdecl->type = (TypeStruct::create (sdecl))->addMod (mod);
 	  sdecl->type->ctype = type;
-	  sdecl->type->merge ();
+	  sdecl->type->merge2 ();
 
 	  /* Does not seem necessary to convert fields, but the members field
 	     must be non-null for the above size setting to stick.  */
@@ -557,6 +557,12 @@ d_build_builtins_module (Module *m)
 
     t = build_frontend_type (long_unsigned_type_node);
     members->push (build_alias_declaration ("__builtin_culong", t));
+
+    t = build_frontend_type (long_long_integer_type_node);
+    members->push (build_alias_declaration ("__builtin_clonglong", t));
+
+    t = build_frontend_type (long_long_unsigned_type_node);
+    members->push (build_alias_declaration ("__builtin_culonglong", t));
 
     t = build_frontend_type (lang_hooks.types.type_for_mode (byte_mode, 0));
     members->push (build_alias_declaration ("__builtin_machine_byte", t));

@@ -130,7 +130,8 @@ const char *ThrownExceptionExp::toChars()
 // Generate an error message when this exception is not caught
 void ThrownExceptionExp::generateUncaughtError()
 {
-    Expression *e = resolveSlice((*thrown->value->elements)[0]);
+    UnionExp ue;
+    Expression *e = resolveSlice((*thrown->value->elements)[0], &ue);
     StringExp *se = e->toStringExp();
     thrown->error("uncaught CTFE exception %s(%s)", thrown->type->toChars(), se ? se->toChars() : e->toChars());
 
@@ -480,14 +481,28 @@ UnionExp paintTypeOntoLiteralCopy(Type *type, Expression *lit)
     return ue;
 }
 
-Expression *resolveSlice(Expression *e)
+/*************************************
+ * If e is a SliceExp, constant fold it.
+ * Params:
+ *      e = expression to resolve
+ *      pue = if not null, store resulting expression here
+ * Returns:
+ *      resulting expression
+ */
+Expression *resolveSlice(Expression *e, UnionExp *pue)
 {
     if (e->op != TOKslice)
         return e;
     SliceExp *se = (SliceExp *)e;
     if (se->e1->op == TOKnull)
         return se->e1;
-    return Slice(e->type, se->e1, se->lwr, se->upr).copy();
+    if (pue)
+    {
+        *pue = Slice(e->type, se->e1, se->lwr, se->upr);
+        return pue->exp();
+    }
+    else
+        return Slice(e->type, se->e1, se->lwr, se->upr).copy();
 }
 
 /* Determine the array length, without interpreting it.

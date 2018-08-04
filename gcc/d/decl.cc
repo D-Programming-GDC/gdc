@@ -739,13 +739,6 @@ public:
     if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != d)
       return;
 
-    /* For nested functions in particular, unnest fndecl in the cgraph, as
-       all static chain passing is handled by the front-end.  Do this even
-       if we are not emitting the body.  */
-    struct cgraph_node *node = cgraph_node::get_create (fndecl);
-    if (node->origin)
-      node->unnest ();
-
     if (!d->fbody)
       {
 	rest_of_decl_compilation (fndecl, 1, 0);
@@ -753,7 +746,7 @@ public:
       }
 
     if (global.params.verbose)
-      fprintf (global.stdmsg, "function  %s\n", d->toPrettyChars ());
+      message ("function  %s", d->toPrettyChars ());
 
     /* Start generating code for this function.  */
     gcc_assert (d->semanticRun == PASSsemantic3done);
@@ -1111,10 +1104,11 @@ get_symbol_decl (Declaration *decl)
 	      DECL_VIRTUAL_P (decl->csym) = 1;
 	    }
 	}
-      else if (fd->isMain ())
+      else if (fd->isMain () || fd->isCMain ())
 	{
 	  /* The main function is named 'D main' to distinguish from C main.  */
-	  DECL_NAME (decl->csym) = get_identifier (fd->toPrettyChars (true));
+	  if (fd->isMain ())
+	    DECL_NAME (decl->csym) = get_identifier (fd->toPrettyChars (true));
 
 	  /* 'void main' is implicitly converted to returning an int.  */
 	  newfntype = build_function_type (int_type_node,
@@ -1170,6 +1164,13 @@ get_symbol_decl (Declaration *decl)
       /* Check whether this function is expanded by the frontend.  */
       DECL_INTRINSIC_CODE (decl->csym) = INTRINSIC_NONE;
       maybe_set_intrinsic (fd);
+
+      /* For nested functions in particular, unnest fndecl in the cgraph, as
+	 all static chain passing is handled by the front-end.  Do this even
+	 if we are not emitting the body.  */
+      struct cgraph_node *node = cgraph_node::get_create (decl->csym);
+      if (node->origin)
+	node->unnest ();
     }
 
   /* Mark compiler generated temporaries as artificial.  */
@@ -1211,48 +1212,19 @@ get_symbol_decl (Declaration *decl)
       if (!fd || !fd->isNested ())
 	TREE_PUBLIC (decl->csym) = 1;
 
-      /* Check if the declaration is a template, and whether it will be emitted
-	 in the current compilation or not.  */
-      TemplateInstance *ti = decl->isInstantiated ();
-      if (ti)
-	{
-	  if (!DECL_EXTERNAL (decl->csym) && ti->needsCodegen ())
-	    {
-	      /* Warn about templates instantiated in this compilation.  */
-	      if (ti == decl->parent)
-		{
-		  warning (OPT_Wtemplates, "%s %s instantiated",
-			   ti->kind (), ti->toPrettyChars (false));
-		}
+      TREE_STATIC (decl->csym) = 1;
+      /* The decl has not been defined -- yet.  */
+      DECL_EXTERNAL (decl->csym) = 1;
 
-	      TREE_STATIC (decl->csym) = 1;
-	    }
-	  else
-	    DECL_EXTERNAL (decl->csym) = 1;
-
-	  d_linkonce_linkage (decl->csym);
-	}
-      else
-	{
-	  if (!DECL_EXTERNAL (decl->csym)
-	      && decl->getModule () && decl->getModule ()->isRoot ())
-	    TREE_STATIC (decl->csym) = 1;
-	  else
-	    DECL_EXTERNAL (decl->csym) = 1;
-	}
+      if (decl->isInstantiated ())
+	d_linkonce_linkage (decl->csym);
     }
 
   /* Symbol is going in thread local storage.  */
   if (decl->isThreadlocal () && !DECL_ARTIFICIAL (decl->csym))
     {
       if (global.params.vtls)
-	{
-	  const char *p = decl->loc.toChars ();
-	  fprintf (global.stdmsg, "%s: %s is thread local\n",
-		   p ? p : "", decl->toChars ());
-	  if (p)
-	    free (CONST_CAST (char *, p));
-	}
+	message (decl->loc, "`%s` is thread local", decl->toChars ());
 
       set_decl_tls_model (decl->csym, decl_default_tls_model (decl->csym));
     }
@@ -1448,6 +1420,11 @@ d_finish_decl (tree decl)
   /* We are sending this symbol to object file, can't be extern.  */
   TREE_STATIC (decl) = 1;
   DECL_EXTERNAL (decl) = 0;
+
+  /* Update the TLS model as the linkage has been modified.  */
+  if (DECL_THREAD_LOCAL_P (decl))
+    set_decl_tls_model (decl, decl_default_tls_model (decl));
+
   relayout_decl (decl);
 
   if (flag_checking && DECL_INITIAL (decl))
@@ -1743,19 +1720,26 @@ start_function (FuncDeclaration *fd)
 {
   tree fndecl = get_symbol_decl (fd);
 
-  /* If we are generating the function, but it's really extern.
-     Such as external inlinable functions or thunk aliases.  */
-  if (!fd->isInstantiated () && fd->getModule ()
-      && !fd->getModule ()->isRoot ())
+  /* Function has been defined, check now whether we intend to send it to
+     object file, or it really is extern.  Such as inlinable functions from
+     modules not in this compilation, or thunk aliases.  */
+  TemplateInstance *ti = fd->isInstantiated ();
+  if (ti && ti->needsCodegen ())
     {
-      TREE_STATIC (fndecl) = 0;
-      DECL_EXTERNAL (fndecl) = 1;
+      /* Warn about templates instantiated in this compilation.  */
+      if (ti == fd->parent)
+	{
+	  warning (OPT_Wtemplates, "%s %qs instantiated",
+		   ti->kind (), ti->toPrettyChars (false));
+	}
+
+      DECL_EXTERNAL (fndecl) = 0;
     }
   else
     {
-      /* This function exists in static storage.  */
-      TREE_STATIC (fndecl) = 1;
-      DECL_EXTERNAL (fndecl) = 0;
+      Module *md = fd->getModule ();
+      if (md && md->isRoot ())
+	DECL_EXTERNAL (fndecl) = 0;
     }
 
   DECL_INITIAL (fndecl) = error_mark_node;

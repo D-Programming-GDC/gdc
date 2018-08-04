@@ -143,7 +143,7 @@ Expression *paintTypeOntoLiteral(Type *type, Expression *lit);
 UnionExp paintTypeOntoLiteralCopy(Type *type, Expression *lit);
 
 /// Convert from a CTFE-internal slice, into a normal Expression
-Expression *resolveSlice(Expression *e);
+Expression *resolveSlice(Expression *e, UnionExp *pue = NULL);
 
 /// Determine the array length, without interpreting the expression.
 uinteger_t resolveArrayLength(Expression *e);

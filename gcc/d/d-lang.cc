@@ -218,7 +218,8 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 	Module *m = depmod->aimports[i];
 
 	/* Ignore compiler-generated modules.  */
-	if (m->ident == Identifier::idPool ("__entrypoint")
+	if ((m->ident == Identifier::idPool ("__entrypoint")
+	     || m->ident == Identifier::idPool ("__main"))
 	    && m->parent == NULL)
 	  continue;
 
@@ -394,7 +395,7 @@ d_init_ts (void)
    Handles D specific options.  Return false if we didn't do anything.  */
 
 static bool
-d_handle_option (size_t scode, const char *arg, int value,
+d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
 		 int kind ATTRIBUTE_UNUSED,
 		 location_t loc ATTRIBUTE_UNUSED,
 		 const cl_option_handlers *handlers ATTRIBUTE_UNUSED)
@@ -485,6 +486,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_finvariants:
       global.params.useInvariants = value;
+      break;
+
+    case OPT_fmain:
+      global.params.addMain = value;
       break;
 
     case OPT_fmodule_file_:
@@ -752,6 +757,7 @@ d_post_options (const char ** fn)
 
   global.params.symdebug = write_symbols != NO_DEBUG;
   global.params.useInline = flag_inline_functions;
+  global.params.showColumns = flag_show_column;
 
   if (global.params.useInline)
     global.params.hdrStripPlainFunctions = false;
@@ -960,18 +966,21 @@ d_parse_file (void)
 {
   if (global.params.verbose)
     {
-      fprintf (global.stdmsg, "binary    %s\n", global.params.argv0);
-      fprintf (global.stdmsg, "version   %s\n", global.version);
+      message ("binary    %s", global.params.argv0);
+      message ("version   %s", global.version);
 
       if (global.params.versionids)
 	{
-	  fprintf (global.stdmsg, "predefs  ");
+	  OutBuffer buf;
+	  buf.writestring ("predefs  ");
 	  for (size_t i = 0; i < global.params.versionids->dim; i++)
 	    {
 	      const char *s = (*global.params.versionids)[i];
-	      fprintf (global.stdmsg, " %s", s);
+	      buf.writestring (" ");
+	      buf.writestring (s);
 	    }
-	  fprintf (global.stdmsg, "\n");
+
+	  message ("%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
 
@@ -1046,7 +1055,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "parse     %s\n", m->toChars ());
+	message ("parse     %s", m->toChars ());
 
       if (!Module::rootModule)
 	Module::rootModule = m;
@@ -1061,6 +1070,19 @@ d_parse_file (void)
 	  /* Remove M from list of modules.  */
 	  modules.remove (i);
 	  i--;
+	}
+    }
+
+  /* Load the module containing D main.  */
+  if (global.params.addMain)
+    {
+      unsigned errors = global.startGagging ();
+      Module *m = Module::load (Loc (), NULL, Identifier::idPool ("__main"));
+
+      if (! global.endGagging (errors))
+	{
+	  m->importedFrom = m;
+	  modules.push (m);
 	}
     }
 
@@ -1079,7 +1101,7 @@ d_parse_file (void)
 	    continue;
 
 	  if (global.params.verbose)
-	    fprintf (global.stdmsg, "import    %s\n", m->toChars ());
+	    message ("import    %s", m->toChars ());
 
 	  genhdrfile (m);
 	}
@@ -1094,7 +1116,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "importall %s\n", m->toChars ());
+	message ("importall %s", m->toChars ());
 
       m->importAll (NULL);
     }
@@ -1110,7 +1132,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic  %s\n", m->toChars ());
+	message ("semantic  %s", m->toChars ());
 
       m->semantic (NULL);
     }
@@ -1141,7 +1163,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic2 %s\n", m->toChars ());
+	message ("semantic2 %s", m->toChars ());
 
       m->semantic2 (NULL);
     }
@@ -1157,7 +1179,7 @@ d_parse_file (void)
       Module *m = modules[i];
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "semantic3 %s\n", m->toChars ());
+	message ("semantic3 %s", m->toChars ());
 
       m->semantic3 (NULL);
     }
@@ -1200,7 +1222,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fdeps);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf->offset, (char *) buf->data);
+	message ("%.*s", (int) buf->offset, (char *) buf->data);
     }
 
   /* Make dependencies.  */
@@ -1223,7 +1245,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fdeps);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	message ("%.*s", (int) buf.offset, (char *) buf.data);
     }
 
   /* Generate JSON files.  */
@@ -1243,7 +1265,7 @@ d_parse_file (void)
 	  writeFile (Loc (), fjson);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	message ("%.*s", (int) buf.offset, (char *) buf.data);
     }
 
   /* Generate Ddoc files.  */
@@ -1269,7 +1291,7 @@ d_parse_file (void)
 	  hgs.fullDump = true;
 
 	  toCBuffer (m, &buf, &hgs);
-	  fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	  message ("%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
 
@@ -1280,7 +1302,7 @@ d_parse_file (void)
 	continue;
 
       if (global.params.verbose)
-	fprintf (global.stdmsg, "code      %s\n", m->toChars ());
+	message ("code      %s", m->toChars ());
 
       if (!flag_syntax_only)
 	{
@@ -1751,7 +1773,7 @@ d_build_eh_runtime_type (tree type)
   ClassDeclaration *cd = ((TypeClass *) t)->sym;
   tree decl;
 
-  if (cd->cpp)
+  if (cd->isCPPclass ())
     decl = get_cpp_typeinfo_decl (cd);
   else
     decl = get_classinfo_decl (cd);

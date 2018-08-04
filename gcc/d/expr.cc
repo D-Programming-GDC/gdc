@@ -2130,16 +2130,19 @@ public:
     /* If nested, this will be a trampoline.  */
     if (e->fd->isNested ())
       {
+	tree func = build_address (get_symbol_decl (e->fd));
+	tree object;
+
 	if (this->constp_)
 	  {
-	    e->error ("non-constant nested delegate literal expression %s",
-		      e->toChars ());
-	    this->result_ = error_mark_node;
+	    /* Static delegate variables have no context pointer.  */
+	    object = null_pointer_node;
+	    this->result_ = build_method_call (func, object, e->fd->type);
+	    TREE_CONSTANT (this->result_) = 1;
 	  }
 	else
 	  {
-	    tree func = build_address (get_symbol_decl (e->fd));
-	    tree object = get_frame_for_symbol (e->fd);
+	    object = get_frame_for_symbol (e->fd);
 	    this->result_ = build_method_call (func, object, e->fd->type);
 	  }
       }
