@@ -1,3 +1,9 @@
+2018-07-23  Eugene Wissner  <belka@caraus.de>
+
+	* d-lang.cc (d_handle_option): Change function argument to HOST_WIDE_INT.
+	* lang.opt (Walloca-larger-than=, Wno-alloca-larger-than): New options.
+	* opt.texi (Walloca-larger-than=, Wno-alloca-larger-than): Likewise.
+
 2018-07-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* decl.cc (get_symbol_decl): Set all generated static symbols as
