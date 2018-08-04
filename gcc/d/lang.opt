@@ -114,6 +114,18 @@ Werror
 D
 ; Documented in common.opt
 
+Walloca
+D
+; Documented in C
+
+Walloca-larger-than=
+D
+; Documented in C
+
+Wno-alloca-larger-than
+D
+; Documented in C
+
 Wspeculative
 D
 Warn from speculative compiles such as __traits(compiles).
