@@ -155,8 +155,6 @@ Target::_init (void)
   /* Set-up target C++ ABI.  */
   Target::reverseCppOverloads = false;
   Target::cppExceptions = true;
-  Target::int64Mangle = 'l';
-  Target::uint64Mangle = 'm';
   Target::twoDtorInVtable = true;
 
   /* Initialize all compile-time properties for floating point types.

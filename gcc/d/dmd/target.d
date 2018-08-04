@@ -57,8 +57,6 @@ struct Target
         // C++ ABI
         bool reverseCppOverloads; /// set if overloaded functions are grouped and in reverse order (such as in dmc and cl)
         bool cppExceptions;       /// set if catching C++ exceptions is supported
-        char int64Mangle;         /// mangling character for C++ int64_t
-        char uint64Mangle;        /// mangling character for C++ uint64_t
         bool twoDtorInVtable;     /// target C++ ABI puts deleting and non-deleting destructor into vtable
     }
 

@@ -709,19 +709,8 @@ void foo35()
         xxx = cast(typeof(xxx))(a + b);
         version(GNU)
         {
-            version(X86) asm
-            {
-                "int $3;" : : : ;
-            }
-            else version(X86_64) asm
-            {
-                "int $3;" : : : ;
-            }
-            else
-            {
-                import gcc.builtins;
-                __builtin_trap();
-            }
+            import gcc.builtins;
+            __builtin_trap();
         }
         else
             asm { int 3; }
@@ -1071,7 +1060,7 @@ void func53(TestStruct[2] testarg)
     assert(testarg[1].dummy2 == 2);
 }
 
-TestStruct m53[2];
+TestStruct[2] m53;
 
 void test53()
 {

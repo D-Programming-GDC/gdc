@@ -125,6 +125,8 @@ D_FRONTEND_OBJS = \
 	d/gluelayer.o \
 	d/hash.o \
 	d/hdrgen.o \
+	d/iasm.o \
+	d/iasmgcc.o \
 	d/id.o \
 	d/identifier.o \
 	d/impcnvtab.o \
@@ -237,7 +239,7 @@ d.srcextra:
 
 d.tags: force
 	cd $(srcdir)/d; \
-	etags -o TAGS.sub *.c *.cc *.h dmd/*.h; \
+	etags -o TAGS.sub *.c *.cc *.h dmd/*.h dmd/root/*.h; \
 	etags --include TAGS.sub --include ../TAGS.sub
 
 d.man: doc/gdc.1

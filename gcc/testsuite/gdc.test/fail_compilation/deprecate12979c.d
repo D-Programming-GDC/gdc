@@ -10,8 +10,15 @@ fail_compilation/deprecate12979c.d(13): Deprecation: `asm` statement is assumed 
 
 void foo() @nogc
 {
-    asm
+    version(GNU)
     {
-        ret;
+        asm { ""; }
+    }
+    else
+    {
+        asm
+        {
+            ret;
+        }
     }
 }

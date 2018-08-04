@@ -83,6 +83,9 @@ proc gdc-convert-args { args } {
                    || [string match "-gc" $arg] } {
             lappend out "-g"
 
+        } elseif [string match "-ignore" $arg] {
+            lappend out "-fignore-unknown-pragmas"
+
         } elseif [string match "-inline" $arg] {
             lappend out "-finline-functions"
 
@@ -94,9 +97,6 @@ proc gdc-convert-args { args } {
 
         } elseif [string match "-O" $arg] {
             lappend out "-O2"
-
-        } elseif [string match "-property" $arg] {
-            lappend out "-fproperty"
 
         } elseif [string match "-release" $arg] {
             lappend out "-frelease"

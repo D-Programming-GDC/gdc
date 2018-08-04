@@ -38,6 +38,7 @@ import dmd.root.port;
 import dmd.semantic2;
 import dmd.semantic3;
 import dmd.target;
+import dmd.utils;
 import dmd.visitor;
 
 version(Windows) {
@@ -284,26 +285,26 @@ extern (C++) class Package : ScopeDsymbol
  */
 extern (C++) final class Module : Package
 {
-    extern (C++) static __gshared Module rootModule;
-    extern (C++) static __gshared DsymbolTable modules; // symbol table of all modules
-    extern (C++) static __gshared Modules amodules;     // array of all modules
-    extern (C++) static __gshared Dsymbols deferred;    // deferred Dsymbol's needing semantic() run on them
-    extern (C++) static __gshared Dsymbols deferred2;   // deferred Dsymbol's needing semantic2() run on them
-    extern (C++) static __gshared Dsymbols deferred3;   // deferred Dsymbol's needing semantic3() run on them
-    extern (C++) static __gshared uint dprogress;       // progress resolving the deferred list
+    extern (C++) __gshared Module rootModule;
+    extern (C++) __gshared DsymbolTable modules; // symbol table of all modules
+    extern (C++) __gshared Modules amodules;     // array of all modules
+    extern (C++) __gshared Dsymbols deferred;    // deferred Dsymbol's needing semantic() run on them
+    extern (C++) __gshared Dsymbols deferred2;   // deferred Dsymbol's needing semantic2() run on them
+    extern (C++) __gshared Dsymbols deferred3;   // deferred Dsymbol's needing semantic3() run on them
+    extern (C++) __gshared uint dprogress;       // progress resolving the deferred list
     /**
      * A callback function that is called once an imported module is
      * parsed. If the callback returns true, then it tells the
      * frontend that the driver intends on compiling the import.
      */
-    extern (C++) static __gshared bool function(Module mod) onImport;
+    extern (C++) __gshared bool function(Module mod) onImport;
 
     static void _init()
     {
         modules = new DsymbolTable();
     }
 
-    extern (C++) static __gshared AggregateDeclaration moduleinfo;
+    extern (C++) __gshared AggregateDeclaration moduleinfo;
 
     const(char)* arg;           // original argument name
     ModuleDeclaration* md;      // if !=null, the contents of the ModuleDeclaration declaration
@@ -624,7 +625,8 @@ extern (C++) final class Module : Package
             {
                 .error(loc, "cannot find source code for runtime library file 'object.d'");
                 errorSupplemental(loc, "dmd might not be correctly installed. Run 'dmd -man' for installation instructions.");
-                errorSupplemental(loc, "config file: %s", FileName.canonicalName(global.inifilename));
+                const dmdConfFile = FileName.canonicalName(global.inifilename);
+                errorSupplemental(loc, "config file: %s", dmdConfFile ? dmdConfFile : "not found".ptr);
             }
             else
             {
@@ -1146,7 +1148,7 @@ extern (C++) final class Module : Package
         if (dprogress == 0)
             return;
 
-        static __gshared int nested;
+        __gshared int nested;
         if (nested)
             return;
         //if (deferred.dim) printf("+Module::runDeferredSemantic(), len = %d\n", deferred.dim);
@@ -1327,7 +1329,7 @@ struct ModuleDeclaration
     bool isdeprecated;      // if it is a deprecated module
     Expression msg;
 
-    extern (D) this(Loc loc, Identifiers* packages, Identifier id, Expression msg, bool isdeprecated)
+    extern (D) this(const ref Loc loc, Identifiers* packages, Identifier id, Expression msg, bool isdeprecated)
     {
         this.loc = loc;
         this.packages = packages;
@@ -1336,19 +1338,24 @@ struct ModuleDeclaration
         this.isdeprecated = isdeprecated;
     }
 
-    extern (C++) const(char)* toChars()
+    extern (C++) const(char)* toChars() const
     {
         OutBuffer buf;
         if (packages && packages.dim)
         {
-            for (size_t i = 0; i < packages.dim; i++)
+            foreach (pid; *packages)
             {
-                Identifier pid = (*packages)[i];
-                buf.writestring(pid.toChars());
+                buf.writestring(pid.toString());
                 buf.writeByte('.');
             }
         }
-        buf.writestring(id.toChars());
+        buf.writestring(id.toString());
         return buf.extractString();
+    }
+
+    /// Provide a human readable representation
+    extern (D) const(char)[] toString() const
+    {
+        return this.toChars().toDString;
     }
 }

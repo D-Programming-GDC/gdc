@@ -1197,7 +1197,7 @@ public:
 
   /* D Inline Assembler is not implemented, as would require a writing
      an assembly parser for each supported target.  Instead we leverage
-     GCC extended assembler using the ExtAsmStatement class.  */
+     GCC extended assembler using the GccAsmStatement class.  */
 
   void visit (AsmStatement *)
   {
@@ -1207,7 +1207,7 @@ public:
   /* Build a GCC extended assembler expression, whose components are
      an INSN string, some OUTPUTS, some INPUTS, and some CLOBBERS.  */
 
-  void visit (ExtAsmStatement *s)
+  void visit (GccAsmStatement *s)
   {
     StringExp *insn = (StringExp *)s->insn;
     tree outputs = NULL_TREE;

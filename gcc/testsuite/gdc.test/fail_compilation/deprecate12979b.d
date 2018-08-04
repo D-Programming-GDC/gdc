@@ -10,8 +10,15 @@ fail_compilation/deprecate12979b.d(13): Deprecation: `asm` statement is assumed 
 
 void foo() pure
 {
-    asm
+    version(GNU)
     {
-        ret;
+        asm { ""; }
+    }
+    else
+    {
+        asm
+        {
+            ret;
+        }
     }
 }

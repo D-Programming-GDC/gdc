@@ -11,8 +11,15 @@ fail_compilation/deprecate12979a.d(14): Deprecation: `asm` statement is assumed 
 
 void foo() nothrow
 {
-    asm
+    version(GNU)
     {
-        ret;
+        asm { ""; }
+    }
+    else
+    {
+        asm
+        {
+            ret;
+        }
     }
 }

@@ -15,9 +15,10 @@
 #pragma once
 #endif
 
-#include "ctfloat.h"
-#include "outbuffer.h"
-#include "filename.h"
+#include "root/dcompat.h"
+#include "root/ctfloat.h"
+#include "root/outbuffer.h"
+#include "root/filename.h"
 #include "compiler.h"
 
 // Can't include arraytypes.h here, need to declare these directly.
@@ -116,7 +117,6 @@ struct Param
     unsigned char covPercent;   // 0..100 code coverage percentage required
     bool nofloat;       // code should not pull in floating point support
     bool ignoreUnsupportedPragmas;      // rather than error on them
-    bool enforcePropertySyntax;
     bool useModuleInfo; // generate runtime module information
     bool useTypeInfo;   // generate runtime type information
     bool useExceptions; // support exception handling
@@ -231,10 +231,11 @@ struct Global
 
     Compiler compiler;
     Param params;
-    unsigned errors;       // number of errors reported so far
-    unsigned warnings;     // number of warnings reported so far
-    unsigned gag;          // !=0 means gag reporting of errors & warnings
-    unsigned gaggedErrors; // number of errors reported while gagged
+    unsigned errors;         // number of errors reported so far
+    unsigned warnings;       // number of warnings reported so far
+    unsigned gag;            // !=0 means gag reporting of errors & warnings
+    unsigned gaggedErrors;   // number of errors reported while gagged
+    unsigned gaggedWarnings; // number of warnings reported while gagged
 
     void* console;         // opaque pointer to console for controlling text attributes
 
@@ -291,14 +292,6 @@ typedef int32_t                 d_int32;
 typedef uint32_t                d_uns32;
 typedef int64_t                 d_int64;
 typedef uint64_t                d_uns64;
-
-// Represents a D [ ] array
-template<typename T>
-struct DArray
-{
-    size_t length;
-    T *ptr;
-};
 
 // file location
 struct Loc

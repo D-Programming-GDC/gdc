@@ -15,8 +15,8 @@ version (TestInlineAsm)
         version (GNU)
         {
         L1:
-            asm { ""; }
-            asm { "" : : : : L1, L2; }
+            asm { "" : : : : L1; } // Check back references
+            asm { "" : : : : L2; } // Check forward references
         L2:
             asm { ""; }
         }

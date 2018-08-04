@@ -9,8 +9,15 @@ fail_compilation/deprecate12979d.d(12): Error: `asm` statement is assumed to be 
 
 void foo() @safe
 {
-    asm
+    version(GNU)
     {
-        ret;
+        asm { ""; }
+    }
+    else
+    {
+        asm
+        {
+            ret;
+        }
     }
 }

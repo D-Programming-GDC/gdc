@@ -277,7 +277,7 @@ build_frontend_type (tree type)
 		  return NULL;
 		}
 
-	      args->push (Parameter::create (sc, targ, NULL, NULL));
+	      args->push (Parameter::create (sc, targ, NULL, NULL, NULL));
 	    }
 
 	  /* GCC generic and placeholder builtins are marked as variadic, yet
@@ -430,16 +430,27 @@ d_init_versions (void)
     VersionCondition::addPredefinedGlobalIdent ("D_Coverage");
   if (flag_pic)
     VersionCondition::addPredefinedGlobalIdent ("D_PIC");
+
   if (global.params.doDocComments)
     VersionCondition::addPredefinedGlobalIdent ("D_Ddoc");
+
   if (global.params.useUnitTests)
     VersionCondition::addPredefinedGlobalIdent ("unittest");
+
   if (global.params.useAssert == CHECKENABLEon)
     VersionCondition::addPredefinedGlobalIdent ("assert");
+
   if (global.params.useArrayBounds == CHECKENABLEoff)
     VersionCondition::addPredefinedGlobalIdent ("D_NoBoundsChecks");
+
   if (global.params.betterC)
     VersionCondition::addPredefinedGlobalIdent ("D_BetterC");
+  else
+    {
+      VersionCondition::addPredefinedGlobalIdent ("D_ModuleInfo");
+      VersionCondition::addPredefinedGlobalIdent ("D_Exceptions");
+      VersionCondition::addPredefinedGlobalIdent ("D_TypeInfo");
+    }
 
   VersionCondition::addPredefinedGlobalIdent ("all");
 

@@ -516,10 +516,6 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
       global.params.useIn = value;
       break;
 
-    case OPT_fproperty:
-      global.params.enforcePropertySyntax = value;
-      break;
-
     case OPT_frelease:
       global.params.release = value;
       break;
