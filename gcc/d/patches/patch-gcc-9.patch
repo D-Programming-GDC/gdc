@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- a/gcc/config/powerpcspe/powerpcspe.c
 +++ b/gcc/config/powerpcspe/powerpcspe.c
-@@ -32025,11 +32025,12 @@ rs6000_output_function_epilogue (FILE *f
+@@ -32026,11 +32026,12 @@ rs6000_output_function_epilogue (FILE *f
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -21,7 +21,7 @@ relevant documentation about the GDC front end.
        else if (! strcmp (language_string, "GNU F77")
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -28146,11 +28146,12 @@ rs6000_output_function_epilogue (FILE *f
+@@ -28147,11 +28147,12 @@ rs6000_output_function_epilogue (FILE *f
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -93,7 +93,7 @@ relevant documentation about the GDC front end.
  in the @file{gcc} subdirectory of the object directory.  You can also
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -1424,6 +1424,15 @@ Go source code.
+@@ -1425,6 +1425,15 @@ Go source code.
  @item @var{file}.brig
  BRIG files (binary representation of HSAIL).
  
@@ -109,7 +109,7 @@ relevant documentation about the GDC front end.
  @item @var{file}.ads
  Ada source code file that contains a library unit declaration (a
  declaration of a package, subprogram, or generic, or a generic
-@@ -1470,6 +1479,7 @@ objective-c  objective-c-header  objecti
+@@ -1471,6 +1480,7 @@ objective-c  objective-c-header  objecti
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
