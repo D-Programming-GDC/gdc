@@ -174,9 +174,9 @@ am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	rt/ehalloc.lo rt/invariant.lo rt/lifetime.lo rt/memory.lo \
 	rt/minfo.lo rt/monitor_.lo rt/obj.lo rt/qsort.lo \
 	rt/sections.lo rt/sections_android.lo \
-	rt/sections_elf_shared.lo rt/sections_osx.lo \
-	rt/sections_solaris.lo rt/sections_win32.lo \
-	rt/sections_win64.lo rt/switch_.lo rt/tlsgc.lo \
+	rt/sections_elf_shared.lo rt/sections_osx_x86.lo \
+	rt/sections_osx_x86_64.lo rt/sections_solaris.lo \
+	rt/sections_win32.lo rt/sections_win64.lo rt/tlsgc.lo \
 	rt/typeinfo/ti_Acdouble.lo rt/typeinfo/ti_Acfloat.lo \
 	rt/typeinfo/ti_Acreal.lo rt/typeinfo/ti_Adouble.lo \
 	rt/typeinfo/ti_Afloat.lo rt/typeinfo/ti_Ag.lo \
@@ -198,8 +198,7 @@ am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	rt/typeinfo/ti_wchar.lo rt/util/array.lo \
 	rt/util/container/array.lo rt/util/container/common.lo \
 	rt/util/container/hashtab.lo rt/util/container/treap.lo \
-	rt/util/hash.lo rt/util/random.lo rt/util/typeinfo.lo \
-	rt/util/utf.lo
+	rt/util/random.lo rt/util/typeinfo.lo rt/util/utf.lo
 am__objects_2 = gc/bits.lo gc/config.lo gc/gcinterface.lo \
 	gc/impl/conservative/gc.lo gc/impl/manual/gc.lo \
 	gc/impl/proto/gc.lo gc/os.lo gc/pooltable.lo gc/proxy.lo
@@ -258,7 +257,8 @@ am__objects_12 = core/sys/freebsd/dlfcn.lo \
 	core/sys/freebsd/sys/elf64.lo \
 	core/sys/freebsd/sys/elf_common.lo \
 	core/sys/freebsd/sys/event.lo core/sys/freebsd/sys/link_elf.lo \
-	core/sys/freebsd/sys/mman.lo core/sys/freebsd/time.lo
+	core/sys/freebsd/sys/mman.lo core/sys/freebsd/sys/mount.lo \
+	core/sys/freebsd/time.lo
 @DRUNTIME_OS_FREEBSD_TRUE@am__objects_13 = $(am__objects_12)
 am__objects_14 = core/sys/openbsd/dlfcn.lo
 @DRUNTIME_OS_OPENBSD_TRUE@am__objects_15 = $(am__objects_14)
@@ -396,16 +396,14 @@ am__objects_25 = $(am__objects_1) $(am__objects_3) $(am__objects_4) \
 	$(am__objects_13) $(am__objects_15) $(am__objects_17) \
 	$(am__objects_19) $(am__objects_21) $(am__objects_23) \
 	$(am__objects_24)
-am__objects_26 = libgdruntime_la-errno_.lo \
-	libgdruntime_la-bss_section.lo
+am__objects_26 = libgdruntime_la-errno_.lo
 am__objects_27 = libgdruntime_la-threadasm.lo
 am__objects_28 = $(am__objects_25) $(am__objects_26) $(am__objects_27)
 am_libgdruntime_la_OBJECTS = $(am__objects_28)
 libgdruntime_la_OBJECTS = $(am_libgdruntime_la_OBJECTS)
 libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
-am__objects_29 = libgdruntime_t_la-errno_.lo \
-	libgdruntime_t_la-bss_section.lo
+am__objects_29 = libgdruntime_t_la-errno_.lo
 am__objects_30 = libgdruntime_t_la-threadasm.lo
 am_libgdruntime_t_la_OBJECTS = $(am__objects_29) $(am__objects_30)
 libgdruntime_t_la_OBJECTS = $(am_libgdruntime_t_la_OBJECTS)
@@ -415,7 +413,7 @@ libgdruntime_t_la_OBJECTS = $(am_libgdruntime_t_la_OBJECTS)
 am_unittest_OBJECTS = ../testsuite/test_runner.$(OBJEXT)
 unittest_OBJECTS = $(am_unittest_OBJECTS)
 unittest_DEPENDENCIES = libgdruntime_t.la
-am__objects_31 = errno_.$(OBJEXT) bss_section.$(OBJEXT)
+am__objects_31 = errno_.$(OBJEXT)
 am__objects_32 = threadasm.$(OBJEXT)
 am_unittest_static_OBJECTS = ../testsuite/test_runner.$(OBJEXT) \
 	$(am__objects_31) $(am__objects_32)
@@ -708,7 +706,7 @@ DRUNTIME_DSOURCES_GENERATED = gcc/config.d gcc/libbacktrace.d
 # Can't use wildcards here:
 # https://www.gnu.org/software/automake/manual/html_node/Wildcards.html
 DRUNTIME_SSOURCES = core/threadasm.S
-DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
+DRUNTIME_CSOURCES = core/stdc/errno_.c
 DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/checkedint.d core/cpuid.d core/demangle.d core/exception.d \
 	core/internal/abort.d core/internal/arrayop.d core/internal/convert.d \
@@ -733,14 +731,15 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	rt/critical_.d rt/deh.d rt/dmain2.d rt/ehalloc.d rt/invariant.d \
 	rt/lifetime.d rt/memory.d rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d \
 	rt/sections.d rt/sections_android.d rt/sections_elf_shared.d \
-	rt/sections_osx.d rt/sections_solaris.d rt/sections_win32.d \
-	rt/sections_win64.d rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_Acdouble.d \
-	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
-	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
-	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
-	rt/typeinfo/ti_Ashort.d rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d \
-	rt/typeinfo/ti_cdouble.d rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d \
-	rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
+	rt/sections_osx_x86.d rt/sections_osx_x86_64.d rt/sections_solaris.d \
+	rt/sections_win32.d rt/sections_win64.d rt/tlsgc.d \
+	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
+	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
+	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
+	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
+	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
+	rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d \
+	rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
 	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
 	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
 	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
@@ -749,8 +748,8 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	rt/typeinfo/ti_ucent.d rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d \
 	rt/typeinfo/ti_ushort.d rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d \
 	rt/util/array.d rt/util/container/array.d rt/util/container/common.d \
-	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
-	rt/util/random.d rt/util/typeinfo.d rt/util/utf.d
+	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/random.d \
+	rt/util/typeinfo.d rt/util/utf.d
 
 DRUNTIME_DSOURCES_STDCXX = core/stdcpp/exception.d \
 	core/stdcpp/typeinfo.d
@@ -788,7 +787,8 @@ DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
 	core/sys/freebsd/sys/elf.d core/sys/freebsd/sys/elf32.d \
 	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
 	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
-	core/sys/freebsd/sys/mman.d core/sys/freebsd/time.d
+	core/sys/freebsd/sys/mman.d core/sys/freebsd/sys/mount.d \
+	core/sys/freebsd/time.d
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
@@ -1125,11 +1125,11 @@ rt/qsort.lo: rt/$(am__dirstamp)
 rt/sections.lo: rt/$(am__dirstamp)
 rt/sections_android.lo: rt/$(am__dirstamp)
 rt/sections_elf_shared.lo: rt/$(am__dirstamp)
-rt/sections_osx.lo: rt/$(am__dirstamp)
+rt/sections_osx_x86.lo: rt/$(am__dirstamp)
+rt/sections_osx_x86_64.lo: rt/$(am__dirstamp)
 rt/sections_solaris.lo: rt/$(am__dirstamp)
 rt/sections_win32.lo: rt/$(am__dirstamp)
 rt/sections_win64.lo: rt/$(am__dirstamp)
-rt/switch_.lo: rt/$(am__dirstamp)
 rt/tlsgc.lo: rt/$(am__dirstamp)
 rt/typeinfo/$(am__dirstamp):
 	@$(MKDIR_P) rt/typeinfo
@@ -1182,7 +1182,6 @@ rt/util/container/array.lo: rt/util/container/$(am__dirstamp)
 rt/util/container/common.lo: rt/util/container/$(am__dirstamp)
 rt/util/container/hashtab.lo: rt/util/container/$(am__dirstamp)
 rt/util/container/treap.lo: rt/util/container/$(am__dirstamp)
-rt/util/hash.lo: rt/util/$(am__dirstamp)
 rt/util/random.lo: rt/util/$(am__dirstamp)
 rt/util/typeinfo.lo: rt/util/$(am__dirstamp)
 rt/util/utf.lo: rt/util/$(am__dirstamp)
@@ -1353,6 +1352,7 @@ core/sys/freebsd/sys/event.lo: core/sys/freebsd/sys/$(am__dirstamp)
 core/sys/freebsd/sys/link_elf.lo:  \
 	core/sys/freebsd/sys/$(am__dirstamp)
 core/sys/freebsd/sys/mman.lo: core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/mount.lo: core/sys/freebsd/sys/$(am__dirstamp)
 core/sys/freebsd/time.lo: core/sys/freebsd/$(am__dirstamp)
 core/sys/openbsd/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/openbsd
@@ -1848,6 +1848,8 @@ mostlyclean-compile:
 	-rm -f core/sys/freebsd/sys/link_elf.lo
 	-rm -f core/sys/freebsd/sys/mman.$(OBJEXT)
 	-rm -f core/sys/freebsd/sys/mman.lo
+	-rm -f core/sys/freebsd/sys/mount.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/mount.lo
 	-rm -f core/sys/freebsd/time.$(OBJEXT)
 	-rm -f core/sys/freebsd/time.lo
 	-rm -f core/sys/linux/config.$(OBJEXT)
@@ -2492,16 +2494,16 @@ mostlyclean-compile:
 	-rm -f rt/sections_android.lo
 	-rm -f rt/sections_elf_shared.$(OBJEXT)
 	-rm -f rt/sections_elf_shared.lo
-	-rm -f rt/sections_osx.$(OBJEXT)
-	-rm -f rt/sections_osx.lo
+	-rm -f rt/sections_osx_x86.$(OBJEXT)
+	-rm -f rt/sections_osx_x86.lo
+	-rm -f rt/sections_osx_x86_64.$(OBJEXT)
+	-rm -f rt/sections_osx_x86_64.lo
 	-rm -f rt/sections_solaris.$(OBJEXT)
 	-rm -f rt/sections_solaris.lo
 	-rm -f rt/sections_win32.$(OBJEXT)
 	-rm -f rt/sections_win32.lo
 	-rm -f rt/sections_win64.$(OBJEXT)
 	-rm -f rt/sections_win64.lo
-	-rm -f rt/switch_.$(OBJEXT)
-	-rm -f rt/switch_.lo
 	-rm -f rt/tlsgc.$(OBJEXT)
 	-rm -f rt/tlsgc.lo
 	-rm -f rt/typeinfo/ti_Acdouble.$(OBJEXT)
@@ -2588,8 +2590,6 @@ mostlyclean-compile:
 	-rm -f rt/util/container/hashtab.lo
 	-rm -f rt/util/container/treap.$(OBJEXT)
 	-rm -f rt/util/container/treap.lo
-	-rm -f rt/util/hash.$(OBJEXT)
-	-rm -f rt/util/hash.lo
 	-rm -f rt/util/random.$(OBJEXT)
 	-rm -f rt/util/random.lo
 	-rm -f rt/util/typeinfo.$(OBJEXT)
@@ -2633,26 +2633,14 @@ threadasm.obj: core/threadasm.S
 libgdruntime_la-errno_.lo: core/stdc/errno_.c
 	$(LIBTOOL)  --tag=CC $(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_la-errno_.lo `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
 
-libgdruntime_la-bss_section.lo: rt/bss_section.c
-	$(LIBTOOL)  --tag=CC $(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_la-bss_section.lo `test -f 'rt/bss_section.c' || echo '$(srcdir)/'`rt/bss_section.c
-
 libgdruntime_t_la-errno_.lo: core/stdc/errno_.c
 	$(LIBTOOL)  --tag=CC $(libgdruntime_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_t_la-errno_.lo `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
-
-libgdruntime_t_la-bss_section.lo: rt/bss_section.c
-	$(LIBTOOL)  --tag=CC $(libgdruntime_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_t_la-bss_section.lo `test -f 'rt/bss_section.c' || echo '$(srcdir)/'`rt/bss_section.c
 
 errno_.o: core/stdc/errno_.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o errno_.o `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
 
 errno_.obj: core/stdc/errno_.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o errno_.obj `if test -f 'core/stdc/errno_.c'; then $(CYGPATH_W) 'core/stdc/errno_.c'; else $(CYGPATH_W) '$(srcdir)/core/stdc/errno_.c'; fi`
-
-bss_section.o: rt/bss_section.c
-	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bss_section.o `test -f 'rt/bss_section.c' || echo '$(srcdir)/'`rt/bss_section.c
-
-bss_section.obj: rt/bss_section.c
-	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bss_section.obj `if test -f 'rt/bss_section.c'; then $(CYGPATH_W) 'rt/bss_section.c'; else $(CYGPATH_W) '$(srcdir)/rt/bss_section.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
