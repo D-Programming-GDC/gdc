@@ -620,6 +620,14 @@ uint formattedWrite(Writer, Char, A...)(auto ref Writer w, in Char[] fmt, A args
     assert(w.data == "@safe/pure 42");
 }
 
+@safe pure unittest
+{
+    char[20] buf;
+    auto w = buf[];
+    formattedWrite(w, "%s %d", "@safe/pure", 42);
+    assert(buf[0 .. $ - w.length] == "@safe/pure 42");
+}
+
 /**
 Reads characters from $(REF_ALTTEXT input range, isInputRange, std,range,primitives)
 `r`, converts them according to `fmt`, and writes them to `args`.
@@ -2348,13 +2356,14 @@ private void formatUnsigned(Writer, T, Char)
     size_t leftpad = 0;
     size_t rightpad = 0;
 
+    immutable size_t dlen = digits.length == 0 ? 0 : digits.length - 1;
     immutable ptrdiff_t spacesToPrint =
         fs.width - (
               (prefix1 != 0)
             + (prefix2 != 0)
             + zerofill
             + digits.length
-            + ((fs.flSeparator != 0) * ((digits.length - 1) / fs.separators))
+            + ((fs.flSeparator != 0) * (dlen / fs.separators))
         );
     if (spacesToPrint > 0) // need to do some padding
     {
@@ -2419,6 +2428,11 @@ private void formatUnsigned(Writer, T, Char)
 
     foreach (i ; 0 .. rightpad)
         put(w, ' ');
+}
+
+@safe pure unittest  // bugzilla 18838
+{
+    assert("%12,d".format(0) == "           0");
 }
 
 @safe pure unittest
@@ -3761,38 +3775,46 @@ private template hasToString(T, Char)
     static assert(hasToString!(L, char) == 0);
 }
 
+// Like NullSink, but toString() isn't even called at all. Used to test the format string.
+private struct NoOpSink
+{
+    void put(E)(scope const E) pure @safe @nogc nothrow {}
+}
+
 // object formatting with toString
 private void formatObject(Writer, T, Char)(ref Writer w, ref T val, const ref FormatSpec!Char f)
 if (hasToString!(T, Char))
 {
     enum overload = hasToString!(T, Char);
 
+    enum noop = is(Writer == NoOpSink);
+
     static if (overload == 6)
     {
-        val.toString(w, f);
+        static if (!noop) val.toString(w, f);
     }
     else static if (overload == 5)
     {
-        val.toString(w);
+        static if (!noop) val.toString(w);
     }
     // not using the overload enum to not break badly defined toString overloads
     // e.g. defining the FormatSpec as ref and not const ref led this function
     // to ignore that toString overload
     else static if (is(typeof(val.toString((scope const(char)[] s){}, f))))
     {
-        val.toString((scope const(char)[] s) { put(w, s); }, f);
+        static if (!noop) val.toString((scope const(char)[] s) { put(w, s); }, f);
     }
     else static if (is(typeof(val.toString((scope const(char)[] s){}, "%s"))))
     {
-        val.toString((const(char)[] s) { put(w, s); }, f.getCurFmtStr());
+        static if (!noop) val.toString((const(char)[] s) { put(w, s); }, f.getCurFmtStr());
     }
     else static if (is(typeof(val.toString((scope const(char)[] s){}))))
     {
-        val.toString((scope const(char)[] s) { put(w, s); });
+        static if (!noop) val.toString((scope const(char)[] s) { put(w, s); });
     }
     else static if (is(typeof(val.toString()) S) && isSomeString!S)
     {
-        put(w, val.toString());
+        static if (!noop) put(w, val.toString());
     }
     else
     {
@@ -4002,6 +4024,27 @@ version(unittest)
     shared(C) c4 = new C();
     s = format("%s", c4);
     assert(s == "shared(std.format.C)");
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=19003
+@safe unittest
+{
+    struct S
+    {
+        int i;
+
+        @disable this();
+
+        invariant { assert(this.i); }
+
+        this(int i) @safe in { assert(i); } do { this.i = i; }
+
+        string toString() { return "S"; }
+    }
+
+    S s = S(1);
+
+    format!"%s"(s);
 }
 
 // https://issues.dlang.org/show_bug.cgi?id=7879
@@ -6164,8 +6207,14 @@ deprecated
 // Used to check format strings are compatible with argument types
 package static const checkFormatException(alias fmt, Args...) =
 {
+    import std.conv : text;
+
     try
-        .format(fmt, Args.init);
+    {
+        auto n = .formattedWrite(NoOpSink(), fmt, Args.init);
+
+        enforceFmt(n == Args.length, text("Orphan format arguments: args[", n, "..", Args.length, "]"));
+    }
     catch (Exception e)
         return (e.msg == ctfpMessage) ? null : e;
     return null;
