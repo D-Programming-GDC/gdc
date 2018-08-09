@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -25,7 +25,7 @@ class TypeInfo_Af : TypeInfo_Array
 
     override string toString() const { return (F[]).stringof; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(scope const void* p) @trusted const
     {
         return Array!F.hashOf(*cast(F[]*)p);
     }

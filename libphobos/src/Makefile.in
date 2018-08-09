@@ -16,7 +16,7 @@
 @SET_MAKE@
 
 # Makefile for the Phobos standard library.
-# Copyright (C) 2012-2017 Free Software Foundation, Inc.
+# Copyright (C) 2012-2018 Free Software Foundation, Inc.
 #
 # GCC is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,14 +75,9 @@ host_triplet = @host@
 target_triplet = @target@
 DIST_COMMON = $(top_srcdir)/d_rules.am $(srcdir)/Makefile.in \
 	$(srcdir)/Makefile.am $(srcdir)/libgphobos.spec.in
-# OS specific sources
-@DRUNTIME_OS_DARWIN_TRUE@am__append_1 = $(PHOBOS_DSOURCES_OSX)
-@DRUNTIME_OS_FREEBSD_TRUE@am__append_2 = $(PHOBOS_DSOURCES_FREEBSD)
-@DRUNTIME_OS_LINUX_TRUE@am__append_3 = $(PHOBOS_DSOURCES_LINUX)
-@DRUNTIME_OS_MINGW_TRUE@am__append_4 = $(PHOBOS_DSOURCES_WINDOWS)
 check_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
-@ENABLE_SHARED_TRUE@am__append_5 = unittest
-@ENABLE_STATIC_TRUE@am__append_6 = unittest_static
+@ENABLE_SHARED_TRUE@am__append_1 = unittest
+@ENABLE_STATIC_TRUE@am__append_2 = unittest_static
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/../config/acx.m4 \
@@ -152,9 +147,11 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/demangle.lo std/digest/crc.lo std/digest/digest.lo \
 	std/digest/hmac.lo std/digest/md.lo std/digest/murmurhash.lo \
 	std/digest/package.lo std/digest/ripemd.lo std/digest/sha.lo \
-	std/encoding.lo std/exception.lo \
+	std/encoding.lo std/exception.lo std/experimental/all.lo \
 	std/experimental/allocator/building_blocks/affix_allocator.lo \
+	std/experimental/allocator/building_blocks/aligned_block_list.lo \
 	std/experimental/allocator/building_blocks/allocator_list.lo \
+	std/experimental/allocator/building_blocks/ascending_page_allocator.lo \
 	std/experimental/allocator/building_blocks/bitmapped_block.lo \
 	std/experimental/allocator/building_blocks/bucketizer.lo \
 	std/experimental/allocator/building_blocks/fallback_allocator.lo \
@@ -201,33 +198,16 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/range/primitives.lo std/regex/internal/backtracking.lo \
 	std/regex/internal/generator.lo std/regex/internal/ir.lo \
 	std/regex/internal/kickstart.lo std/regex/internal/parser.lo \
-	std/regex/internal/tests.lo std/regex/internal/thompson.lo \
-	std/regex/package.lo std/signals.lo std/socket.lo \
-	std/stdint.lo std/stdio.lo std/string.lo std/system.lo \
-	std/traits.lo std/typecons.lo std/typetuple.lo std/uni.lo \
-	std/uri.lo std/utf.lo std/uuid.lo std/variant.lo \
-	std/windows/charset.lo std/windows/iunknown.lo \
-	std/windows/registry.lo std/windows/syserror.lo std/xml.lo \
-	std/zip.lo std/zlib.lo
-am__objects_2 = std/c/fenv.lo std/c/locale.lo std/c/math.lo \
-	std/c/process.lo std/c/stdarg.lo std/c/stddef.lo \
-	std/c/stdio.lo std/c/stdlib.lo std/c/string.lo std/c/time.lo \
-	std/c/wcharh.lo
-am__objects_3 = std/c/osx/socket.lo
-@DRUNTIME_OS_DARWIN_TRUE@am__objects_4 = $(am__objects_3)
-am__objects_5 = std/c/freebsd/socket.lo
-@DRUNTIME_OS_FREEBSD_TRUE@am__objects_6 = $(am__objects_5)
-am__objects_7 = std/c/linux/linux.lo std/c/linux/linuxextern.lo \
-	std/c/linux/pthread.lo std/c/linux/socket.lo \
-	std/c/linux/termios.lo std/c/linux/tipc.lo
-@DRUNTIME_OS_LINUX_TRUE@am__objects_8 = $(am__objects_7)
-am__objects_9 = std/c/windows/com.lo std/c/windows/stat.lo \
-	std/c/windows/windows.lo std/c/windows/winsock.lo
-@DRUNTIME_OS_MINGW_TRUE@am__objects_10 = $(am__objects_9)
-am__objects_11 = $(am__objects_1) $(am__objects_2) $(am__objects_4) \
-	$(am__objects_6) $(am__objects_8) $(am__objects_10)
-am__objects_12 = $(am__objects_11)
-am__objects_13 = libgphobos_la-adler32.lo libgphobos_la-compress.lo \
+	std/regex/internal/tests.lo std/regex/internal/tests2.lo \
+	std/regex/internal/thompson.lo std/regex/package.lo \
+	std/signals.lo std/socket.lo std/stdint.lo std/stdio.lo \
+	std/string.lo std/system.lo std/traits.lo std/typecons.lo \
+	std/typetuple.lo std/uni.lo std/uri.lo std/utf.lo std/uuid.lo \
+	std/variant.lo std/windows/charset.lo std/windows/registry.lo \
+	std/windows/syserror.lo std/xml.lo std/zip.lo std/zlib.lo
+am__objects_2 = $(am__objects_1)
+am__objects_3 = $(am__objects_2)
+am__objects_4 = libgphobos_la-adler32.lo libgphobos_la-compress.lo \
 	libgphobos_la-crc32.lo libgphobos_la-deflate.lo \
 	libgphobos_la-gzclose.lo libgphobos_la-gzlib.lo \
 	libgphobos_la-gzread.lo libgphobos_la-gzwrite.lo \
@@ -235,8 +215,8 @@ am__objects_13 = libgphobos_la-adler32.lo libgphobos_la-compress.lo \
 	libgphobos_la-inflate.lo libgphobos_la-inftrees.lo \
 	libgphobos_la-trees.lo libgphobos_la-uncompr.lo \
 	libgphobos_la-zutil.lo
-@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_14 = $(am__objects_13)
-am_libgphobos_la_OBJECTS = $(am__objects_12) $(am__objects_14)
+@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_5 = $(am__objects_4)
+am_libgphobos_la_OBJECTS = $(am__objects_3) $(am__objects_5)
 libgphobos_la_OBJECTS = $(am_libgphobos_la_OBJECTS)
 am__DEPENDENCIES_1 = etc/c/curl.t.lo etc/c/sqlite3.t.lo \
 	etc/c/zlib.t.lo std/algorithm/comparison.t.lo \
@@ -257,9 +237,11 @@ am__DEPENDENCIES_1 = etc/c/curl.t.lo etc/c/sqlite3.t.lo \
 	std/digest/hmac.t.lo std/digest/md.t.lo \
 	std/digest/murmurhash.t.lo std/digest/package.t.lo \
 	std/digest/ripemd.t.lo std/digest/sha.t.lo std/encoding.t.lo \
-	std/exception.t.lo \
+	std/exception.t.lo std/experimental/all.t.lo \
 	std/experimental/allocator/building_blocks/affix_allocator.t.lo \
+	std/experimental/allocator/building_blocks/aligned_block_list.t.lo \
 	std/experimental/allocator/building_blocks/allocator_list.t.lo \
+	std/experimental/allocator/building_blocks/ascending_page_allocator.t.lo \
 	std/experimental/allocator/building_blocks/bitmapped_block.t.lo \
 	std/experimental/allocator/building_blocks/bucketizer.t.lo \
 	std/experimental/allocator/building_blocks/fallback_allocator.t.lo \
@@ -311,46 +293,29 @@ am__DEPENDENCIES_1 = etc/c/curl.t.lo etc/c/sqlite3.t.lo \
 	std/regex/internal/generator.t.lo std/regex/internal/ir.t.lo \
 	std/regex/internal/kickstart.t.lo \
 	std/regex/internal/parser.t.lo std/regex/internal/tests.t.lo \
+	std/regex/internal/tests2.t.lo \
 	std/regex/internal/thompson.t.lo std/regex/package.t.lo \
 	std/signals.t.lo std/socket.t.lo std/stdint.t.lo \
 	std/stdio.t.lo std/string.t.lo std/system.t.lo std/traits.t.lo \
 	std/typecons.t.lo std/typetuple.t.lo std/uni.t.lo std/uri.t.lo \
 	std/utf.t.lo std/uuid.t.lo std/variant.t.lo \
-	std/windows/charset.t.lo std/windows/iunknown.t.lo \
-	std/windows/registry.t.lo std/windows/syserror.t.lo \
-	std/xml.t.lo std/zip.t.lo std/zlib.t.lo
-am__DEPENDENCIES_2 = std/c/fenv.t.lo std/c/locale.t.lo std/c/math.t.lo \
-	std/c/process.t.lo std/c/stdarg.t.lo std/c/stddef.t.lo \
-	std/c/stdio.t.lo std/c/stdlib.t.lo std/c/string.t.lo \
-	std/c/time.t.lo std/c/wcharh.t.lo
-am__DEPENDENCIES_3 = std/c/osx/socket.t.lo
-@DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3)
-am__DEPENDENCIES_5 = std/c/freebsd/socket.t.lo
-@DRUNTIME_OS_FREEBSD_TRUE@am__DEPENDENCIES_6 = $(am__DEPENDENCIES_5)
-am__DEPENDENCIES_7 = std/c/linux/linux.t.lo \
-	std/c/linux/linuxextern.t.lo std/c/linux/pthread.t.lo \
-	std/c/linux/socket.t.lo std/c/linux/termios.t.lo \
-	std/c/linux/tipc.t.lo
-@DRUNTIME_OS_LINUX_TRUE@am__DEPENDENCIES_8 = $(am__DEPENDENCIES_7)
-am__DEPENDENCIES_9 = std/c/windows/com.t.lo std/c/windows/stat.t.lo \
-	std/c/windows/windows.t.lo std/c/windows/winsock.t.lo
-@DRUNTIME_OS_MINGW_TRUE@am__DEPENDENCIES_10 = $(am__DEPENDENCIES_9)
-am__DEPENDENCIES_11 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_4) $(am__DEPENDENCIES_6) \
-	$(am__DEPENDENCIES_8) $(am__DEPENDENCIES_10)
-am__DEPENDENCIES_12 = $(am__DEPENDENCIES_11)
-libgphobos_t_la_DEPENDENCIES = $(am__DEPENDENCIES_12) \
+	std/windows/charset.t.lo std/windows/registry.t.lo \
+	std/windows/syserror.t.lo std/xml.t.lo std/zip.t.lo \
+	std/zlib.t.lo
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
+libgphobos_t_la_DEPENDENCIES = $(am__DEPENDENCIES_3) \
 	../libdruntime/libgdruntime.la
-am__objects_15 = libgphobos_t_la-adler32.lo \
-	libgphobos_t_la-compress.lo libgphobos_t_la-crc32.lo \
-	libgphobos_t_la-deflate.lo libgphobos_t_la-gzclose.lo \
-	libgphobos_t_la-gzlib.lo libgphobos_t_la-gzread.lo \
-	libgphobos_t_la-gzwrite.lo libgphobos_t_la-infback.lo \
-	libgphobos_t_la-inffast.lo libgphobos_t_la-inflate.lo \
-	libgphobos_t_la-inftrees.lo libgphobos_t_la-trees.lo \
-	libgphobos_t_la-uncompr.lo libgphobos_t_la-zutil.lo
-@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_16 = $(am__objects_15)
-am_libgphobos_t_la_OBJECTS = $(am__objects_16)
+am__objects_6 = libgphobos_t_la-adler32.lo libgphobos_t_la-compress.lo \
+	libgphobos_t_la-crc32.lo libgphobos_t_la-deflate.lo \
+	libgphobos_t_la-gzclose.lo libgphobos_t_la-gzlib.lo \
+	libgphobos_t_la-gzread.lo libgphobos_t_la-gzwrite.lo \
+	libgphobos_t_la-infback.lo libgphobos_t_la-inffast.lo \
+	libgphobos_t_la-inflate.lo libgphobos_t_la-inftrees.lo \
+	libgphobos_t_la-trees.lo libgphobos_t_la-uncompr.lo \
+	libgphobos_t_la-zutil.lo
+@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_7 = $(am__objects_6)
+am_libgphobos_t_la_OBJECTS = $(am__objects_7)
 libgphobos_t_la_OBJECTS = $(am_libgphobos_t_la_OBJECTS)
 @ENABLE_SHARED_TRUE@am_libgphobos_t_la_rpath =
 @ENABLE_SHARED_TRUE@am__EXEEXT_1 = unittest$(EXEEXT)
@@ -358,16 +323,16 @@ libgphobos_t_la_OBJECTS = $(am_libgphobos_t_la_OBJECTS)
 am_unittest_OBJECTS = ../testsuite/test_runner.$(OBJEXT)
 unittest_OBJECTS = $(am_unittest_OBJECTS)
 unittest_DEPENDENCIES = libgphobos_t.la ../libdruntime/libgdruntime.la
-am__objects_17 = adler32.$(OBJEXT) compress.$(OBJEXT) crc32.$(OBJEXT) \
+am__objects_8 = adler32.$(OBJEXT) compress.$(OBJEXT) crc32.$(OBJEXT) \
 	deflate.$(OBJEXT) gzclose.$(OBJEXT) gzlib.$(OBJEXT) \
 	gzread.$(OBJEXT) gzwrite.$(OBJEXT) infback.$(OBJEXT) \
 	inffast.$(OBJEXT) inflate.$(OBJEXT) inftrees.$(OBJEXT) \
 	trees.$(OBJEXT) uncompr.$(OBJEXT) zutil.$(OBJEXT)
-@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_18 = $(am__objects_17)
+@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_9 = $(am__objects_8)
 am_unittest_static_OBJECTS = ../testsuite/test_runner.$(OBJEXT) \
-	$(am__objects_18)
+	$(am__objects_9)
 unittest_static_OBJECTS = $(am_unittest_static_OBJECTS)
-am__DEPENDENCIES_13 = etc/c/curl.t.o etc/c/sqlite3.t.o etc/c/zlib.t.o \
+am__DEPENDENCIES_4 = etc/c/curl.t.o etc/c/sqlite3.t.o etc/c/zlib.t.o \
 	std/algorithm/comparison.t.o std/algorithm/internal.t.o \
 	std/algorithm/iteration.t.o std/algorithm/mutation.t.o \
 	std/algorithm/package.t.o std/algorithm/searching.t.o \
@@ -385,9 +350,11 @@ am__DEPENDENCIES_13 = etc/c/curl.t.o etc/c/sqlite3.t.o etc/c/zlib.t.o \
 	std/digest/hmac.t.o std/digest/md.t.o \
 	std/digest/murmurhash.t.o std/digest/package.t.o \
 	std/digest/ripemd.t.o std/digest/sha.t.o std/encoding.t.o \
-	std/exception.t.o \
+	std/exception.t.o std/experimental/all.t.o \
 	std/experimental/allocator/building_blocks/affix_allocator.t.o \
+	std/experimental/allocator/building_blocks/aligned_block_list.t.o \
 	std/experimental/allocator/building_blocks/allocator_list.t.o \
+	std/experimental/allocator/building_blocks/ascending_page_allocator.t.o \
 	std/experimental/allocator/building_blocks/bitmapped_block.t.o \
 	std/experimental/allocator/building_blocks/bucketizer.t.o \
 	std/experimental/allocator/building_blocks/fallback_allocator.t.o \
@@ -436,36 +403,17 @@ am__DEPENDENCIES_13 = etc/c/curl.t.o etc/c/sqlite3.t.o etc/c/zlib.t.o \
 	std/regex/internal/backtracking.t.o \
 	std/regex/internal/generator.t.o std/regex/internal/ir.t.o \
 	std/regex/internal/kickstart.t.o std/regex/internal/parser.t.o \
-	std/regex/internal/tests.t.o std/regex/internal/thompson.t.o \
-	std/regex/package.t.o std/signals.t.o std/socket.t.o \
-	std/stdint.t.o std/stdio.t.o std/string.t.o std/system.t.o \
-	std/traits.t.o std/typecons.t.o std/typetuple.t.o std/uni.t.o \
-	std/uri.t.o std/utf.t.o std/uuid.t.o std/variant.t.o \
-	std/windows/charset.t.o std/windows/iunknown.t.o \
+	std/regex/internal/tests.t.o std/regex/internal/tests2.t.o \
+	std/regex/internal/thompson.t.o std/regex/package.t.o \
+	std/signals.t.o std/socket.t.o std/stdint.t.o std/stdio.t.o \
+	std/string.t.o std/system.t.o std/traits.t.o std/typecons.t.o \
+	std/typetuple.t.o std/uni.t.o std/uri.t.o std/utf.t.o \
+	std/uuid.t.o std/variant.t.o std/windows/charset.t.o \
 	std/windows/registry.t.o std/windows/syserror.t.o std/xml.t.o \
 	std/zip.t.o std/zlib.t.o
-am__DEPENDENCIES_14 = std/c/fenv.t.o std/c/locale.t.o std/c/math.t.o \
-	std/c/process.t.o std/c/stdarg.t.o std/c/stddef.t.o \
-	std/c/stdio.t.o std/c/stdlib.t.o std/c/string.t.o \
-	std/c/time.t.o std/c/wcharh.t.o
-am__DEPENDENCIES_15 = std/c/osx/socket.t.o
-@DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_16 = $(am__DEPENDENCIES_15)
-am__DEPENDENCIES_17 = std/c/freebsd/socket.t.o
-@DRUNTIME_OS_FREEBSD_TRUE@am__DEPENDENCIES_18 =  \
-@DRUNTIME_OS_FREEBSD_TRUE@	$(am__DEPENDENCIES_17)
-am__DEPENDENCIES_19 = std/c/linux/linux.t.o \
-	std/c/linux/linuxextern.t.o std/c/linux/pthread.t.o \
-	std/c/linux/socket.t.o std/c/linux/termios.t.o \
-	std/c/linux/tipc.t.o
-@DRUNTIME_OS_LINUX_TRUE@am__DEPENDENCIES_20 = $(am__DEPENDENCIES_19)
-am__DEPENDENCIES_21 = std/c/windows/com.t.o std/c/windows/stat.t.o \
-	std/c/windows/windows.t.o std/c/windows/winsock.t.o
-@DRUNTIME_OS_MINGW_TRUE@am__DEPENDENCIES_22 = $(am__DEPENDENCIES_21)
-am__DEPENDENCIES_23 = $(am__DEPENDENCIES_13) $(am__DEPENDENCIES_14) \
-	$(am__DEPENDENCIES_16) $(am__DEPENDENCIES_18) \
-	$(am__DEPENDENCIES_20) $(am__DEPENDENCIES_22)
-am__DEPENDENCIES_24 = $(am__DEPENDENCIES_23)
-unittest_static_DEPENDENCIES = $(am__DEPENDENCIES_24) \
+am__DEPENDENCIES_5 = $(am__DEPENDENCIES_4)
+am__DEPENDENCIES_6 = $(am__DEPENDENCIES_5)
+unittest_static_DEPENDENCIES = $(am__DEPENDENCIES_6) \
 	../libdruntime/libgdruntime.la
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp =
@@ -675,7 +623,7 @@ libgphobos_t_la_LINK = $(LIBTOOL) --tag=D \
 # Include D build rules
 
 # Make sure GDC can find libdruntime and libphobos include files
-D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I $(srcdir) \
+D_EXTRA_DFLAGS = -nostdinc -I $(srcdir) \
 	-I $(top_srcdir)/libdruntime -I ../libdruntime -I .
 
 
@@ -686,15 +634,10 @@ AM_CFLAGS = @DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
 AM_DFLAGS = $(phobos_compiler_pic_flag)
 
 # Install all D files
-ALL_PHOBOS_INSTALL_DSOURCES = $(PHOBOS_DSOURCES) $(PHOBOS_DSOURCES_STDC) \
-	$(PHOBOS_DSOURCES_FREEBSD) $(PHOBOS_DSOURCES_OSX) \
-	$(PHOBOS_DSOURCES_WINDOWS) $(PHOBOS_DSOURCES_LINUX)
-
+ALL_PHOBOS_INSTALL_DSOURCES = $(PHOBOS_DSOURCES)
 
 # Setup source files depending on configure
-ALL_PHOBOS_COMPILE_DSOURCES = $(PHOBOS_DSOURCES) \
-	$(PHOBOS_DSOURCES_STDC) $(am__append_1) $(am__append_2) \
-	$(am__append_3) $(am__append_4)
+ALL_PHOBOS_COMPILE_DSOURCES = $(PHOBOS_DSOURCES)
 ALL_PHOBOS_SOURCES = $(ALL_PHOBOS_COMPILE_DSOURCES)
 PHOBOS_TEST_LOBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.lo)
 PHOBOS_TEST_OBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.o)
@@ -764,9 +707,11 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/datetime/timezone.d std/demangle.d std/digest/crc.d \
 	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
 	std/digest/murmurhash.d std/digest/package.d std/digest/ripemd.d \
-	std/digest/sha.d std/encoding.d std/exception.d \
+	std/digest/sha.d std/encoding.d std/exception.d std/experimental/all.d \
 	std/experimental/allocator/building_blocks/affix_allocator.d \
+	std/experimental/allocator/building_blocks/aligned_block_list.d \
 	std/experimental/allocator/building_blocks/allocator_list.d \
+	std/experimental/allocator/building_blocks/ascending_page_allocator.d \
 	std/experimental/allocator/building_blocks/bitmapped_block.d \
 	std/experimental/allocator/building_blocks/bucketizer.d \
 	std/experimental/allocator/building_blocks/fallback_allocator.d \
@@ -807,25 +752,12 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
-	std/regex/internal/thompson.d std/regex/package.d std/signals.d \
-	std/socket.d std/stdint.d std/stdio.d std/string.d std/system.d \
-	std/traits.d std/typecons.d std/typetuple.d std/uni.d std/uri.d \
-	std/utf.d std/uuid.d std/variant.d std/windows/charset.d \
-	std/windows/iunknown.d std/windows/registry.d std/windows/syserror.d \
+	std/regex/internal/tests2.d std/regex/internal/thompson.d \
+	std/regex/package.d std/signals.d std/socket.d std/stdint.d \
+	std/stdio.d std/string.d std/system.d std/traits.d std/typecons.d \
+	std/typetuple.d std/uni.d std/uri.d std/utf.d std/uuid.d std/variant.d \
+	std/windows/charset.d std/windows/registry.d std/windows/syserror.d \
 	std/xml.d std/zip.d std/zlib.d
-
-PHOBOS_DSOURCES_FREEBSD = std/c/freebsd/socket.d
-PHOBOS_DSOURCES_LINUX = std/c/linux/linux.d std/c/linux/linuxextern.d \
-	std/c/linux/pthread.d std/c/linux/socket.d std/c/linux/termios.d \
-	std/c/linux/tipc.d
-
-PHOBOS_DSOURCES_OSX = std/c/osx/socket.d
-PHOBOS_DSOURCES_STDC = std/c/fenv.d std/c/locale.d std/c/math.d \
-	std/c/process.d std/c/stdarg.d std/c/stddef.d std/c/stdio.d \
-	std/c/stdlib.d std/c/string.d std/c/time.d std/c/wcharh.d
-
-PHOBOS_DSOURCES_WINDOWS = std/c/windows/com.d std/c/windows/stat.d \
-	std/c/windows/windows.d std/c/windows/winsock.d
 
 all: all-am
 
@@ -968,12 +900,20 @@ std/digest/ripemd.lo: std/digest/$(am__dirstamp)
 std/digest/sha.lo: std/digest/$(am__dirstamp)
 std/encoding.lo: std/$(am__dirstamp)
 std/exception.lo: std/$(am__dirstamp)
+std/experimental/$(am__dirstamp):
+	@$(MKDIR_P) std/experimental
+	@: > std/experimental/$(am__dirstamp)
+std/experimental/all.lo: std/experimental/$(am__dirstamp)
 std/experimental/allocator/building_blocks/$(am__dirstamp):
 	@$(MKDIR_P) std/experimental/allocator/building_blocks
 	@: > std/experimental/allocator/building_blocks/$(am__dirstamp)
 std/experimental/allocator/building_blocks/affix_allocator.lo:  \
 	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/aligned_block_list.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
 std/experimental/allocator/building_blocks/allocator_list.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/ascending_page_allocator.lo:  \
 	std/experimental/allocator/building_blocks/$(am__dirstamp)
 std/experimental/allocator/building_blocks/bitmapped_block.lo:  \
 	std/experimental/allocator/building_blocks/$(am__dirstamp)
@@ -1018,9 +958,6 @@ std/experimental/allocator/showcase.lo:  \
 	std/experimental/allocator/$(am__dirstamp)
 std/experimental/allocator/typed.lo:  \
 	std/experimental/allocator/$(am__dirstamp)
-std/experimental/$(am__dirstamp):
-	@$(MKDIR_P) std/experimental
-	@: > std/experimental/$(am__dirstamp)
 std/experimental/checkedint.lo: std/experimental/$(am__dirstamp)
 std/experimental/logger/$(am__dirstamp):
 	@$(MKDIR_P) std/experimental/logger
@@ -1105,6 +1042,7 @@ std/regex/internal/ir.lo: std/regex/internal/$(am__dirstamp)
 std/regex/internal/kickstart.lo: std/regex/internal/$(am__dirstamp)
 std/regex/internal/parser.lo: std/regex/internal/$(am__dirstamp)
 std/regex/internal/tests.lo: std/regex/internal/$(am__dirstamp)
+std/regex/internal/tests2.lo: std/regex/internal/$(am__dirstamp)
 std/regex/internal/thompson.lo: std/regex/internal/$(am__dirstamp)
 std/regex/$(am__dirstamp):
 	@$(MKDIR_P) std/regex
@@ -1128,50 +1066,11 @@ std/windows/$(am__dirstamp):
 	@$(MKDIR_P) std/windows
 	@: > std/windows/$(am__dirstamp)
 std/windows/charset.lo: std/windows/$(am__dirstamp)
-std/windows/iunknown.lo: std/windows/$(am__dirstamp)
 std/windows/registry.lo: std/windows/$(am__dirstamp)
 std/windows/syserror.lo: std/windows/$(am__dirstamp)
 std/xml.lo: std/$(am__dirstamp)
 std/zip.lo: std/$(am__dirstamp)
 std/zlib.lo: std/$(am__dirstamp)
-std/c/$(am__dirstamp):
-	@$(MKDIR_P) std/c
-	@: > std/c/$(am__dirstamp)
-std/c/fenv.lo: std/c/$(am__dirstamp)
-std/c/locale.lo: std/c/$(am__dirstamp)
-std/c/math.lo: std/c/$(am__dirstamp)
-std/c/process.lo: std/c/$(am__dirstamp)
-std/c/stdarg.lo: std/c/$(am__dirstamp)
-std/c/stddef.lo: std/c/$(am__dirstamp)
-std/c/stdio.lo: std/c/$(am__dirstamp)
-std/c/stdlib.lo: std/c/$(am__dirstamp)
-std/c/string.lo: std/c/$(am__dirstamp)
-std/c/time.lo: std/c/$(am__dirstamp)
-std/c/wcharh.lo: std/c/$(am__dirstamp)
-std/c/osx/$(am__dirstamp):
-	@$(MKDIR_P) std/c/osx
-	@: > std/c/osx/$(am__dirstamp)
-std/c/osx/socket.lo: std/c/osx/$(am__dirstamp)
-std/c/freebsd/$(am__dirstamp):
-	@$(MKDIR_P) std/c/freebsd
-	@: > std/c/freebsd/$(am__dirstamp)
-std/c/freebsd/socket.lo: std/c/freebsd/$(am__dirstamp)
-std/c/linux/$(am__dirstamp):
-	@$(MKDIR_P) std/c/linux
-	@: > std/c/linux/$(am__dirstamp)
-std/c/linux/linux.lo: std/c/linux/$(am__dirstamp)
-std/c/linux/linuxextern.lo: std/c/linux/$(am__dirstamp)
-std/c/linux/pthread.lo: std/c/linux/$(am__dirstamp)
-std/c/linux/socket.lo: std/c/linux/$(am__dirstamp)
-std/c/linux/termios.lo: std/c/linux/$(am__dirstamp)
-std/c/linux/tipc.lo: std/c/linux/$(am__dirstamp)
-std/c/windows/$(am__dirstamp):
-	@$(MKDIR_P) std/c/windows
-	@: > std/c/windows/$(am__dirstamp)
-std/c/windows/com.lo: std/c/windows/$(am__dirstamp)
-std/c/windows/stat.lo: std/c/windows/$(am__dirstamp)
-std/c/windows/windows.lo: std/c/windows/$(am__dirstamp)
-std/c/windows/winsock.lo: std/c/windows/$(am__dirstamp)
 libgphobos.la: $(libgphobos_la_OBJECTS) $(libgphobos_la_DEPENDENCIES) $(EXTRA_libgphobos_la_DEPENDENCIES) 
 	$(libgphobos_la_LINK) -rpath $(toolexeclibdir) $(libgphobos_la_OBJECTS) $(libgphobos_la_LIBADD) $(LIBS)
 libgphobos_t.la: $(libgphobos_t_la_OBJECTS) $(libgphobos_t_la_DEPENDENCIES) $(EXTRA_libgphobos_t_la_DEPENDENCIES) 
@@ -1231,52 +1130,6 @@ mostlyclean-compile:
 	-rm -f std/bigint.lo
 	-rm -f std/bitmanip.$(OBJEXT)
 	-rm -f std/bitmanip.lo
-	-rm -f std/c/fenv.$(OBJEXT)
-	-rm -f std/c/fenv.lo
-	-rm -f std/c/freebsd/socket.$(OBJEXT)
-	-rm -f std/c/freebsd/socket.lo
-	-rm -f std/c/linux/linux.$(OBJEXT)
-	-rm -f std/c/linux/linux.lo
-	-rm -f std/c/linux/linuxextern.$(OBJEXT)
-	-rm -f std/c/linux/linuxextern.lo
-	-rm -f std/c/linux/pthread.$(OBJEXT)
-	-rm -f std/c/linux/pthread.lo
-	-rm -f std/c/linux/socket.$(OBJEXT)
-	-rm -f std/c/linux/socket.lo
-	-rm -f std/c/linux/termios.$(OBJEXT)
-	-rm -f std/c/linux/termios.lo
-	-rm -f std/c/linux/tipc.$(OBJEXT)
-	-rm -f std/c/linux/tipc.lo
-	-rm -f std/c/locale.$(OBJEXT)
-	-rm -f std/c/locale.lo
-	-rm -f std/c/math.$(OBJEXT)
-	-rm -f std/c/math.lo
-	-rm -f std/c/osx/socket.$(OBJEXT)
-	-rm -f std/c/osx/socket.lo
-	-rm -f std/c/process.$(OBJEXT)
-	-rm -f std/c/process.lo
-	-rm -f std/c/stdarg.$(OBJEXT)
-	-rm -f std/c/stdarg.lo
-	-rm -f std/c/stddef.$(OBJEXT)
-	-rm -f std/c/stddef.lo
-	-rm -f std/c/stdio.$(OBJEXT)
-	-rm -f std/c/stdio.lo
-	-rm -f std/c/stdlib.$(OBJEXT)
-	-rm -f std/c/stdlib.lo
-	-rm -f std/c/string.$(OBJEXT)
-	-rm -f std/c/string.lo
-	-rm -f std/c/time.$(OBJEXT)
-	-rm -f std/c/time.lo
-	-rm -f std/c/wcharh.$(OBJEXT)
-	-rm -f std/c/wcharh.lo
-	-rm -f std/c/windows/com.$(OBJEXT)
-	-rm -f std/c/windows/com.lo
-	-rm -f std/c/windows/stat.$(OBJEXT)
-	-rm -f std/c/windows/stat.lo
-	-rm -f std/c/windows/windows.$(OBJEXT)
-	-rm -f std/c/windows/windows.lo
-	-rm -f std/c/windows/winsock.$(OBJEXT)
-	-rm -f std/c/windows/winsock.lo
 	-rm -f std/compiler.$(OBJEXT)
 	-rm -f std/compiler.lo
 	-rm -f std/complex.$(OBJEXT)
@@ -1335,10 +1188,16 @@ mostlyclean-compile:
 	-rm -f std/encoding.lo
 	-rm -f std/exception.$(OBJEXT)
 	-rm -f std/exception.lo
+	-rm -f std/experimental/all.$(OBJEXT)
+	-rm -f std/experimental/all.lo
 	-rm -f std/experimental/allocator/building_blocks/affix_allocator.$(OBJEXT)
 	-rm -f std/experimental/allocator/building_blocks/affix_allocator.lo
+	-rm -f std/experimental/allocator/building_blocks/aligned_block_list.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/aligned_block_list.lo
 	-rm -f std/experimental/allocator/building_blocks/allocator_list.$(OBJEXT)
 	-rm -f std/experimental/allocator/building_blocks/allocator_list.lo
+	-rm -f std/experimental/allocator/building_blocks/ascending_page_allocator.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/ascending_page_allocator.lo
 	-rm -f std/experimental/allocator/building_blocks/bitmapped_block.$(OBJEXT)
 	-rm -f std/experimental/allocator/building_blocks/bitmapped_block.lo
 	-rm -f std/experimental/allocator/building_blocks/bucketizer.$(OBJEXT)
@@ -1479,6 +1338,8 @@ mostlyclean-compile:
 	-rm -f std/regex/internal/parser.lo
 	-rm -f std/regex/internal/tests.$(OBJEXT)
 	-rm -f std/regex/internal/tests.lo
+	-rm -f std/regex/internal/tests2.$(OBJEXT)
+	-rm -f std/regex/internal/tests2.lo
 	-rm -f std/regex/internal/thompson.$(OBJEXT)
 	-rm -f std/regex/internal/thompson.lo
 	-rm -f std/regex/package.$(OBJEXT)
@@ -1513,8 +1374,6 @@ mostlyclean-compile:
 	-rm -f std/variant.lo
 	-rm -f std/windows/charset.$(OBJEXT)
 	-rm -f std/windows/charset.lo
-	-rm -f std/windows/iunknown.$(OBJEXT)
-	-rm -f std/windows/iunknown.lo
 	-rm -f std/windows/registry.$(OBJEXT)
 	-rm -f std/windows/registry.lo
 	-rm -f std/windows/syserror.$(OBJEXT)
@@ -1726,11 +1585,6 @@ clean-libtool:
 	-rm -rf etc/c/.libs etc/c/_libs
 	-rm -rf std/.libs std/_libs
 	-rm -rf std/algorithm/.libs std/algorithm/_libs
-	-rm -rf std/c/.libs std/c/_libs
-	-rm -rf std/c/freebsd/.libs std/c/freebsd/_libs
-	-rm -rf std/c/linux/.libs std/c/linux/_libs
-	-rm -rf std/c/osx/.libs std/c/osx/_libs
-	-rm -rf std/c/windows/.libs std/c/windows/_libs
 	-rm -rf std/container/.libs std/container/_libs
 	-rm -rf std/datetime/.libs std/datetime/_libs
 	-rm -rf std/digest/.libs std/digest/_libs
@@ -1859,11 +1713,6 @@ distclean-generic:
 	-rm -f etc/c/$(am__dirstamp)
 	-rm -f std/$(am__dirstamp)
 	-rm -f std/algorithm/$(am__dirstamp)
-	-rm -f std/c/$(am__dirstamp)
-	-rm -f std/c/freebsd/$(am__dirstamp)
-	-rm -f std/c/linux/$(am__dirstamp)
-	-rm -f std/c/osx/$(am__dirstamp)
-	-rm -f std/c/windows/$(am__dirstamp)
 	-rm -f std/container/$(am__dirstamp)
 	-rm -f std/datetime/$(am__dirstamp)
 	-rm -f std/digest/$(am__dirstamp)

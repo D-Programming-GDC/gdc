@@ -2,7 +2,7 @@
  * Random number generators for internal usage.
  *
  * Copyright: Copyright Digital Mars 2014.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  */
 module rt.util.random;
 
@@ -22,7 +22,6 @@ pure:
 
     void seed(uint seedval)
     {
-        assert(seedval);
         rng_state = cast(ulong)seedval << 16 | 0x330e;
         popFront();
     }

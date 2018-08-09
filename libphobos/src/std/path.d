@@ -1,19 +1,19 @@
 // Written in the D programming language.
 
-/** This module is used to manipulate _path strings.
+/** This module is used to manipulate path strings.
 
     All functions, with the exception of $(LREF expandTilde) (and in some
     cases $(LREF absolutePath) and $(LREF relativePath)), are pure
     string manipulation functions; they don't depend on any state outside
     the program, nor do they perform any actual file system actions.
     This has the consequence that the module does not make any distinction
-    between a _path that points to a directory and a _path that points to a
+    between a path that points to a directory and a path that points to a
     file, and it does not know whether or not the object pointed to by the
-    _path actually exists in the file system.
+    path actually exists in the file system.
     To differentiate between these cases, use $(REF isDir, std,file) and
     $(REF exists, std,file).
 
-    Note that on Windows, both the backslash ($(D `\`)) and the slash ($(D `/`))
+    Note that on Windows, both the backslash (``\``) and the slash (``/``)
     are in principle valid directory separators.  This module treats them
     both on equal footing, but in cases where a $(I new) separator is
     added, a backslash will be used.  Furthermore, the $(LREF buildNormalizedPath)
@@ -21,9 +21,9 @@
 
     In general, the functions in this module assume that the input paths
     are well-formed.  (That is, they should not contain invalid characters,
-    they should follow the file system's _path format, etc.)  The result
-    of calling a function on an ill-formed _path is undefined.  When there
-    is a chance that a _path or a file name is invalid (for instance, when it
+    they should follow the file system's path format, etc.)  The result
+    of calling a function on an ill-formed path is undefined.  When there
+    is a chance that a path or a file name is invalid (for instance, when it
     has been input by the user), it may sometimes be desirable to use the
     $(LREF isValidFilename) and $(LREF isValidPath) functions to check
     this.
@@ -91,7 +91,7 @@ $(TR $(TD Other) $(TD
     License:
         $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0)
     Source:
-        $(PHOBOSSRC std/_path.d)
+        $(PHOBOSSRC std/path.d)
 */
 module std.path;
 
@@ -102,7 +102,7 @@ static import std.meta;
 import std.range.primitives;
 import std.traits;
 
-version (unittest)
+version(unittest)
 {
 private:
     struct TestAliasedString
@@ -141,14 +141,29 @@ else static assert(0, "unsupported platform");
 
 /** Determines whether the given character is a directory separator.
 
-    On Windows, this includes both $(D `\`) and $(D `/`).
-    On POSIX, it's just $(D `/`).
+    On Windows, this includes both ``\`` and ``/``.
+    On POSIX, it's just ``/``.
 */
 bool isDirSeparator(dchar c)  @safe pure nothrow @nogc
 {
     if (c == '/') return true;
     version(Windows) if (c == '\\') return true;
     return false;
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    version(Windows)
+    {
+        assert( '/'.isDirSeparator);
+        assert( '\\'.isDirSeparator);
+    }
+    else
+    {
+        assert( '/'.isDirSeparator);
+        assert(!'\\'.isDirSeparator);
+    }
 }
 
 
@@ -201,7 +216,7 @@ version (Windows)
     if (isRandomAccessRange!R && isSomeChar!(ElementType!R) ||
         isNarrowString!R)
         in { assert(isUNC(path)); }
-        body
+        do
     {
         ptrdiff_t i = 3;
         while (i < path.length && !isDirSeparator(path[i])) ++i;
@@ -257,7 +272,7 @@ if (isInputRange!R && !isInfinite!R && isSomeChar!(ElementType!R) ||
     }
 }
 
-@system unittest
+@safe unittest
 {
     import std.array;
     import std.utf : byDchar;
@@ -286,7 +301,7 @@ if (isBidirectionalRange!R && isSomeChar!(ElementType!R) ||
     }
 }
 
-@system unittest
+@safe unittest
 {
     import std.array;
     import std.utf : byDchar;
@@ -304,7 +319,7 @@ if (isBidirectionalRange!R && isSomeChar!(ElementType!R) ||
     return ltrimDirSeparators(rtrimDirSeparators(path));
 }
 
-@system unittest
+@safe unittest
 {
     import std.array;
     import std.utf : byDchar;
@@ -315,10 +330,7 @@ if (isBidirectionalRange!R && isSomeChar!(ElementType!R) ||
     assert(trimDirSeparators(MockBiRange!char("//abc//")).array == "abc");
 }
 
-
-
-
-/** This $(D enum) is used as a template argument to functions which
+/** This `enum` is used as a template argument to functions which
     compare file names, and determines whether the comparison is
     case sensitive or not.
 */
@@ -331,18 +343,28 @@ enum CaseSensitive : bool
     yes = true,
 
     /** The default (or most common) setting for the current platform.
-        That is, $(D no) on Windows and Mac OS X, and $(D yes) on all
+        That is, `no` on Windows and Mac OS X, and `yes` on all
         POSIX systems except OS X (Linux, *BSD, etc.).
     */
     osDefault = osDefaultCaseSensitivity
 }
+
+///
+@safe unittest
+{
+    assert(baseName!(CaseSensitive.no)("dir/file.EXT", ".ext") == "file");
+    assert(baseName!(CaseSensitive.yes)("dir/file.EXT", ".ext") != "file");
+
+    version(Posix)
+        assert(relativePath!(CaseSensitive.no)("/FOO/bar", "/foo/baz") == "../bar");
+    else
+        assert(relativePath!(CaseSensitive.no)(`c:\FOO\bar`, `c:\foo\baz`) == `..\bar`);
+}
+
 version (Windows)    private enum osDefaultCaseSensitivity = false;
 else version (OSX)   private enum osDefaultCaseSensitivity = false;
 else version (Posix) private enum osDefaultCaseSensitivity = true;
 else static assert(0);
-
-
-
 
 /**
     Params:
@@ -353,26 +375,11 @@ else static assert(0);
     Returns: The name of the file in the path name, without any leading
         directory and with an optional suffix chopped off.
 
-    If $(D suffix) is specified, it will be compared to $(D path)
-    using $(D filenameCmp!cs),
-    where $(D cs) is an optional template parameter determining whether
+    If `suffix` is specified, it will be compared to `path`
+    using `filenameCmp!cs`,
+    where `cs` is an optional template parameter determining whether
     the comparison is case sensitive or not.  See the
     $(LREF filenameCmp) documentation for details.
-
-    Example:
-    ---
-    assert(baseName("dir/file.ext")         == "file.ext");
-    assert(baseName("dir/file.ext", ".ext") == "file");
-    assert(baseName("dir/file.ext", ".xyz") == "file.ext");
-    assert(baseName("dir/filename", "name") == "file");
-    assert(baseName("dir/subdir/")          == "subdir");
-
-    version (Windows)
-    {
-        assert(baseName(`d:file.ext`)      == "file.ext");
-        assert(baseName(`d:\dir\file.ext`) == "file.ext");
-    }
-    ---
 
     Note:
     This function $(I only) strips away the specified suffix, which
@@ -404,26 +411,6 @@ if (isSomeChar!C)
     return _baseName(path);
 }
 
-private R _baseName(R)(R path)
-if (isRandomAccessRange!R && hasSlicing!R && isSomeChar!(ElementType!R) || isNarrowString!R)
-{
-    auto p1 = stripDrive(path);
-    if (p1.empty)
-    {
-        version (Windows) if (isUNC(path))
-            return path[0 .. 1];
-        static if (isSomeString!R)
-            return null;
-        else
-            return p1; // which is empty
-    }
-
-    auto p2 = rtrimDirSeparators(p1);
-    if (p2.empty) return p1[0 .. 1];
-
-    return p2[lastSeparator(p2)+1 .. p2.length];
-}
-
 /// ditto
 inout(C)[] baseName(CaseSensitive cs = CaseSensitive.osDefault, C, C1)
     (inout(C)[] path, in C1[] suffix)
@@ -437,6 +424,22 @@ if (isSomeChar!C && isSomeChar!C1)
         return p[0 .. $-suffix.length];
     }
     else return p;
+}
+
+///
+@safe unittest
+{
+    assert(baseName("dir/file.ext") == "file.ext");
+    assert(baseName("dir/file.ext", ".ext") == "file");
+    assert(baseName("dir/file.ext", ".xyz") == "file.ext");
+    assert(baseName("dir/filename", "name") == "file");
+    assert(baseName("dir/subdir/") == "subdir");
+
+    version (Windows)
+    {
+        assert(baseName(`d:file.ext`) == "file.ext");
+        assert(baseName(`d:\dir\file.ext`) == "file.ext");
+    }
 }
 
 @safe unittest
@@ -511,14 +514,34 @@ if (isSomeChar!C && isSomeChar!C1)
     assert(sa.baseName == "test");
 }
 
-/** Returns the directory part of a path.  On Windows, this
+private R _baseName(R)(R path)
+if (isRandomAccessRange!R && hasSlicing!R && isSomeChar!(ElementType!R) || isNarrowString!R)
+{
+    auto p1 = stripDrive(path);
+    if (p1.empty)
+    {
+        version (Windows) if (isUNC(path))
+            return path[0 .. 1];
+        static if (isSomeString!R)
+            return null;
+        else
+            return p1; // which is empty
+    }
+
+    auto p2 = rtrimDirSeparators(p1);
+    if (p2.empty) return p1[0 .. 1];
+
+    return p2[lastSeparator(p2)+1 .. p2.length];
+}
+
+/** Returns the parent directory of path. On Windows, this
     includes the drive letter if present.
 
     Params:
         path = A path name.
 
     Returns:
-        A slice of $(D path) or ".".
+        A slice of `path` or ".".
 
     Standards:
     This function complies with
@@ -537,54 +560,6 @@ auto dirName(C)(C[] path)
 if (isSomeChar!C)
 {
     return _dirName(path);
-}
-
-private auto _dirName(R)(R path)
-if (isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) ||
-    isNarrowString!R)
-{
-    static auto result(bool dot, typeof(path[0 .. 1]) p)
-    {
-        static if (isSomeString!R)
-            return dot ? "." : p;
-        else
-        {
-            import std.range : choose, only;
-            return choose(dot, only(cast(ElementEncodingType!R)'.'), p);
-        }
-    }
-
-    if (path.empty)
-        return result(true, path[0 .. 0]);
-
-    auto p = rtrimDirSeparators(path);
-    if (p.empty)
-        return result(false, path[0 .. 1]);
-
-    version (Windows)
-    {
-        if (isUNC(p) && uncRootLength(p) == p.length)
-            return result(false, p);
-
-        if (p.length == 2 && isDriveSeparator(p[1]) && path.length > 2)
-            return result(false, path[0 .. 3]);
-    }
-
-    auto i = lastSeparator(p);
-    if (i == -1)
-        return result(true, p);
-    if (i == 0)
-        return result(false, p[0 .. 1]);
-
-    version (Windows)
-    {
-        // If the directory part is either d: or d:\
-        // do not chop off the last symbol.
-        if (isDriveSeparator(p[i]) || isDriveSeparator(p[i-1]))
-            return result(false, p[0 .. i+1]);
-    }
-    // Remove any remaining trailing (back)slashes.
-    return result(false, rtrimDirSeparators(p[0 .. i]));
 }
 
 ///
@@ -636,7 +611,7 @@ if (isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementT
     assert(sa.dirName == "file/path/to");
 }
 
-@system unittest
+@safe unittest
 {
     static assert(dirName("dir/file") == "dir");
 
@@ -678,22 +653,122 @@ if (isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementT
     //static assert(dirName("dir/file".byChar).array == "dir");
 }
 
+private auto _dirName(R)(R path)
+{
+    static auto result(bool dot, typeof(path[0 .. 1]) p)
+    {
+        static if (isSomeString!R)
+            return dot ? "." : p;
+        else
+        {
+            import std.range : choose, only;
+            return choose(dot, only(cast(ElementEncodingType!R)'.'), p);
+        }
+    }
 
+    if (path.empty)
+        return result(true, path[0 .. 0]);
 
+    auto p = rtrimDirSeparators(path);
+    if (p.empty)
+        return result(false, path[0 .. 1]);
 
-/** Returns the root directory of the specified path, or $(D null) if the
+    version (Windows)
+    {
+        if (isUNC(p) && uncRootLength(p) == p.length)
+            return result(false, p);
+
+        if (p.length == 2 && isDriveSeparator(p[1]) && path.length > 2)
+            return result(false, path[0 .. 3]);
+    }
+
+    auto i = lastSeparator(p);
+    if (i == -1)
+        return result(true, p);
+    if (i == 0)
+        return result(false, p[0 .. 1]);
+
+    version (Windows)
+    {
+        // If the directory part is either d: or d:\
+        // do not chop off the last symbol.
+        if (isDriveSeparator(p[i]) || isDriveSeparator(p[i-1]))
+            return result(false, p[0 .. i+1]);
+    }
+    // Remove any remaining trailing (back)slashes.
+    return result(false, rtrimDirSeparators(p[0 .. i]));
+}
+
+/** Returns the root directory of the specified path, or `null` if the
     path is not rooted.
 
     Params:
         path = A path name.
 
     Returns:
-        A slice of $(D path).
+        A slice of `path`.
 */
 auto rootName(R)(R path)
-if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) ||
-    isNarrowString!R) &&
-    !isConvertibleToString!R)
+if (isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) && !isSomeString!R)
+{
+    return _rootName(path);
+}
+
+/// ditto
+auto rootName(C)(C[] path)
+if (isSomeChar!C)
+{
+    return _rootName(path);
+}
+
+///
+@safe unittest
+{
+    assert(rootName("") is null);
+    assert(rootName("foo") is null);
+    assert(rootName("/") == "/");
+    assert(rootName("/foo/bar") == "/");
+
+    version (Windows)
+    {
+        assert(rootName("d:foo") is null);
+        assert(rootName(`d:\foo`) == `d:\`);
+        assert(rootName(`\\server\share\foo`) == `\\server\share`);
+        assert(rootName(`\\server\share`) == `\\server\share`);
+    }
+}
+
+@safe unittest
+{
+    assert(testAliasedString!rootName("/foo/bar"));
+
+    enum S : string { a = "/foo/bar" }
+    assert(S.a.rootName == "/");
+
+    char[S.a.length] sa = S.a[];
+    assert(sa.rootName == "/");
+}
+
+@safe unittest
+{
+    import std.array;
+    import std.utf : byChar;
+
+    assert(rootName("".byChar).array == "");
+    assert(rootName("foo".byChar).array == "");
+    assert(rootName("/".byChar).array == "/");
+    assert(rootName("/foo/bar".byChar).array == "/");
+
+    version (Windows)
+    {
+        assert(rootName("d:foo".byChar).array == "");
+        assert(rootName(`d:\foo`.byChar).array == `d:\`);
+        assert(rootName(`\\server\share\foo`.byChar).array == `\\server\share`);
+        assert(rootName(`\\server\share`.byChar).array == `\\server\share`);
+    }
+}
+
+private auto _rootName(R)(R path)
 {
     if (path.empty)
         goto Lnull;
@@ -725,54 +800,6 @@ Lnull:
         return path[0 .. 0];
 }
 
-///
-@safe unittest
-{
-    assert(rootName("") is null);
-    assert(rootName("foo") is null);
-    assert(rootName("/") == "/");
-    assert(rootName("/foo/bar") == "/");
-
-    version (Windows)
-    {
-        assert(rootName("d:foo") is null);
-        assert(rootName(`d:\foo`) == `d:\`);
-        assert(rootName(`\\server\share\foo`) == `\\server\share`);
-        assert(rootName(`\\server\share`) == `\\server\share`);
-    }
-}
-
-@safe unittest
-{
-    assert(testAliasedString!rootName("/foo/bar"));
-}
-
-@safe unittest
-{
-    import std.array;
-    import std.utf : byChar;
-
-    assert(rootName("".byChar).array == "");
-    assert(rootName("foo".byChar).array == "");
-    assert(rootName("/".byChar).array == "/");
-    assert(rootName("/foo/bar".byChar).array == "/");
-
-    version (Windows)
-    {
-        assert(rootName("d:foo".byChar).array == "");
-        assert(rootName(`d:\foo`.byChar).array == `d:\`);
-        assert(rootName(`\\server\share\foo`.byChar).array == `\\server\share`);
-        assert(rootName(`\\server\share`.byChar).array == `\\server\share`);
-    }
-}
-
-auto rootName(R)(R path)
-if (isConvertibleToString!R)
-{
-    return rootName!(StringTypeOf!R)(path);
-}
-
-
 /**
     Get the drive portion of a path.
 
@@ -780,28 +807,23 @@ if (isConvertibleToString!R)
         path = string or range of characters
 
     Returns:
-        A slice of $(D _path) that is the drive, or an empty range if the drive
+        A slice of `path` that is the drive, or an empty range if the drive
         is not specified.  In the case of UNC paths, the network share
         is returned.
 
         Always returns an empty range on POSIX.
 */
 auto driveName(R)(R path)
-if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) ||
-    isNarrowString!R) &&
-    !isConvertibleToString!R)
+if (isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) && !isSomeString!R)
 {
-    version (Windows)
-    {
-        if (hasDrive(path))
-            return path[0 .. 2];
-        else if (isUNC(path))
-            return path[0 .. uncRootLength(path)];
-    }
-    static if (isSomeString!R)
-        return cast(ElementEncodingType!R[]) null; // legacy code may rely on null return rather than slice
-    else
-        return path[0 .. 0];
+    return _driveName(path);
+}
+
+/// ditto
+auto driveName(C)(C[] path)
+if (isSomeChar!C)
+{
+    return _driveName(path);
 }
 
 ///
@@ -823,15 +845,20 @@ if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(Element
     }
 }
 
-auto driveName(R)(auto ref R path)
-if (isConvertibleToString!R)
-{
-    return driveName!(StringTypeOf!R)(path);
-}
-
 @safe unittest
 {
-    assert(testAliasedString!driveName(`d:\file`));
+    assert(testAliasedString!driveName("d:/file"));
+
+    version(Posix)
+        immutable result = "";
+    else version(Windows)
+        immutable result = "d:";
+
+    enum S : string { a = "d:/file" }
+    assert(S.a.driveName == result);
+
+    char[S.a.length] sa = S.a[];
+    assert(sa.driveName == result);
 }
 
 @safe unittest
@@ -854,6 +881,20 @@ if (isConvertibleToString!R)
     }
 }
 
+private auto _driveName(R)(R path)
+{
+    version (Windows)
+    {
+        if (hasDrive(path))
+            return path[0 .. 2];
+        else if (isUNC(path))
+            return path[0 .. uncRootLength(path)];
+    }
+    static if (isSomeString!R)
+        return cast(ElementEncodingType!R[]) null; // legacy code may rely on null return rather than slice
+    else
+        return path[0 .. 0];
+}
 
 /** Strips the drive from a Windows path.  On POSIX, the path is returned
     unaltered.
@@ -864,16 +905,16 @@ if (isConvertibleToString!R)
     Returns: A slice of path without the drive component.
 */
 auto stripDrive(R)(R path)
-if ((isRandomAccessRange!R && hasSlicing!R && isSomeChar!(ElementType!R) ||
-    isNarrowString!R) &&
-    !isConvertibleToString!R)
+if (isRandomAccessRange!R && hasSlicing!R && isSomeChar!(ElementType!R) && !isSomeString!R)
 {
-    version(Windows)
-    {
-        if (hasDrive!(BaseOf!R)(path))      return path[2 .. path.length];
-        else if (isUNC!(BaseOf!R)(path))    return path[uncRootLength!(BaseOf!R)(path) .. path.length];
-    }
-    return path;
+    return _stripDrive(path);
+}
+
+/// ditto
+auto stripDrive(C)(C[] path)
+if (isSomeChar!C)
+{
+    return _stripDrive(path);
 }
 
 ///
@@ -886,15 +927,20 @@ if ((isRandomAccessRange!R && hasSlicing!R && isSomeChar!(ElementType!R) ||
     }
 }
 
-auto stripDrive(R)(auto ref R path)
-if (isConvertibleToString!R)
-{
-    return stripDrive!(StringTypeOf!R)(path);
-}
-
 @safe unittest
 {
-    assert(testAliasedString!stripDrive(`d:\dir\file`));
+    assert(testAliasedString!stripDrive("d:/dir/file"));
+
+    version(Posix)
+        immutable result = "d:/dir/file";
+    else version(Windows)
+        immutable result = "/dir/file";
+
+    enum S : string { a = "d:/dir/file" }
+    assert(S.a.stripDrive == result);
+
+    char[S.a.length] sa = S.a[];
+    assert(sa.stripDrive == result);
 }
 
 @safe unittest
@@ -919,6 +965,16 @@ if (isConvertibleToString!R)
         foreach (i, c; `d:\dir\file`)
             assert(s[i] == c);
     }
+}
+
+private auto _stripDrive(R)(R path)
+{
+    version(Windows)
+    {
+        if (hasDrive!(BaseOf!R)(path))      return path[2 .. path.length];
+        else if (isUNC!(BaseOf!R)(path))    return path[uncRootLength!(BaseOf!R)(path) .. path.length];
+    }
+    return path;
 }
 
 
@@ -983,7 +1039,7 @@ if (isRandomAccessRange!R && hasLength!R && isSomeChar!(ElementType!R) ||
     Params: path = A path name.
     Returns: The _extension part of a file name, including the dot.
 
-    If there is no _extension, $(D null) is returned.
+    If there is no _extension, `null` is returned.
 */
 auto extension(R)(R path)
 if (isRandomAccessRange!R && hasSlicing!R && isSomeChar!(ElementType!R) ||
@@ -1038,12 +1094,16 @@ if (isRandomAccessRange!R && hasSlicing!R && isSomeChar!(ElementType!R) ||
         slice of path with the extension (if any) stripped off
 */
 auto stripExtension(R)(R path)
-if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) ||
-    isNarrowString!R) &&
-    !isConvertibleToString!R)
+if (isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) && !isSomeString!R)
 {
-    auto i = extSeparatorPos(path);
-    return (i == -1) ? path : path[0 .. i];
+    return _stripExtension(path);
+}
+
+/// Ditto
+auto stripExtension(C)(C[] path)
+if (isSomeChar!C)
+{
+    return _stripExtension(path);
 }
 
 ///
@@ -1058,15 +1118,15 @@ if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(Element
     assert(stripExtension("dir/file.ext")   == "dir/file");
 }
 
-auto stripExtension(R)(auto ref R path)
-if (isConvertibleToString!R)
-{
-    return stripExtension!(StringTypeOf!R)(path);
-}
-
 @safe unittest
 {
     assert(testAliasedString!stripExtension("file"));
+
+    enum S : string { a = "foo.bar" }
+    assert(S.a.stripExtension == "foo");
+
+    char[S.a.length] sa = S.a[];
+    assert(sa.stripExtension == "foo");
 }
 
 @safe unittest
@@ -1082,12 +1142,17 @@ if (isConvertibleToString!R)
     assert(stripExtension("file.ext1.ext2"d.byDchar).array == "file.ext1");
 }
 
+private auto _stripExtension(R)(R path)
+{
+    immutable i = extSeparatorPos(path);
+    return i == -1 ? path : path[0 .. i];
+}
 
 /** Sets or replaces an extension.
 
     If the filename already has an extension, it is replaced. If not, the
     extension is simply appended to the filename. Including a leading dot
-    in $(D ext) is optional.
+    in `ext` is optional.
 
     If the extension is empty, this function is equivalent to
     $(LREF stripExtension).
@@ -1100,8 +1165,8 @@ if (isConvertibleToString!R)
         path = A path name
         ext = The new extension
 
-    Returns: A string containing the _path given by $(D path), but where
-    the extension has been set to $(D ext).
+    Returns: A string containing the path given by `path`, but where
+    the extension has been set to `ext`.
 
     See_Also:
         $(LREF withExtension) which does not allocate and returns a lazy range.
@@ -1176,25 +1241,23 @@ if (isSomeChar!C1 && is(Unqual!C1 == Unqual!C2))
  *      path = string or random access range representing a filespec
  *      ext = the new extension
  * Returns:
- *      Range with $(D path)'s extension (if any) replaced with $(D ext).
- *      The element encoding type of the returned range will be the same as $(D path)'s.
+ *      Range with `path`'s extension (if any) replaced with `ext`.
+ *      The element encoding type of the returned range will be the same as `path`'s.
  * See_Also:
  *      $(LREF setExtension)
  */
 auto withExtension(R, C)(R path, C[] ext)
-if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) ||
-    isNarrowString!R) &&
-    !isConvertibleToString!R &&
-    isSomeChar!C)
+if (isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) &&
+    !isSomeString!R && isSomeChar!C)
 {
-    import std.range : only, chain;
-    import std.utf : byUTF;
+    return _withExtension(path, ext);
+}
 
-    alias CR = Unqual!(ElementEncodingType!R);
-    auto dot = only(CR('.'));
-    if (ext.length == 0 || ext[0] == '.')
-        dot.popFront();                 // so dot is an empty range, too
-    return chain(stripExtension(path).byUTF!CR, dot, ext.byUTF!CR);
+/// Ditto
+auto withExtension(C1, C2)(C1[] path, C2[] ext)
+if (isSomeChar!C1 && isSomeChar!C2)
+{
+    return _withExtension(path, ext);
 }
 
 ///
@@ -1211,22 +1274,36 @@ if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(Element
     assert(withExtension("file.ext"w.byWchar, ".").array == "file."w);
 }
 
-auto withExtension(R, C)(auto ref R path, C[] ext)
-if (isConvertibleToString!R)
-{
-    return withExtension!(StringTypeOf!R)(path, ext);
-}
-
 @safe unittest
 {
+    import std.algorithm.comparison : equal;
+
     assert(testAliasedString!withExtension("file", "ext"));
+
+    enum S : string { a = "foo.bar" }
+    assert(equal(S.a.withExtension(".txt"), "foo.txt"));
+
+    char[S.a.length] sa = S.a[];
+    assert(equal(sa.withExtension(".txt"), "foo.txt"));
+}
+
+private auto _withExtension(R, C)(R path, C[] ext)
+{
+    import std.range : only, chain;
+    import std.utf : byUTF;
+
+    alias CR = Unqual!(ElementEncodingType!R);
+    auto dot = only(CR('.'));
+    if (ext.length == 0 || ext[0] == '.')
+        dot.popFront();                 // so dot is an empty range, too
+    return chain(stripExtension(path).byUTF!CR, dot, ext.byUTF!CR);
 }
 
 /** Params:
         path = A path name.
         ext = The default extension to use.
 
-    Returns: The _path given by $(D path), with the extension given by $(D ext)
+    Returns: The path given by `path`, with the extension given by `ext`
     appended if the path doesn't already have one.
 
     Including the dot in the extension is optional.
@@ -1265,7 +1342,7 @@ if (isSomeChar!C1 && is(Unqual!C1 == Unqual!C2))
 
 
 /********************************
- * Set the extension of $(D path) to $(D ext) if $(D path) doesn't have one.
+ * Set the extension of `path` to `ext` if `path` doesn't have one.
  *
  * Params:
  *      path = filespec as string or range
@@ -1274,29 +1351,17 @@ if (isSomeChar!C1 && is(Unqual!C1 == Unqual!C2))
  *      range with the result
  */
 auto withDefaultExtension(R, C)(R path, C[] ext)
-if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) ||
-    isNarrowString!R) &&
-    !isConvertibleToString!R &&
-    isSomeChar!C)
+if (isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(ElementType!R) &&
+    !isSomeString!R && isSomeChar!C)
 {
-    import std.range : only, chain;
-    import std.utf : byUTF;
+    return _withDefaultExtension(path, ext);
+}
 
-    alias CR = Unqual!(ElementEncodingType!R);
-    auto dot = only(CR('.'));
-    auto i = extSeparatorPos(path);
-    if (i == -1)
-    {
-        if (ext.length > 0 && ext[0] == '.')
-            ext = ext[1 .. $];              // remove any leading . from ext[]
-    }
-    else
-    {
-        // path already has an extension, so make these empty
-        ext = ext[0 .. 0];
-        dot.popFront();
-    }
-    return chain(path.byUTF!CR, dot, ext.byUTF!CR);
+/// Ditto
+auto withDefaultExtension(C1, C2)(C1[] path, C2[] ext)
+if (isSomeChar!C1 && isSomeChar!C2)
+{
+    return _withDefaultExtension(path, ext);
 }
 
 ///
@@ -1315,15 +1380,39 @@ if ((isRandomAccessRange!R && hasSlicing!R && hasLength!R && isSomeChar!(Element
     assert(withDefaultExtension("file".byChar, "").array == "file.");
 }
 
-auto withDefaultExtension(R, C)(auto ref R path, C[] ext)
-if (isConvertibleToString!R)
-{
-    return withDefaultExtension!(StringTypeOf!R, C)(path, ext);
-}
-
 @safe unittest
 {
+    import std.algorithm.comparison : equal;
+
     assert(testAliasedString!withDefaultExtension("file", "ext"));
+
+    enum S : string { a = "foo" }
+    assert(equal(S.a.withDefaultExtension(".txt"), "foo.txt"));
+
+    char[S.a.length] sa = S.a[];
+    assert(equal(sa.withDefaultExtension(".txt"), "foo.txt"));
+}
+
+private auto _withDefaultExtension(R, C)(R path, C[] ext)
+{
+    import std.range : only, chain;
+    import std.utf : byUTF;
+
+    alias CR = Unqual!(ElementEncodingType!R);
+    auto dot = only(CR('.'));
+    immutable i = extSeparatorPos(path);
+    if (i == -1)
+    {
+        if (ext.length > 0 && ext[0] == '.')
+            ext = ext[1 .. $];              // remove any leading . from ext[]
+    }
+    else
+    {
+        // path already has an extension, so make these empty
+        ext = ext[0 .. 0];
+        dot.popFront();
+    }
+    return chain(path.byUTF!CR, dot, ext.byUTF!CR);
 }
 
 /** Combines one or more path segments.
@@ -1336,16 +1425,17 @@ if (isConvertibleToString!R)
     preceding segments will be dropped.
 
     On Windows, if one of the path segments are rooted, but not absolute
-    (e.g. $(D `\foo`)), all preceding path segments down to the previous
+    (e.g. ``\foo``), all preceding path segments down to the previous
     root will be dropped.  (See below for an example.)
 
     This function always allocates memory to hold the resulting path.
     The variadic overload is guaranteed to only perform a single
-    allocation, as is the range version if $(D paths) is a forward
+    allocation, as is the range version if `paths` is a forward
     range.
 
     Params:
-        segments = An input range of segments to assemble the path from.
+        segments = An $(REF_ALTTEXT input range, isInputRange, std,range,primitives)
+        of segments to assemble the path from.
     Returns: The assembled path.
 */
 immutable(ElementEncodingType!(ElementType!Range))[]
@@ -1638,7 +1728,7 @@ if (Ranges.length >= 2 &&
 
 /** Performs the same task as $(LREF buildPath),
     while at the same time resolving current/parent directory
-    symbols ($(D ".") and $(D "..")) and removing superfluous
+    symbols (`"."` and `".."`) and removing superfluous
     directory separators.
     It will return "." if the path leads to the starting directory.
     On Windows, slashes are replaced with backslashes.
@@ -1656,21 +1746,23 @@ if (Ranges.length >= 2 &&
     Returns: The assembled path.
 */
 immutable(C)[] buildNormalizedPath(C)(const(C[])[] paths...)
-    @trusted pure nothrow
+    @safe pure nothrow
 if (isSomeChar!C)
 {
     import std.array : array;
+    import std.exception : assumeUnique;
 
-    const(C)[] result;
+    const(C)[] chained;
     foreach (path; paths)
     {
-        if (result)
-            result = chainPath(result, path).array;
+        if (chained)
+            chained = chainPath(chained, path).array;
         else
-            result = path;
+            chained = path;
     }
-    result = asNormalizedPath(result).array;
-    return cast(typeof(return)) result;
+    auto result = asNormalizedPath(chained);
+    // .array returns a copy, so it is unique
+    return () @trusted { return assumeUnique(result.array); } ();
 }
 
 ///
@@ -1790,7 +1882,7 @@ if (isSomeChar!C)
 
 
 /** Normalize a path by resolving current/parent directory
-    symbols ($(D ".") and $(D "..")) and removing superfluous
+    symbols (`"."` and `".."`) and removing superfluous
     directory separators.
     It will return "." if the path leads to the starting directory.
     On Windows, slashes are replaced with backslashes.
@@ -1803,7 +1895,7 @@ if (isSomeChar!C)
     Use $(LREF buildNormalizedPath) to allocate memory and return a string.
 
     Params:
-        path = string or random access range representing the _path to normalize
+        path = string or random access range representing the path to normalize
 
     Returns:
         normalized path as a forward range
@@ -2460,35 +2552,17 @@ if (isConvertibleToString!R)
 
 /** Determines whether a path starts at a root directory.
 
-    Params: path = A path name.
-    Returns: Whether a path starts at a root directory.
+Params:
+    path = A path name.
+Returns:
+    Whether a path starts at a root directory.
 
     On POSIX, this function returns true if and only if the path starts
     with a slash (/).
-    ---
-    version (Posix)
-    {
-        assert(isRooted("/"));
-        assert(isRooted("/foo"));
-        assert(!isRooted("foo"));
-        assert(!isRooted("../foo"));
-    }
-    ---
 
     On Windows, this function returns true if the path starts at
     the root directory of the current drive, of some other drive,
     or of a network drive.
-    ---
-    version (Windows)
-    {
-        assert(isRooted(`\`));
-        assert(isRooted(`\foo`));
-        assert(isRooted(`d:\foo`));
-        assert(isRooted(`\\foo\bar`));
-        assert(!isRooted("foo"));
-        assert(!isRooted("d:foo"));
-    }
-    ---
 */
 bool isRooted(R)(R path)
 if (isRandomAccessRange!R && isSomeChar!(ElementType!R) ||
@@ -2499,6 +2573,27 @@ if (isRandomAccessRange!R && isSomeChar!(ElementType!R) ||
     else version (Windows)  return isAbsolute!(BaseOf!R)(path);
 }
 
+///
+@safe unittest
+{
+    version (Posix)
+    {
+        assert( isRooted("/"));
+        assert( isRooted("/foo"));
+        assert(!isRooted("foo"));
+        assert(!isRooted("../foo"));
+    }
+
+    version (Windows)
+    {
+        assert( isRooted(`\`));
+        assert( isRooted(`\foo`));
+        assert( isRooted(`d:\foo`));
+        assert( isRooted(`\\foo\bar`));
+        assert(!isRooted("foo"));
+        assert(!isRooted("d:foo"));
+    }
+}
 
 @safe unittest
 {
@@ -2524,9 +2619,6 @@ if (isRandomAccessRange!R && isSomeChar!(ElementType!R) ||
     assert(!isRooted(DirEntry("foo")));
 }
 
-
-
-
 /** Determines whether a path is absolute or not.
 
     Params: path = A path name.
@@ -2535,7 +2627,7 @@ if (isRandomAccessRange!R && isSomeChar!(ElementType!R) ||
 
     Example:
     On POSIX, an absolute path starts at the root directory.
-    (In fact, $(D _isAbsolute) is just an alias for $(LREF isRooted).)
+    (In fact, `_isAbsolute` is just an alias for $(LREF isRooted).)
     ---
     version (Posix)
     {
@@ -2547,8 +2639,8 @@ if (isRandomAccessRange!R && isSomeChar!(ElementType!R) ||
     ---
 
     On Windows, an absolute path starts at the root directory of
-    a specific drive.  Hence, it must start with $(D `d:\`) or $(D `d:/`),
-    where $(D d) is the drive letter.  Alternatively, it may be a
+    a specific drive.  Hence, it must start with ``d:\`` or ``d:/``,
+    where `d` is the drive letter.  Alternatively, it may be a
     network path, i.e. a path starting with a double (back)slash.
     ---
     version (Windows)
@@ -2620,14 +2712,14 @@ else version (Posix)
 
 
 
-/** Transforms $(D path) into an absolute _path.
+/** Transforms `path` into an absolute path.
 
     The following algorithm is used:
     $(OL
-        $(LI If $(D path) is empty, return $(D null).)
-        $(LI If $(D path) is already absolute, return it.)
-        $(LI Otherwise, append $(D path) to $(D base) and return
-            the result. If $(D base) is not specified, the current
+        $(LI If `path` is empty, return `null`.)
+        $(LI If `path` is already absolute, return it.)
+        $(LI Otherwise, append `path` to `base` and return
+            the result. If `base` is not specified, the current
             working directory is used.)
     )
     The function allocates memory if and only if it gets to the third stage
@@ -2641,7 +2733,7 @@ else version (Posix)
         string of transformed path
 
     Throws:
-    $(D Exception) if the specified _base directory is not absolute.
+    `Exception` if the specified _base directory is not absolute.
 
     See_Also:
         $(LREF asAbsolutePath) which does not allocate
@@ -2693,13 +2785,13 @@ string absolutePath(string path, lazy string base = getcwd())
     assertThrown(absolutePath("bar", "foo"));
 }
 
-/** Transforms $(D path) into an absolute _path.
+/** Transforms `path` into an absolute path.
 
     The following algorithm is used:
     $(OL
-        $(LI If $(D path) is empty, return $(D null).)
-        $(LI If $(D path) is already absolute, return it.)
-        $(LI Otherwise, append $(D path) to the current working directory,
+        $(LI If `path` is empty, return `null`.)
+        $(LI If `path` is already absolute, return it.)
+        $(LI Otherwise, append `path` to the current working directory,
         which allocates memory.)
     )
 
@@ -2751,27 +2843,27 @@ if (isConvertibleToString!R)
     assert(testAliasedString!asAbsolutePath(null));
 }
 
-/** Translates $(D path) into a relative _path.
+/** Translates `path` into a relative path.
 
-    The returned _path is relative to $(D base), which is by default
+    The returned path is relative to `base`, which is by default
     taken to be the current working directory.  If specified,
-    $(D base) must be an absolute _path, and it is always assumed
-    to refer to a directory.  If $(D path) and $(D base) refer to
-    the same directory, the function returns $(D `.`).
+    `base` must be an absolute path, and it is always assumed
+    to refer to a directory.  If `path` and `base` refer to
+    the same directory, the function returns ``.``.
 
     The following algorithm is used:
     $(OL
-        $(LI If $(D path) is a relative directory, return it unaltered.)
-        $(LI Find a common root between $(D path) and $(D base).
-            If there is no common root, return $(D path) unaltered.)
-        $(LI Prepare a string with as many $(D `../`) or $(D `..\`) as
+        $(LI If `path` is a relative directory, return it unaltered.)
+        $(LI Find a common root between `path` and `base`.
+            If there is no common root, return `path` unaltered.)
+        $(LI Prepare a string with as many ``../`` or ``..\`` as
             necessary to reach the common root from base path.)
-        $(LI Append the remaining segments of $(D path) to the string
+        $(LI Append the remaining segments of `path` to the string
             and return.)
     )
 
-    In the second step, path components are compared using $(D filenameCmp!cs),
-    where $(D cs) is an optional template parameter determining whether
+    In the second step, path components are compared using `filenameCmp!cs`,
+    where `cs` is an optional template parameter determining whether
     the comparison is case sensitive or not.  See the
     $(LREF filenameCmp) documentation for details.
 
@@ -2789,7 +2881,7 @@ if (isConvertibleToString!R)
         $(LREF asRelativePath) which does not allocate memory
 
     Throws:
-    $(D Exception) if the specified _base directory is not absolute.
+    `Exception` if the specified _base directory is not absolute.
 */
 string relativePath(CaseSensitive cs = CaseSensitive.osDefault)
     (string path, lazy string base = getcwd())
@@ -2805,7 +2897,7 @@ string relativePath(CaseSensitive cs = CaseSensitive.osDefault)
 }
 
 ///
-@system unittest
+@safe unittest
 {
     assert(relativePath("foo") == "foo");
 
@@ -2828,7 +2920,7 @@ string relativePath(CaseSensitive cs = CaseSensitive.osDefault)
     }
 }
 
-@system unittest
+@safe unittest
 {
     import std.exception;
     assert(relativePath("foo") == "foo");
@@ -2847,11 +2939,11 @@ string relativePath(CaseSensitive cs = CaseSensitive.osDefault)
     else static assert(0);
 }
 
-/** Transforms `path` into a _path relative to `base`.
+/** Transforms `path` into a path relative to `base`.
 
-    The returned _path is relative to `base`, which is usually
+    The returned path is relative to `base`, which is usually
     the current working directory.
-    `base` must be an absolute _path, and it is always assumed
+    `base` must be an absolute path, and it is always assumed
     to refer to a directory.  If `path` and `base` refer to
     the same directory, the function returns `'.'`.
 
@@ -2872,13 +2964,13 @@ string relativePath(CaseSensitive cs = CaseSensitive.osDefault)
     $(LREF filenameCmp) documentation for details.
 
     Params:
-        path = _path to transform
+        path = path to transform
         base = absolute path
         cs = whether filespec comparisons are sensitive or not; defaults to
          `CaseSensitive.osDefault`
 
     Returns:
-        a random access range of the transformed _path
+        a random access range of the transformed path
 
     See_Also:
         $(LREF relativePath)
@@ -2936,7 +3028,7 @@ if ((isNarrowString!R1 ||
 }
 
 ///
-@system unittest
+@safe unittest
 {
     import std.array;
     version (Posix)
@@ -2971,7 +3063,7 @@ if (isConvertibleToString!R1 || isConvertibleToString!R2)
     return asRelativePath!(cs, Types)(path, base);
 }
 
-@system unittest
+@safe unittest
 {
     import std.array;
     version (Posix)
@@ -2985,7 +3077,7 @@ if (isConvertibleToString!R1 || isConvertibleToString!R2)
     assert(asRelativePath("foo"d.byDchar, TestAliasedString("bar")).array == "foo");
 }
 
-@system unittest
+@safe unittest
 {
     import std.array, std.utf : bCU=byCodeUnit;
     version (Posix)
@@ -3005,10 +3097,10 @@ if (isConvertibleToString!R1 || isConvertibleToString!R2)
 /** Compares filename characters.
 
     This function can perform a case-sensitive or a case-insensitive
-    comparison.  This is controlled through the $(D cs) template parameter
-    which, if not specified, is given by $(LREF CaseSensitive)$(D .osDefault).
+    comparison.  This is controlled through the `cs` template parameter
+    which, if not specified, is given by $(LREF CaseSensitive)`.osDefault`.
 
-    On Windows, the backslash and slash characters ($(D `\`) and $(D `/`))
+    On Windows, the backslash and slash characters (``\`` and ``/``)
     are considered equal.
 
     Params:
@@ -3018,7 +3110,7 @@ if (isConvertibleToString!R1 || isConvertibleToString!R2)
 
     Returns:
         $(D < 0) if $(D a < b),
-        $(D 0) if $(D a == b), and
+        `0` if $(D a == b), and
         $(D > 0) if $(D a > b).
 */
 int filenameCharCmp(CaseSensitive cs = CaseSensitive.osDefault)(dchar a, dchar b)
@@ -3078,8 +3170,8 @@ int filenameCharCmp(CaseSensitive cs = CaseSensitive.osDefault)(dchar a, dchar b
 
 /** Compares file names and returns
 
-    Individual characters are compared using $(D filenameCharCmp!cs),
-    where $(D cs) is an optional template parameter determining whether
+    Individual characters are compared using `filenameCharCmp!cs`,
+    where `cs` is an optional template parameter determining whether
     the comparison is case sensitive or not.
 
     Treatment of invalid UTF encodings is implementation defined.
@@ -3091,7 +3183,7 @@ int filenameCharCmp(CaseSensitive cs = CaseSensitive.osDefault)(dchar a, dchar b
 
     Returns:
         $(D < 0) if $(D filename1 < filename2),
-        $(D 0) if $(D filename1 == filename2) and
+        `0` if $(D filename1 == filename2) and
         $(D > 0) if $(D filename1 > filename2).
 
     See_Also:
@@ -3204,22 +3296,22 @@ if (isConvertibleToString!Range1 || isConvertibleToString!Range2)
     $(I meta-characters)) and can't be escaped. These are:
 
     $(BOOKTABLE,
-    $(TR $(TD $(D *))
+    $(TR $(TD `*`)
          $(TD Matches 0 or more instances of any character.))
-    $(TR $(TD $(D ?))
+    $(TR $(TD `?`)
          $(TD Matches exactly one instance of any character.))
-    $(TR $(TD $(D [)$(I chars)$(D ]))
+    $(TR $(TD `[`$(I chars)`]`)
          $(TD Matches one instance of any character that appears
               between the brackets.))
-    $(TR $(TD $(D [!)$(I chars)$(D ]))
+    $(TR $(TD `[!`$(I chars)`]`)
          $(TD Matches one instance of any character that does not
               appear between the brackets after the exclamation mark.))
-    $(TR $(TD $(D {)$(I string1)$(D ,)$(I string2)$(D ,)&hellip;$(D }))
+    $(TR $(TD `{`$(I string1)`,`$(I string2)`,`&hellip;`}`)
          $(TD Matches either of the specified strings.))
     )
 
-    Individual characters are compared using $(D filenameCharCmp!cs),
-    where $(D cs) is an optional template parameter determining whether
+    Individual characters are compared using `filenameCharCmp!cs`,
+    where `cs` is an optional template parameter determining whether
     the comparison is case sensitive or not.  See the
     $(LREF filenameCharCmp) documentation for details.
 
@@ -3233,7 +3325,7 @@ if (isConvertibleToString!Range1 || isConvertibleToString!Range2)
         pattern = The glob pattern
 
     Returns:
-    $(D true) if pattern matches path, $(D false) otherwise.
+    `true` if pattern matches path, `false` otherwise.
 
     See_also:
     $(LINK2 http://en.wikipedia.org/wiki/Glob_%28programming%29,Wikipedia: _glob (programming))
@@ -3251,7 +3343,7 @@ in
     assert(balancedParens(pattern, '[', ']', 0));
     assert(balancedParens(pattern, '{', '}', 0));
 }
-body
+do
 {
     alias RC = Unqual!(ElementEncodingType!Range);
 
@@ -3483,31 +3575,31 @@ if (isConvertibleToString!Range)
 
 /** Checks that the given file or directory name is valid.
 
-    The maximum length of $(D filename) is given by the constant
-    $(D core.stdc.stdio.FILENAME_MAX).  (On Windows, this number is
+    The maximum length of `filename` is given by the constant
+    `core.stdc.stdio.FILENAME_MAX`.  (On Windows, this number is
     defined as the maximum number of UTF-16 code points, and the
     test will therefore only yield strictly correct results when
-    $(D filename) is a string of $(D wchar)s.)
+    `filename` is a string of `wchar`s.)
 
     On Windows, the following criteria must be satisfied
     ($(LINK2 http://msdn.microsoft.com/en-us/library/aa365247(v=vs.85).aspx,source)):
     $(UL
-        $(LI $(D filename) must not contain any characters whose integer
+        $(LI `filename` must not contain any characters whose integer
             representation is in the range 0-31.)
-        $(LI $(D filename) must not contain any of the following $(I reserved
+        $(LI `filename` must not contain any of the following $(I reserved
             characters): <>:"/\|?*)
-        $(LI $(D filename) may not end with a space ($(D ' ')) or a period
-            ($(D '.')).)
+        $(LI `filename` may not end with a space ($(D ' ')) or a period
+            (`'.'`).)
     )
 
-    On POSIX, $(D filename) may not contain a forward slash ($(D '/')) or
-    the null character ($(D '\0')).
+    On POSIX, `filename` may not contain a forward slash (`'/'`) or
+    the null character (`'\0'`).
 
     Params:
         filename = string to check
 
     Returns:
-        $(D true) if and only if $(D filename) is not
+        `true` if and only if `filename` is not
         empty, not too long, and does not contain invalid characters.
 
 */
@@ -3590,7 +3682,7 @@ unittest
     else static assert(0);
 
     import std.meta : AliasSeq;
-    foreach (T; AliasSeq!(char[], const(char)[], string, wchar[],
+    static foreach (T; AliasSeq!(char[], const(char)[], string, wchar[],
         const(wchar)[], wstring, dchar[], const(dchar)[], dstring))
     {
         foreach (fn; valid)
@@ -3623,28 +3715,28 @@ unittest
 
 
 
-/** Checks whether $(D path) is a valid _path.
+/** Checks whether `path` is a valid path.
 
-    Generally, this function checks that $(D path) is not empty, and that
+    Generally, this function checks that `path` is not empty, and that
     each component of the path either satisfies $(LREF isValidFilename)
-    or is equal to $(D ".") or $(D "..").
+    or is equal to `"."` or `".."`.
 
-    $(B It does $(I not) check whether the _path points to an existing file
+    $(B It does $(I not) check whether the path points to an existing file
     or directory; use $(REF exists, std,file) for this purpose.)
 
     On Windows, some special rules apply:
     $(UL
-        $(LI If the second character of $(D path) is a colon ($(D ':')),
+        $(LI If the second character of `path` is a colon (`':'`),
             the first character is interpreted as a drive letter, and
             must be in the range A-Z (case insensitive).)
-        $(LI If $(D path) is on the form $(D `\\$(I server)\$(I share)\...`)
+        $(LI If `path` is on the form $(D `\\$(I server)\$(I share)\...`)
             (UNC path), $(LREF isValidFilename) is applied to $(I server)
             and $(I share) as well.)
-        $(LI If $(D path) starts with $(D `\\?\`) (long UNC path), the
+        $(LI If `path` starts with ``\\?\`` (long UNC path), the
             only requirement for the rest of the string is that it does
             not contain the null character.)
-        $(LI If $(D path) starts with $(D `\\.\`) (Win32 device namespace)
-            this function returns $(D false); such paths are beyond the scope
+        $(LI If `path` starts with ``\\.\`` (Win32 device namespace)
+            this function returns `false`; such paths are beyond the scope
             of this module.)
     )
 
@@ -3652,7 +3744,7 @@ unittest
         path = string or Range of characters to check
 
     Returns:
-        true if $(D path) is a valid _path.
+        true if `path` is a valid path.
 */
 bool isValidPath(Range)(Range path)
 if ((isRandomAccessRange!Range && hasLength!Range && hasSlicing!Range && isSomeChar!(ElementEncodingType!Range) ||
@@ -3807,16 +3899,16 @@ if (isConvertibleToString!Range)
     There are two ways of using tilde expansion in a path. One
     involves using the tilde alone or followed by a path separator. In
     this case, the tilde will be expanded with the value of the
-    environment variable $(D HOME).  The second way is putting
-    a username after the tilde (i.e. $(D ~john/Mail)). Here,
+    environment variable `HOME`.  The second way is putting
+    a username after the tilde (i.e. `~john/Mail`). Here,
     the username will be searched for in the user database
-    (i.e. $(D /etc/passwd) on Unix systems) and will expand to
+    (i.e. `/etc/passwd` on Unix systems) and will expand to
     whatever path is stored there.  The username is considered the
     string after the tilde ending at the first instance of a path
     separator.
 
-    Note that using the $(D ~user) syntax may give different
-    values from just $(D ~) if the environment variable doesn't
+    Note that using the `~user` syntax may give different
+    values from just `~` if the environment variable doesn't
     match the value stored in the user database.
 
     When the environment variable version is used, the path won't
@@ -3831,9 +3923,9 @@ if (isConvertibleToString!Range)
         inputPath = The path name to expand.
 
     Returns:
-    $(D inputPath) with the tilde expanded, or just $(D inputPath)
+    `inputPath` with the tilde expanded, or just `inputPath`
     if it could not be expanded.
-    For Windows, $(D expandTilde) merely returns its argument $(D inputPath).
+    For Windows, `expandTilde` merely returns its argument `inputPath`.
 
     Example:
     -----
@@ -3845,7 +3937,7 @@ if (isConvertibleToString!Range)
     }
     -----
 */
-string expandTilde(string inputPath) nothrow
+string expandTilde(string inputPath) @safe nothrow
 {
     version(Posix)
     {
@@ -3859,9 +3951,10 @@ string expandTilde(string inputPath) nothrow
             is joined to path[char_pos .. length] if char_pos is smaller
             than length, otherwise path is not appended to c_path.
         */
-        static string combineCPathWithDPath(char* c_path, string path, size_t char_pos) nothrow
+        static string combineCPathWithDPath(char* c_path, string path, size_t char_pos) @trusted nothrow
         {
             import core.stdc.string : strlen;
+            import std.exception : assumeUnique;
 
             assert(c_path != null);
             assert(path.length > 0);
@@ -3874,11 +3967,10 @@ string expandTilde(string inputPath) nothrow
             if (end && isDirSeparator(c_path[end - 1]))
                 end--;
 
-            // (this is the only GC allocation done in expandTilde())
             string cp;
             if (char_pos < path.length)
                 // Append something from path
-                cp = cast(string)(c_path[0 .. end] ~ path[char_pos .. $]);
+                cp = assumeUnique(c_path[0 .. end] ~ path[char_pos .. $]);
             else
                 // Create our own copy, as lifetime of c_path is undocumented
                 cp = c_path[0 .. end].idup;
@@ -3887,7 +3979,7 @@ string expandTilde(string inputPath) nothrow
         }
 
         // Replaces the tilde from path with the environment variable HOME.
-        static string expandFromEnvironment(string path) nothrow
+        static string expandFromEnvironment(string path) @safe nothrow
         {
             import core.stdc.stdlib : getenv;
 
@@ -3895,7 +3987,7 @@ string expandTilde(string inputPath) nothrow
             assert(path[0] == '~');
 
             // Get HOME and use that to replace the tilde.
-            auto home = getenv("HOME");
+            auto home = () @trusted { return getenv("HOME"); } ();
             if (home == null)
                 return path;
 
@@ -3903,7 +3995,7 @@ string expandTilde(string inputPath) nothrow
         }
 
         // Replaces the tilde from path with the path from the user database.
-        static string expandFromDatabase(string path) nothrow
+        static string expandFromDatabase(string path) @safe nothrow
         {
             // bionic doesn't really support this, as getpwnam_r
             // isn't provided and getpwnam is basically just a stub
@@ -3923,10 +4015,7 @@ string expandTilde(string inputPath) nothrow
                 auto last_char = indexOf(path, dirSeparator[0]);
 
                 size_t username_len = (last_char == -1) ? path.length : last_char;
-                char* username = cast(char*) malloc(username_len * char.sizeof);
-                if (!username)
-                    onOutOfMemoryError();
-                scope(exit) free(username);
+                char[] username = new char[username_len * char.sizeof];
 
                 if (last_char == -1)
                 {
@@ -3946,31 +4035,34 @@ string expandTilde(string inputPath) nothrow
                     uint extra_memory_size = 2;
                 else
                     uint extra_memory_size = 5 * 1024;
-                char* extra_memory;
-                scope(exit) free(extra_memory);
+                char[] extra_memory;
 
                 passwd result;
                 while (1)
                 {
-                    extra_memory = cast(char*) realloc(extra_memory, extra_memory_size * char.sizeof);
-                    if (extra_memory == null)
-                        onOutOfMemoryError();
+                    extra_memory.length += extra_memory_size;
 
                     // Obtain info from database.
                     passwd *verify;
                     errno = 0;
-                    if (getpwnam_r(username, &result, extra_memory, extra_memory_size,
-                            &verify) == 0)
+                    auto passResult = () @trusted { return getpwnam_r(
+                        &username[0],
+                        &result,
+                        &extra_memory[0],
+                        extra_memory.length,
+                        &verify
+                    ); } ();
+                    if (passResult == 0)
                     {
                         // Succeeded if verify points at result
-                        if (verify == &result)
+                        if (verify == () @trusted { return &result; } ())
                             // username is found
                             path = combineCPathWithDPath(result.pw_dir, path, last_char);
                         break;
                     }
 
                     if (errno != ERANGE &&
-                        // On FreeBSD and OSX, errno can be left at 0 instead of set to ERANGE
+                        // On BSD and OSX, errno can be left at 0 instead of set to ERANGE
                         errno != 0)
                         onOutOfMemoryError();
 
@@ -4004,12 +4096,29 @@ string expandTilde(string inputPath) nothrow
     }
 }
 
-
-version(unittest) import std.process : environment;
+///
 @system unittest
 {
     version (Posix)
     {
+        import std.process : environment;
+
+        auto oldHome = environment["HOME"];
+        scope(exit) environment["HOME"] = oldHome;
+
+        environment["HOME"] = "dmd/test";
+        assert(expandTilde("~/") == "dmd/test/");
+        assert(expandTilde("~") == "dmd/test");
+    }
+}
+
+@system unittest
+{
+    version (Posix)
+    {
+        import std.process : executeShell, environment;
+        import std.string : strip;
+
         // Retrieve the current home variable.
         auto oldHome = environment.get("HOME");
 
@@ -4032,25 +4141,18 @@ version(unittest) import std.process : environment;
         if (oldHome !is null) environment["HOME"] = oldHome;
         else environment.remove("HOME");
 
-        // Test user expansion for root, no /root on Android
-        version (OSX)
-        {
-            assert(expandTilde("~root") == "/var/root", expandTilde("~root"));
-            assert(expandTilde("~root/") == "/var/root/", expandTilde("~root/"));
-        }
-        else version (Android)
-        {
-        }
-        else
-        {
-            assert(expandTilde("~root") == "/root", expandTilde("~root"));
-            assert(expandTilde("~root/") == "/root/", expandTilde("~root/"));
-        }
+        immutable tildeUser = "~" ~ environment.get("USER");
+        immutable path = executeShell("echo " ~ tildeUser).output.strip();
+        immutable expTildeUser = expandTilde(tildeUser);
+        assert(expTildeUser == path, expTildeUser);
+        immutable expTildeUserSlash = expandTilde(tildeUser ~ "/");
+        assert(expTildeUserSlash == path ~ "/", expTildeUserSlash);
+
         assert(expandTilde("~Idontexist/hey") == "~Idontexist/hey");
     }
 }
 
-version (unittest)
+version(unittest)
 {
     /* Define a mock RandomAccessRange to use for unittesting.
      */
@@ -4078,11 +4180,6 @@ version (unittest)
         C[] array;
     }
 
-    static assert( isRandomAccessRange!(MockRange!(const(char))) );
-}
-
-version (unittest)
-{
     /* Define a mock BidirectionalRange to use for unittesting.
      */
 
@@ -4103,6 +4200,11 @@ version (unittest)
         const(C)[] array;
     }
 
+}
+
+@safe unittest
+{
+    static assert( isRandomAccessRange!(MockRange!(const(char))) );
     static assert( isBidirectionalRange!(MockBiRange!(const(char))) );
 }
 

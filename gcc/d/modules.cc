@@ -19,8 +19,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/declaration.h"
-#include "dfrontend/module.h"
+#include "dmd/declaration.h"
+#include "dmd/module.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -140,7 +140,7 @@ get_internal_fn (tree ident)
 						   Identifier::idPool (name));
   fd->loc = Loc (mod->srcfile->toChars (), 1, 0);
   fd->parent = mod;
-  fd->protection.kind = PROTprivate;
+  fd->protection.kind = Prot::private_;
   fd->semanticRun = PASSsemantic3done;
 
   return fd;
@@ -719,7 +719,8 @@ build_module_tree (Module *decl)
 
   /* Default behaviour is to always generate module info because of templates.
      Can be switched off for not compiling against runtime library.  */
-  if (!global.params.betterC
+  if (global.params.useModuleInfo
+      && Module::moduleinfo != NULL
       && decl->ident != Identifier::idPool ("__entrypoint"))
     {
       if (mi.ctors || mi.ctorgates)

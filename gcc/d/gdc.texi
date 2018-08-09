@@ -551,6 +551,19 @@ Turns on all warnings messages.  Warnings are not a defined part of
 the D language, and all constructs for which this may generate a
 warning message are legal code.
 
+@item -Walloca
+@cindex @option{-Walloca}
+This option warns on all uses of "alloca" in the source.
+
+@item -Walloca-larger-than=@var{n}
+@cindex @option{-Walloca-larger-than}
+@cindex @option{-Wno-alloca-larger-than}
+Warn on unbounded uses of alloca, and on bounded uses of alloca
+whose bound can be larger than @var{n} bytes.
+@option{-Wno-alloca-larger-than} disables
+@option{-Walloca-larger-than} warning and is equivalent to
+@option{-Walloca-larger-than=@var{SIZE_MAX}} or larger.
+
 @item -Wcast-result
 @cindex @option{-Wcast-result}
 @cindex @option{-Wno-cast-result}

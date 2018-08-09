@@ -47,7 +47,7 @@ struct S61b
     {
         try
             other.a();
-        catch
+        catch (Exception)
             other.b();
     }
 }

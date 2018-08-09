@@ -31,7 +31,7 @@ version (Posix)
     //       these for readability.  The alternative would be to
     //       exclude the first N frames that are in a list of
     //       mangled function names.
-    static enum FIRSTFRAME = 5;
+    private enum FIRSTFRAME = 5;
 }
 else
 {
@@ -39,13 +39,16 @@ else
     //       whether the exception is user or system-generated, so
     //       it may be necessary to exclude a list of function names
     //       instead.
-    static enum FIRSTFRAME = 0;
+    private enum FIRSTFRAME = 0;
 }
+
+// Max size per line of the traceback.
+private enum MAX_BUFSIZE = 1536;
 
 static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 {
     import core.stdc.stdint, core.stdc.string, core.stdc.stdio;
-    enum MAXFRAMES = 128;
+    private enum MAXFRAMES = 128;
 
     extern(C) int simpleCallback(void* data, uintptr_t pc)
     {
@@ -63,7 +66,7 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
      */
     extern(C) void simpleErrorCallback(void* data, const(char)* msg, int errnum)
     {
-        if (data) //context is not available in backtrace_create_state
+        if (data) // context is not available in backtrace_create_state
         {
             auto context = cast(LibBacktrace)data;
             strncpy(context.errorBuf.ptr, msg, context.errorBuf.length - 1);
@@ -79,7 +82,7 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
     {
         auto context = cast(SymbolCallbackInfo*)data;
 
-        //Try to get the function name via backtrace_syminfo
+        // Try to get the function name via backtrace_syminfo
         if (func is null)
         {
             SymbolCallbackInfo2 info;
@@ -160,12 +163,12 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
      */
     struct SymbolCallbackInfo
     {
-        bool noInfo = false;       //True if debug info / symbol table is not available
-        size_t num = 0;            //Counter for opApply
-        int retval;                //Value returned by applyCB
+        bool noInfo = false;       // True if debug info / symbol table is not available
+        size_t num = 0;            // Counter for opApply
+        int retval;                // Value returned by applyCB
         backtrace_state* state;
 
-        //info.fileName / funcName / errmsg may become invalid after this delegate returned
+        // info.fileName / funcName / errmsg may become invalid after this delegate returned
         ApplyCallback applyCB;
 
         void reset()
@@ -199,7 +202,7 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
         }
     }
 
-    //FIXME: state is never freed as libbacktrace doesn't provide a free function...
+    // FIXME: state is never freed as libbacktrace doesn't provide a free function...
     public class LibBacktrace : Throwable.TraceInfo
     {
         enum MaxAlignment = (void*).alignof;
@@ -228,38 +231,47 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 
         override int opApply(scope int delegate(ref const(char[])) dg) const
         {
-            return opApply( (ref size_t, ref const(char[]) buf)
-                            {
-                                return dg(buf);
-                            });
+            return opApply(
+                (ref size_t, ref const(char[]) buf)
+                {
+                    return dg(buf);
+                }
+            );
         }
 
         override int opApply(scope int delegate(ref size_t, ref const(char[])) dg) const
         {
-            return opApply( (ref size_t i, ref SymbolOrError sym)
-                            {
-                                char[512] buffer = '\0';
-                                char[] msg;
-                                if (sym.errnum != 0)
-                                {
-                                    auto retval = snprintf(buffer.ptr, buffer.length,
-                                                           "libbacktrace error: '%s' errno: %d", sym.msg, sym.errnum);
-                                    if (retval >= buffer.length)
-                                        msg = buffer[0 .. $-1]; //Ignore zero terminator
-                                    else if (retval > 0)
-                                        msg = buffer[0 .. retval];
-                                }
-                                else
-                                {
-                                    msg = formatLine(sym.symbol, buffer);
-                                }
-                                return dg(i, msg);
-                            });
+            return opApply(
+                (ref size_t i, ref SymbolOrError sym)
+                {
+                    char[MAX_BUFSIZE] buffer = void;
+                    char[] msg;
+                    if (sym.errnum != 0)
+                    {
+                        auto retval = snprintf(buffer.ptr, buffer.length,
+                                               "libbacktrace error: '%s' errno: %d", sym.msg, sym.errnum);
+                        if (retval >= buffer.length)
+                            retval = buffer.length - 1; // Ignore zero terminator
+                        if (retval > 0)
+                            msg = buffer[0 .. retval];
+                        return dg(i, msg);
+                    }
+                    else
+                    {
+                        msg = formatLine(sym.symbol, buffer);
+                        int ret = dg(i, msg);
+
+                        if (!ret && sym.symbol.funcName && strcmp(sym.symbol.funcName, "_Dmain") == 0)
+                            return 1;
+                        return ret;
+                    }
+                }
+            );
         }
 
         int opApply(scope ApplyCallback dg) const
         {
-            //If backtrace_simple produced an error report it and exit
+            // If backtrace_simple produced an error report it and exit
             if (!state || error != 0)
             {
                 size_t pos = 0;
@@ -274,22 +286,22 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
             cinfo.applyCB = dg;
             cinfo.state = cast(backtrace_state*)state;
 
-            //Try using debug info first
+            // Try using debug info first
             foreach (i, pc; pcs[0 .. numPCs])
             {
-                //FIXME: We may violate const guarantees here...
+                // FIXME: We may violate const guarantees here...
                 if (backtrace_pcinfo(cast(backtrace_state*)state, pc, &pcinfoCallback,
                     &pcinfoErrorCallback, &cinfo) != 0)
                 {
-                    break; //User delegate requested abort or no debug info at all
+                    break; // User delegate requested abort or no debug info at all
                 }
             }
 
-            //If no error or other error which has already been reported via callback
+            // If no error or other error which has already been reported via callback
             if (!cinfo.noInfo)
                 return cinfo.retval;
 
-            //Try using symbol table
+            // Try using symbol table
             cinfo.reset();
             foreach (pc; pcs[0 .. numPCs])
             {
@@ -303,7 +315,7 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
             if (!cinfo.noInfo)
                 return cinfo.retval;
 
-            //No symbol table
+            // No symbol table
             foreach (i, pc; pcs[0 .. numPCs])
             {
                 auto sym = SymbolOrError(0, SymbolInfo(null, null, 0, cast(void*)pc));
@@ -352,22 +364,24 @@ else
 
         override int opApply(scope int delegate(ref const(char[])) dg) const
         {
-            return opApply( (ref size_t, ref const(char[]) buf)
-                            {
-                                return dg(buf);
-                            });
+            return opApply(
+                (ref size_t, ref const(char[]) buf)
+                {
+                    return dg(buf);
+                }
+            );
         }
 
         override int opApply(scope int delegate(ref size_t, ref const(char[])) dg) const
         {
+            char[MAX_BUFSIZE] buffer = void;
             int ret = 0;
-            char[512] fixbuf = '\0';
 
             for (int i = _firstFrame; i < _framelist.entries; ++i)
             {
                 auto pos = cast(size_t)(i - _firstFrame);
-                auto buf = formatLine(_framelist.symbols[i], fixbuf);
-                ret = dg(pos, buf);
+                auto msg = formatLine(_framelist.symbols[i], buffer);
+                ret = dg(pos, msg);
                 if (ret)
                     break;
             }
@@ -405,7 +419,7 @@ private:
     else version (Posix)
         import core.sys.posix.dlfcn;
 
-    static enum MAXFRAMES = 128;
+    private enum MAXFRAMES = 128;
 
     struct UnwindBacktraceData
     {
@@ -483,52 +497,56 @@ struct SymbolInfo
 
 /*
  * Format one output line for symbol sym.
- * Returns a slice of fixbuf.
+ * Returns a slice of buffer.
  */
-char[] formatLine(const SymbolInfo sym, return ref char[512] fixbuf)
+char[] formatLine(const SymbolInfo sym, return ref char[MAX_BUFSIZE] buffer)
 {
     import core.demangle, core.stdc.config;
     import core.stdc.stdio : snprintf, printf;
     import core.stdc.string : strlen;
 
-    int ret;
+    size_t bufferLength = 0;
 
-    ret = snprintf(fixbuf.ptr, fixbuf.sizeof, "0x%lx ", cast(c_ulong)sym.address);
-    if (ret >= fixbuf.sizeof)
-        return fixbuf[0 .. $-1]; //Ignore zero terminator
+    void appendToBuffer(Args...)(const(char)* format, Args args)
+    {
+        const count = snprintf(buffer.ptr + bufferLength,
+                               buffer.length - bufferLength,
+                               format, args);
+        assert(count >= 0);
+        bufferLength += count;
+        if (bufferLength >= buffer.length)
+            bufferLength = buffer.length - 1;
+    }
+
+
+    if (sym.fileName is null)
+        appendToBuffer("??:? ");
+    else
+        appendToBuffer("%s:%d ", sym.fileName, sym.line);
 
     if (sym.funcName is null)
-    {
-        if (!(fixbuf.sizeof - ret > 3))
-            return fixbuf[0 .. ret];
-
-        fixbuf[ret] = fixbuf[ret+1] = fixbuf[ret+2] = '?';
-        ret += 3;
-    }
+        appendToBuffer("???");
     else
     {
-        auto demangled = demangle(sym.funcName[0 .. strlen(sym.funcName)],
-            fixbuf[ret .. $-1]);
+        char[1024] symbol = void;
+        auto demangled = demangle(sym.funcName[0 .. strlen(sym.funcName)], symbol);
 
-        ret += demangled.length;
-        if (ret + 1 >= fixbuf.sizeof)
-            return fixbuf[0 .. $-1]; //Ignore zero terminator
+        if (demangled.length > 0)
+            appendToBuffer("%.*s ", cast(int) demangled.length, demangled.ptr);
     }
 
-    ret += snprintf(fixbuf.ptr + ret, fixbuf.sizeof - ret, "\n\t%s:%d",
-        sym.fileName is null ? "???" : sym.fileName,
-        sym.line);
-
-    if (ret >= fixbuf.sizeof)
-        return fixbuf[0 .. $-1]; //Ignore zero terminator
+    version (D_LP64)
+        appendToBuffer("[0x%llx]", cast(size_t)sym.address);
     else
-        return fixbuf[0 .. ret];
+        appendToBuffer("[0x%x]", cast(size_t)sym.address);
+
+    return buffer[0 .. bufferLength];
 }
 
 
 unittest
 {
-    char[512] sbuf = '\0';
+    char[MAX_BUFSIZE] sbuf = '\0';
     char[] result;
     string longString;
     for (size_t i = 0; i < 60; i++)
@@ -537,49 +555,49 @@ unittest
 
     auto symbol = SymbolInfo(null, null, 0, null);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo(longString.ptr, null, 0, null);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo("func", "test.d", 0, null);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo("func", longString.ptr, 0, null);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo(longString.ptr, "test.d", 0, null);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo(longString.ptr, longString.ptr, 0, null);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo("func", "test.d", 1000, null);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo(null, (longString[0..500] ~ '\0').ptr, 100000000, null);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo("func", "test.d", 0, cast(void*)0x100000);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo("func", null, 0, cast(void*)0x100000);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo(null, "test.d", 0, cast(void*)0x100000);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 
     symbol = SymbolInfo(longString.ptr, "test.d", 0, cast(void*)0x100000);
     result = formatLine(symbol, sbuf);
-    assert(result.length < 512 && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
+    assert(result.length < MAX_BUFSIZE && result.ptr[result.length] == '\0' && sbuf[$-1] == '\0');
 }

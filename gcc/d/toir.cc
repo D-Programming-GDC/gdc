@@ -19,10 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/declaration.h"
-#include "dfrontend/init.h"
-#include "dfrontend/statement.h"
+#include "dmd/aggregate.h"
+#include "dmd/declaration.h"
+#include "dmd/init.h"
+#include "dmd/statement.h"
 
 #include "tree.h"
 #include "tree-iterator.h"
@@ -757,69 +757,9 @@ public:
     tree condition = build_expr_dtor (s->condition);
     Type *condtype = s->condition->type->toBasetype ();
 
-    /* A switch statement on a string gets turned into a library call,
-       which does a binary lookup on list of string cases.  */
-    if (s->condition->type->isString ())
-      {
-	Type *etype = condtype->nextOf ()->toBasetype ();
-	libcall_fn libcall;
-
-	switch (etype->ty)
-	  {
-	  case Tchar:
-	    libcall = LIBCALL_SWITCH_STRING;
-	    break;
-
-	  case Twchar:
-	    libcall = LIBCALL_SWITCH_USTRING;
-	    break;
-
-	  case Tdchar:
-	    libcall = LIBCALL_SWITCH_DSTRING;
-	    break;
-
-	  default:
-	    ::error ("switch statement value must be an array of "
-		     "some character type, not %s", etype->toChars ());
-	    gcc_unreachable ();
-	  }
-
-	/* Apparently the backend is supposed to sort and set the indexes
-	   on the case array, have to change them to be usable.  */
-	Type *satype = condtype->sarrayOf (s->cases->dim);
-	vec<constructor_elt, va_gc> *elms = NULL;
-
-	s->cases->sort ();
-
-	for (size_t i = 0; i < s->cases->dim; i++)
-	  {
-	    CaseStatement *cs = (*s->cases)[i];
-	    cs->index = i;
-
-	    if (cs->exp->op != TOKstring)
-	      s->error ("case '%s' is not a string", cs->exp->toChars ());
-	    else
-	      {
-		tree exp = build_expr (cs->exp, true);
-		CONSTRUCTOR_APPEND_ELT (elms, size_int (i), exp);
-	      }
-	  }
-
-	/* Build static declaration to reference constructor.  */
-	tree ctor = build_constructor (build_ctype (satype), elms);
-	tree decl = build_artificial_decl (TREE_TYPE (ctor), ctor);
-	TREE_READONLY (decl) = 1;
-	d_pushdecl (decl);
-	rest_of_decl_compilation (decl, 1, 0);
-
-	/* Pass it as a dynamic array.  */
-	decl = d_array_value (build_ctype (condtype->arrayOf ()),
-			      size_int (s->cases->dim),
-			      build_address (decl));
-
-	condition = build_libcall (libcall, Type::tint32, 2, decl, condition);
-      }
-    else if (!condtype->isscalar ())
+    /* A switch statement on a string gets turned into a library call.
+       It is not lowered during codegen.  */
+    if (!condtype->isscalar ())
       {
 	::error ("cannot handle switch condition of type %s",
 		 condtype->toChars ());
@@ -965,7 +905,10 @@ public:
 
   void visit (SwitchErrorStatement *s)
   {
-    add_stmt (d_assert_call (s->loc, LIBCALL_SWITCH_ERROR));
+    /* A throw SwitchError statement gets turned into a library call.
+       The call is wrapped in the enclosed expression.  */
+    gcc_assert (s->exp != NULL);
+    add_stmt (build_expr (s->exp));
   }
 
   /* A return statement exits the current function and supplies its return
@@ -984,7 +927,8 @@ public:
     Type *type = this->func_->tintro != NULL
       ? this->func_->tintro->nextOf () : tf->nextOf ();
 
-    if (this->func_->isMain () && type->toBasetype ()->ty == Tvoid)
+    if ((this->func_->isMain () || this->func_->isCMain ())
+	&& type->toBasetype ()->ty == Tvoid)
       type = Type::tint32;
 
     if (this->func_->nrvo_can && this->func_->nrvo_var)
@@ -1110,7 +1054,7 @@ public:
     InterfaceDeclaration *id = cd->isInterfaceDeclaration ();
     tree arg = build_expr_dtor (s->exp);
 
-    if (!flag_exceptions)
+    if (!global.params.useExceptions)
       {
 	static int warned = 0;
 	if (!warned)
@@ -1121,7 +1065,7 @@ public:
 	  }
       }
 
-    if (cd->cpp || (id != NULL && id->cpp))
+    if (cd->isCPPclass () || (id != NULL && id->isCPPclass ()))
       s->error ("cannot throw C++ classes");
     else if (cd->com || (id != NULL && id->com))
       s->error ("cannot throw COM objects");
@@ -1166,7 +1110,7 @@ public:
 	    Type *tcatch = vcatch->type->toBasetype ();
 	    ClassDeclaration *cd = tcatch->isClassHandle ();
 
-	    libcall_fn libcall = (cd->cpp) ? LIBCALL_CXA_BEGIN_CATCH
+	    libcall_fn libcall = (cd->isCPPclass ()) ? LIBCALL_CXA_BEGIN_CATCH
 	      : LIBCALL_BEGIN_CATCH;
 	    object = build_libcall (libcall, vcatch->type, 1, ehptr);
 
@@ -1192,7 +1136,7 @@ public:
 
 	    /* Need to wrap C++ handlers in a try/finally block to signal
 	       the end catch callback.  */
-	    if (cd->cpp)
+	    if (cd->isCPPclass ())
 	      {
 		tree endcatch = build_libcall (LIBCALL_CXA_END_CATCH,
 					       Type::tvoid, 0);

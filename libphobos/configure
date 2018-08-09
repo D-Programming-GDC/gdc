@@ -637,6 +637,8 @@ DRUNTIME_OS_NETBSD_FALSE
 DRUNTIME_OS_NETBSD_TRUE
 DRUNTIME_OS_FREEBSD_FALSE
 DRUNTIME_OS_FREEBSD_TRUE
+DRUNTIME_OS_DRAGONFLYBSD_FALSE
+DRUNTIME_OS_DRAGONFLYBSD_TRUE
 DRUNTIME_OS_DARWIN_FALSE
 DRUNTIME_OS_DARWIN_TRUE
 DRUNTIME_OS_ANDROID_FALSE
@@ -647,8 +649,6 @@ DRUNTIME_OS_UNIX_FALSE
 DRUNTIME_OS_UNIX_TRUE
 DRUNTIME_GC_ENABLE_FALSE
 DRUNTIME_GC_ENABLE_TRUE
-DRUNTIME_WERROR_FALSE
-DRUNTIME_WERROR_TRUE
 libphobos_srcdir
 libphobos_builddir
 get_gcc_base_ver
@@ -1421,7 +1421,7 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
-  --enable-werror         turns on -Werror [default=yes]
+  --enable-werror         turns on -Werror [default=no]
   --enable-druntime-gc    enable D runtime garbage collector (default: yes)
   --enable-unix           enables Unix runtime (default: yes, for Unix
                           targets)
@@ -13548,18 +13548,9 @@ if test "${enable_werror+set}" = set; then :
 fi
 
   WERROR_FLAG=""
-  if test "x$enable_werror" != "xno"; then
-      enable_werror="yes"
+  if test "x$enable_werror" = "xyes"; then
       WERROR_FLAG="-Werror"
   fi
-   if test "$enable_werror" = "yes"; then
-  DRUNTIME_WERROR_TRUE=
-  DRUNTIME_WERROR_FALSE='#'
-else
-  DRUNTIME_WERROR_TRUE='#'
-  DRUNTIME_WERROR_FALSE=
-fi
-
 
 
     # Check whether --enable-druntime-gc was given.
@@ -13630,6 +13621,8 @@ fi
                ;;
       darwin*) druntime_target_os_parsed="darwin"
                ;;
+      dragonfly*) druntime_target_os_parsed="dragonfly"
+               ;;
       freebsd*|k*bsd*-gnu)
                druntime_target_os_parsed="freebsd"
                ;;
@@ -13667,6 +13660,14 @@ fi
 else
   DRUNTIME_OS_DARWIN_TRUE='#'
   DRUNTIME_OS_DARWIN_FALSE=
+fi
+
+   if test "$druntime_target_os_parsed" = "dragonfly"; then
+  DRUNTIME_OS_DRAGONFLYBSD_TRUE=
+  DRUNTIME_OS_DRAGONFLYBSD_FALSE='#'
+else
+  DRUNTIME_OS_DRAGONFLYBSD_TRUE='#'
+  DRUNTIME_OS_DRAGONFLYBSD_FALSE=
 fi
 
    if test "$druntime_target_os_parsed" = "freebsd"; then
@@ -14713,10 +14714,6 @@ if test -z "${ENABLE_STATIC_TRUE}" && test -z "${ENABLE_STATIC_FALSE}"; then
   as_fn_error "conditional \"ENABLE_STATIC\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${DRUNTIME_WERROR_TRUE}" && test -z "${DRUNTIME_WERROR_FALSE}"; then
-  as_fn_error "conditional \"DRUNTIME_WERROR\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${DRUNTIME_GC_ENABLE_TRUE}" && test -z "${DRUNTIME_GC_ENABLE_FALSE}"; then
   as_fn_error "conditional \"DRUNTIME_GC_ENABLE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -14735,6 +14732,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${DRUNTIME_OS_DARWIN_TRUE}" && test -z "${DRUNTIME_OS_DARWIN_FALSE}"; then
   as_fn_error "conditional \"DRUNTIME_OS_DARWIN\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${DRUNTIME_OS_DRAGONFLYBSD_TRUE}" && test -z "${DRUNTIME_OS_DRAGONFLYBSD_FALSE}"; then
+  as_fn_error "conditional \"DRUNTIME_OS_DRAGONFLYBSD\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${DRUNTIME_OS_FREEBSD_TRUE}" && test -z "${DRUNTIME_OS_FREEBSD_FALSE}"; then

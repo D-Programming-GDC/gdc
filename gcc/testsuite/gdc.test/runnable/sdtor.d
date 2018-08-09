@@ -2,7 +2,7 @@
 
 import core.vararg;
 
-extern (C) int printf(const(char*) fmt, ...);
+extern (C) int printf(const(char*) fmt, ...) nothrow;
 
 template TypeTuple(T...) { alias TypeTuple = T; }
 
@@ -879,7 +879,9 @@ void test34()
     X34[2] xs;
 //  xs[0][0] = X34();
     printf("foreach\n");
-    for (int j = 0; j < xs.length; j++) { auto x = (j++,j--,xs[j]);
+    for (int j = 0; j < xs.length; j++) {
+        j++,j--;
+        auto x = xs[j];
         //foreach(x; xs) {
         //printf("foreach x.i = %d\n", x[0].i);
         //assert(x[0].i == 1);
@@ -1395,22 +1397,22 @@ void test54()
     assert(S54.t == "c");
 
     {   S54.t = null;
-        int b = 1 && (bar54(S54(1)), 1);
+        int b = 1 && (){ bar54(S54(1)); return 1;}();
     }
     assert(S54.t == "ac");
 
     {   S54.t = null;
-        int b = 0 && (bar54(S54(1)), 1);
+        int b = 0 && (){ bar54(S54(1)); return 1;}();
     }
     assert(S54.t == "");
 
     {   S54.t = null;
-        int b = 0 || (bar54(S54(1)), 1);
+        int b = 0 || (){ bar54(S54(1)); return 1;}();
     }
     assert(S54.t == "ac");
 
     {   S54.t = null;
-        int b = 1 || (bar54(S54(1)), 1);
+        int b = 1 || (){ bar54(S54(1)); return 1;}();
     }
     assert(S54.t == "");
 
@@ -1529,7 +1531,8 @@ void test57()
 
     printf("----\n");    //+
     dtor_cnt = 0;
-    if (auto s = (S57(1), S57(2), S57(10)))
+    S57(1), S57(2);
+    if (auto s = S57(10))
     {
         assert(dtor_cnt == 2);
         printf("ifbody\n");
@@ -1562,7 +1565,8 @@ void test57()
 
     printf("----\n");    //+
     dtor_cnt = 0;
-    if (auto s = (f(1), f(2), f(10)))
+    f(1), f(2);
+    if (auto s = f(10))
     {
         assert(dtor_cnt == 2);
         printf("ifbody\n");
@@ -1596,7 +1600,8 @@ void test57()
 
     printf("----\n");
     dtor_cnt = 0;
-    if ((S57(1), S57(2), S57(10)))
+    S57(1), S57(2);
+    if (S57(10))
     {
         assert(dtor_cnt == 3);
         printf("ifbody\n");
@@ -1628,7 +1633,8 @@ void test57()
 
     printf("----\n");
     dtor_cnt = 0;
-    if ((f(1), f(2), f(10)))
+    f(1), f(2);
+    if (f(10))
     {
         assert(dtor_cnt == 3);
         printf("ifbody\n");
@@ -2778,7 +2784,7 @@ void test9907()
 struct S9985
 {
     ubyte* b;
-    ubyte buf[128];
+    ubyte[128] buf;
     this(this) { assert(0); }
 
     static void* ptr;
@@ -4431,7 +4437,8 @@ struct S64
 
 S64 foo64()
 {
-    return S64((X64(), 1));
+    X64();
+    return S64(1);
 }
 
 void test64()
@@ -4516,6 +4523,42 @@ void test15661()
         assert(Y15661.dtor == 0);
     }
     assert(Y15661.dtor == 1);
+}
+
+/**********************************/
+
+// https://issues.dlang.org/show_bug.cgi?id=18045
+
+struct A18045
+{
+  nothrow:
+    __gshared int r;
+    int state;
+    this(this) { printf("postblit: A(%d)\n", state); r += 1; }
+    ~this() { printf("dtor: A(%d)\n", state); r *= 3; }
+}
+
+A18045 fun18045() nothrow
+{
+    __gshared a = A18045(42);
+    return a;
+}
+
+void test18045() nothrow
+{
+    alias A = A18045;
+
+    __gshared a = A(-42);
+    if (fun18045() == a)
+        assert(0);
+    else
+        assert(A.r == 3);
+
+    A.r = 0;
+    if (a == fun18045())
+        assert(0);
+    else
+        assert(A.r == 3);
 }
 
 /**********************************/
@@ -4650,6 +4693,7 @@ int main()
     test64();
     test65();
     test15661();
+    test18045();
 
     printf("Success\n");
     return 0;

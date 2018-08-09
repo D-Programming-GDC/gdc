@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -25,7 +25,7 @@ class TypeInfo_Ag : TypeInfo_Array
 
     override string toString() const { return "byte[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(scope const void* p) @trusted const
     {
         const s = *cast(const void[]*)p;
         return rt.util.hash.hashOf(s, 0);
@@ -118,7 +118,7 @@ class TypeInfo_Aa : TypeInfo_Ah
 {
     override string toString() const { return "char[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(scope const void* p) @trusted const
     {
         char[] s = *cast(char[]*)p;
         size_t hash = 0;

@@ -7,6 +7,9 @@
 module core.sys.windows.winsock2;
 version (Windows):
 
+version (GNU) {}
+else pragma(lib, "ws2_32");
+
 extern(Windows):
 nothrow:
 
