@@ -1098,7 +1098,6 @@ void test59()
 class Foo60
 {
    int x;
-static:
    this() { x = 3; }
    ~this() { }
 }

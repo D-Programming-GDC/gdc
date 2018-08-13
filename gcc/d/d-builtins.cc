@@ -19,12 +19,12 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/attrib.h"
-#include "dfrontend/aggregate.h"
-#include "dfrontend/cond.h"
-#include "dfrontend/declaration.h"
-#include "dfrontend/module.h"
-#include "dfrontend/mtype.h"
+#include "dmd/attrib.h"
+#include "dmd/aggregate.h"
+#include "dmd/cond.h"
+#include "dmd/declaration.h"
+#include "dmd/module.h"
+#include "dmd/mtype.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -203,7 +203,7 @@ build_frontend_type (tree type)
 	  if (dtype->nextOf ()->isTypeBasic () == NULL)
 	    break;
 
-	  dtype = (TypeVector::create (Loc (), dtype))->addMod (mod);
+	  dtype = (TypeVector::create (dtype))->addMod (mod);
 	  builtin_converted_decls.safe_push (builtin_data (dtype, type));
 	  return dtype;
 	}
@@ -232,7 +232,7 @@ build_frontend_type (tree type)
 	  sdecl->sizeok = SIZEOKdone;
 	  sdecl->type = (TypeStruct::create (sdecl))->addMod (mod);
 	  sdecl->type->ctype = type;
-	  sdecl->type->merge ();
+	  sdecl->type->merge2 ();
 
 	  /* Does not seem necessary to convert fields, but the members field
 	     must be non-null for the above size setting to stick.  */
@@ -434,10 +434,12 @@ d_init_versions (void)
     VersionCondition::addPredefinedGlobalIdent ("D_Ddoc");
   if (global.params.useUnitTests)
     VersionCondition::addPredefinedGlobalIdent ("unittest");
-  if (global.params.useAssert)
+  if (global.params.useAssert == CHECKENABLEon)
     VersionCondition::addPredefinedGlobalIdent ("assert");
-  if (global.params.useArrayBounds == BOUNDSCHECKoff)
+  if (global.params.useArrayBounds == CHECKENABLEoff)
     VersionCondition::addPredefinedGlobalIdent ("D_NoBoundsChecks");
+  if (global.params.betterC)
+    VersionCondition::addPredefinedGlobalIdent ("D_BetterC");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
 
@@ -558,6 +560,12 @@ d_build_builtins_module (Module *m)
     t = build_frontend_type (long_unsigned_type_node);
     members->push (build_alias_declaration ("__builtin_culong", t));
 
+    t = build_frontend_type (long_long_integer_type_node);
+    members->push (build_alias_declaration ("__builtin_clonglong", t));
+
+    t = build_frontend_type (long_long_unsigned_type_node);
+    members->push (build_alias_declaration ("__builtin_culonglong", t));
+
     t = build_frontend_type (lang_hooks.types.type_for_mode (byte_mode, 0));
     members->push (build_alias_declaration ("__builtin_machine_byte", t));
 
@@ -600,7 +608,7 @@ maybe_set_builtin_1 (Dsymbol *d)
   if (ad != NULL)
     {
       /* Recursively search through attribute decls.  */
-      Dsymbols *decls = ad->include (NULL, NULL);
+      Dsymbols *decls = ad->include (NULL);
       if (decls && decls->dim)
 	{
 	  for (size_t i = 0; i < decls->dim; i++)

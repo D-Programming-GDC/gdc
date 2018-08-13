@@ -71,7 +71,7 @@ else version (SPARC64)
 }
 else version (SystemZ)
 {
-    // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/s390/bits/elfclass.h
+    // http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/s390/bits/elfclass.h
     alias __WORDSIZE __ELF_NATIVE_CLASS;
     alias uint64_t Elf_Symndx;
 }

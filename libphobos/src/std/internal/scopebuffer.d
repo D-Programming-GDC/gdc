@@ -2,7 +2,7 @@
  * Copyright: 2014 by Digital Mars
  * License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors: Walter Bright
- * Source: $(PHOBOSSRC std/internal/_scopebuffer.d)
+ * Source: $(PHOBOSSRC std/internal/scopebuffer.d)
  */
 
 module std.internal.scopebuffer;
@@ -74,11 +74,11 @@ string cat(string s1, string s2)
     return textbuf[].idup;
 }
 ---
- * ScopeBuffer is intended for high performance usages in $(D @system) and $(D @trusted) code.
+ * ScopeBuffer is intended for high performance usages in `@system` and `@trusted` code.
  * It is designed to fit into two 64 bit registers, again for high performance use.
  * If used incorrectly, memory leaks and corruption can result. Be sure to use
  * $(D scope(exit) textbuf.free();) for proper cleanup, and do not refer to a ScopeBuffer
- * instance's contents after $(D ScopeBuffer.free()) has been called.
+ * instance's contents after `ScopeBuffer.free()` has been called.
  *
  * The `realloc` parameter defaults to C's `realloc()`. Another can be supplied to override it.
  *
@@ -122,7 +122,7 @@ if (isAssignable!T &&
             assert(!(buf.length & wasResized));    // assure even length of scratch buffer space
             assert(buf.length <= uint.max);     // because we cast to uint later
         }
-    body
+    do
     {
         this.buf = buf.ptr;
         this.bufLen = cast(uint) buf.length;
@@ -171,8 +171,8 @@ if (isAssignable!T &&
     /************************
      * Append array s to the buffer.
      *
-     * If $(D const(T)) can be converted to $(D T), then put will accept
-     * $(D const(T)[]) as input. It will accept a $(D T[]) otherwise.
+     * If `const(T)` can be converted to `T`, then put will accept
+     * `const(T)[]` as input. It will accept a `T[]` otherwise.
      */
     package alias CT = Select!(is(const(T) : T), const(T), T);
     /// ditto
@@ -203,7 +203,7 @@ if (isAssignable!T &&
             assert(upper <= bufLen);
             assert(lower <= upper);
         }
-    body
+    do
     {
         return buf[lower .. upper];
     }
@@ -244,7 +244,7 @@ if (isAssignable!T &&
         {
             assert(i <= this.used);
         }
-    body
+    do
     {
         this.used = cast(uint) i;
     }
@@ -263,7 +263,7 @@ if (isAssignable!T &&
         {
             assert(newsize <= uint.max);
         }
-    body
+    do
     {
         //writefln("%s: oldsize %s newsize %s", id, buf.length, newsize);
         newsize |= wasResized;

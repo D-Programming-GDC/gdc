@@ -6,7 +6,7 @@
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
  * Authors:   Walter Bright, Sean Kelly
- * Source: $(DRUNTIMESRC src/rt/_dmain2.d)
+ * Source: $(DRUNTIMESRC rt/_dmain2.d)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
@@ -43,6 +43,20 @@ version (NetBSD)
 {
     import core.stdc.fenv;
 }
+version (DragonFlyBSD)
+{
+    import core.stdc.fenv;
+}
+
+// not sure why we can't define this in one place, but this is to keep this
+// module from importing core.runtime.
+struct UnitTestResult
+{
+    size_t executed;
+    size_t passed;
+    bool runMain;
+    bool summarize;
+}
 
 extern (C) void _d_monitor_staticctor();
 extern (C) void _d_monitor_staticdtor();
@@ -50,13 +64,15 @@ extern (C) void _d_critical_init();
 extern (C) void _d_critical_term();
 extern (C) void gc_init();
 extern (C) void gc_term();
+extern (C) void thread_init() @nogc;
+extern (C) void thread_term() @nogc;
 extern (C) void lifetime_init();
 extern (C) void rt_moduleCtor();
 extern (C) void rt_moduleTlsCtor();
 extern (C) void rt_moduleDtor();
 extern (C) void rt_moduleTlsDtor();
 extern (C) void thread_joinAll();
-extern (C) bool runModuleUnitTests();
+extern (C) UnitTestResult runModuleUnitTests();
 extern (C) void _d_initMonoTime();
 
 version (OSX)
@@ -184,7 +200,8 @@ extern (C) int rt_init()
         // this initializes mono time before anything else to allow usage
         // in other druntime systems.
         _d_initMonoTime();
-        gc_init();
+        thread_init();
+        // TODO: fixme - calls GC.addRange -> Initializes GC
         initStaticDataGC();
         lifetime_init();
         rt_moduleCtor();
@@ -215,6 +232,7 @@ extern (C) int rt_term()
         thread_joinAll();
         rt_moduleDtor();
         gc_term();
+        thread_term();
         return 1;
     }
     catch (Throwable t)
@@ -482,8 +500,34 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     //       thrown during cleanup, however, will abort the cleanup process.
     void runAll()
     {
-        if (rt_init() && runModuleUnitTests())
-            tryExec({ result = mainFunc(args); });
+        if (rt_init())
+        {
+            auto utResult = runModuleUnitTests();
+            assert(utResult.passed <= utResult.executed);
+            if (utResult.passed == utResult.executed)
+            {
+                if (utResult.summarize)
+                {
+                    if (utResult.passed == 0)
+                        .fprintf(.stderr, "No unittests run\n");
+                    else
+                        .fprintf(.stderr, "%d unittests passed\n",
+                                 cast(int)utResult.passed);
+                }
+                if (utResult.runMain)
+                    tryExec({ result = mainFunc(args); });
+                else
+                    result = EXIT_SUCCESS;
+            }
+            else
+            {
+                if (utResult.summarize)
+                    .fprintf(.stderr, "%d/%d unittests FAILED\n",
+                             cast(int)(utResult.executed - utResult.passed),
+                             cast(int)utResult.executed);
+                result = EXIT_FAILURE;
+            }
+        }
         else
             result = EXIT_FAILURE;
 
@@ -508,15 +552,15 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 
 private void formatThrowable(Throwable t, scope void delegate(in char[] s) nothrow sink)
 {
-    for (; t; t = t.next)
+    foreach (u; t)
     {
-        t.toString(sink); sink("\n");
+        u.toString(sink); sink("\n");
 
-        auto e = cast(Error)t;
+        auto e = cast(Error)u;
         if (e is null || e.bypassedException is null) continue;
 
         sink("=== Bypassed ===\n");
-        for (auto t2 = e.bypassedException; t2; t2 = t2.next)
+        foreach (t2; e.bypassedException)
         {
             t2.toString(sink); sink("\n");
         }

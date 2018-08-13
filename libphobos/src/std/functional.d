@@ -36,7 +36,7 @@ $(TR $(TH Function Name) $(TH Description)
         $(TD Creates a function that binds the first argument of a given function
         to a given value.
     ))
-    $(TR $(TD $(LREF reverseArgs), $(LREF binaryReverseArgs))
+    $(TR $(TD $(LREF reverseArgs))
         $(TD Predicate that reverses the order of its arguments.
     ))
     $(TR $(TD $(LREF toDelegate))
@@ -51,7 +51,7 @@ $(TR $(TH Function Name) $(TH Description)
 Copyright: Copyright Andrei Alexandrescu 2008 - 2009.
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   $(HTTP erdani.org, Andrei Alexandrescu)
-Source:    $(PHOBOSSRC std/_functional.d)
+Source:    $(PHOBOSSRC std/functional.d)
 */
 /*
          Copyright Andrei Alexandrescu 2008 - 2009.
@@ -93,12 +93,19 @@ private template needOpCallAlias(alias fun)
 }
 
 /**
-Transforms a string representing an expression into a unary
-function. The string must either use symbol name $(D a) as
-the parameter or provide the symbol via the $(D parmName) argument.
-If $(D fun) is not a string, $(D unaryFun) aliases itself away to $(D fun).
-*/
+Transforms a `string` representing an expression into a unary
+function. The `string` must either use symbol name `a` as
+the parameter or provide the symbol via the `parmName` argument.
 
+Params:
+    fun = a `string` or a callable
+    parmName = the name of the parameter if `fun` is a string. Defaults
+    to `"a"`.
+Returns:
+    If `fun` is a `string`, a new single parameter function
+
+    If `fun` is not a `string`, an alias to `fun`.
+*/
 template unaryFun(alias fun, string parmName = "a")
 {
     static if (is(typeof(fun) : string))
@@ -176,13 +183,20 @@ template unaryFun(alias fun, string parmName = "a")
 }
 
 /**
-Transforms a string representing an expression into a binary function. The
-string must either use symbol names $(D a) and $(D b) as the parameters or
-provide the symbols via the $(D parm1Name) and $(D parm2Name) arguments.
-If $(D fun) is not a string, $(D binaryFun) aliases itself away to
-$(D fun).
-*/
+Transforms a `string` representing an expression into a binary function. The
+`string` must either use symbol names `a` and `b` as the parameters or
+provide the symbols via the `parm1Name` and `parm2Name` arguments.
 
+Params:
+    fun = a `string` or a callable
+    parm1Name = the name of the first parameter if `fun` is a string.
+    Defaults to `"a"`.
+    parm2Name = the name of the second parameter if `fun` is a string.
+    Defaults to `"b"`.
+Returns:
+    If `fun` is not a string, `binaryFun` aliases itself away to
+    `fun`.
+*/
 template binaryFun(alias fun, string parm1Name = "a",
         string parm2Name = "b")
 {
@@ -301,7 +315,7 @@ private uint _ctfeSkipName(ref string op, string name)
     return 0;
 }
 
-// returns 1 if $(D fun) is trivial unary function
+// returns 1 if `fun` is trivial unary function
 private uint _ctfeMatchUnary(string fun, string name)
 {
     if (!__ctfe) assert(false);
@@ -348,7 +362,7 @@ private uint _ctfeMatchUnary(string fun, string name)
     static assert(_ctfeMatchUnary("ё[21]", "ё"));
 }
 
-// returns 1 if $(D fun) is trivial binary function
+// returns 1 if `fun` is trivial binary function
 private uint _ctfeMatchBinary(string fun, string name1, string name2)
 {
     if (!__ctfe) assert(false);
@@ -531,16 +545,39 @@ alias equalTo = safeOp!"==";
     assert(!equalTo(-1, ~0U));
 }
 /**
-   N-ary predicate that reverses the order of arguments, e.g., given
-   $(D pred(a, b, c)), returns $(D pred(c, b, a)).
+N-ary predicate that reverses the order of arguments, e.g., given
+$(D pred(a, b, c)), returns $(D pred(c, b, a)).
+
+Params:
+    pred = A callable
+Returns:
+    A function which calls `pred` after reversing the given parameters
 */
 template reverseArgs(alias pred)
 {
     auto reverseArgs(Args...)(auto ref Args args)
-        if (is(typeof(pred(Reverse!args))))
+    if (is(typeof(pred(Reverse!args))))
     {
         return pred(Reverse!args);
     }
+}
+
+///
+@safe unittest
+{
+    alias gt = reverseArgs!(binaryFun!("a < b"));
+    assert(gt(2, 1) && !gt(1, 1));
+}
+
+///
+@safe unittest
+{
+    int x = 42;
+    bool xyz(int a, int b) { return a * x < b / x; }
+    auto foo = &xyz;
+    foo(4, 5);
+    alias zyx = reverseArgs!(foo);
+    assert(zyx(5, 4) == foo(4, 5));
 }
 
 ///
@@ -580,10 +617,19 @@ template reverseArgs(alias pred)
     assert(b() == _b());
 }
 
+// @@@DEPRECATED_2.089@@@
 /**
-   Binary predicate that reverses the order of arguments, e.g., given
-   $(D pred(a, b)), returns $(D pred(b, a)).
+Binary predicate that reverses the order of arguments, e.g., given
+$(D pred(a, b)), returns $(D pred(b, a)).
+
+$(RED DEPRECATED: Use $(LREF reverseArgs))
+
+Params:
+    pred = A callable
+Returns:
+    A function which calls `pred` after reversing the given parameters
 */
+deprecated("Use `reverseArgs`. `binaryReverseArgs` will be removed in 2.089.")
 template binaryReverseArgs(alias pred)
 {
     auto binaryReverseArgs(ElementType1, ElementType2)
@@ -594,6 +640,7 @@ template binaryReverseArgs(alias pred)
 }
 
 ///
+deprecated
 @safe unittest
 {
     alias gt = binaryReverseArgs!(binaryFun!("a < b"));
@@ -601,6 +648,7 @@ template binaryReverseArgs(alias pred)
 }
 
 ///
+deprecated
 @safe unittest
 {
     int x = 42;
@@ -612,7 +660,13 @@ template binaryReverseArgs(alias pred)
 }
 
 /**
-Negates predicate $(D pred).
+Negates predicate `pred`.
+
+Params:
+    pred = A string or a callable
+Returns:
+    A function which calls `pred` and returns the logical negation of its
+    return value.
  */
 template not(alias pred)
 {
@@ -653,6 +707,12 @@ template not(alias pred)
 /**
 $(LINK2 http://en.wikipedia.org/wiki/Partial_application, Partially
 applies) $(D_PARAM fun) by tying its first argument to $(D_PARAM arg).
+
+Params:
+    fun = A callable
+    arg = The first argument to apply to `fun`
+Returns:
+    A new function which calls `fun` with `arg` plus the passed parameters.
  */
 template partial(alias fun, alias arg)
 {
@@ -787,14 +847,17 @@ template partial(alias fun, alias arg)
 }
 
 /**
-Takes multiple functions and adjoins them together. The result is a
-$(REF Tuple, std,typecons) with one element per passed-in function. Upon
-invocation, the returned tuple is the adjoined results of all
-functions.
+Takes multiple functions and adjoins them together.
+
+Params:
+    F = the call-able(s) to adjoin
+Returns:
+    A new function which returns a $(REF Tuple, std,typecons). Each of the
+    elements of the tuple will be the return values of `F`.
 
 Note: In the special case where only a single function is provided
 ($(D F.length == 1)), adjoin simply aliases to the single passed function
-($(D F[0])).
+(`F[0]`).
 */
 template adjoin(F...)
 if (F.length == 1)
@@ -882,10 +945,12 @@ if (F.length > 1)
 }
 
 /**
-   Composes passed-in functions $(D fun[0], fun[1], ...) returning a
-   function $(D f(x)) that in turn returns $(D
-   fun[0](fun[1](...(x)))...). Each function can be a regular
-   functions, a delegate, or a string.
+   Composes passed-in functions $(D fun[0], fun[1], ...).
+
+   Params:
+        fun = the call-able(s) or `string`(s) to compose into one function
+    Returns:
+        A new function `f(x)` that in turn returns $(D fun[0](fun[1](...(x)))...).
 
    See_Also: $(LREF pipe)
 */
@@ -933,6 +998,11 @@ template compose(fun...)
    lead to more readable code in some situation because the order of
    execution is the same as lexical order.
 
+   Params:
+        fun = the call-able(s) or `string`(s) to compose into one function
+    Returns:
+        A new function `f(x)` that in turn returns $(D fun[0](fun[1](...(x)))...).
+
    Example:
 
 ----
@@ -946,6 +1016,7 @@ int[] a = pipe!(readText, split, map!(to!(int)))("file.txt");
  */
 alias pipe(fun...) = compose!(Reverse!(fun));
 
+///
 @safe unittest
 {
     import std.conv : to;
@@ -985,10 +1056,16 @@ unittest
 }
 ----
 
-Technically the memoized function should be pure because $(D memoize) assumes it will
-always return the same result for a given tuple of arguments. However, $(D memoize) does not
-enforce that because sometimes it
-is useful to memoize an impure function, too.
+Params:
+    fun = the call-able to memozie
+    maxSize = The maximum size of the GC buffer to hold the return values
+Returns:
+    A new function which calls `fun` and caches its return values.
+
+Note:
+    Technically the memoized function should be pure because `memoize` assumes it will
+    always return the same result for a given tuple of arguments. However, `memoize` does not
+    enforce that because sometimes it is useful to memoize an impure function, too.
 */
 template memoize(alias fun)
 {
@@ -1094,8 +1171,8 @@ template memoize(alias fun, uint maxSize)
 }
 
 /**
- * This memoizes all values of $(D fact) up to the largest argument. To only cache the final
- * result, move $(D memoize) outside the function as shown below.
+ * This memoizes all values of `fact` up to the largest argument. To only cache the final
+ * result, move `memoize` outside the function as shown below.
  */
 @safe unittest
 {
@@ -1108,7 +1185,7 @@ template memoize(alias fun, uint maxSize)
 }
 
 /**
- * When the $(D maxSize) parameter is specified, memoize will used
+ * When the `maxSize` parameter is specified, memoize will used
  * a fixed size hash table to limit the number of cached entries.
  */
 @system unittest // not @safe due to memoize
@@ -1170,7 +1247,7 @@ template memoize(alias fun, uint maxSize)
 }
 
 // 16079: memoize should work with arrays
-@safe unittest
+@system unittest // not @safe with -dip1000 due to memoize
 {
     int executed = 0;
     T median(T)(const T[] nums) {
@@ -1213,7 +1290,7 @@ template memoize(alias fun, uint maxSize)
 }
 
 // 16079: memoize should work with classes
-@safe unittest
+@system unittest // not @safe with -dip1000 due to memoize
 {
     int executed = 0;
     T pickFirst(T)(T first)
@@ -1305,6 +1382,11 @@ private struct DelegateFaker(F)
  * Convert a callable to a delegate with the same parameter list and
  * return type, avoiding heap allocations and use of auxiliary storage.
  *
+ * Params:
+ *     fp = a function pointer or an aggregate type with `opCall` defined.
+ * Returns:
+ *     A delegate with the context pointer pointing to nothing.
+ *
  * Example:
  * ----
  * void doStuff() {
@@ -1321,7 +1403,7 @@ private struct DelegateFaker(F)
  *
  * BUGS:
  * $(UL
- *   $(LI Does not work with $(D @safe) functions.)
+ *   $(LI Does not work with `@safe` functions.)
  *   $(LI Ignores C-style / D-style variadic arguments.)
  * )
  */
@@ -1468,7 +1550,13 @@ if (isCallable!(F))
 }
 
 /**
-Forwards function arguments with saving ref-ness.
+Forwards function arguments while keeping `out`, `ref`, and `lazy` on
+the parameters.
+
+Params:
+    args = a parameter list or an $(REF AliasSeq,std,meta).
+Returns:
+    An `AliasSeq` of `args` with `out`, `ref`, and `lazy` saved.
 */
 template forward(args...)
 {
@@ -1477,11 +1565,20 @@ template forward(args...)
         import std.algorithm.mutation : move;
 
         alias arg = args[0];
-        static if (__traits(isRef, arg))
+        // by ref || lazy || const/immutable
+        static if (__traits(isRef,  arg) ||
+                   __traits(isOut,  arg) ||
+                   __traits(isLazy, arg) ||
+                   !is(typeof(move(arg))))
             alias fwd = arg;
+        // (r)value
         else
-            @property fwd()(){ return move(arg); }
-        alias forward = AliasSeq!(fwd, forward!(args[1..$]));
+            @property auto fwd(){ return move(arg); }
+
+        static if (args.length == 1)
+            alias forward = fwd;
+        else
+            alias forward = AliasSeq!(fwd, forward!(args[1..$]));
     }
     else
         alias forward = AliasSeq!();
@@ -1495,11 +1592,19 @@ template forward(args...)
         static int foo(int n) { return 1; }
         static int foo(ref int n) { return 2; }
     }
+
+    // with forward
     int bar()(auto ref int x) { return C.foo(forward!x); }
 
-    assert(bar(1) == 1);
+    // without forward
+    int baz()(auto ref int x) { return C.foo(x); }
+
     int i;
+    assert(bar(1) == 1);
     assert(bar(i) == 2);
+
+    assert(baz(1) == 2);
+    assert(baz(i) == 2);
 }
 
 ///
@@ -1561,4 +1666,117 @@ template forward(args...)
     static assert(!__traits(compiles, { auto x1 = bar(3); })); // case of NG
     int value = 3;
     auto x2 = bar(value); // case of OK
+}
+
+///
+@safe unittest
+{
+    struct X {
+        int i;
+        this(this)
+        {
+            ++i;
+        }
+    }
+
+    struct Y
+    {
+        private X x_;
+        this()(auto ref X x)
+        {
+            x_ = forward!x;
+        }
+    }
+
+    struct Z
+    {
+        private const X x_;
+        this()(auto ref X x)
+        {
+            x_ = forward!x;
+        }
+        this()(auto const ref X x)
+        {
+            x_ = forward!x;
+        }
+    }
+
+    X x;
+    const X cx;
+    auto constX = (){ const X x; return x; };
+    static assert(__traits(compiles, { Y y = x; }));
+    static assert(__traits(compiles, { Y y = X(); }));
+    static assert(!__traits(compiles, { Y y = cx; }));
+    static assert(!__traits(compiles, { Y y = constX(); }));
+    static assert(__traits(compiles, { Z z = x; }));
+    static assert(__traits(compiles, { Z z = X(); }));
+    static assert(__traits(compiles, { Z z = cx; }));
+    static assert(__traits(compiles, { Z z = constX(); }));
+
+
+    Y y1 = x;
+    // ref lvalue, copy
+    assert(y1.x_.i == 1);
+    Y y2 = X();
+    // rvalue, move
+    assert(y2.x_.i == 0);
+
+    Z z1 = x;
+    // ref lvalue, copy
+    assert(z1.x_.i == 1);
+    Z z2 = X();
+    // rvalue, move
+    assert(z2.x_.i == 0);
+    Z z3 = cx;
+    // ref const lvalue, copy
+    assert(z3.x_.i == 1);
+    Z z4 = constX();
+    // const rvalue, copy
+    assert(z4.x_.i == 1);
+}
+
+// lazy -> lazy
+@safe unittest
+{
+    int foo1(lazy int i) { return i; }
+    int foo2(A)(auto ref A i) { return foo1(forward!i); }
+    int foo3(lazy int i) { return foo2(i); }
+
+    int numCalls = 0;
+    assert(foo3({ ++numCalls; return 42; }()) == 42);
+    assert(numCalls == 1);
+}
+
+// lazy -> non-lazy
+@safe unittest
+{
+    int foo1(int a, int b) { return a + b; }
+    int foo2(A...)(auto ref A args) { return foo1(forward!args); }
+    int foo3(int a, lazy int b) { return foo2(a, b); }
+
+    int numCalls;
+    assert(foo3(11, { ++numCalls; return 31; }()) == 42);
+    assert(numCalls == 1);
+}
+
+// non-lazy -> lazy
+@safe unittest
+{
+    int foo1(int a, lazy int b) { return a + b; }
+    int foo2(A...)(auto ref A args) { return foo1(forward!args); }
+    int foo3(int a, int b) { return foo2(a, b); }
+
+    assert(foo3(11, 31) == 42);
+}
+
+// out
+@safe unittest
+{
+    void foo1(int a, out int b) { b = a; }
+    void foo2(A...)(auto ref A args) { foo1(forward!args); }
+    void foo3(int a, out int b) { foo2(a, b); }
+
+    int b;
+    foo3(42, b);
+    assert(b == 42);
 }

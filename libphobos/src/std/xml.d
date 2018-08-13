@@ -115,7 +115,7 @@ void main()
 Copyright: Copyright Janice Caron 2008 - 2009.
 License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   Janice Caron
-Source:    $(PHOBOSSRC std/_xml.d)
+Source:    $(PHOBOSSRC std/xml.d)
 */
 /*
          Copyright Janice Caron 2008 - 2009.
@@ -556,7 +556,7 @@ class Document : Element
     {
         assert(s.length != 0);
     }
-    body
+    do
     {
         auto xml = new DocumentParser(s);
         string tagString = xml.tag.tagString;
@@ -1718,7 +1718,7 @@ class DocumentParser : ElementParser
             assert(false, "\n" ~ e.toString());
         }
     }
-    body
+    do
     {
         xmlText = xmlText_;
         s = &xmlText;

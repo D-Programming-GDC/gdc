@@ -2,7 +2,7 @@
  * Contains a bitfield used by the GC.
  *
  * Copyright: Copyright Digital Mars 2005 - 2013.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, David Friedman, Sean Kelly
  */
 
@@ -53,7 +53,7 @@ struct GCBits
     {
         assert(i < nbits);
     }
-    body
+    do
     {
         return core.bitop.bt(data, i);
     }
@@ -63,7 +63,7 @@ struct GCBits
     {
         assert(i < nbits);
     }
-    body
+    do
     {
         return core.bitop.bts(data, i);
     }
@@ -73,7 +73,7 @@ struct GCBits
     {
         assert(i <= nbits);
     }
-    body
+    do
     {
         return core.bitop.btr(data, i);
     }
@@ -88,7 +88,7 @@ struct GCBits
     {
         assert(nwords == f.nwords);
     }
-    body
+    do
     {
         memcpy(data, f.data, nwords * wordtype.sizeof);
     }

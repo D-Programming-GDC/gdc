@@ -14,9 +14,9 @@
  *      $(LINK http://anubis.dkuug.dk/JTC1/SC2/WG2/docs/n1335)
  *
  * Copyright: Copyright Digital Mars 2003 - 2016.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Sean Kelly
- * Source:    $(DRUNTIMESRC src/rt/util/_utf.d)
+ * Source:    $(DRUNTIMESRC rt/util/_utf.d)
  */
 
 module rt.util.utf;
@@ -215,7 +215,7 @@ dchar decode(in char[] s, ref size_t idx)
     {
         assert(isValidDchar(result));
     }
-    body
+    do
     {
         size_t len = s.length;
         dchar V;
@@ -356,7 +356,7 @@ dchar decode(in wchar[] s, ref size_t idx)
     {
         assert(isValidDchar(result));
     }
-    body
+    do
     {
         string msg;
         dchar V;
@@ -410,7 +410,7 @@ dchar decode(in dchar[] s, ref size_t idx)
     {
         assert(idx >= 0 && idx < s.length);
     }
-    body
+    do
     {
         size_t i = idx;
         dchar c = s[i];
@@ -437,7 +437,7 @@ void encode(ref char[] s, dchar c)
     {
         assert(isValidDchar(c));
     }
-    body
+    do
     {
         char[] r = s;
 
@@ -506,7 +506,7 @@ void encode(ref wchar[] s, dchar c)
     {
         assert(isValidDchar(c));
     }
-    body
+    do
     {
         wchar[] r = s;
 
@@ -532,7 +532,7 @@ void encode(ref dchar[] s, dchar c)
     {
         assert(isValidDchar(c));
     }
-    body
+    do
     {
         s ~= c;
     }
@@ -588,7 +588,7 @@ char[] toUTF8(char[] buf, dchar c)
     {
         assert(isValidDchar(c));
     }
-    body
+    do
     {
         if (c <= 0x7F)
         {
@@ -628,7 +628,7 @@ string toUTF8(string s)
     {
         validate(s);
     }
-    body
+    do
     {
         return s;
     }
@@ -697,7 +697,7 @@ wchar[] toUTF16(wchar[] buf, dchar c)
     {
         assert(isValidDchar(c));
     }
-    body
+    do
     {
         if (c <= 0xFFFF)
         {
@@ -723,8 +723,14 @@ wstring toUTF16(in char[] s)
     wchar[] r;
     size_t slen = s.length;
 
-    r.length = slen;
-    r.length = 0;
+    if (!__ctfe)
+    {
+        // Reserve still does a lot if slen is zero.
+        // Return early for that case.
+        if (0 == slen)
+            return ""w;
+        r.reserve(slen);
+    }
     for (size_t i = 0; i < slen; )
     {
         dchar c = s[i];
@@ -750,8 +756,14 @@ wptr toUTF16z(in char[] s)
     wchar[] r;
     size_t slen = s.length;
 
-    r.length = slen + 1;
-    r.length = 0;
+    if (!__ctfe)
+    {
+        // Reserve still does a lot if slen is zero.
+        // Return early for that case.
+        if (0 == slen)
+            return &"\0"w[0];
+        r.reserve(slen + 1);
+    }
     for (size_t i = 0; i < slen; )
     {
         dchar c = s[i];
@@ -777,7 +789,7 @@ wstring toUTF16(wstring s)
     {
         validate(s);
     }
-    body
+    do
     {
         return s;
     }
@@ -789,8 +801,14 @@ wstring toUTF16(in dchar[] s)
     wchar[] r;
     size_t slen = s.length;
 
-    r.length = slen;
-    r.length = 0;
+    if (!__ctfe)
+    {
+        // Reserve still does a lot if slen is zero.
+        // Return early for that case.
+        if (0 == slen)
+            return ""w;
+        r.reserve(slen);
+    }
     for (size_t i = 0; i < slen; i++)
     {
         encode(r, s[i]);
@@ -851,7 +869,7 @@ dstring toUTF32(dstring s)
     {
         validate(s);
     }
-    body
+    do
     {
         return s;
     }

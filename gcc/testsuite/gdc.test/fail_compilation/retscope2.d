@@ -89,7 +89,7 @@ TEST_OUTPUT:
 ---
 fail_compilation/retscope2.d(604): Error: scope variable `_param_0` assigned to non-scope parameter `unnamed` calling retscope2.foo600
 fail_compilation/retscope2.d(604): Error: scope variable `_param_1` assigned to non-scope parameter `unnamed` calling retscope2.foo600
-fail_compilation/retscope2.d(614): Error: template instance retscope2.test600!(int*, int*) error instantiating
+fail_compilation/retscope2.d(614): Error: template instance `retscope2.test600!(int*, int*)` error instantiating
 ---
 */
 
@@ -164,12 +164,12 @@ void foo800()
 }
 
 /*************************************************/
-/+
+
 /*
-XEST_OUTPUT:
-
+TEST_OUTPUT:
+---
 fail_compilation/retscope2.d(907): Error: address of variable `this` assigned to `p17568` with longer lifetime
-
+---
 */
 
 #line 900
@@ -183,14 +183,15 @@ struct T17568
         p17568 = &a;
     }
 }
-+/
+
 /*************************************************/
 
 /*
 TEST_OUTPUT:
 ---
-fail_compilation/retscope2.d(1005): Error: scope variable `p` assigned to `this` with longer lifetime
-fail_compilation/retscope2.d(1024): Error: scope variable `p` assigned to `d` with longer lifetime
+fail_compilation/retscope2.d(1005): Error: scope variable `p` assigned to non-scope `this._p`
+fail_compilation/retscope2.d(1021): Error: scope variable `p` assigned to non-scope `c._p`
+fail_compilation/retscope2.d(1024): Error: scope variable `p` assigned to non-scope `d._p`
 ---
 */
 
@@ -216,7 +217,7 @@ void test17428() @safe
         int x;
         int* p = &x;
         scope C17428b c;
-        c._p = p;   // ok
+        c._p = p;   // bad
 
         C17428b d;
         d._p = p;   // bad
@@ -291,5 +292,28 @@ struct T17388
     return t.foo();
 }
 
+/****************************************************/
 
+/*
+TEST_OUTPUT:
+---
+fail_compilation/retscope2.d(1306): Error: copying `& i` into allocated memory escapes a reference to local variable `i`
+---
+*/
+
+#line 1300
+
+// https://issues.dlang.org/show_bug.cgi?id=17370
+
+void test1300() @safe
+{
+    int i;
+    auto p = new S1300(&i).oops;
+}
+
+struct S1300
+{
+    int* oops;
+//    this(int* p) @safe { oops = p; }
+}
 

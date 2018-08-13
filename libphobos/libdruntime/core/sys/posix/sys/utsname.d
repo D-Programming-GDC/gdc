@@ -1,3 +1,6 @@
+
+// Interface to <sys/utsname.h>
+
 module core.sys.posix.sys.utsname;
 
 version (OSX)
@@ -11,6 +14,8 @@ else version (WatchOS)
 
 version (Posix):
 extern(C):
+nothrow:
+@nogc:
 
 version(CRuntime_Glibc)
 {
@@ -48,7 +53,25 @@ else version(Darwin)
 }
 else version(FreeBSD)
 {
-    private enum utsNameLength = 32;
+    //private enum SYS_NMLN = 32;       // old FreeBSD 1.1 ABI
+    private enum SYS_NMLN = 256;
+
+    struct utsname
+    {
+        char[SYS_NMLN] sysname;
+        char[SYS_NMLN] nodename;
+        char[SYS_NMLN] release;
+        // The field name is version but version is a keyword in D.
+        char[SYS_NMLN] update;
+        char[SYS_NMLN] machine;
+    }
+
+    int __xuname(int, void*);
+    int uname()(utsname* __name) { return __xuname(SYS_NMLN, cast(void*) __name); }
+}
+else version(NetBSD)
+{
+    private enum utsNameLength = 256;
 
     struct utsname
     {
@@ -62,9 +85,9 @@ else version(FreeBSD)
 
     int uname(utsname* __name);
 }
-else version(NetBSD)
+else version(DragonFlyBSD)
 {
-    private enum utsNameLength = 256;
+    private enum utsNameLength = 32;
 
     struct utsname
     {
@@ -110,4 +133,40 @@ else version(CRuntime_Bionic)
     }
 
     int uname(utsname*);
+}
+else version(CRuntime_Musl)
+{
+    private enum SYS_NMLN = 65;
+
+    struct utsname
+    {
+        char[SYS_NMLN] sysname;
+        char[SYS_NMLN] nodename;
+        char[SYS_NMLN] release;
+        char[SYS_NMLN] _version;
+        char[SYS_NMLN] machine;
+        char[SYS_NMLN] domainname;
+    }
+
+    int uname(utsname*);
+}
+else version(CRuntime_UClibc)
+{
+    private enum utsNameLength = 65;
+
+    struct utsname
+    {
+        char[utsNameLength] sysname;
+        char[utsNameLength] nodename;
+        char[utsNameLength] release;
+        char[utsNameLength] version_;
+        char[utsNameLength] machine;
+        char[utsNameLength] domainname;
+    }
+
+    int uname(utsname*);
+}
+else
+{
+    static assert(false, "unsupported system");
 }

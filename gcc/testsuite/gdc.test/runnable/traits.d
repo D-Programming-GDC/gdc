@@ -11,6 +11,7 @@ class AC2 { abstract void foo(); }
 class AC3 : AC2 { }
 final class FC { void foo() { } }
 enum E { EMEM }
+struct D1 { @disable void true_(); void false_(){} }
 
 /********************************************************/
 
@@ -1526,6 +1527,28 @@ void async(ARGS...)(ARGS)
 alias test17495 = async!(int, int);
 
 /********************************************************/
+// 15094
+
+void test15094()
+{
+    static struct Foo { int i; }
+    static struct Bar { Foo foo; }
+
+    Bar bar;
+    auto n = __traits(getMember, bar.foo, "i");
+    assert(n == bar.foo.i);
+}
+
+/********************************************************/
+
+void testIsDisabled()
+{
+    static assert(__traits(isDisabled, D1.true_));
+    static assert(!__traits(isDisabled, D1.false_));
+    static assert(!__traits(isDisabled, D1));
+}
+
+/********************************************************/
 
 int main()
 {
@@ -1566,6 +1589,7 @@ int main()
     test_getFunctionAttributes();
     test_isOverrideFunction();
     test12237();
+    test15094();
 
     writeln("Success");
     return 0;

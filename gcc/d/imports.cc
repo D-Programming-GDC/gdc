@@ -19,11 +19,11 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/declaration.h"
-#include "dfrontend/enum.h"
-#include "dfrontend/import.h"
-#include "dfrontend/module.h"
+#include "dmd/aggregate.h"
+#include "dmd/declaration.h"
+#include "dmd/enum.h"
+#include "dmd/import.h"
+#include "dmd/module.h"
 
 #include "tree.h"
 #include "stringpool.h"

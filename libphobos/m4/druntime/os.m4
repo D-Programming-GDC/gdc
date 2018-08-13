@@ -78,8 +78,8 @@ AC_DEFUN([DRUNTIME_OS_UNIX],
 # DRUNTIME_OS_SOURCES
 # -------------------
 # Detect target OS and add DRUNTIME_OS_AIX DRUNTIME_OS_DARWIN
-# DRUNTIME_OS_FREEBSD DRUNTIME_OS_LINUX DRUNTIME_OS_MINGW
-# DRUNTIME_OS_SOLARIS DRUNTIME_OS_OPENBSD conditionals.
+# DRUNTIME_OS_DRAGONFLYBSD DRUNTIME_OS_FREEBSD DRUNTIME_OS_LINUX
+# DRUNTIME_OS_MINGW DRUNTIME_OS_SOLARIS DRUNTIME_OS_OPENBSD conditionals.
 AC_DEFUN([DRUNTIME_OS_SOURCES],
 [
   AC_REQUIRE([DRUNTIME_OS_DETECT])
@@ -92,6 +92,8 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
                druntime_target_os_parsed="android"
                ;;
       darwin*) druntime_target_os_parsed="darwin"
+               ;;
+      dragonfly*) druntime_target_os_parsed="dragonfly"
                ;;
       freebsd*|k*bsd*-gnu)
                druntime_target_os_parsed="freebsd"
@@ -111,6 +113,7 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
   AM_CONDITIONAL([DRUNTIME_OS_AIX], [test "$druntime_target_os_parsed" = "aix"])
   AM_CONDITIONAL([DRUNTIME_OS_ANDROID], [test "$druntime_target_os_parsed" = "android"])
   AM_CONDITIONAL([DRUNTIME_OS_DARWIN], [test "$druntime_target_os_parsed" = "darwin"])
+  AM_CONDITIONAL([DRUNTIME_OS_DRAGONFLYBSD], [test "$druntime_target_os_parsed" = "dragonfly"])
   AM_CONDITIONAL([DRUNTIME_OS_FREEBSD], [test "$druntime_target_os_parsed" = "freebsd"])
   AM_CONDITIONAL([DRUNTIME_OS_NETBSD], [test "$druntime_target_os_parsed" = "netbsd"])
   AM_CONDITIONAL([DRUNTIME_OS_OPENBSD], [test "$druntime_target_os_parsed" = "openbsd"])
