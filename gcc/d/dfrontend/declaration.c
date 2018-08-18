@@ -1232,9 +1232,8 @@ Lnomatch:
             if (global.params.vfield &&
                 storage_class & (STCconst | STCimmutable) && _init && !_init->isVoidInitializer())
             {
-                const char *p = loc.toChars();
                 const char *s = (storage_class & STCimmutable) ? "immutable" : "const";
-                fprintf(global.stdmsg, "%s: %s.%s is %s field\n", p ? p : "", ad->toPrettyChars(), toChars(), s);
+                message(loc, "`%s.%s` is `%s` field", ad->toPrettyChars(), toChars(), s);
             }
             storage_class |= STCfield;
             if (tbn->ty == Tstruct && ((TypeStruct *)tbn)->sym->noDefaultCtor)

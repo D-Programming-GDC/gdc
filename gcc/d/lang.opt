@@ -102,6 +102,18 @@ Wall
 D
 ; Documented in C
 
+Walloca
+D
+; Documented in C
+
+Walloca-larger-than=
+D
+; Documented in C
+
+Wno-alloca-larger-than
+D
+; Documented in C
+
 Wcast-result
 D Warning Var(warn_cast_result)
 Warn about casts that will produce a null result.
@@ -233,6 +245,10 @@ finvariants
 D Var(flag_invariants)
 Generate code for class invariant contracts.
 
+fmain
+D RejectNegative
+Generate a default D main() function when compiling.
+
 fmodule-file=
 D Joined RejectNegative
 -fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
@@ -279,11 +295,11 @@ List all usages of complex or imaginary types.
 
 ftransition=dip1000
 D RejectNegative
-Implement http://wiki.dlang.org/DIP1000 (experimental)
+Implement DIP1000: Scoped pointers (experimental)
 
 ftransition=dip25
 D RejectNegative
-Implement http://wiki.dlang.org/DIP25 (experimental)
+Implement DIP25: Sealed references (experimental)
 
 ftransition=field
 D RejectNegative

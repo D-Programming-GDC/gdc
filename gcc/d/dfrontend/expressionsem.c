@@ -2414,7 +2414,7 @@ public:
         }
 
         if (global.params.verbose)
-            fprintf(global.stdmsg, "file      %s\t(%s)\n", (char *)se->string, name);
+            message("file      %.*s\t(%s)", (int)se->len, (char *)se->string, name);
         if (global.params.moduleDeps != NULL)
         {
             OutBuffer *ob = global.params.moduleDeps;

@@ -19,7 +19,7 @@
 include $(top_srcdir)/d_rules.am
 
 # Make sure GDC can find libdruntime include files
-D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) -I .
+D_EXTRA_DFLAGS=-nostdinc -I $(srcdir) -I .
 
 # D flags for compilation
 AM_DFLAGS=$(phobos_compiler_pic_flag)
@@ -373,4 +373,4 @@ DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/accctrl.d \
 	core/sys/windows/winver.d core/sys/windows/wtsapi32.d \
 	core/sys/windows/wtypes.d
 
-DRUNTIME_DISOURCES = __entrypoint.di
+DRUNTIME_DISOURCES = __entrypoint.di __main.di

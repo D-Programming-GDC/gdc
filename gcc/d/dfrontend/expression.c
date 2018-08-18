@@ -5661,6 +5661,12 @@ AddrExp::AddrExp(Loc loc, Expression *e)
 {
 }
 
+AddrExp::AddrExp(Loc loc, Expression *e, Type *t)
+        : UnaExp(loc, TOKaddress, sizeof(AddrExp), e)
+{
+    type = t;
+}
+
 /************************************************************/
 
 PtrExp::PtrExp(Loc loc, Expression *e)

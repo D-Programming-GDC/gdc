@@ -2523,7 +2523,6 @@ void Type::checkComplexTransition(Loc loc)
 
     if (t->isimaginary() || t->iscomplex())
     {
-        const char *p = loc.toChars();
         Type *rt;
         switch (t->ty)
         {
@@ -2541,13 +2540,13 @@ void Type::checkComplexTransition(Loc loc)
         }
         if (t->iscomplex())
         {
-            fprintf(global.stdmsg, "%s: use of complex type '%s' is scheduled for deprecation, "
-                    "use 'std.complex.Complex!(%s)' instead\n", p ? p : "", toChars(), rt->toChars());
+            message(loc, "use of complex type `%s` is scheduled for deprecation, "
+                    "use `std.complex.Complex!(%s)` instead", toChars(), rt->toChars());
         }
         else
         {
-            fprintf(global.stdmsg, "%s: use of imaginary type '%s' is scheduled for deprecation, "
-                    "use '%s' instead\n", p ? p : "", toChars(), rt->toChars());
+            message(loc, "use of imaginary type `%s` is scheduled for deprecation, "
+                    "use `%s` instead\n", toChars(), rt->toChars());
         }
     }
 }

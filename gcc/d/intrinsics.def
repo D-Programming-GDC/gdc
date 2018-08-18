@@ -114,6 +114,32 @@ DEF_CTFE_BUILTIN (ISINFINITY, ISINFINITY, "isInfinity", "std.math",
 		  "FNaNbNiNeI1XZb")
 DEF_CTFE_BUILTIN (ISFINITE, ISFINITE, "isFinite", "std.math", "FNaNbNiNeI1XZb")
 
+DEF_CTFE_BUILTIN (EXPM1, EXPM1, "expm1", "std.math", "FNaNbNiNeeZe")
+DEF_CTFE_BUILTIN (EXP2, EXP2, "exp2", "std.math", "FNaNbNiNeeZe")
+
+DEF_CTFE_BUILTIN (LOG, LOG, "log", "std.math", "FNaNbNiNfeZe")
+DEF_CTFE_BUILTIN (LOG2, LOG2, "log2", "std.math", "FNaNbNiNfeZe")
+DEF_CTFE_BUILTIN (LOG10, LOG10, "log10", "std.math", "FNaNbNiNfeZe")
+
+DEF_CTFE_BUILTIN (ROUND, ROUND, "round", "std.math", "FNbNiNeeZe")
+DEF_CTFE_BUILTIN (FLOORF, FLOORF, "floor", "std.math", "FNaNbNiNefZf")
+DEF_CTFE_BUILTIN (FLOOR, FLOOR, "floor", "std.math", "FNaNbNiNedZd")
+DEF_CTFE_BUILTIN (FLOORL, FLOORL, "floor", "std.math", "FNaNbNiNeeZe")
+DEF_CTFE_BUILTIN (CEILF, CEILF, "ceil", "std.math", "FNaNbNiNefZf")
+DEF_CTFE_BUILTIN (CEIL, CEIL, "ceil", "std.math", "FNaNbNiNedZd")
+DEF_CTFE_BUILTIN (CEILL, CEILL, "ceil", "std.math", "FNaNbNiNeeZe")
+
+DEF_CTFE_BUILTIN (TRUNC, TRUNC, "trunc", "std.math", "FNbNiNeeZe")
+DEF_CTFE_BUILTIN (FMIN, FMIN, "fmin", "std.math", "FNaNbNiNfeeZe")
+DEF_CTFE_BUILTIN (FMAX, FMAX, "fmax", "std.math", "FNaNbNiNfeeZe")
+DEF_CTFE_BUILTIN (COPYSIGN, COPYSIGN, "copysign", "std.math",
+		  "FNaNbNiNeI1RI1XZI1R")
+DEF_CTFE_BUILTIN (COPYSIGNI, COPYSIGN, "copysign", "std.math",
+		  "FNaNbNiNeI1XI1RZI1R")
+
+DEF_CTFE_BUILTIN (POW, POW, "pow", "std.math", "FNaNbNiNeI1FI1GZ@")
+DEF_CTFE_BUILTIN (FMA, FMA, "fma", "std.math", "FNaNbNiNfeeeZe")
+
 /* core.stdc.stdarg intrinsics.  */
 
 DEF_D_BUILTIN (VA_ARG, VA_ARG, "va_arg", "core.stdc.stdarg",
