@@ -206,7 +206,7 @@ call_builtin_fn (tree callexp, built_in_function code, int n, ...)
   tree exp = build_call_expr_loc_array (EXPR_LOCATION (callexp),
 					builtin_decl_explicit (code),
 					n, argarray);
-  return fold_convert (TREE_TYPE (callexp), fold (exp));
+  return convert (TREE_TYPE (callexp), fold (exp));
 }
 
 /* Expand a front-end instrinsic call to bsf().  This takes one argument,
@@ -426,7 +426,7 @@ expand_intrinsic_sqrt (intrinsic_code intrinsic, tree callexp)
 
   /* arg is an integral type - use double precision.  */
   if (INTEGRAL_TYPE_P (type))
-    arg = convert (double_type_node, arg);
+    arg = fold_convert (double_type_node, arg);
 
   /* Which variant of __builtin_sqrt* should we call?  */
   built_in_function code = (intrinsic == INTRINSIC_SQRT) ? BUILT_IN_SQRT :
@@ -437,7 +437,88 @@ expand_intrinsic_sqrt (intrinsic_code intrinsic, tree callexp)
   return call_builtin_fn (callexp, code, 1, arg);
 }
 
-/* Expand a front-end intrinsic call to va_arg().  These take either one or two
+/* Expand a front-end intrinsic call to copysign().  This takes two arguments,
+   the signature to which can be either:
+
+	float copysign (T to, float from);
+	double copysign (T to, double from);
+	real copysign (T to, real from);
+
+   This computes a value composed of TO with the sign bit of FROM.  The original
+   call expression is held in CALLEXP.  */
+
+static tree
+expand_intrinsic_copysign (tree callexp)
+{
+  tree to = CALL_EXPR_ARG (callexp, 0);
+  tree from = CALL_EXPR_ARG (callexp, 1);
+  tree type = TYPE_MAIN_VARIANT (TREE_TYPE (to));
+
+  /* Convert parameters to the same type.  Prefer the first parameter unless it
+     is an integral type.  */
+  if (INTEGRAL_TYPE_P (type))
+    {
+      to = fold_convert (TREE_TYPE (from), to);
+      type = TYPE_MAIN_VARIANT (TREE_TYPE (to));
+    }
+  else
+    from = fold_convert (type, from);
+
+  /* Which variant of __builtin_copysign* should we call?  */
+  built_in_function code = (type == float_type_node) ? BUILT_IN_COPYSIGNF :
+    (type == double_type_node) ? BUILT_IN_COPYSIGN :
+    (type == long_double_type_node) ? BUILT_IN_COPYSIGNL : END_BUILTINS;
+
+  gcc_assert (code != END_BUILTINS);
+  return call_builtin_fn (callexp, code, 2, to, from);
+}
+
+/* Expand a front-end intrinsic call to pow().  This takes two arguments, the
+   signature to which can be either:
+
+	float pow (float base, T exponent);
+	double pow (double base, T exponent);
+	real pow (real base, T exponent);
+
+   This computes the value of BASE raised to the power of EXPONENT.
+   The original call expression is held in CALLEXP.  */
+
+static tree
+expand_intrinsic_pow (tree callexp)
+{
+  tree base = CALL_EXPR_ARG (callexp, 0);
+  tree exponent = CALL_EXPR_ARG (callexp, 1);
+  tree exptype = TYPE_MAIN_VARIANT (TREE_TYPE (exponent));
+  built_in_function code;
+
+  /* base is an integral type - use double precision.  */
+  if (INTEGRAL_TYPE_P (TREE_TYPE (base)))
+    base = fold_convert (double_type_node, base);
+
+  /* Which variant of __builtin_pow* should we call?  */
+  if (SCALAR_FLOAT_TYPE_P (exptype))
+    {
+      /* Exponent is a float type, call pow{f,l}.  */
+      code = (exptype == float_type_node) ? BUILT_IN_POWF :
+	(exptype == double_type_node) ? BUILT_IN_POW :
+	(exptype == long_double_type_node) ? BUILT_IN_POWL : END_BUILTINS;
+    }
+  else if (INTEGRAL_TYPE_P (exptype))
+    {
+      /* Exponent is an integer type, call powi{f,l}.  */
+      tree basetype = TYPE_MAIN_VARIANT (TREE_TYPE (base));
+      code = (basetype == float_type_node) ? BUILT_IN_POWIF :
+	(basetype == double_type_node) ? BUILT_IN_POWI :
+	(basetype == long_double_type_node) ? BUILT_IN_POWIL : END_BUILTINS;
+    }
+  else
+    gcc_unreachable ();
+
+  gcc_assert (code != END_BUILTINS);
+  return call_builtin_fn (callexp, code, 2, base, exponent);
+}
+
+/* Expand a front-end intrinsic call to va_arg().  This takes either one or two
    arguments, the signature to which can be either:
 
 	T va_arg(T) (ref va_list ap);
@@ -647,6 +728,7 @@ maybe_expand_intrinsic (tree callexp)
     }
 
   intrinsic_code intrinsic = DECL_INTRINSIC_CODE (callee);
+  built_in_function code;
 
   switch (intrinsic)
     {
@@ -718,6 +800,70 @@ maybe_expand_intrinsic (tree callexp)
     case INTRINSIC_ISFINITE:
       return call_builtin_fn (callexp, BUILT_IN_ISFINITE, 1,
 			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_EXPM1:
+      return call_builtin_fn (callexp, BUILT_IN_EXPM1L, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_EXP2:
+      return call_builtin_fn (callexp, BUILT_IN_EXP2L, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_LOG:
+      return call_builtin_fn (callexp, BUILT_IN_LOGL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_LOG2:
+      return call_builtin_fn (callexp, BUILT_IN_LOG2L, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_LOG10:
+      return call_builtin_fn (callexp, BUILT_IN_LOG10L, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_ROUND:
+      return call_builtin_fn (callexp, BUILT_IN_ROUNDL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_FLOORF:
+    case INTRINSIC_FLOOR:
+    case INTRINSIC_FLOORL:
+      code = (intrinsic == INTRINSIC_FLOOR) ? BUILT_IN_FLOOR :
+	(intrinsic == INTRINSIC_FLOORF) ? BUILT_IN_FLOORF : BUILT_IN_FLOORL;
+      return call_builtin_fn (callexp, code, 1, CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_CEILF:
+    case INTRINSIC_CEIL:
+    case INTRINSIC_CEILL:
+      code = (intrinsic == INTRINSIC_CEIL) ? BUILT_IN_CEIL :
+	(intrinsic == INTRINSIC_CEILF) ? BUILT_IN_CEILF : BUILT_IN_CEILL;
+      return call_builtin_fn (callexp, code, 1, CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_TRUNC:
+      return call_builtin_fn (callexp, BUILT_IN_TRUNCL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
+    case INTRINSIC_FMIN:
+      return call_builtin_fn (callexp, BUILT_IN_FMINL, 2,
+			      CALL_EXPR_ARG (callexp, 0),
+			      CALL_EXPR_ARG (callexp, 1));
+
+    case INTRINSIC_FMAX:
+      return call_builtin_fn (callexp, BUILT_IN_FMAXL, 2,
+			      CALL_EXPR_ARG (callexp, 0),
+			      CALL_EXPR_ARG (callexp, 1));
+
+    case INTRINSIC_COPYSIGN:
+      return expand_intrinsic_copysign (callexp);
+
+    case INTRINSIC_POW:
+      return expand_intrinsic_pow (callexp);
+
+    case INTRINSIC_FMA:
+      return call_builtin_fn (callexp, BUILT_IN_FMAL, 3,
+			      CALL_EXPR_ARG (callexp, 0),
+			      CALL_EXPR_ARG (callexp, 1),
+			      CALL_EXPR_ARG (callexp, 2));
 
     case INTRINSIC_VA_ARG:
     case INTRINSIC_C_VA_ARG:

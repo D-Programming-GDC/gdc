@@ -1879,7 +1879,7 @@ public:
                     char *name = (char *)mem.malloc(se->len + 1);
                     memcpy(name, se->string, se->len);
                     name[se->len] = 0;
-                    fprintf(global.stdmsg, "library   %s\n", name);
+                    message("library   %s", name);
                     mem.free(name);
                 }
             }

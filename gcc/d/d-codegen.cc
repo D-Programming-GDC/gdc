@@ -148,7 +148,7 @@ declaration_type (Declaration *decl)
     {
       TypeFunction *tf = TypeFunction::create (NULL, decl->type, false, LINKd);
       TypeDelegate *t = TypeDelegate::create (tf);
-      return build_ctype (t->merge ());
+      return build_ctype (t->merge2 ());
     }
 
   /* Static array va_list have array->pointer conversions applied.  */
@@ -201,7 +201,7 @@ type_passed_as (Parameter *arg)
     {
       TypeFunction *tf = TypeFunction::create (NULL, arg->type, false, LINKd);
       TypeDelegate *t = TypeDelegate::create (tf);
-      return build_ctype (t->merge ());
+      return build_ctype (t->merge2 ());
     }
 
   /* Static array va_list have array->pointer conversions applied.  */
@@ -791,9 +791,17 @@ lower_struct_comparison (tree_code code, StructDeclaration *sd,
   tree_code tcode = (code == EQ_EXPR) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
   tree tmemcmp = NULL_TREE;
 
-  /* We can skip the compare if the structs are empty  */
+  /* We can skip the compare if the structs are empty.  */
   if (sd->fields.dim == 0)
-    return build_boolop (code, integer_zero_node, integer_zero_node);
+    {
+      tmemcmp = build_boolop (code, integer_zero_node, integer_zero_node);
+      if (TREE_SIDE_EFFECTS (t2))
+	tmemcmp = compound_expr (t2, tmemcmp);
+      if (TREE_SIDE_EFFECTS (t1))
+	tmemcmp = compound_expr (t1, tmemcmp);
+
+      return tmemcmp;
+    }
 
   /* Let backend take care of union comparisons.  */
   if (sd->isUnionDeclaration ())
@@ -873,7 +881,15 @@ build_struct_comparison (tree_code code, StructDeclaration *sd,
 {
   /* We can skip the compare if the structs are empty.  */
   if (sd->fields.dim == 0)
-    return build_boolop (code, integer_zero_node, integer_zero_node);
+    {
+      tree exp = build_boolop (code, integer_zero_node, integer_zero_node);
+      if (TREE_SIDE_EFFECTS (t2))
+	exp = compound_expr (t2, exp);
+      if (TREE_SIDE_EFFECTS (t1))
+	exp = compound_expr (t1, exp);
+
+      return exp;
+    }
 
   /* Make temporaries to prevent multiple evaluations.  */
   tree t1init = stabilize_expr (&t1);

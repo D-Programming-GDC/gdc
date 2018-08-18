@@ -97,7 +97,7 @@ same_type_p (Type *t1, Type *t2)
     return true;
 
   /* Types are mutably the same type.  */
-  if (tb1->immutableOf ()->equals (tb2->immutableOf ()))
+  if (tb1->ty == tb2->ty && tb1->equivalent (tb2))
     return true;
 
   return false;
@@ -419,7 +419,7 @@ layout_aggregate_type (AggregateDeclaration *decl, tree type,
 	      insert_aggregate_field (type, field, 0);
 	    }
 
-	  if (!id && !cd->cpp)
+	  if (!id && !cd->isCPPclass ())
 	    {
 	      tree field = create_field_decl (ptr_type_node, "__monitor", 1,
 					      inherited_p);
@@ -939,9 +939,10 @@ public:
     for (size_t i = 0; i < t->sym->vtbl.dim; i++)
       {
 	FuncDeclaration *fd = t->sym->vtbl[i]->isFuncDeclaration ();
-	tree method = fd ? get_symbol_decl (fd) : NULL_TREE;
+	tree method = fd ? get_symbol_decl (fd) : error_mark_node;
 
-	if (method && DECL_CONTEXT (method) == basetype
+	if (!error_operand_p (method)
+	    && DECL_CONTEXT (method) == basetype
 	    && !chain_member (method, TYPE_FIELDS (basetype)))
 	  TYPE_FIELDS (basetype) = chainon (TYPE_FIELDS (basetype), method);
       }

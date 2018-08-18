@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- a/gcc/config/powerpcspe/powerpcspe.c
 +++ b/gcc/config/powerpcspe/powerpcspe.c
-@@ -32034,11 +32034,12 @@ rs6000_output_function_epilogue (FILE *f
+@@ -32025,11 +32025,12 @@ rs6000_output_function_epilogue (FILE *f
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -209,9 +209,33 @@ relevant documentation about the GDC front end.
  	return;
        if (TREE_STATIC (decl) && decl_function_context (decl))
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
+@@ -29122,6 +29134,7 @@ prune_unused_types_walk_local_classes (d
+     case DW_TAG_structure_type:
+     case DW_TAG_union_type:
+     case DW_TAG_class_type:
++    case DW_TAG_interface_type:
+       break;
+ 
+     case DW_TAG_subprogram:
+@@ -29155,6 +29168,7 @@ prune_unused_types_walk (dw_die_ref die)
+     case DW_TAG_structure_type:
+     case DW_TAG_union_type:
+     case DW_TAG_class_type:
++    case DW_TAG_interface_type:
+       if (die->die_perennial_p)
+ 	break;
+ 
+@@ -29181,7 +29195,6 @@ prune_unused_types_walk (dw_die_ref die)
+     case DW_TAG_volatile_type:
+     case DW_TAG_typedef:
+     case DW_TAG_array_type:
+-    case DW_TAG_interface_type:
+     case DW_TAG_friend:
+     case DW_TAG_enumeration_type:
+     case DW_TAG_subroutine_type:
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
-@@ -1301,6 +1301,7 @@ static const struct compiler default_com
+@@ -1306,6 +1306,7 @@ static const struct compiler default_com
    {".f08", "#Fortran", 0, 0, 0}, {".F08", "#Fortran", 0, 0, 0},
    {".r", "#Ratfor", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},
