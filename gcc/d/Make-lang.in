@@ -274,7 +274,7 @@ d.uninstall:
 d.mostlyclean:
 	-rm -f d/*$(objext)
 	-rm -f d/*$(coverageexts)
-	-rm -f $(D_GENERATED_SRCS) verstr.h
+	-rm -f $(D_GENERATED_SRCS)
 	-rm -f d/gdc$(exeext) gdc-cross$(exeext) d/cc1d$(exeext)
 d.clean:
 d.distclean:
@@ -303,7 +303,7 @@ CFLAGS-d/id.o += $(D_INCLUDES)
 CFLAGS-d/impcnvtab.o += $(D_INCLUDES)
 
 # Override build rules for D frontend.
-d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS) d/verstr.h
+d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS)
 	$(DMD_COMPILE) $(D_INCLUDES) $<
 	$(POSTCOMPILE)
 
@@ -323,9 +323,6 @@ d/id.h: d/id.c
 
 d/impcnvtab.c: d/impcvgen
 	cd d && ./impcvgen
-
-d/verstr.h: d/VERSION
-	cat $^ > $@
 
 d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
 	$(DMDGEN_COMPILE) $(D_INCLUDES) $<

@@ -1352,7 +1352,7 @@ The following OS versions are implemented:
  
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
-@@ -1724,6 +1724,7 @@ AC_SUBST(build_subdir)
+@@ -1729,6 +1729,7 @@ AC_SUBST(build_subdir)
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"

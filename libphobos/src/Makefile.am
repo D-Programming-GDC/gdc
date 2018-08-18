@@ -19,7 +19,7 @@
 include $(top_srcdir)/d_rules.am
 
 # Make sure GDC can find libdruntime and libphobos include files
-D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) \
+D_EXTRA_DFLAGS=-nostdinc -I $(srcdir) \
 	-I $(top_srcdir)/libdruntime -I ../libdruntime -I .
 
 # C flags for zlib compilation

@@ -1,4 +1,4 @@
-// { dg-do run { target arm*-*-* i?86-*-* x86_64-*-* } }
+// { dg-do run { target hw } }
 import core.simd;
 import core.stdc.string;
 import std.stdio;
