@@ -196,7 +196,7 @@ struct ExceptionHeader
             eh = cast(ExceptionHeader*) __builtin_calloc(ExceptionHeader.sizeof, 1);
             // Out of memory while throwing - not much else can be done.
             if (!eh)
-                terminate(__LINE__);
+                terminate("out of memory", __LINE__);
         }
         eh.object = o;
 
@@ -417,18 +417,30 @@ struct CxaExceptionHeader
 }
 
 /**
- * Replaces std::terminate and terminating with a specific handler
+ * Called if exception handling must be abandoned for any reason.
  */
-private void terminate(uint line) @nogc
+private void terminate(string msg, uint line) @nogc
 {
-    __builtin_printf("deh(%u) fatal error\n", line);
-    __builtin_trap();
+    import core.stdc.stdio;
+    import core.stdc.stdlib;
+
+    static bool terminating;
+    if (terminating)
+    {
+        fputs("terminate called recursively\n", stderr);
+        abort();
+    }
+    terminating = true;
+
+    fprintf(stderr, "gcc.deh(%u): %.*s\n", line, cast(int)msg.length, msg.ptr);
+
+    abort();
 }
 
 /**
  * Called when fibers switch contexts.
  */
-extern(C) void* _d_eh_swapContext(void* newContext) nothrow
+extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc
 {
     auto old = ExceptionHeader.stack;
     ExceptionHeader.stack = cast(ExceptionHeader*)newContext;
@@ -446,7 +458,7 @@ extern(C) void* __gdc_begin_catch(_Unwind_Exception* unwindHeader)
 
     // Something went wrong when stacking up chained headers...
     if (header != ExceptionHeader.pop())
-        terminate(__LINE__);
+        terminate("catch error", __LINE__);
 
     // Handling for this exception is complete.
     _Unwind_DeleteException(&header.unwindHeader);
@@ -475,7 +487,7 @@ extern(C) void _d_throw(Throwable object)
         //  returns _URC_NO_REASON and not _URC_FOREIGN_EXCEPTION_CAUGHT
         // like the GCC _Unwind_DeleteException function does.
         if (code != _URC_FOREIGN_EXCEPTION_CAUGHT && code != _URC_NO_REASON)
-            terminate(__LINE__);
+            terminate("uncaught exception", __LINE__);
 
         auto eh = ExceptionHeader.toExceptionHeader(exc);
         ExceptionHeader.free(eh);
@@ -502,9 +514,9 @@ extern(C) void _d_throw(Throwable object)
     // things, almost certainly we will have crashed before now, rather than
     // actually being able to diagnose the problem.
     if (r == _URC_END_OF_STACK)
-        __builtin_printf("uncaught exception\n");
+        terminate("uncaught exception", __LINE__);
 
-    terminate(__LINE__);
+    terminate("unwind error", __LINE__);
 }
 
 
@@ -830,7 +842,7 @@ static if (GNU_ARM_EABI_Unwinder)
                 return CONTINUE_UNWINDING(unwindHeader, context);
 
             default:
-                __builtin_abort();
+                terminate("unwind error", __LINE__);
         }
         actions |= state & _US_FORCE_UNWIND;
 
@@ -878,7 +890,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         ExceptionHeader.restore(unwindHeader, handler, lsda, landingPad, cfa);
         // Shouldn't have cached a null landing pad in phase 1.
         if (landingPad == 0)
-            terminate(__LINE__);
+            terminate("unwind error", __LINE__);
     }
     else
     {
@@ -899,7 +911,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
 
     // Unexpected negative handler, call terminate directly.
     if (handler < 0)
-        terminate(__LINE__);
+        terminate("unwind error", __LINE__);
 
     // We can't use any of the deh routines with foreign exceptions,
     // because they all expect unwindHeader to be an ExceptionHeader.

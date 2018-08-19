@@ -83,6 +83,9 @@ proc gdc-convert-args { base args } {
         } elseif [string match "-inline" $arg] {
             lappend out "-finline-functions"
 
+        } elseif [string match "-main" $arg] {
+            lappend out "-fmain"
+
         } elseif [regexp -- {^-mv=([\w+=./-]+)} $arg pattern value] {
             lappend out "-fmodule-file=$value"
 

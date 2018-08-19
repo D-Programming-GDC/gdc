@@ -74,6 +74,13 @@ expand_format (const char *format)
 	  /* Malformed format string.  */
 	  gcc_unreachable ();
 
+	case '-':
+	  /* Remove whitespace formatting. */
+	  p++;
+	  while (ISDIGIT (*p))
+	    p++;
+	  goto Lagain;
+
 	case '0':
 	  /* Remove zero padding from format string.  */
 	  while (ISDIGIT (*p))
@@ -99,26 +106,40 @@ expand_format (const char *format)
    KIND at the explicit location LOC, where the message FORMAT has not yet
    been translated by the gcc diagnostic routines.  */
 
-static bool ATTRIBUTE_GCC_DIAG(3,0)
+static void ATTRIBUTE_GCC_DIAG(3,0)
 d_diagnostic_report_diagnostic (const Loc& loc, int opt, const char *format,
-				va_list ap, diagnostic_t kind)
+				va_list ap, diagnostic_t kind, bool verbatim)
 {
   va_list argp;
   va_copy (argp, ap);
 
-  location_t rich_loc = get_linemap (loc);
-  diagnostic_info diagnostic;
-  char *xformat = expand_format (format);
+  if (loc.filename || !verbatim)
+    {
+      location_t rich_loc = get_linemap (loc);
+      diagnostic_info diagnostic;
+      char *xformat = expand_format (format);
 
-  diagnostic_set_info (&diagnostic, xformat, &argp, rich_loc, kind);
-  if (opt != 0)
-    diagnostic.option_index = opt;
+      diagnostic_set_info (&diagnostic, xformat, &argp, rich_loc, kind);
+      if (opt != 0)
+	diagnostic.option_index = opt;
 
-  bool ret = diagnostic_report_diagnostic (global_dc, &diagnostic);
-  free (xformat);
+      diagnostic_report_diagnostic (global_dc, &diagnostic);
+      free (xformat);
+    }
+  else
+    {
+      /* Write verbatim messages with no location direct to stream.  */
+      text_info text;
+      text.err_no = errno;
+      text.args_ptr = &argp;
+      text.format_spec = expand_format (format);
+      text.x_data = NULL;
+
+      pp_format_verbatim (global_dc->printer, &text);
+      pp_newline_and_flush (global_dc->printer);
+    }
+
   va_end (argp);
-
-  return ret;
 }
 
 /* Print a hard error message with explicit location LOC, increasing the
@@ -150,7 +171,8 @@ verror (const Loc& loc, const char *format, va_list ap,
 	xformat = xasprintf ("%s", format);
 
       d_diagnostic_report_diagnostic (loc, 0, xformat, ap,
-				      global.gag ? DK_ANACHRONISM : DK_ERROR);
+				      global.gag ? DK_ANACHRONISM : DK_ERROR,
+				      false);
       free (xformat);
     }
 
@@ -178,7 +200,7 @@ verrorSupplemental (const Loc& loc, const char *format, va_list ap)
   if (global.gag && !global.params.showGaggedErrors)
     return;
 
-  d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE);
+  d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, false);
 }
 
 /* Print a warning message with explicit location LOC, increasing the
@@ -202,7 +224,7 @@ vwarning (const Loc& loc, const char *format, va_list ap)
       if (global.params.warnings == 1)
 	global.warnings++;
 
-      d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_WARNING);
+      d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_WARNING, false);
     }
 }
 
@@ -224,7 +246,7 @@ vwarningSupplemental (const Loc& loc, const char *format, va_list ap)
   if (!global.params.warnings || global.gag)
     return;
 
-  d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE);
+  d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, false);
 }
 
 /* Print a deprecation message with explicit location LOC, increasing the
@@ -258,7 +280,7 @@ vdeprecation (const Loc& loc, const char *format, va_list ap,
 	xformat = xasprintf ("%s", format);
 
       d_diagnostic_report_diagnostic (loc, OPT_Wdeprecated, xformat, ap,
-				      DK_WARNING);
+				      DK_WARNING, false);
       free (xformat);
     }
 }
@@ -281,7 +303,35 @@ vdeprecationSupplemental (const Loc& loc, const char *format, va_list ap)
   if (global.params.useDeprecated == 0)
     verrorSupplemental (loc, format, ap);
   else if (global.params.useDeprecated == 2 && !global.gag)
-    d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE);
+    d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, false);
+}
+
+/* Print a verbose message with explicit location LOC.  */
+
+void ATTRIBUTE_GCC_DIAG(2, 3)
+message (const Loc& loc, const char *format, ...)
+{
+  va_list ap;
+  va_start (ap, format);
+  vmessage (loc, format, ap);
+  va_end (ap);
+}
+
+void ATTRIBUTE_GCC_DIAG(2,0)
+vmessage(const Loc& loc, const char *format, va_list ap)
+{
+  d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, true);
+}
+
+/* Same as above, but doesn't take a location argument.  */
+
+void ATTRIBUTE_GCC_DIAG(1, 2)
+message (const char *format, ...)
+{
+  va_list ap;
+  va_start (ap, format);
+  vmessage (Loc (), format, ap);
+  va_end (ap);
 }
 
 /* Call this after printing out fatal error messages to clean up and

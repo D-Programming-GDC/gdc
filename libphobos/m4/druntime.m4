@@ -5,18 +5,15 @@
 
 # DRUNTIME_WERROR
 # ---------------
-# Add the --enable-werror option and create the
-# DRUNTIME_WERROR conditional
+# Check to see if -Werror is enabled.
 AC_DEFUN([DRUNTIME_WERROR],
 [
   AC_ARG_ENABLE(werror, [AS_HELP_STRING([--enable-werror],
-                                        [turns on -Werror @<:@default=yes@:>@])])
+                                        [turns on -Werror @<:@default=no@:>@])])
   WERROR_FLAG=""
-  if test "x$enable_werror" != "xno"; then
-      enable_werror="yes"
+  if test "x$enable_werror" = "xyes"; then
       WERROR_FLAG="-Werror"
   fi
-  AM_CONDITIONAL([DRUNTIME_WERROR], [test "$enable_werror" = "yes"])
 ])
 
 

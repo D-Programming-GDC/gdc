@@ -31,7 +31,7 @@ void FuncDeclaration::printGCUsage(Loc loc, const char* warn)
     Module *m = getModule();
     if (m && m->isRoot() && !inUnittest())
     {
-        fprintf(global.stdmsg, "%s: vgc: %s\n", loc.toChars(), warn);
+        message(loc, "vgc: %s", warn);
     }
 }
 

@@ -362,7 +362,8 @@ class TypeInfoVisitor : public Visitor
 	vec<constructor_elt, va_gc> *v = NULL;
 
 	/* Fill in the vtbl[].  */
-	b->fillVtbl (cd, &b->vtbl, 1);
+	if (!cd->isInterfaceDeclaration ())
+	  b->fillVtbl (cd, &b->vtbl, 1);
 
 	/* ClassInfo for the interface.  */
 	value = build_address (get_classinfo_decl (id));
@@ -472,7 +473,7 @@ public:
   void visit (TypeInfoConstDeclaration *d)
   {
     Type *tm = d->tinfo->mutableOf ();
-    tm = tm->merge ();
+    tm = tm->merge2 ();
 
     /* The vtable for TypeInfo_Const.  */
     this->layout_base (Type::typeinfoconst);
@@ -489,7 +490,7 @@ public:
   void visit (TypeInfoInvariantDeclaration *d)
   {
     Type *tm = d->tinfo->mutableOf ();
-    tm = tm->merge ();
+    tm = tm->merge2 ();
 
     /* The vtable for TypeInfo_Invariant.  */
     this->layout_base (Type::typeinfoinvariant);
@@ -506,7 +507,7 @@ public:
   void visit (TypeInfoSharedDeclaration *d)
   {
     Type *tm = d->tinfo->unSharedOf ();
-    tm = tm->merge ();
+    tm = tm->merge2 ();
 
     /* The vtable for TypeInfo_Shared.  */
     this->layout_base (Type::typeinfoshared);
@@ -523,7 +524,7 @@ public:
   void visit (TypeInfoWildDeclaration *d)
   {
     Type *tm = d->tinfo->mutableOf ();
-    tm = tm->merge ();
+    tm = tm->merge2 ();
 
     /* The vtable for TypeInfo_Inout.  */
     this->layout_base (Type::typeinfowild);
@@ -894,15 +895,18 @@ public:
     if (interfaces != NULL_TREE)
       this->layout_field (interfaces);
 
-    /* Put out this class' interface vtables[].  */
-    for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
-      this->layout_base_vtable (cd, cd, i);
-
-    /* Put out the overriding interface vtables[].  */
-    for (ClassDeclaration *bcd = cd->baseClass; bcd; bcd = bcd->baseClass)
+    if (!cd->isInterfaceDeclaration ())
       {
-	for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
-	  this->layout_base_vtable (cd, bcd, i);
+	/* Put out this class' interface vtables[].  */
+	for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+	  this->layout_base_vtable (cd, cd, i);
+
+	/* Put out the overriding interface vtables[].  */
+	for (ClassDeclaration *bcd = cd->baseClass; bcd; bcd = bcd->baseClass)
+	  {
+	    for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
+	      this->layout_base_vtable (cd, bcd, i);
+	  }
       }
   }
 
