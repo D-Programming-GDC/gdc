@@ -1,3 +1,8 @@
+2018-08-20  Eugene Wissner  <belka@caraus.de>
+
+	* types.cc (TypeVisitor::visit(TypeClass)): Check TYPE_METHODS instead of
+	TYPE_FIELDS.
+
 2018-07-23  Eugene Wissner  <belka@caraus.de>
 
 	* lang.opt (Walloca-larger-than=, Wno-alloca-larger-than): New options.
