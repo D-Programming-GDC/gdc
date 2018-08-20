@@ -675,7 +675,7 @@ void test45()
    assert(foo45(0)==2);
    try{
       foo45(1);
-   }catch{
+   }catch(Throwable){
       return cast(void)0;
    }
    assert(0);
@@ -1092,17 +1092,17 @@ void test71()
 {
     size_t s = Foo71!(
 "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-"When dealing with complex template tuples, it's very easy to overflow the
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "helloabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+~ "When dealing with complex template tuples, it's very easy to overflow the
 maximum symbol length allowed by OPTLINK.  This is, simply put, a damn shame,
 because it prevents otherwise completely legal code from compiling and linking
 with DMDWin, whereas it works perfectly fine when using DMDNix or GDC.
@@ -3574,7 +3574,7 @@ void test215()
     enum assocarrayliteral = Q!( [1:2] ).q.stringof;
     enum complex80 = Q!( 1+1.0i ).q.stringof;
     //enum dottype = Q!( C.Object.toString ).q.stringof;
-    enum halt = (assert(0), 0).stringof;    // ICE w/ -release
+    enum halt = 0.stringof;    // ICE w/ -release
     //enum remove = Q!( [1:2].remove(1) ).q.stringof;
     enum templat = Q!( Q ).q.stringof;
 }
@@ -4697,11 +4697,13 @@ void test7290()
     int add = 2;
     scope dg = (int a) => a + add;
 
+    // This will break with -dip1000 because a closure will no longer be allocated
     assert(GC.addrOf(dg.ptr) == null);
 
     foo7290a!dg();
     foo7290b(dg);
-    foo7290c(dg);
+    foo7290c(dg); // this will fail with -dip1000 and @safe because a scope delegate gets
+                  // assigned to @system delegate, but no closure was allocated
 }
 
 /***************************************************/
@@ -5701,7 +5703,11 @@ void testreal_to_ulong()
     real adjust = 1.0L/real.epsilon;
     u = r2ulong(adjust);
     //writefln("%s %s", adjust, u);
-    static if(real.mant_dig == 64)
+    static if(real.mant_dig == 113)
+        assert(u == 18446744073709551615UL);
+    else static if(real.mant_dig == 106)
+        assert(u == 18446744073709551615UL);
+    else static if(real.mant_dig == 64)
         assert(u == 9223372036854775808UL);
     else static if(real.mant_dig == 53)
         assert(u == 4503599627370496UL);
@@ -5910,10 +5916,15 @@ void test4414() {
     assert(x == 7);
   }
   {
-    auto x = bytes4414()[0..4];
+    auto u = bytes4414();
+    auto x = u[0..4];
     if (x[0] != 7 || x[1] != 8 || x[2] != 9 || x[3] != 10)
         assert(0);
   }
+  assert(bytes4414()[0] == 7);
+  assert(bytes4414()[1] == 8);
+  assert(bytes4414()[2] == 9);
+  assert(bytes4414()[3] == 10);
 }
 
 /***************************************************/
@@ -6185,6 +6196,37 @@ void test252()
         assert(0);
     if ((-1 - y) != ~y)
         assert(0);
+}
+
+/***************************************************/
+// https://issues.dlang.org/show_bug.cgi?id=7997
+
+void test7997()
+{
+    __gshared int[0] foos;
+    foreach (f; foos) {}
+}
+
+/***************************************************/
+// https://issues.dlang.org/show_bug.cgi?id=5332
+
+int[0] arr5332;
+
+void test5332()
+{
+    auto a = arr5332;
+}
+
+/***************************************************/
+// https://issues.dlang.org/show_bug.cgi?id=11742
+
+const int x11472 = void;
+
+static this() { x11472 = 10; }
+
+void test11472()
+{
+    assert(x11472 == 10);
 }
 
 /***************************************************/
@@ -6487,6 +6529,9 @@ int main()
     test16027();
     test16530();
     test252();
+    test7997();
+    test5332();
+    test11472();
 
     writefln("Success");
     return 0;

@@ -125,10 +125,10 @@ private
     extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
     extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz, const TypeInfo = null ) pure nothrow;
     extern (C) size_t   gc_reserve( size_t sz ) nothrow;
-    extern (C) void     gc_free( void* p ) pure nothrow;
+    extern (C) void     gc_free( void* p ) pure nothrow @nogc;
 
-    extern (C) void*   gc_addrOf( void* p ) pure nothrow;
-    extern (C) size_t  gc_sizeOf( void* p ) pure nothrow;
+    extern (C) void*   gc_addrOf( void* p ) pure nothrow @nogc;
+    extern (C) size_t  gc_sizeOf( void* p ) pure nothrow @nogc;
 
     struct BlkInfo_
     {
@@ -574,7 +574,7 @@ struct GC
      * Params:
      *  p = A pointer to the root of a valid memory block or to null.
      */
-    static void free( void* p ) pure nothrow
+    static void free( void* p ) pure nothrow @nogc
     {
         gc_free( p );
     }
@@ -595,14 +595,14 @@ struct GC
      * Returns:
      *  The base address of the memory block referenced by p or null on error.
      */
-    static inout(void)* addrOf( inout(void)* p ) nothrow /* FIXME pure */
+    static inout(void)* addrOf( inout(void)* p ) nothrow @nogc /* FIXME pure */
     {
         return cast(inout(void)*)gc_addrOf(cast(void*)p);
     }
 
 
     /// ditto
-    static void* addrOf(void* p) pure nothrow
+    static void* addrOf(void* p) pure nothrow @nogc
     {
         return gc_addrOf(p);
     }
@@ -621,14 +621,14 @@ struct GC
      * Returns:
      *  The size in bytes of the memory block referenced by p or zero on error.
      */
-    static size_t sizeOf( in void* p ) nothrow
+    static size_t sizeOf( in void* p ) nothrow @nogc /* FIXME pure */
     {
         return gc_sizeOf(cast(void*)p);
     }
 
 
     /// ditto
-    static size_t sizeOf(void* p) pure nothrow
+    static size_t sizeOf(void* p) pure nothrow @nogc
     {
         return gc_sizeOf( p );
     }
@@ -814,6 +814,7 @@ struct GC
  * Pure variants of C's memory allocation functions `malloc`, `calloc`, and
  * `realloc` and deallocation function `free`.
  *
+ * UNIX 98 requires that errno be set to ENOMEM upon failure.
  * Purity is achieved by saving and restoring the value of `errno`, thus
  * behaving as if it were never changed.
  *
@@ -823,42 +824,33 @@ struct GC
  */
 void* pureMalloc(size_t size) @trusted pure @nogc nothrow
 {
-    const errno = fakePureGetErrno();
+    const errnosave = fakePureErrno();
     void* ret = fakePureMalloc(size);
-    if (!ret || errno != 0)
-    {
-        cast(void)fakePureSetErrno(errno);
-    }
+    fakePureErrno() = errnosave;
     return ret;
 }
 /// ditto
 void* pureCalloc(size_t nmemb, size_t size) @trusted pure @nogc nothrow
 {
-    const errno = fakePureGetErrno();
+    const errnosave = fakePureErrno();
     void* ret = fakePureCalloc(nmemb, size);
-    if (!ret || errno != 0)
-    {
-        cast(void)fakePureSetErrno(errno);
-    }
+    fakePureErrno() = errnosave;
     return ret;
 }
 /// ditto
 void* pureRealloc(void* ptr, size_t size) @system pure @nogc nothrow
 {
-    const errno = fakePureGetErrno();
+    const errnosave = fakePureErrno();
     void* ret = fakePureRealloc(ptr, size);
-    if (!ret || errno != 0)
-    {
-        cast(void)fakePureSetErrno(errno);
-    }
+    fakePureErrno() = errnosave;
     return ret;
 }
 /// ditto
 void pureFree(void* ptr) @system pure @nogc nothrow
 {
-    const errno = fakePureGetErrno();
+    const errnosave = fakePureErrno();
     fakePureFree(ptr);
-    cast(void)fakePureSetErrno(errno);
+    fakePureErrno() = errnosave;
 }
 
 ///
@@ -881,36 +873,45 @@ void pureFree(void* ptr) @system pure @nogc nothrow
 
 @system pure nothrow @nogc unittest
 {
-    const int errno = fakePureGetErrno();
+    const int errno = fakePureErrno();
 
     void* x = pureMalloc(10);            // normal allocation
-    assert(errno == fakePureGetErrno()); // errno shouldn't change
+    assert(errno == fakePureErrno()); // errno shouldn't change
     assert(x !is null);                   // allocation should succeed
 
     x = pureRealloc(x, 10);              // normal reallocation
-    assert(errno == fakePureGetErrno()); // errno shouldn't change
+    assert(errno == fakePureErrno()); // errno shouldn't change
     assert(x !is null);                   // allocation should succeed
 
     fakePureFree(x);
 
     void* y = pureCalloc(10, 1);         // normal zeroed allocation
-    assert(errno == fakePureGetErrno()); // errno shouldn't change
+    assert(errno == fakePureErrno()); // errno shouldn't change
     assert(y !is null);                   // allocation should succeed
 
     fakePureFree(y);
 
-    // subtract 2 because snn.lib adds 2 unconditionally before passing
-    //  the size to the Windows API
-    void* z = pureMalloc(size_t.max - 2); // won't affect `errno`
-    assert(errno == fakePureGetErrno()); // errno shouldn't change
+    // Workaround bug in glibc 2.26
+    // See also: https://issues.dlang.org/show_bug.cgi?id=17956
+    void* z = pureMalloc(size_t.max & ~255); // won't affect `errno`
+    assert(errno == fakePureErrno()); // errno shouldn't change
     assert(z is null);
 }
 
 // locally purified for internal use here only
+
+extern (C) private @system @nogc nothrow
+{
+    ref int fakePureErrnoImpl()
+    {
+        import core.stdc.errno;
+        return errno();
+    }
+}
+
 extern (C) private pure @system @nogc nothrow
 {
-    pragma(mangle, "getErrno") int fakePureGetErrno();
-    pragma(mangle, "setErrno") int fakePureSetErrno(int);
+    pragma(mangle, "fakePureErrnoImpl") ref int fakePureErrno();
 
     pragma(mangle, "malloc") void* fakePureMalloc(size_t);
     pragma(mangle, "calloc") void* fakePureCalloc(size_t nmemb, size_t size);
@@ -918,3 +919,269 @@ extern (C) private pure @system @nogc nothrow
 
     pragma(mangle, "free") void fakePureFree(void* ptr);
 }
+
+extern(C) private @system nothrow @nogc
+{
+    pragma(mangle, "_d_delinterface") void _d_delinterface(void**);
+    pragma(mangle, "_d_delclass") void _d_delclass(Object*);
+    pragma(mangle, "_d_delstruct") void _d_delstruct(void**, TypeInfo_Struct);
+    pragma(mangle, "_d_delmemory") void _d_delmemory(void**);
+    pragma(mangle, "_d_delarray_t") void _d_delarray_t(void**, TypeInfo_Struct);
+}
+
+/**
+Destroys and then deallocates an object.
+
+In detail, `__delete(x)` returns with no effect if `x` is `null`. Otherwise, it
+performs the following actions in sequence:
+$(UL
+    $(LI
+        Calls the destructor `~this()` for the object referred to by `x`
+        (if `x` is a class or interface reference) or
+        for the object pointed to by `x` (if `x` is a pointer to a `struct`).
+        Arrays of structs call the destructor, if defined, for each element in the array.
+        If no destructor is defined, this step has no effect.
+    )
+    $(LI
+        Frees the memory allocated for `x`. If `x` is a reference to a class
+        or interface, the memory allocated for the underlying instance is freed. If `x` is
+        a pointer, the memory allocated for the pointed-to object is freed. If `x` is a
+        built-in array, the memory allocated for the array is freed.
+        If `x` does not refer to memory previously allocated with `new` (or the lower-level
+        equivalents in the GC API), the behavior is undefined.
+    )
+    $(LI
+        Lastly, `x` is set to `null`. Any attempt to read or write the freed memory via
+        other references will result in undefined behavior.
+    )
+)
+
+Note: Users should prefer $(REF1 destroy, object) to explicitly finalize objects,
+and only resort to $(REF __delete, core,memory) when $(REF destroy, object)
+wouldn't be a feasible option.
+
+Params:
+    x = aggregate object that should be destroyed
+
+See_Also: $(REF1 destroy, object), $(REF free, core,GC)
+
+History:
+
+The `delete` keyword allowed to free GC-allocated memory.
+As this is inherently not `@safe`, it has been deprecated.
+This function has been added to provide an easy transition from `delete`.
+It performs the same functionality as the former `delete` keyword.
+*/
+void __delete(T)(ref T x) @system
+{
+    static void _destructRecurse(S)(ref S s)
+    if (is(S == struct))
+    {
+        static if (__traits(hasMember, S, "__xdtor") &&
+                   // Bugzilla 14746: Check that it's the exact member of S.
+                   __traits(isSame, S, __traits(parent, s.__xdtor)))
+            s.__xdtor();
+    }
+
+    // See also: https://github.com/dlang/dmd/blob/v2.078.0/src/dmd/e2ir.d#L3886
+    static if (is(T == interface))
+    {
+        .object.destroy(x);
+    }
+    else static if (is(T == class))
+    {
+        .object.destroy(x);
+    }
+    else static if (is(T == U*, U))
+    {
+        static if (is(U == struct))
+            _destructRecurse(*x);
+    }
+    else static if (is(T : E[], E))
+    {
+        static if (is(E == struct))
+        {
+            foreach (ref e; x)
+                _destructRecurse(e);
+        }
+    }
+    else
+    {
+        static assert(0, "It is not possible to delete: `" ~ T.stringof ~ "`");
+    }
+
+    static if (is(T == interface) ||
+              is(T == class) ||
+              is(T == U2*, U2))
+    {
+        GC.free(cast(void*) x);
+        x = null;
+    }
+    else static if (is(T : E2[], E2))
+    {
+        GC.free(cast(void*) x.ptr);
+        x = null;
+    }
+}
+
+/// Deleting classes
+unittest
+{
+    bool dtorCalled;
+    class B
+    {
+        int test;
+        ~this()
+        {
+            dtorCalled = true;
+        }
+    }
+    B b = new B();
+    B a = b;
+    b.test = 10;
+
+    assert(GC.addrOf(cast(void*) b) != null);
+    __delete(b);
+    assert(b is null);
+    assert(dtorCalled);
+    assert(GC.addrOf(cast(void*) b) == null);
+    // but be careful, a still points to it
+    assert(a !is null);
+    assert(GC.addrOf(cast(void*) a) !is null);
+}
+
+/// Deleting interfaces
+unittest
+{
+    bool dtorCalled;
+    interface A
+    {
+        int quack();
+    }
+    class B : A
+    {
+        int a;
+        int quack()
+        {
+            a++;
+            return a;
+        }
+        ~this()
+        {
+            dtorCalled = true;
+        }
+    }
+    A a = new B();
+    a.quack();
+
+    assert(GC.addrOf(cast(void*) a) != null);
+    __delete(a);
+    assert(a is null);
+    assert(dtorCalled);
+    assert(GC.addrOf(cast(void*) a) == null);
+}
+
+/// Deleting structs
+unittest
+{
+    bool dtorCalled;
+    struct A
+    {
+        string test;
+        ~this()
+        {
+            dtorCalled = true;
+        }
+    }
+    auto a = new A("foo");
+
+    assert(GC.addrOf(cast(void*) a) != null);
+    __delete(a);
+    assert(a is null);
+    assert(dtorCalled);
+    assert(GC.addrOf(cast(void*) a) == null);
+}
+
+/// Deleting arrays
+unittest
+{
+    int[] a = [1, 2, 3];
+    auto b = a;
+
+    assert(GC.addrOf(b.ptr) != null);
+    __delete(b);
+    assert(b is null);
+    assert(GC.addrOf(b.ptr) == null);
+    // but be careful, a still points to it
+    assert(a !is null);
+    assert(GC.addrOf(a.ptr) !is null);
+}
+
+/// Deleting arrays of structs
+unittest
+{
+    int dtorCalled;
+    struct A
+    {
+        int a;
+        ~this()
+        {
+            dtorCalled++;
+        }
+    }
+    auto arr = [A(1), A(2), A(3)];
+
+    assert(GC.addrOf(arr.ptr) != null);
+    __delete(arr);
+    assert(dtorCalled == 3);
+    assert(GC.addrOf(arr.ptr) == null);
+}
+
+// Deleting raw memory
+unittest
+{
+    import core.memory : GC;
+    auto a = GC.malloc(5);
+    assert(GC.addrOf(cast(void*) a) != null);
+    __delete(a);
+    assert(a is null);
+    assert(GC.addrOf(cast(void*) a) == null);
+}
+
+// __delete returns with no effect if x is null
+unittest
+{
+    Object x = null;
+    __delete(x);
+
+    struct S { ~this() { } }
+    class C { }
+    interface I { }
+
+    int[] a; __delete(a);
+    S[] as; __delete(as);
+    C c; __delete(c);
+    I i; __delete(i);
+    C* pc = &c; __delete(*pc);
+    I* pi = &i; __delete(*pi);
+    int* pint; __delete(pint);
+    S* ps; __delete(ps);
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=19092
+unittest
+{
+    const(int)[] x = [1, 2, 3];
+    assert(GC.addrOf(x.ptr) != null);
+    __delete(x);
+    assert(x is null);
+    assert(GC.addrOf(x.ptr) == null);
+
+    immutable(int)[] y = [1, 2, 3];
+    assert(GC.addrOf(y.ptr) != null);
+    __delete(y);
+    assert(y is null);
+    assert(GC.addrOf(y.ptr) == null);
+}
+
+

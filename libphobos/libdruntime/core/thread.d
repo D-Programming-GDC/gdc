@@ -47,6 +47,7 @@ version( Solaris )
 {
     import core.sys.solaris.sys.priocntl;
     import core.sys.solaris.sys.types;
+    import core.sys.posix.sys.wait : idtype_t;
 }
 
 // this should be true for most architectures
@@ -227,15 +228,7 @@ version( Windows )
 
             void append( Throwable t )
             {
-                if( obj.m_unhandled is null )
-                    obj.m_unhandled = t;
-                else
-                {
-                    Throwable last = obj.m_unhandled;
-                    while( last.next !is null )
-                        last = last.next;
-                    last.next = t;
-                }
+                obj.m_unhandled = Throwable.chainTogether(obj.m_unhandled, t);
             }
 
             version( D_InlineAsm_X86 )
@@ -306,7 +299,6 @@ else version( Posix )
         {
             version (Shared)
             {
-                import rt.sections;
                 Thread obj = cast(Thread)(cast(void**)arg)[0];
                 auto loadedLibraries = (cast(void**)arg)[1];
                 .free(arg);
@@ -319,7 +311,11 @@ else version( Posix )
 
             // loadedLibraries need to be inherited from parent thread
             // before initilizing GC for TLS (rt_tlsgc_init)
-            version (Shared) inheritLoadedLibraries(loadedLibraries);
+            version (Shared)
+            {
+                externDFunc!("rt.sections_elf_shared.inheritLoadedLibraries",
+                             void function(void*) @nogc nothrow)(loadedLibraries);
+            }
 
             assert( obj.m_curr is &obj.m_main );
             obj.m_main.bstack = getStackBottom();
@@ -381,15 +377,7 @@ else version( Posix )
 
             void append( Throwable t )
             {
-                if( obj.m_unhandled is null )
-                    obj.m_unhandled = t;
-                else
-                {
-                    Throwable last = obj.m_unhandled;
-                    while( last.next !is null )
-                        last = last.next;
-                    last.next = t;
-                }
+                obj.m_unhandled = Throwable.chainTogether(obj.m_unhandled, t);
             }
 
             try
@@ -404,7 +392,11 @@ else version( Posix )
                     append( t );
                 }
                 rt_moduleTlsDtor();
-                version (Shared) cleanupLoadedLibraries();
+                version (Shared)
+                {
+                    externDFunc!("rt.sections_elf_shared.cleanupLoadedLibraries",
+                                 void function() @nogc nothrow)();
+                }
             }
             catch( Throwable t )
             {
@@ -437,7 +429,7 @@ else version( Posix )
         {
             assert( sig == suspendSignalNumber );
         }
-        body
+        do
         {
             void op(void* sp) nothrow
             {
@@ -494,7 +486,7 @@ else version( Posix )
         {
             assert( sig == resumeSignalNumber );
         }
-        body
+        do
         {
 
         }
@@ -569,7 +561,7 @@ class Thread
     {
         assert( fn );
     }
-    body
+    do
     {
         this(sz);
         () @trusted { m_fn   = fn; }();
@@ -594,7 +586,7 @@ class Thread
     {
         assert( dg );
     }
-    body
+    do
     {
         this(sz);
         () @trusted { m_dg   = dg; }();
@@ -653,7 +645,7 @@ class Thread
     {
         assert( !next && !prev );
     }
-    body
+    do
     {
         auto wasThreaded  = multiThreadedFlag;
         multiThreadedFlag = true;
@@ -712,15 +704,17 @@ class Thread
 
                 version (Shared)
                 {
-                    import rt.sections;
-                    auto libs = pinLoadedLibraries();
+                    auto libs = externDFunc!("rt.sections_elf_shared.pinLoadedLibraries",
+                                             void* function() @nogc nothrow)();
+
                     auto ps = cast(void**).malloc(2 * size_t.sizeof);
                     if (ps is null) onOutOfMemoryError();
                     ps[0] = cast(void*)this;
                     ps[1] = cast(void*)libs;
                     if( pthread_create( &m_addr, &attr, &thread_entryPoint, ps ) != 0 )
                     {
-                        unpinLoadedLibraries(libs);
+                        externDFunc!("rt.sections_elf_shared.unpinLoadedLibraries",
+                                     void function(void*) @nogc nothrow)(libs);
                         .free(ps);
                         onThreadError( "Error creating thread" );
                     }
@@ -1130,7 +1124,7 @@ class Thread
         assert(val >= PRIORITY_MIN);
         assert(val <= PRIORITY_MAX);
     }
-    body
+    do
     {
         version( Windows )
         {
@@ -1180,7 +1174,7 @@ class Thread
             }
             else
             {
-                // NOTE: pthread_setschedprio is not implemented on Darwin or FreeBSD, so use
+                // NOTE: pthread_setschedprio is not implemented on Darwin, FreeBSD or DragonFlyBSD, so use
                 //       the more complicated get/set sequence below.
                 int         policy;
                 sched_param param;
@@ -1258,7 +1252,7 @@ class Thread
     {
         assert( !val.isNegative );
     }
-    body
+    do
     {
         version( Windows )
         {
@@ -1547,7 +1541,7 @@ private:
 
     version( Solaris )
     {
-        __gshared immutable bool m_isRTClass;
+        __gshared bool m_isRTClass;
     }
 
 private:
@@ -1576,7 +1570,7 @@ private:
     {
         assert( !c.within );
     }
-    body
+    do
     {
         m_curr.ehContext = swapContext(c.ehContext);
         c.within = m_curr;
@@ -1589,7 +1583,7 @@ private:
     {
         assert( m_curr && m_curr.within );
     }
-    body
+    do
     {
         Context* c = m_curr;
         m_curr = c.within;
@@ -1603,7 +1597,7 @@ private:
     {
         assert( m_curr );
     }
-    body
+    do
     {
         return m_curr;
     }
@@ -1718,7 +1712,7 @@ private:
 
     __gshared align(Mutex.alignof) void[__traits(classInstanceSize, Mutex)][2] _locks;
 
-    static void initLocks()
+    static void initLocks() @nogc
     {
         foreach (ref lock; _locks)
         {
@@ -1727,7 +1721,7 @@ private:
         }
     }
 
-    static void termLocks()
+    static void termLocks() @nogc
     {
         foreach (ref lock; _locks)
             (cast(Mutex)lock.ptr).__dtor();
@@ -1763,7 +1757,7 @@ private:
         assert( c );
         assert( !c.next && !c.prev );
     }
-    body
+    do
     {
         slock.lock_nothrow();
         scope(exit) slock.unlock_nothrow();
@@ -1789,7 +1783,7 @@ private:
         assert( c );
         assert( c.next || c.prev );
     }
-    body
+    do
     {
         if( c.prev )
             c.prev.next = c.next;
@@ -1820,7 +1814,7 @@ private:
         assert( t );
         assert( !t.next && !t.prev );
     }
-    body
+    do
     {
         slock.lock_nothrow();
         scope(exit) slock.unlock_nothrow();
@@ -1863,7 +1857,7 @@ private:
     {
         assert( t );
     }
-    body
+    do
     {
         // Thread was already removed earlier, might happen b/c of thread_detachInstance
         if (!t.next && !t.prev)
@@ -1993,7 +1987,7 @@ else version( Posix )
         assert(suspendSignalNumber != 0);
         assert(resumeSignalNumber  != 0);
     }
-    body
+    do
     {
         suspendSignalNumber = suspendSignalNo;
         resumeSignalNumber  = resumeSignalNo;
@@ -2011,7 +2005,7 @@ version( Posix )
  * garbage collector on startup and before any other thread routines
  * are called.
  */
-extern (C) void thread_init()
+extern (C) void thread_init() @nogc
 {
     // NOTE: If thread_init itself performs any allocations then the thread
     //       routines reserved for garbage collector use may be called while
@@ -2081,16 +2075,30 @@ extern (C) void thread_init()
         status = sem_init( &suspendCount, 0, 0 );
         assert( status == 0 );
     }
-    Thread.sm_main = thread_attachThis();
+    if (typeid(Thread).initializer.ptr)
+        _mainThreadStore[] = typeid(Thread).initializer[];
+    Thread.sm_main = attachThread((cast(Thread)_mainThreadStore.ptr).__ctor());
 }
 
+private __gshared align(Thread.alignof) void[__traits(classInstanceSize, Thread)] _mainThreadStore;
+
+extern (C) void _d_monitordelete_nogc(Object h) @nogc;
 
 /**
  * Terminates the thread module. No other thread routine may be called
  * afterwards.
  */
-extern (C) void thread_term()
+extern (C) void thread_term() @nogc
 {
+    assert(_mainThreadStore.ptr is cast(void*) Thread.sm_main);
+
+    // destruct manually as object.destroy is not @nogc
+    Thread.sm_main.__dtor();
+    _d_monitordelete_nogc(Thread.sm_main);
+    if (typeid(Thread).initializer.ptr)
+        _mainThreadStore[] = typeid(Thread).initializer[];
+    Thread.sm_main = null;
+
     assert(Thread.sm_tbeg && Thread.sm_tlen == 1);
     assert(!Thread.nAboutToStart);
     if (Thread.pAboutToStart) // in case realloc(p, 0) doesn't return null
@@ -2123,12 +2131,14 @@ extern (C) bool thread_isMainThread() nothrow @nogc
  */
 extern (C) Thread thread_attachThis()
 {
-    GC.disable(); scope(exit) GC.enable();
-
     if (auto t = Thread.getThis())
         return t;
 
-    Thread          thisThread  = new Thread();
+    return attachThread(new Thread());
+}
+
+private Thread attachThread(Thread thisThread) @nogc
+{
     Thread.Context* thisContext = &thisThread.m_main;
     assert( thisContext == thisThread.m_curr );
 
@@ -2410,7 +2420,7 @@ else
     {
         assert(fn);
     }
-    body
+    do
     {
         // The purpose of the 'shell' is to ensure all the registers get
         // put on the stack so they'll be scanned. We only need to push
@@ -2837,7 +2847,7 @@ in
 {
     assert( suspendDepth > 0 );
 }
-body
+do
 {
     // NOTE: See thread_suspendAll for the logic behind this.
     if( !multiThreadedFlag && Thread.sm_tbeg )
@@ -2888,7 +2898,7 @@ in
 {
     assert( suspendDepth > 0 );
 }
-body
+do
 {
     callWithStackShell(sp => scanAllTypeImpl(scan, sp));
 }
@@ -2998,7 +3008,7 @@ in
 {
     assert(Thread.getThis());
 }
-body
+do
 {
     synchronized (Thread.criticalRegionLock)
         Thread.getThis().m_isInCriticalRegion = true;
@@ -3017,7 +3027,7 @@ in
 {
     assert(Thread.getThis());
 }
-body
+do
 {
     synchronized (Thread.criticalRegionLock)
         Thread.getThis().m_isInCriticalRegion = false;
@@ -3035,7 +3045,7 @@ in
 {
     assert(Thread.getThis());
 }
-body
+do
 {
     synchronized (Thread.criticalRegionLock)
         return Thread.getThis().m_isInCriticalRegion;
@@ -3046,14 +3056,16 @@ body
 * A callback for thread errors in D during collections. Since an allocation is not possible
 *  a preallocated ThreadError will be used as the Error instance
 *
+* Returns:
+*  never returns
 * Throws:
 *  ThreadError.
 */
-private void onThreadError(string msg = null, Throwable next = null) nothrow
+private void onThreadError(string msg) nothrow
 {
     __gshared ThreadError error = new ThreadError(null);
     error.msg = msg;
-    error.next = next;
+    error.next = null;
     import core.exception : SuppressTraceInfo;
     error.info = SuppressTraceInfo.instance;
     throw error;
@@ -3194,8 +3206,11 @@ extern (C) @nogc nothrow
     version (CRuntime_Glibc) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
     version (FreeBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
     version (NetBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
+    version (DragonFlyBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
     version (Solaris) int thr_stksegment(stack_t* stk);
     version (CRuntime_Bionic) int pthread_getattr_np(pthread_t thid, pthread_attr_t* attr);
+    version (CRuntime_Musl) int pthread_getattr_np(pthread_t, pthread_attr_t*);
+    version (CRuntime_UClibc) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
 }
 
 
@@ -3278,6 +3293,17 @@ private void* getStackBottom() nothrow @nogc
         pthread_attr_destroy(&attr);
         return addr + size;
     }
+    else version (DragonFlyBSD)
+    {
+        pthread_attr_t attr;
+        void* addr; size_t size;
+
+        pthread_attr_init(&attr);
+        pthread_attr_get_np(pthread_self(), &attr);
+        pthread_attr_getstack(&attr, &addr, &size);
+        pthread_attr_destroy(&attr);
+        return addr + size;
+    }
     else version (Solaris)
     {
         stack_t stk;
@@ -3286,6 +3312,26 @@ private void* getStackBottom() nothrow @nogc
         return stk.ss_sp;
     }
     else version (CRuntime_Bionic)
+    {
+        pthread_attr_t attr;
+        void* addr; size_t size;
+
+        pthread_getattr_np(pthread_self(), &attr);
+        pthread_attr_getstack(&attr, &addr, &size);
+        pthread_attr_destroy(&attr);
+        return addr + size;
+    }
+    else version (CRuntime_Musl)
+    {
+        pthread_attr_t attr;
+        void* addr; size_t size;
+
+        pthread_getattr_np(pthread_self(), &attr);
+        pthread_attr_getstack(&attr, &addr, &size);
+        pthread_attr_destroy(&attr);
+        return addr + size;
+    }
+    else version (CRuntime_UClibc)
     {
         pthread_attr_t attr;
         void* addr; size_t size;
@@ -3316,7 +3362,7 @@ in
     // Not strictly required, but it gives us more flexibility.
     assert(Thread.getThis());
 }
-body
+do
 {
     return getStackTop();
 }
@@ -3337,7 +3383,7 @@ in
 {
     assert(Thread.getThis());
 }
-body
+do
 {
     return Thread.getThis().topContext().bstack;
 }
@@ -3411,7 +3457,7 @@ class ThreadGroup
     {
         assert( t );
     }
-    body
+    do
     {
         synchronized( this )
         {
@@ -3435,7 +3481,7 @@ class ThreadGroup
     {
         assert( t );
     }
-    body
+    do
     {
         synchronized( this )
         {
@@ -3580,6 +3626,15 @@ private
         {
             version = AsmMIPS_O32_Posix;
             version = AsmExternal;
+        }
+    }
+    else version( AArch64 )
+    {
+        version( Posix )
+        {
+            version = AsmAArch64_Posix;
+            version = AsmExternal;
+            version = AlignFiberStackTo16Byte;
         }
     }
     else version( ARM )
@@ -4066,6 +4121,14 @@ class Fiber
     // Initialization
     ///////////////////////////////////////////////////////////////////////////
 
+    version(Windows)
+        // exception handling walks the stack, invoking DbgHelp.dll which
+        // needs up to 16k of stack space depending on the version of DbgHelp.dll,
+        // the existence of debug symbols and other conditions. Avoid causing
+        // stack overflows by defaulting to a larger stack size
+        enum defaultStackPages = 8;
+    else
+        enum defaultStackPages = 4;
 
     /**
      * Initializes a fiber object which is associated with a static
@@ -4075,18 +4138,20 @@ class Fiber
      *  fn = The fiber function.
      *  sz = The stack size for this fiber.
      *  guardPageSize = size of the guard page to trap fiber's stack
-     *                    overflows
+     *                  overflows. Beware that using this will increase
+     *                  the number of mmaped regions on platforms using mmap
+     *                  so an OS-imposed limit may be hit.
      *
      * In:
      *  fn must not be null.
      */
-    this( void function() fn, size_t sz = PAGESIZE*4,
+    this( void function() fn, size_t sz = PAGESIZE * defaultStackPages,
           size_t guardPageSize = PAGESIZE ) nothrow
     in
     {
         assert( fn );
     }
-    body
+    do
     {
         allocStack( sz, guardPageSize );
         reset( fn );
@@ -4101,20 +4166,22 @@ class Fiber
      *  dg = The fiber function.
      *  sz = The stack size for this fiber.
      *  guardPageSize = size of the guard page to trap fiber's stack
-     *                    overflows
+     *                  overflows. Beware that using this will increase
+     *                  the number of mmaped regions on platforms using mmap
+     *                  so an OS-imposed limit may be hit.
      *
      * In:
      *  dg must not be null.
      */
-    this( void delegate() dg, size_t sz = PAGESIZE*4,
+    this( void delegate() dg, size_t sz = PAGESIZE * defaultStackPages,
           size_t guardPageSize = PAGESIZE ) nothrow
     in
     {
         assert( dg );
     }
-    body
+    do
     {
-        allocStack( sz, guardPageSize);
+        allocStack( sz, guardPageSize );
         reset( dg );
     }
 
@@ -4202,7 +4269,7 @@ class Fiber
     {
         assert( m_state == State.HOLD );
     }
-    body
+    do
     {
         Fiber   cur = getThis();
 
@@ -4248,7 +4315,7 @@ class Fiber
     {
         assert( m_state == State.TERM || m_state == State.HOLD );
     }
-    body
+    do
     {
         m_ctxt.tstack = m_ctxt.bstack;
         m_state = State.HOLD;
@@ -4277,18 +4344,18 @@ class Fiber
     ///////////////////////////////////////////////////////////////////////////
 
 
-    /**
-     * A fiber may occupy one of three states: HOLD, EXEC, and TERM.  The HOLD
-     * state applies to any fiber that is suspended and ready to be called.
-     * The EXEC state will be set for any fiber that is currently executing.
-     * And the TERM state is set when a fiber terminates.  Once a fiber
-     * terminates, it must be reset before it may be called again.
-     */
+    /// A fiber may occupy one of three states: HOLD, EXEC, and TERM.
     enum State
     {
-        HOLD,   ///
-        EXEC,   ///
-        TERM    ///
+        /** The HOLD state applies to any fiber that is suspended and ready to
+        be called. */
+        HOLD,
+        /** The EXEC state will be set for any fiber that is currently
+        executing. */
+        EXEC,
+        /** The TERM state is set when a fiber terminates. Once a fiber
+        terminates, it must be reset before it may be called again. */
+        TERM
     }
 
 
@@ -4342,7 +4409,7 @@ class Fiber
     {
         assert( t );
     }
-    body
+    do
     {
         Fiber   cur = getThis();
         assert( cur, "Fiber.yield() called with no active fiber" );
@@ -4464,7 +4531,7 @@ private:
     {
         assert( !m_pmem && !m_ctxt );
     }
-    body
+    do
     {
         // adjust alloc size to a multiple of PAGESIZE
         sz += PAGESIZE - 1;
@@ -4531,8 +4598,10 @@ private:
             version (Posix) import core.sys.posix.sys.mman; // mmap
             version (FreeBSD) import core.sys.freebsd.sys.mman : MAP_ANON;
             version (NetBSD) import core.sys.netbsd.sys.mman : MAP_ANON;
+            version (DragonFlyBSD) import core.sys.dragonflybsd.sys.mman : MAP_ANON;
             version (CRuntime_Glibc) import core.sys.linux.sys.mman : MAP_ANON;
             version (Darwin) import core.sys.darwin.sys.mman : MAP_ANON;
+            version (CRuntime_UClibc) import core.sys.linux.sys.mman : MAP_ANON;
 
             static if( __traits( compiles, mmap ) )
             {
@@ -4606,7 +4675,7 @@ private:
     {
         assert( m_pmem && m_ctxt );
     }
-    body
+    do
     {
         // NOTE: m_ctxt is guaranteed to be alive because it is held in the
         //       global context list.
@@ -4650,7 +4719,7 @@ private:
         assert( m_ctxt.tstack && m_ctxt.tstack == m_ctxt.bstack );
         assert( cast(size_t) m_ctxt.bstack % (void*).sizeof == 0 );
     }
-    body
+    do
     {
         void* pstack = m_ctxt.tstack;
         scope( exit )  m_ctxt.tstack = pstack;
@@ -4908,6 +4977,29 @@ private:
             (cast(ubyte*)pstack - SZ)[0 .. SZ] = 0;
             pstack -= ABOVE;
             *cast(size_t*)(pstack - SZ_RA) = cast(size_t)&fiber_entryPoint;
+        }
+        else version( AsmAArch64_Posix )
+        {
+            // Like others, FP registers and return address (lr) are kept
+            // below the saved stack top (tstack) to hide from GC scanning.
+            // fiber_switchContext expects newp sp to look like this:
+            //   19: x19
+            //   ...
+            //    9: x29 (fp)  <-- newp tstack
+            //    8: x30 (lr)  [&fiber_entryPoint]
+            //    7: d8
+            //   ...
+            //    0: d15
+
+            version( StackGrowsDown ) {}
+            else
+                static assert(false, "Only full descending stacks supported on AArch64");
+
+            // Only need to set return address (lr).  Everything else is fine
+            // zero initialized.
+            pstack -= size_t.sizeof * 11;    // skip past x19-x29
+            push(cast(size_t) &fiber_entryPoint);
+            pstack += size_t.sizeof;         // adjust sp (newp) above lr
         }
         else version( AsmARM_Posix )
         {
@@ -5531,6 +5623,27 @@ version( D_InlineAsm_X86_64 )
 
 // regression test for Issue 13416
 version (FreeBSD) unittest
+{
+    static void loop()
+    {
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        auto thr = pthread_self();
+        foreach (i; 0 .. 50)
+            pthread_attr_get_np(thr, &attr);
+        pthread_attr_destroy(&attr);
+    }
+
+    auto thr = new Thread(&loop).start();
+    foreach (i; 0 .. 50)
+    {
+        thread_suspendAll();
+        thread_resumeAll();
+    }
+    thr.join();
+}
+
+version (DragonFlyBSD) unittest
 {
     static void loop()
     {

@@ -19,11 +19,11 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/attrib.h"
-#include "dfrontend/aggregate.h"
-#include "dfrontend/enum.h"
-#include "dfrontend/mtype.h"
-#include "dfrontend/target.h"
+#include "dmd/attrib.h"
+#include "dmd/aggregate.h"
+#include "dmd/enum.h"
+#include "dmd/mtype.h"
+#include "dmd/target.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -97,7 +97,7 @@ same_type_p (Type *t1, Type *t2)
     return true;
 
   /* Types are mutably the same type.  */
-  if (tb1->immutableOf ()->equals (tb2->immutableOf ()))
+  if (tb1->ty == tb2->ty && tb1->equivalent (tb2))
     return true;
 
   return false;
@@ -364,7 +364,7 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
       AttribDeclaration *attrib = sym->isAttribDeclaration ();
       if (attrib != NULL)
 	{
-	  Dsymbols *decls = attrib->include (NULL, NULL);
+	  Dsymbols *decls = attrib->include (NULL);
 	  if (decls != NULL)
 	    {
 	      fields += layout_aggregate_members (decls, context, inherited_p);
@@ -419,7 +419,7 @@ layout_aggregate_type (AggregateDeclaration *decl, tree type,
 	      insert_aggregate_field (type, field, 0);
 	    }
 
-	  if (!id && !cd->cpp)
+	  if (!id && !cd->isCPPclass ())
 	    {
 	      tree field = create_field_decl (ptr_type_node, "__monitor", 1,
 					      inherited_p);
@@ -852,11 +852,26 @@ public:
 
   void visit (TypeStruct *t)
   {
+    /* Merge types in the backend if the frontend did not itself do so.  */
+    tree deco = get_identifier (mangle_decl (t->sym));
+    if (IDENTIFIER_DAGGREGATE (deco))
+      {
+	AggregateDeclaration *ad = IDENTIFIER_DAGGREGATE (deco);
+	gcc_assert (ad->isStructDeclaration ());
+
+	/* Non-templated variables shouldn't be defined twice.  */
+	if (!t->sym->isInstantiated ())
+	  ScopeDsymbol::multiplyDefined (t->sym->loc, t->sym, ad);
+
+	t->ctype = build_ctype (ad->type);
+	return;
+      }
+
     /* Need to set this right away in case of self-references.  */
     t->ctype = make_node (t->sym->isUnionDeclaration ()
 			  ? UNION_TYPE : RECORD_TYPE);
     d_keep (t->ctype);
-
+    IDENTIFIER_DAGGREGATE (deco) = t->sym;
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
 
     if (t->sym->members)
@@ -898,11 +913,27 @@ public:
 
   void visit (TypeClass *t)
   {
+    /* Merge types in the backend if the frontend did not itself do so.  */
+    tree deco = get_identifier (mangle_decl (t->sym));
+    if (IDENTIFIER_DAGGREGATE (deco))
+      {
+	AggregateDeclaration *ad = IDENTIFIER_DAGGREGATE (deco);
+	gcc_assert (ad->isClassDeclaration ());
+
+	/* Non-templated variables shouldn't be defined twice.  */
+	if (!t->sym->isInstantiated ())
+	  ScopeDsymbol::multiplyDefined (t->sym->loc, t->sym, ad);
+
+	t->ctype = build_ctype (ad->type);
+	return;
+      }
+
     /* Need to set ctype right away in case of self-references to
        the type during this call.  */
     tree basetype = make_node (RECORD_TYPE);
     t->ctype = build_pointer_type (basetype);
     d_keep (t->ctype);
+    IDENTIFIER_DAGGREGATE (deco) = t->sym;
 
     /* Note that lang_specific data is assigned to both the reference
        and the underlying record type.  */
@@ -939,10 +970,11 @@ public:
     for (size_t i = 0; i < t->sym->vtbl.dim; i++)
       {
 	FuncDeclaration *fd = t->sym->vtbl[i]->isFuncDeclaration ();
-	tree method = fd ? get_symbol_decl (fd) : NULL_TREE;
+	tree method = fd ? get_symbol_decl (fd) : error_mark_node;
 
-	if (method && DECL_CONTEXT (method) == basetype
-	    && !chain_member (method, TYPE_FIELDS (basetype)))
+	if (!error_operand_p (method)
+	    && DECL_CONTEXT (method) == basetype
+	    && !chain_member (method, TYPE_METHODS (basetype)))
 	  {
 	    DECL_CHAIN (method) = TYPE_METHODS (basetype);
 	    TYPE_METHODS (basetype) = method;

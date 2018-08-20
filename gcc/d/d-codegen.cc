@@ -19,11 +19,11 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/ctfe.h"
-#include "dfrontend/declaration.h"
-#include "dfrontend/target.h"
-#include "dfrontend/template.h"
+#include "dmd/aggregate.h"
+#include "dmd/ctfe.h"
+#include "dmd/declaration.h"
+#include "dmd/target.h"
+#include "dmd/template.h"
 
 #include "tree.h"
 #include "tree-iterator.h"
@@ -152,7 +152,7 @@ declaration_type (Declaration *decl)
     {
       TypeFunction *tf = TypeFunction::create (NULL, decl->type, false, LINKd);
       TypeDelegate *t = TypeDelegate::create (tf);
-      return build_ctype (t->merge ());
+      return build_ctype (t->merge2 ());
     }
 
   /* Static array va_list have array->pointer conversions applied.  */
@@ -205,7 +205,7 @@ type_passed_as (Parameter *arg)
     {
       TypeFunction *tf = TypeFunction::create (NULL, arg->type, false, LINKd);
       TypeDelegate *t = TypeDelegate::create (tf);
-      return build_ctype (t->merge ());
+      return build_ctype (t->merge2 ());
     }
 
   /* Static array va_list have array->pointer conversions applied.  */
@@ -795,9 +795,17 @@ lower_struct_comparison (tree_code code, StructDeclaration *sd,
   tree_code tcode = (code == EQ_EXPR) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
   tree tmemcmp = NULL_TREE;
 
-  /* We can skip the compare if the structs are empty  */
+  /* We can skip the compare if the structs are empty.  */
   if (sd->fields.dim == 0)
-    return build_boolop (code, integer_zero_node, integer_zero_node);
+    {
+      tmemcmp = build_boolop (code, integer_zero_node, integer_zero_node);
+      if (TREE_SIDE_EFFECTS (t2))
+	tmemcmp = compound_expr (t2, tmemcmp);
+      if (TREE_SIDE_EFFECTS (t1))
+	tmemcmp = compound_expr (t1, tmemcmp);
+
+      return tmemcmp;
+    }
 
   /* Let backend take care of union comparisons.  */
   if (sd->isUnionDeclaration ())
@@ -877,7 +885,15 @@ build_struct_comparison (tree_code code, StructDeclaration *sd,
 {
   /* We can skip the compare if the structs are empty.  */
   if (sd->fields.dim == 0)
-    return build_boolop (code, integer_zero_node, integer_zero_node);
+    {
+      tree exp = build_boolop (code, integer_zero_node, integer_zero_node);
+      if (TREE_SIDE_EFFECTS (t2))
+	exp = compound_expr (t2, exp);
+      if (TREE_SIDE_EFFECTS (t1))
+	exp = compound_expr (t1, exp);
+
+      return exp;
+    }
 
   /* Make temporaries to prevent multiple evaluations.  */
   tree t1init = stabilize_expr (&t1);
@@ -1143,107 +1159,6 @@ build_struct_literal (tree type, vec<constructor_elt, va_gc> *init)
     TREE_CONSTANT (ctor) = 1;
 
   return ctor;
-}
-
-/* Find the field inside aggregate TYPE identified by IDENT at field OFFSET.  */
-
-static tree
-find_aggregate_field (tree type, tree ident, tree offset)
-{
-  tree fields = TYPE_FIELDS (type);
-
-  for (tree field = fields; field != NULL_TREE; field = TREE_CHAIN (field))
-    {
-      if (DECL_NAME (field) == NULL_TREE
-	  && RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
-	  && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
-	{
-	  /* Search nesting anonymous structs and unions.  */
-	  tree vfield = find_aggregate_field (TREE_TYPE (field),
-					      ident, offset);
-	  if (vfield != NULL_TREE)
-	    return vfield;
-	}
-      else if (DECL_NAME (field) == ident
-	       && (offset == NULL_TREE
-		   || DECL_FIELD_OFFSET (field) == offset))
-	{
-	  /* Found matching field at offset.  */
-	  return field;
-	}
-    }
-
-  return NULL_TREE;
-}
-/* Return a constructor that matches the layout of the class expression EXP.  */
-
-tree
-build_class_instance (ClassReferenceExp *exp)
-{
-  ClassDeclaration *cd = exp->originalClass ();
-  tree type = TREE_TYPE (build_ctype (exp->value->stype));
-  vec<constructor_elt, va_gc> *ve = NULL;
-
-  /* The set base vtable field.  */
-  tree vptr = build_address (get_vtable_decl (cd));
-  CONSTRUCTOR_APPEND_ELT (ve, TYPE_FIELDS (type), vptr);
-
-  /* Go through the inheritance graph from top to bottom.  This will add all
-     values to the constructor out of order, however build_struct_literal
-     will re-order all values before returning the finished literal.  */
-  for (ClassDeclaration *bcd = cd; bcd != NULL; bcd = bcd->baseClass)
-    {
-      /* Anonymous vtable interface fields are layed out before the fields of
-	 each class.  The interface offset is used to determine where to put
-	 the classinfo offset reference.  */
-      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *bc = (*bcd->vtblInterfaces)[i];
-
-	  for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
-	    {
-	      gcc_assert (cd2 != NULL);
-
-	      unsigned csymoffset = base_vtable_offset (cd2, bc);
-	      if (csymoffset != (unsigned) ~0)
-		{
-		  tree csym = build_address (get_classinfo_decl (cd2));
-		  csym = build_offset (csym, size_int (csymoffset));
-
-		  tree field = find_aggregate_field (type, NULL_TREE,
-						     size_int (bc->offset));
-		  gcc_assert (field != NULL_TREE);
-
-		  CONSTRUCTOR_APPEND_ELT (ve, field, csym);
-		  break;
-		}
-	    }
-	}
-
-      /* Generate initial values of all fields owned by current class.
-	 Use both the name and offset to find the right field.  */
-      for (size_t i = 0; i < bcd->fields.dim; i++)
-	{
-	  VarDeclaration *vfield = bcd->fields[i];
-	  int index = exp->findFieldIndexByName (vfield);
-	  gcc_assert (index != -1);
-
-	  Expression *value = (*exp->value->elements)[index];
-	  if (!value)
-	    continue;
-
-	  /* Use find_aggregate_field to get the overridden field decl,
-	     instead of the field associated with the base class.  */
-	  tree field = get_symbol_decl (bcd->fields[i]);
-	  field = find_aggregate_field (type, DECL_NAME (field),
-					DECL_FIELD_OFFSET (field));
-	  gcc_assert (field != NULL_TREE);
-
-	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
-	}
-    }
-
-  return build_struct_literal (type, ve);
 }
 
 /* Given the TYPE of an anonymous field inside T, return the
@@ -1755,7 +1670,10 @@ build_bounds_condition (const Loc& loc, tree index, tree len, bool inclusive)
      have already taken care of implicit casts to unsigned.  */
   tree condition = fold_build2 (inclusive ? GT_EXPR : GE_EXPR,
 				bool_type_node, index, len);
-  tree boundserr = d_assert_call (loc, LIBCALL_ARRAY_BOUNDS);
+  /* Terminate the program with a trap if no D runtime present.  */
+  tree boundserr = (global.params.checkAction == CHECKACTION_C)
+    ? build_call_expr (builtin_decl_explicit (BUILT_IN_TRAP), 0)
+    : d_assert_call (loc, LIBCALL_ARRAY_BOUNDS);
 
   return build_condition (TREE_TYPE (index), condition, boundserr, index);
 }
@@ -1769,13 +1687,13 @@ array_bounds_check (void)
 
   switch (global.params.useArrayBounds)
     {
-    case BOUNDSCHECKoff:
+    case CHECKENABLEoff:
       return false;
 
-    case BOUNDSCHECKon:
+    case CHECKENABLEon:
       return true;
 
-    case BOUNDSCHECKsafeonly:
+    case CHECKENABLEsafeonly:
       /* For D2 safe functions only.  */
       fd = d_function_chain->function;
       if (fd && fd->type->ty == Tfunction)

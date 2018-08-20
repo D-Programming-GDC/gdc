@@ -11,7 +11,7 @@ class C282a
     {
     }
 
-    void f282() // { dg-error "conflicts with gdc282.C282a.f282" }
+    void f282() // { dg-error "conflicts with 'gdc282.C282a.f282'" }
     {
     }
 }
@@ -26,7 +26,7 @@ class C282b
     {
     }
 
-    void f282() // { dg-error "conflicts with gdc282.C282b.f282" }
+    void f282() // { dg-error "conflicts with 'gdc282.C282b.f282'" }
     {
     }
 }
@@ -41,7 +41,7 @@ class C282c
     {
     }
 
-    void f282() // { dg-error "conflicts with gdc282.C282c.f282" }
+    void f282() // { dg-error "conflicts with 'gdc282.C282c.f282'" }
     {
     }
 }

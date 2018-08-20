@@ -7,7 +7,7 @@
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
  * Authors:   Walter Bright, Sean Kelly, Martin Nowak
- * Source: $(DRUNTIMESRC src/rt/_sections_win64.d)
+ * Source: $(DRUNTIMESRC rt/_sections_win64.d)
  */
 
 module rt.sections_win64;
@@ -192,7 +192,7 @@ out (result)
     foreach(m; result)
         assert(m !is null);
 }
-body
+do
 {
     auto m = (cast(immutable(ModuleInfo*)*)&_minfo_beg)[1 .. &_minfo_end - &_minfo_beg];
     /* Because of alignment inserted by the linker, various null pointers

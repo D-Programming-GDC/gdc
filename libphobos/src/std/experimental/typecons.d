@@ -1,14 +1,14 @@
 // Written in the D programming language.
 
 /**
-This module implements experimental additions/modifications to $(MREF std, _typecons).
+This module implements experimental additions/modifications to $(MREF std, typecons).
 
-Use this module to test out new functionality for $(REF wrap, std, _typecons)
+Use this module to test out new functionality for $(REF wrap, std, typecons)
 which allows for a struct to be wrapped against an interface; the
-implementation in $(MREF std, _typecons) only allows for classes to use the wrap
+implementation in $(MREF std, typecons) only allows for classes to use the wrap
 functionality.
 
-Source:    $(PHOBOSSRC std/experimental/_typecons.d)
+Source:    $(PHOBOSSRC std/experimental/typecons.d)
 
 Copyright: Copyright the respective authors, 2008-
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
@@ -23,9 +23,7 @@ module std.experimental.typecons;
 import std.meta; // : AliasSeq, allSatisfy;
 import std.traits;
 
-import std.typecons : Tuple, tuple, Bind, DerivedFunctionType,
-       isImplicitlyConvertible, mixinAll, staticIota,
-       GetOverloadedMethods;
+import std.typecons : Tuple, tuple, Bind, DerivedFunctionType, GetOverloadedMethods;
 
 private
 {
@@ -60,14 +58,14 @@ if (is(T == class) || is(T == interface))
 
 @system unittest
 {
-    class C { @disable opCast(T)() {} }
+    class C { @disable void opCast(T)(); }
     auto c = new C;
     static assert(!__traits(compiles, cast(Object) c));
     auto o = dynamicCast!Object(c);
     assert(c is o);
 
-    interface I { @disable opCast(T)() {} Object instance(); }
-    interface J { @disable opCast(T)() {} Object instance(); }
+    interface I { @disable void opCast(T)(); Object instance(); }
+    interface J { @disable void opCast(T)(); Object instance(); }
     class D : I, J { Object instance() { return this; } }
     I i = new D();
     static assert(!__traits(compiles, cast(J) i));
@@ -295,7 +293,7 @@ if (Targets.length >= 1 && allSatisfy!(isInterface, Targets))
                     {
                         string r;
                         bool first = true;
-                        foreach (i; staticIota!(0, num))
+                        foreach (i; 0 .. num)
                         {
                             import std.conv : to;
                             r ~= (first ? "" : ", ") ~ " a" ~ (i+1).to!string;
@@ -320,8 +318,8 @@ if (Targets.length >= 1 && allSatisfy!(isInterface, Targets))
                 }
 
             public:
-                mixin mixinAll!(
-                    staticMap!(generateFun, staticIota!(0, TargetMembers.length)));
+                static foreach (i; 0 .. TargetMembers.length)
+                    mixin(generateFun!i);
             }
         }
     }

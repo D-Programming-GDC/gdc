@@ -2,9 +2,9 @@
  * The default hash implementation.
  *
  * Copyright: Copyright Sean Kelly 2009 - 2016.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
- * Source: $(DRUNTIMESRC src/rt/util/_hash.d)
+ * Source: $(DRUNTIMESRC rt/util/_hash.d)
  */
 module rt.util.hash;
 

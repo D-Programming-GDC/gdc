@@ -6,7 +6,7 @@
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   $(HTTP digitalmars.com, Walter Bright),
  *            Matthew Wilson
- * Source:    $(PHOBOSSRC std/_mmfile.d)
+ * Source:    $(PHOBOSSRC std/mmfile.d)
  *
  * $(SCRIPT inhibitQuickIndex = 1;)
  */
@@ -88,7 +88,7 @@ class MmFile
         int oflag;
         int fmode;
 
-        switch (mode)
+        final switch (mode)
         {
         case Mode.read:
             flags = MAP_SHARED;
@@ -118,9 +118,6 @@ class MmFile
             oflag = O_RDWR;
             fmode = 0;
             break;
-
-        default:
-            assert(0);
         }
 
         fd = fildes;
@@ -184,7 +181,7 @@ class MmFile
             uint dwCreationDisposition;
             uint flProtect;
 
-            switch (mode)
+            final switch (mode)
             {
             case Mode.read:
                 dwDesiredAccess2 = GENERIC_READ;
@@ -218,9 +215,6 @@ class MmFile
                 flProtect = PAGE_WRITECOPY;
                 dwDesiredAccess = FILE_MAP_COPY;
                 break;
-
-            default:
-                assert(0);
             }
 
             if (filename != null)
@@ -281,7 +275,7 @@ class MmFile
             int oflag;
             int fmode;
 
-            switch (mode)
+            final switch (mode)
             {
             case Mode.read:
                 flags = MAP_SHARED;
@@ -311,9 +305,6 @@ class MmFile
                 oflag = O_RDWR;
                 fmode = 0;
                 break;
-
-            default:
-                assert(0);
             }
 
             if (filename.length)
@@ -438,6 +429,11 @@ class MmFile
         debug (MMFILE) printf("MmFile.length()\n");
         return size;
     }
+
+    /**
+     * Forwards `length`.
+     */
+    alias opDollar = length;
 
     /**
      * Read-only property returning the file mode.
@@ -718,4 +714,10 @@ version(linux)
     auto fn = std.file.deleteme ~ "-testing.txt";
     scope(exit) std.file.remove(fn);
     verifyThrown(scoped!MmFile(fn, MmFile.Mode.readWrite, 0, null));
+}
+
+@system unittest
+{
+    MmFile shar = new MmFile(null, MmFile.Mode.readWrite, 10, null, 0);
+    void[] output = shar[0 .. $];
 }

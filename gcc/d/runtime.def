@@ -100,8 +100,6 @@ DEF_D_RUNTIME (DELARRAYT, "_d_delarray_t", RT(VOID),
    arrays.  Such as an array of structs or classes.  */
 DEF_D_RUNTIME (ADEQ2, "_adEq2", RT(INT),
 	       P3(ARRAY_VOID, ARRAY_VOID, CONST_TYPEINFO), 0)
-DEF_D_RUNTIME (ADCMP2, "_adCmp2", RT(INT),
-	       P3(ARRAY_VOID, ARRAY_VOID, CONST_TYPEINFO), 0)
 
 /* Used when casting from one array type to another where the index type
    sizes differ.  Such as from int[] to short[].  */
@@ -201,20 +199,6 @@ DEF_D_RUNTIME (CXA_END_CATCH, "__cxa_end_catch", RT(VOID), P0(), 0)
    class != null for validating the state of a class.  */
 DEF_D_RUNTIME (INVARIANT, "_D9invariant12_d_invariantFC6ObjectZv", RT(VOID),
 	       P1(OBJECT), 0)
-
-/* Used when performing a switch/cases on a string.  The `u' and `d' variants
-   are for UTF-16 and UTF-32 strings respectively.  */
-DEF_D_RUNTIME (SWITCH_STRING, "_d_switch_string", RT(INT),
-	       P2(ARRAY_STRING, STRING), 0)
-DEF_D_RUNTIME (SWITCH_USTRING, "_d_switch_ustring", RT(INT),
-	       P2(ARRAY_WSTRING, WSTRING), 0)
-DEF_D_RUNTIME (SWITCH_DSTRING, "_d_switch_dstring", RT(INT),
-	       P2(ARRAY_DSTRING, DSTRING), 0)
-
-/* Used when throwing an error that a switch statement has no default case,
-   and yet none of the existing cases matched.  */
-DEF_D_RUNTIME (SWITCH_ERROR, "_d_switch_error", RT(VOID), P2(STRING, UINT),
-	       ECF_NORETURN)
 
 #undef P0
 #undef P1

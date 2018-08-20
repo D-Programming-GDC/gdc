@@ -50,7 +50,7 @@
  *            Copyright (C) 1994 Stephen L. Moshier (moshier@world.std.com).
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Stephen L. Moshier (original C code). Conversion to D by Don Clugston
- * Source:    $(PHOBOSSRC std/_mathspecial.d)
+ * Source:    $(PHOBOSSRC std/mathspecial.d)
  */
 module std.mathspecial;
 import std.internal.math.errorfunction;
@@ -253,21 +253,25 @@ real betaIncompleteInverse(real a, real b, real y )
  * values of a and x.
  */
 real gammaIncomplete(real a, real x )
-in {
+in
+{
    assert(x >= 0);
    assert(a > 0);
 }
-body {
+do
+{
     return std.internal.math.gammafunction.gammaIncomplete(a, x);
 }
 
 /** ditto */
 real gammaIncompleteCompl(real a, real x )
-in {
+in
+{
    assert(x >= 0);
    assert(a > 0);
 }
-body {
+do
+{
     return std.internal.math.gammafunction.gammaIncompleteCompl(a, x);
 }
 
@@ -278,11 +282,13 @@ body {
  *  gammaIncompleteCompl( a, x ) = p.
  */
 real gammaIncompleteComplInverse(real a, real p)
-in {
+in
+{
   assert(p >= 0 && p <= 1);
   assert(a > 0);
 }
-body {
+do
+{
     return std.internal.math.gammafunction.gammaIncompleteComplInv(a, p);
 }
 
@@ -352,10 +358,11 @@ real normalDistribution(real x)
  * Note: This function is only implemented to 80 bit precision.
  */
 real normalDistributionInverse(real p)
-in {
+in
+{
   assert(p >= 0.0L && p <= 1.0L, "Domain error");
 }
-body
+do
 {
     return std.internal.math.errorfunction.normalDistributionInvImpl(p);
 }

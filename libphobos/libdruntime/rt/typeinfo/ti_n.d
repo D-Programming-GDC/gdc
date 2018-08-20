@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2016.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Kenji Hara
  */
 
@@ -19,7 +19,7 @@ class TypeInfo_n : TypeInfo
 {
     override string toString() const @safe { return "typeof(null)"; }
 
-    override size_t getHash(in void* p) const
+    override size_t getHash(scope const void* p) const
     {
         return 0;
     }
