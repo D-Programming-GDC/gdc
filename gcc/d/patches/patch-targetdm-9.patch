@@ -308,7 +308,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3203,6 +3227,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3231,6 +3255,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4813,6 +4841,7 @@ case ${target} in
+@@ -4845,6 +4873,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -1300,7 +1300,7 @@ The following OS versions are implemented:
 +extern void s390_d_target_versions (void);
 --- a/gcc/config/s390/s390.h
 +++ b/gcc/config/s390/s390.h
-@@ -204,6 +204,9 @@ enum processor_flags
+@@ -200,6 +200,9 @@ enum processor_flags
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() s390_cpu_cpp_builtins (pfile)
  
@@ -1309,7 +1309,7 @@ The following OS versions are implemented:
 +
  #ifdef DEFAULT_TARGET_64BIT
  #define TARGET_DEFAULT     (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP	\
-                             | MASK_OPT_HTM | MASK_OPT_VX)
+ 			    | MASK_OPT_HTM | MASK_OPT_VX)
 --- a/gcc/config/s390/t-s390
 +++ b/gcc/config/s390/t-s390
 @@ -25,3 +25,7 @@ s390-c.o: $(srcdir)/config/s390/s390-c.c
