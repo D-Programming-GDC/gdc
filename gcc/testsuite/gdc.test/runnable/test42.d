@@ -1704,7 +1704,7 @@ class C103
         {
             va_list ap;
             va_start(ap, a);
-        auto internal = va_arg!int(ap);
+            auto internal = va_arg!int(ap);
             printf("internal: %d\n", internal);
             x103 = internal;
             va_end(ap);
@@ -1831,7 +1831,7 @@ void test108()
 
 void test109()
 {
-    double x[] = new double[1];
+    double[] x = new double[1];
     assert(x[0] != 0);
 }
 
@@ -1898,7 +1898,7 @@ struct VariantN
 
     void bar(int value, int i)
     {
-        int args[2] = [ VariantN(value), VariantN(i) ];
+        int[2] args = [ VariantN(value), VariantN(i) ];
     }
 }
 
@@ -2264,7 +2264,7 @@ void test135()
 
 void test136()
 {
-    struct S { int i[3]; }
+    struct S { int[3] i; }
     enum S s = S(8);
     const int i  = s.i[2];
     assert(i == 8);
@@ -2472,19 +2472,8 @@ void crash(int x)
 
     version(GNU)
     {
-        version(X86) asm
-        {
-            "int $3;" : :  :;
-        }
-        else version(X86_64) asm
-        {
-            "int $3;" : : :;
-        }
-        else
-        {
-            import gcc.builtins;
-            __builtin_trap();
-        }
+        import gcc.builtins;
+        __builtin_trap();
     }
     else
     {
@@ -3301,7 +3290,7 @@ void test200()
 // Bugzilla 2931
 
 struct Bug2931 {
-        int val[3][4];
+    int[4][3] val;
 }
 
 struct Outer2931 {
@@ -4051,10 +4040,10 @@ void test229() {
 
 /***************************************************/
 
-static immutable real negtab[14] =
+static immutable real[14] negtab =
     [ 1e-4096L,1e-2048L,1e-1024L,1e-512L,1e-256L,1e-128L,1e-64L,1e-32L,
             1e-16L,1e-8L,1e-4L,1e-2L,1e-1L,1.0L ];
-static immutable real postab[13] =
+static immutable real[13] postab =
     [ 1e+4096L,1e+2048L,1e+1024L,1e+512L,1e+256L,1e+128L,1e+64L,1e+32L,
             1e+16L,1e+8L,1e+4L,1e+2L,1e+1L ];
 
@@ -4241,14 +4230,7 @@ int bug3809()
 {
     version(GNU)
     {
-        version(X86)
-            asm { "nop"; }
-        else version(X86_64)
-            asm { "nop"; }
-        else version(ARM)
-            asm { "nop"; }
-        else
-            static assert(false, "ASM code not implemented for this architecture");
+        asm { ""; }
     }
     else
     {

@@ -15,7 +15,7 @@
 #pragma once
 #endif /* __DMC__ */
 
-#include "port.h"
+#include "root/port.h"
 #include "mars.h"
 
 class Identifier;
@@ -182,6 +182,7 @@ enum TOK
         TOKinterval,
         TOKvoidexp,
         TOKcantexp,
+        TOKshowctfecontext,
 
         TOKobjc_class_reference,
 

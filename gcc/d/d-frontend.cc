@@ -368,15 +368,6 @@ CTFloat::hash (real_t r)
 
 /* Implements backend-specific interfaces used by the frontend.  */
 
-/* Semantically analyze AsmStatement where SC is the scope.  */
-
-Statement *
-asmSemantic (AsmStatement *s, Scope *sc)
-{
-  sc->func->hasReturnExp |= 8;
-  return s;
-}
-
 /* Determine if function FD is a builtin one that we can evaluate in CTFE.  */
 
 BUILTIN

@@ -154,7 +154,7 @@ DRUNTIME_DSOURCES_GENERATED = gcc/config.d gcc/libbacktrace.d
 # https://www.gnu.org/software/automake/manual/html_node/Wildcards.html
 DRUNTIME_SSOURCES = core/threadasm.S
 
-DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
+DRUNTIME_CSOURCES = core/stdc/errno_.c
 
 DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/checkedint.d core/cpuid.d core/demangle.d core/exception.d \
@@ -180,14 +180,15 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	rt/critical_.d rt/deh.d rt/dmain2.d rt/ehalloc.d rt/invariant.d \
 	rt/lifetime.d rt/memory.d rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d \
 	rt/sections.d rt/sections_android.d rt/sections_elf_shared.d \
-	rt/sections_osx.d rt/sections_solaris.d rt/sections_win32.d \
-	rt/sections_win64.d rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_Acdouble.d \
-	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
-	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
-	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
-	rt/typeinfo/ti_Ashort.d rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d \
-	rt/typeinfo/ti_cdouble.d rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d \
-	rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
+	rt/sections_osx_x86.d rt/sections_osx_x86_64.d rt/sections_solaris.d \
+	rt/sections_win32.d rt/sections_win64.d rt/tlsgc.d \
+	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
+	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
+	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
+	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
+	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
+	rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d \
+	rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
 	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
 	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
 	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
@@ -196,8 +197,8 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	rt/typeinfo/ti_ucent.d rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d \
 	rt/typeinfo/ti_ushort.d rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d \
 	rt/util/array.d rt/util/container/array.d rt/util/container/common.d \
-	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
-	rt/util/random.d rt/util/typeinfo.d rt/util/utf.d
+	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/random.d \
+	rt/util/typeinfo.d rt/util/utf.d
 
 DRUNTIME_DSOURCES_STDCXX = core/stdcpp/exception.d \
 	core/stdcpp/typeinfo.d
@@ -235,7 +236,8 @@ DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
 	core/sys/freebsd/sys/elf.d core/sys/freebsd/sys/elf32.d \
 	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
 	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
-	core/sys/freebsd/sys/mman.d core/sys/freebsd/time.d
+	core/sys/freebsd/sys/mman.d core/sys/freebsd/sys/mount.d \
+	core/sys/freebsd/time.d
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \

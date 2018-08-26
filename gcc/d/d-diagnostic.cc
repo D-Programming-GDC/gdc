@@ -194,14 +194,16 @@ verrorSupplemental (const Loc& loc, const char *format, va_list ap)
 void ATTRIBUTE_GCC_DIAG(2,0)
 vwarning (const Loc& loc, const char *format, va_list ap)
 {
-  if (global.params.warnings && !global.gag)
+  if (!global.gag && global.params.warnings)
     {
-      /* Warnings don't count if gagged.  */
+      /* Warnings don't count if not treated as errors.  */
       if (global.params.warnings == 1)
 	global.warnings++;
 
       d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_WARNING, false);
     }
+  else if (global.gag)
+    global.gaggedWarnings++;
 }
 
 /* Print supplementary message about the last warning with explicit location
@@ -241,6 +243,8 @@ vdeprecation (const Loc& loc, const char *format, va_list ap,
 				      DK_WARNING, false);
       free (xformat);
     }
+  else if (global.gag)
+    global.gaggedWarnings++;
 }
 
 /* Print supplementary message about the last deprecation with explicit

@@ -119,16 +119,16 @@ public:
     void visit(AST.TryFinallyStatement s) { visit(cast(AST.Statement)s); }
     void visit(AST.ThrowStatement s) { visit(cast(AST.Statement)s); }
     void visit(AST.AsmStatement s) { visit(cast(AST.Statement)s); }
-    version (IN_GCC)
-    {
-        void visit(AST.ExtAsmStatement s) { visit(cast(AST.Statement)s); }
-    }
     void visit(AST.ExpStatement s) { visit(cast(AST.Statement)s); }
     void visit(AST.CompoundStatement s) { visit(cast(AST.Statement)s); }
 
     // CompoundStatements
     void visit(AST.CompoundDeclarationStatement s) { visit(cast(AST.CompoundStatement)s); }
     void visit(AST.CompoundAsmStatement s) { visit(cast(AST.CompoundStatement)s); }
+
+    // AsmStatements
+    void visit(AST.InlineAsmStatement s) { visit(cast(AST.AsmStatement)s); }
+    void visit(AST.GccAsmStatement s) { visit(cast(AST.AsmStatement)s); }
 
     //=========================================================================================
     // Types

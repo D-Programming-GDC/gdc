@@ -15,7 +15,7 @@
 #pragma once
 #endif /* __DMC__ */
 
-#include "root.h"
+#include "root/root.h"
 #include "dsymbol.h"
 
 class ClassDeclaration;
@@ -177,7 +177,7 @@ struct ModuleDeclaration
     bool isdeprecated;  // if it is a deprecated module
     Expression *msg;
 
-    const char *toChars();
+    const char *toChars() const;
 };
 
 #endif /* DMD_MODULE_H */

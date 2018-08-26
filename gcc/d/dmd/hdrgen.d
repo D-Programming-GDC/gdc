@@ -685,67 +685,6 @@ public:
         buf.writenl();
     }
 
-    version (IN_GCC)
-    {
-        override void visit(ExtAsmStatement s)
-        {
-            buf.writestring ("gcc asm { ");
-
-            if (s.insn)
-                buf.writestring (s.insn.toChars());
-
-            buf.writestring (" : ");
-
-            if (s.args)
-            {
-                for (size_t i = 0; i < s.args.dim; i++)
-                {
-                    Identifier name = (*s.names)[i];
-                    Expression constr = (*s.constraints)[i];
-                    Expression arg = (*s.args)[i];
-
-                    if (name)
-                    {
-                        buf.writestring ("[");
-                        buf.writestring (name.toChars());
-                        buf.writestring ("] ");
-                    }
-
-                    if (constr)
-                    {
-                        buf.writestring (constr.toChars());
-                        buf.writestring (" ");
-                    }
-
-                    if (arg)
-                        buf.writestring (arg.toChars());
-
-                    if (i < s.outputargs - 1)
-                        buf.writestring (", ");
-                    else if (i == s.outputargs - 1)
-                        buf.writestring (" : ");
-                    else if (i < s.args.dim - 1)
-                        buf.writestring (", ");
-                }
-            }
-
-            if (s.clobbers)
-            {
-                buf.writestring (" : ");
-                for (size_t i = 0; i < s.clobbers.dim; i++)
-                {
-                    Expression clobber = (*s.clobbers)[i];
-                    buf.writestring (clobber.toChars());
-                    if (i < s.clobbers.dim - 1)
-                        buf.writestring (", ");
-                }
-            }
-
-            buf.writestring ("; }");
-            buf.writenl();
-        }
-    }
-
     override void visit(ImportStatement s)
     {
         foreach (imp; *s.imports)
@@ -1101,7 +1040,7 @@ public:
 
     override void visit(TypeEnum t)
     {
-        buf.writestring(t.sym.toChars());
+        buf.writestring(hgs.fullQual ? t.sym.toPrettyChars() : t.sym.toChars());
     }
 
     override void visit(TypeStruct t)
@@ -3175,6 +3114,18 @@ public:
     ////////////////////////////////////////////////////////////////////////////
     override void visit(Parameter p)
     {
+        if (p.userAttribDecl)
+        {
+            buf.writestring("@");
+            scope(exit) buf.writestring(" ");
+
+            bool isAnonymous = p.userAttribDecl.atts.dim > 0 && (*p.userAttribDecl.atts)[0].op != TOK.call;
+            if (isAnonymous)
+                buf.writestring("(");
+            argsToBuffer(p.userAttribDecl.atts);
+            if (isAnonymous)
+                buf.writestring(")");
+        }
         if (p.storageClass & STC.auto_)
             buf.writestring("auto ");
         if (p.storageClass & STC.return_)
@@ -3340,7 +3291,7 @@ extern (C++) const(char)* stcToChars(ref StorageClass stc)
         const(char)* id;
     }
 
-    static __gshared SCstring* table =
+    __gshared SCstring* table =
     [
         SCstring(STC.auto_, TOK.auto_),
         SCstring(STC.scope_, TOK.scope_),
@@ -3396,6 +3347,16 @@ extern (C++) const(char)* stcToChars(ref StorageClass stc)
     return null;
 }
 
+
+/**
+ * Returns:
+ *   a human readable representation of `stc`
+ */
+extern (D) const(char)[] stcToString(ref StorageClass stc)
+{
+    return stcToChars(stc).toDString;
+}
+
 extern (C++) void trustToBuffer(OutBuffer* buf, TRUST trust)
 {
     const(char)* p = trustToChars(trust);
@@ -3403,7 +3364,19 @@ extern (C++) void trustToBuffer(OutBuffer* buf, TRUST trust)
         buf.writestring(p);
 }
 
+/**
+ * Returns:
+ *   a human readable representation of `trust`,
+ *   which is the token `trust` corresponds to
+ */
 extern (C++) const(char)* trustToChars(TRUST trust)
+{
+    /// Works because we return a literal
+    return trustToString(trust).ptr;
+}
+
+/// Ditto
+extern (D) string trustToString(TRUST trust)
 {
     final switch (trust)
     {
@@ -3465,7 +3438,18 @@ extern (C++) void protectionToBuffer(OutBuffer* buf, Prot prot)
     }
 }
 
+/**
+ * Returns:
+ *   a human readable representation of `kind`
+ */
 extern (C++) const(char)* protectionToChars(Prot.Kind kind)
+{
+    // Null terminated because we return a literal
+    return protectionToString(kind).ptr;
+}
+
+/// Ditto
+extern (D) string protectionToString(Prot.Kind kind)
 {
     final switch (kind)
     {

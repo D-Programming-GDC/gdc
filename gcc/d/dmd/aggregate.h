@@ -15,7 +15,7 @@
 #pragma once
 #endif /* __DMC__ */
 
-#include "root.h"
+#include "root/root.h"
 
 #include "dsymbol.h"
 #include "declaration.h"
@@ -79,11 +79,11 @@ struct ClassKind
 {
     enum Type
     {
-        /// the class is a d(efault) class
+        /// the aggregate is a d(efault) struct/class/interface
         d,
-        /// the class is a C++ interface
+        /// the aggregate is a C++ struct/class/interface
         cpp,
-        /// the class is an Objective-C class/interface
+        /// the aggregate is an Objective-C class/interface
         objc
     };
 };
@@ -101,7 +101,7 @@ public:
     Dsymbol *deferred;          // any deferred semantic2() or semantic3() symbol
     bool isdeprecated;          // true if deprecated
 
-    ClassKind classKind;        // specifies the linkage type
+    ClassKind::Type classKind;  // specifies the linkage type
 
     /* !=NULL if is nested
      * pointing to the dsymbol that directly enclosing it.
@@ -168,9 +168,9 @@ public:
 
 struct StructFlags
 {
-    typedef unsigned Type;
-    enum Enum
+    enum Type
     {
+        none = 0x0,
         hasPointers = 0x1, // NB: should use noPointers as in ClassFlags
     };
 };
@@ -248,9 +248,9 @@ struct BaseClass
 
 struct ClassFlags
 {
-    typedef unsigned Type;
-    enum Enum
+    enum Type
     {
+        none = 0x0,
         isCOMclass = 0x1,
         noPointers = 0x2,
         hasOffTi = 0x4,

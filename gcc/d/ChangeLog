@@ -1,3 +1,24 @@
+2018-08-25  Eugene Wissner  <belka@caraus.de>
+
+	* Make-lang.in (D_FRONTEND_OBJS): Add iasm.o, iasmgcc.o
+	(d.tags): Scan dmd/root/*.h
+	* d-builtins.cc (build_frontend_type): Update callers for new
+	front-end signatures.
+	(d_init_versions): Add D_ModuleInfo, D_Exceptions, D_TypeInfo.
+	* d-diagnostic.cc (vwarning): Increment gagged warnings error if
+	gagging turned on.
+	(vdeprecation): Likewise.
+	* d-frontend.cc (asmSemantic): Remove function.
+	* d-lang.cc (d_handle_option): Remove case for OPT_fproperty.
+	* d-target.cc (Target::_init): Remove int64Mangle and uint64Mangle.
+	* lang.opt (fproperty): Remove option.
+	* toir.cc (IRVisitor::visit(ExtAsmStatement)): Rename override to
+	GccAsmStatement.
+	* typeinfo.cc (TypeInfoVisitor::visit(TypeInfoClassDeclaration)): Use
+	int for collecting ClassFlags.
+	* (TypeInfoVisitor::visit(TypeInfoClassDeclaration)): Use int for
+	collecting StructFlags.
+
 2018-07-23  Eugene Wissner  <belka@caraus.de>
 
 	* d-lang.cc (d_handle_option): Change function argument to HOST_WIDE_INT.

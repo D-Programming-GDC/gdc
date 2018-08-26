@@ -7,8 +7,15 @@ fail_compilation/diag6717.d(12): Error: end of instruction expected, not `h`
 
 void main()
 {
-    asm
+    version(GNU)
     {
-        mov AX, 12h ;
+        asm { ""h; }
+    }
+    else
+    {
+        asm
+        {
+            mov AX, 12h ;
+        }
     }
 }

@@ -9,8 +9,18 @@ fail_compilation/test12979.d(13): Error: `const`/`immutable`/`shared`/`inout` at
 
 void foo()
 {
-    asm const shared
+    version(GNU)
     {
-        ret;
+        asm const shared
+        {
+            "";
+        }
+    }
+    else
+    {
+        asm const shared
+        {
+            ret;
+        }
     }
 }

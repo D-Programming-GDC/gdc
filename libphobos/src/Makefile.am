@@ -158,19 +158,19 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
 	std/experimental/typecons.d std/file.d std/format.d std/functional.d \
-	std/getopt.d std/internal/cstring.d std/internal/digest/sha_SSSE3.d \
-	std/internal/math/biguintcore.d std/internal/math/biguintnoasm.d \
-	std/internal/math/biguintx86.d std/internal/math/errorfunction.d \
-	std/internal/math/gammafunction.d std/internal/scopebuffer.d \
-	std/internal/test/dummyrange.d std/internal/test/range.d \
-	std/internal/test/uda.d std/internal/unicode_comp.d \
-	std/internal/unicode_decomp.d std/internal/unicode_grapheme.d \
-	std/internal/unicode_norm.d std/internal/unicode_tables.d \
-	std/internal/windows/advapi32.d std/json.d std/math.d \
-	std/mathspecial.d std/meta.d std/mmfile.d std/net/curl.d \
-	std/net/isemail.d std/numeric.d std/outbuffer.d std/parallelism.d \
-	std/path.d std/process.d std/random.d std/range/interfaces.d \
-	std/range/package.d std/range/primitives.d \
+	std/getopt.d std/internal/attributes.d std/internal/cstring.d \
+	std/internal/digest/sha_SSSE3.d std/internal/math/biguintcore.d \
+	std/internal/math/biguintnoasm.d std/internal/math/biguintx86.d \
+	std/internal/math/errorfunction.d std/internal/math/gammafunction.d \
+	std/internal/scopebuffer.d std/internal/test/dummyrange.d \
+	std/internal/test/range.d std/internal/test/uda.d \
+	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
+	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
+	std/internal/unicode_tables.d std/internal/windows/advapi32.d \
+	std/json.d std/math.d std/mathspecial.d std/meta.d std/mmfile.d \
+	std/net/curl.d std/net/isemail.d std/numeric.d std/outbuffer.d \
+	std/parallelism.d std/path.d std/process.d std/random.d \
+	std/range/interfaces.d std/range/package.d std/range/primitives.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \

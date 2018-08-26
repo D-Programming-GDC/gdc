@@ -16,8 +16,18 @@ struct T
 
 void main()
 {
-    asm
+    version(GNU)
     {
-        call T.foo;
+        asm
+        {
+            "" : : "r" T.foo;
+        }
+    }
+    else
+    {
+        asm
+        {
+            call T.foo;
+        }
     }
 }

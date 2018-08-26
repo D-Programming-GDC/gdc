@@ -240,14 +240,6 @@ extern (C++) abstract class Statement : RootObject
             {
                 stop = true;
             }
-
-            version (IN_GCC)
-            {
-                override void visit(ExtAsmStatement s)
-                {
-                    stop = true;
-                }
-            }
         }
 
         scope ComeFrom cf = new ComeFrom();
@@ -940,8 +932,7 @@ extern (C++) final class CompoundDeclarationStatement : CompoundStatement
 
     override Statement syntaxCopy()
     {
-        auto a = new Statements();
-        a.setDim(statements.dim);
+        auto a = new Statements(statements.dim);
         foreach (i, s; *statements)
         {
             (*a)[i] = s ? s.syntaxCopy() : null;
@@ -971,8 +962,7 @@ extern (C++) final class UnrolledLoopStatement : Statement
 
     override Statement syntaxCopy()
     {
-        auto a = new Statements();
-        a.setDim(statements.dim);
+        auto a = new Statements(statements.dim);
         foreach (i, s; *statements)
         {
             (*a)[i] = s ? s.syntaxCopy() : null;
@@ -1102,8 +1092,7 @@ extern (C++) final class ForwardingStatement : Statement
         {
             return a;
         }
-        auto b = new Statements();
-        b.setDim(a.dim);
+        auto b = new Statements(a.dim);
         foreach (i, s; *a)
         {
             (*b)[i] = s ? new ForwardingStatement(s.loc, sym, s) : null;
@@ -1599,7 +1588,7 @@ extern (C++) final class SwitchStatement : Statement
      * Returns:
      *  true if error
      */
-    final bool checkLabel()
+    bool checkLabel()
     {
         /*
          * Checks the scope of a label for existing variable declaration.
@@ -1974,8 +1963,7 @@ extern (C++) final class TryCatchStatement : Statement
 
     override Statement syntaxCopy()
     {
-        auto a = new Catches();
-        a.setDim(catches.dim);
+        auto a = new Catches(catches.dim);
         foreach (i, c; *catches)
         {
             (*a)[i] = c.syntaxCopy();
@@ -2226,7 +2214,7 @@ extern (C++) final class GotoStatement : Statement
         return new GotoStatement(loc, ident);
     }
 
-    final bool checkLabel()
+    bool checkLabel()
     {
         if (!label.statement)
         {
@@ -2391,14 +2379,9 @@ extern (C++) final class LabelDsymbol : Dsymbol
 
 /***********************************************************
  */
-extern (C++) final class AsmStatement : Statement
+extern (C++) class AsmStatement : Statement
 {
     Token* tokens;
-    code* asmcode;
-    uint asmalign;  // alignment of this statement
-    uint regs;      // mask of registers modified (must match regm_t in back end)
-    bool refparam;  // true if function parameter is referenced
-    bool naked;     // true if function is to be naked
 
     extern (D) this(const ref Loc loc, Token* tokens)
     {
@@ -2418,51 +2401,61 @@ extern (C++) final class AsmStatement : Statement
 }
 
 /***********************************************************
+ * https://dlang.org/spec/iasm.html
  */
-version (IN_GCC)
+extern (C++) final class InlineAsmStatement : AsmStatement
 {
-    extern (C++) final class ExtAsmStatement : Statement
+    code* asmcode;
+    uint asmalign;  // alignment of this statement
+    uint regs;      // mask of registers modified (must match regm_t in back end)
+    bool refparam;  // true if function parameter is referenced
+    bool naked;     // true if function is to be naked
+
+    extern (D) this(const ref Loc loc, Token* tokens)
     {
-        StorageClass stc;
-        Expression insn;
-        Expressions *args;
-        Identifiers *names;
-        Expressions *constraints;   // Array of StringExp's
-        uint outputargs;
-        Expressions *clobbers;      // Array of StringExp's
-        Identifiers *labels;
-        GotoStatements *gotos;
+        super(loc, tokens);
+    }
 
-        extern (D) this(Loc loc, StorageClass stc, Expression insn,
-                        Expressions *args, Identifiers *names,
-                        Expressions *constraints, int outputargs,
-                        Expressions *clobbers, Identifiers *labels)
-        {
-            super(loc);
-            this.insn = insn;
-            this.args = args;
-            this.names = names;
-            this.constraints = constraints;
-            this.outputargs = outputargs;
-            this.clobbers = clobbers;
-            this.labels = labels;
-            this.gotos = null;
-        }
+    override Statement syntaxCopy()
+    {
+        return new InlineAsmStatement(loc, tokens);
+    }
 
-        override Statement syntaxCopy()
-        {
-            Expressions *c_args = Expression.arraySyntaxCopy(args);
-            Expressions *c_constraints = Expression.arraySyntaxCopy(constraints);
-            Expressions *c_clobbers = Expression.arraySyntaxCopy(clobbers);
+    override void accept(Visitor v)
+    {
+        v.visit(this);
+    }
+}
 
-            return new ExtAsmStatement(loc, stc, insn.syntaxCopy(), c_args, names,
-                                       c_constraints, outputargs, c_clobbers, labels);
-        }
+/***********************************************************
+ * https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html
+ * Assembler instructions with D expression operands.
+ */
+extern (C++) final class GccAsmStatement : AsmStatement
+{
+    StorageClass stc;           // attributes of the asm {} block
+    Expression insn;            // string expression that is the template for assembler code
+    Expressions* args;          // input and output operands of the statement
+    uint outputargs;            // of the operands in 'args', the number of output operands
+    Identifiers* names;         // list of symbolic names for the operands
+    Expressions* constraints;   // list of string constants specifying constraints on operands
+    Expressions* clobbers;      // list of string constants specifying clobbers and scratch registers
+    Identifiers* labels;        // list of goto labels
+    GotoStatements* gotos;      // of the goto labels, the equivalent statements they represent
 
-        override void accept(Visitor v)
-        {
-            v.visit(this);
-        }
+    extern (D) this(const ref Loc loc, Token* tokens)
+    {
+        super(loc, tokens);
+    }
+
+    override Statement syntaxCopy()
+    {
+        return new GccAsmStatement(loc, tokens);
+    }
+
+    override void accept(Visitor v)
+    {
+        v.visit(this);
     }
 }
 
@@ -2481,8 +2474,7 @@ extern (C++) final class CompoundAsmStatement : CompoundStatement
 
     override CompoundAsmStatement syntaxCopy()
     {
-        auto a = new Statements();
-        a.setDim(statements.dim);
+        auto a = new Statements(statements.dim);
         foreach (i, s; *statements)
         {
             (*a)[i] = s ? s.syntaxCopy() : null;
@@ -2515,8 +2507,7 @@ extern (C++) final class ImportStatement : Statement
 
     override Statement syntaxCopy()
     {
-        auto m = new Dsymbols();
-        m.setDim(imports.dim);
+        auto m = new Dsymbols(imports.dim);
         foreach (i, s; *imports)
         {
             (*m)[i] = s.syntaxCopy(null);

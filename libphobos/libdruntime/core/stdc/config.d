@@ -106,17 +106,17 @@ version( GNU )
 {
     import gcc.builtins;
 
-    enum __c_long  : __builtin_clong;
-    enum __c_ulong : __builtin_culong;
-
-    enum __c_longlong  : __builtin_clonglong;
-    enum __c_ulonglong : __builtin_culonglong;
-
     alias __builtin_clong  c_long;
     alias __builtin_culong c_ulong;
 
+    enum __c_long  : __builtin_clong;
+    enum __c_ulong : __builtin_culong;
+
     alias __c_long  cpp_long;
     alias __c_ulong cpp_ulong;
+
+    enum __c_longlong  : __builtin_clonglong;
+    enum __c_ulonglong : __builtin_culonglong;
 
     alias __c_longlong  cpp_longlong;
     alias __c_ulonglong cpp_ulonglong;
@@ -126,11 +126,11 @@ else version( Windows )
     enum __c_long  : int;
     enum __c_ulong : uint;
 
-    alias __c_long   cpp_long;
-    alias __c_ulong  cpp_ulong;
-
     alias int   c_long;
     alias uint  c_ulong;
+
+    alias __c_long   cpp_long;
+    alias __c_ulong  cpp_ulong;
 
     alias long  cpp_longlong;
     alias ulong cpp_ulonglong;
@@ -139,17 +139,14 @@ else version( Posix )
 {
   static if( (void*).sizeof > int.sizeof )
   {
-    enum __c_long  : long;
-    enum __c_ulong : ulong;
-
     enum __c_longlong  : long;
     enum __c_ulonglong : ulong;
 
-    alias __c_long   cpp_long;
-    alias __c_ulong  cpp_ulong;
-
     alias long  c_long;
     alias ulong c_ulong;
+
+    alias long   cpp_long;
+    alias ulong  cpp_ulong;
 
     alias __c_longlong  cpp_longlong;
     alias __c_ulonglong cpp_ulonglong;
@@ -159,11 +156,11 @@ else version( Posix )
     enum __c_long  : int;
     enum __c_ulong : uint;
 
-    alias __c_long   cpp_long;
-    alias __c_ulong  cpp_ulong;
-
     alias int   c_long;
     alias uint  c_ulong;
+
+    alias __c_long   cpp_long;
+    alias __c_ulong  cpp_ulong;
 
     alias long  cpp_longlong;
     alias ulong cpp_ulonglong;
