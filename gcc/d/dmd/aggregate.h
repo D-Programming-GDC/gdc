@@ -101,7 +101,7 @@ public:
     Dsymbol *deferred;          // any deferred semantic2() or semantic3() symbol
     bool isdeprecated;          // true if deprecated
 
-    ClassKind classKind;        // specifies the linkage type
+    ClassKind::Type classKind;  // specifies the linkage type
 
     /* !=NULL if is nested
      * pointing to the dsymbol that directly enclosing it.
