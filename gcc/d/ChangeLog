@@ -1,4 +1,4 @@
-2018-08-25  Eugene Wissner  <belka@caraus.de>
+2018-08-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_FRONTEND_OBJS): Add iasm.o, iasmgcc.o
 	(d.tags): Scan dmd/root/*.h
