@@ -82,7 +82,7 @@ The following OS versions are implemented:
  MACHMODE_H = machmode.h mode-classes.def
  HOOKS_H = hooks.h
  HOSTHOOKS_DEF_H = hosthooks-def.h $(HOOKS_H)
-@@ -1192,6 +1197,9 @@ C_TARGET_OBJS=@c_target_objs@
+@@ -1191,6 +1196,9 @@ C_TARGET_OBJS=@c_target_objs@
  # Target specific, C++ specific object file
  CXX_TARGET_OBJS=@cxx_target_objs@
  
@@ -92,7 +92,7 @@ The following OS versions are implemented:
  # Target specific, Fortran specific object file
  FORTRAN_TARGET_OBJS=@fortran_target_objs@
  
-@@ -1790,6 +1798,7 @@ bconfig.h: cs-bconfig.h ; @true
+@@ -1789,6 +1797,7 @@ bconfig.h: cs-bconfig.h ; @true
  tconfig.h: cs-tconfig.h ; @true
  tm.h: cs-tm.h ; @true
  tm_p.h: cs-tm_p.h ; @true
@@ -100,7 +100,7 @@ The following OS versions are implemented:
  
  cs-config.h: Makefile
  	TARGET_CPU_DEFAULT="" \
-@@ -1816,6 +1825,11 @@ cs-tm_p.h: Makefile
+@@ -1815,6 +1824,11 @@ cs-tm_p.h: Makefile
  	HEADERS="$(tm_p_include_list)" DEFINES="" \
  	$(SHELL) $(srcdir)/mkconfig.sh tm_p.h
  
@@ -112,7 +112,7 @@ The following OS versions are implemented:
  # Don't automatically run autoconf, since configure.ac might be accidentally
  # newer than configure.  Also, this writes into the source directory which
  # might be on a read-only file system.  If configured for maintainer mode
-@@ -2182,6 +2196,12 @@ default-c.o: config/default-c.c
+@@ -2181,6 +2195,12 @@ default-c.o: config/default-c.c
  CFLAGS-prefix.o += -DPREFIX=\"$(prefix)\" -DBASEVER=$(BASEVER_s)
  prefix.o: $(BASEVER)
  
@@ -125,7 +125,7 @@ The following OS versions are implemented:
  # Language-independent files.
  
  DRIVER_DEFINES = \
-@@ -2478,6 +2498,15 @@ s-common-target-hooks-def-h: build/genho
+@@ -2477,6 +2497,15 @@ s-common-target-hooks-def-h: build/genho
  					     common/common-target-hooks-def.h
  	$(STAMP) s-common-target-hooks-def-h
  
@@ -141,7 +141,7 @@ The following OS versions are implemented:
  # check if someone mistakenly only changed tm.texi.
  # We use a different pathname here to avoid a circular dependency.
  s-tm-texi: $(srcdir)/doc/../doc/tm.texi
-@@ -2501,6 +2530,7 @@ s-tm-texi: build/genhooks$(build_exeext)
+@@ -2500,6 +2529,7 @@ s-tm-texi: build/genhooks$(build_exeext)
  	  && ( test $(srcdir)/doc/tm.texi -nt $(srcdir)/target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/c-family/c-target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/common/common-target.def \
@@ -149,7 +149,7 @@ The following OS versions are implemented:
  	  ); then \
  	  echo >&2 ; \
  	  echo You should edit $(srcdir)/doc/tm.texi.in rather than $(srcdir)/doc/tm.texi . >&2 ; \
-@@ -2638,14 +2668,15 @@ s-gtype: build/gengtype$(build_exeext) $
+@@ -2637,14 +2667,15 @@ s-gtype: build/gengtype$(build_exeext) $
                      -r gtype.state
  	$(STAMP) s-gtype
  
@@ -167,7 +167,7 @@ The following OS versions are implemented:
         cfn-operators.pd
  
  #
-@@ -2789,7 +2820,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
+@@ -2788,7 +2819,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
    $(CORETYPES_H) $(GTM_H) errors.h $(READ_MD_H) $(GENSUPPORT_H)		\
    $(HASH_TABLE_H) inchash.h
  build/genhooks.o : genhooks.c $(TARGET_DEF) $(C_TARGET_DEF)		\
@@ -565,7 +565,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/arm/arm-protos.h
 +++ b/gcc/config/arm/arm-protos.h
-@@ -373,6 +373,9 @@ extern void arm_lang_object_attributes_i
+@@ -375,6 +375,9 @@ extern void arm_lang_object_attributes_i
  extern void arm_register_target_pragmas (void);
  extern void arm_cpu_cpp_builtins (struct cpp_reader *);
  

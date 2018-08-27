@@ -21,7 +21,7 @@ relevant documentation about the GDC front end.
        else if (! strcmp (language_string, "GNU F77")
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -28328,11 +28328,12 @@ rs6000_output_function_epilogue (FILE *f
+@@ -28333,11 +28333,12 @@ rs6000_output_function_epilogue (FILE *f
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -93,7 +93,7 @@ relevant documentation about the GDC front end.
  in the @file{gcc} subdirectory of the object directory.  You can also
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -1436,6 +1436,15 @@ Go source code.
+@@ -1438,6 +1438,15 @@ Go source code.
  @item @var{file}.brig
  BRIG files (binary representation of HSAIL).
  
@@ -109,7 +109,7 @@ relevant documentation about the GDC front end.
  @item @var{file}.ads
  Ada source code file that contains a library unit declaration (a
  declaration of a package, subprogram, or generic, or a generic
-@@ -1482,6 +1491,7 @@ objective-c  objective-c-header  objecti
+@@ -1484,6 +1493,7 @@ objective-c  objective-c-header  objecti
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -147,7 +147,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
-@@ -5498,6 +5498,16 @@ is_ada (void)
+@@ -5506,6 +5506,16 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -164,7 +164,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  Return TRUE if removal
     was successful.  */
  
-@@ -24442,6 +24452,8 @@ gen_compile_unit_die (const char *filena
+@@ -24472,6 +24482,8 @@ gen_compile_unit_die (const char *filena
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)
  	language = DW_LANG_ObjC_plus_plus;
@@ -173,7 +173,7 @@ relevant documentation about the GDC front end.
        else if (dwarf_version >= 5 || !dwarf_strict)
  	{
  	  if (strcmp (language_string, "GNU Go") == 0)
-@@ -26042,7 +26054,7 @@ declare_in_namespace (tree thing, dw_die
+@@ -26072,7 +26084,7 @@ declare_in_namespace (tree thing, dw_die
  
    if (ns_context != context_die)
      {
@@ -182,7 +182,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, NULL, ns_context);
-@@ -26065,7 +26077,7 @@ gen_namespace_die (tree decl, dw_die_ref
+@@ -26095,7 +26107,7 @@ gen_namespace_die (tree decl, dw_die_ref
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -191,7 +191,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -26131,7 +26143,7 @@ gen_decl_die (tree decl, tree origin, st
+@@ -26161,7 +26173,7 @@ gen_decl_die (tree decl, tree origin, st
        break;
  
      case CONST_DECL:
@@ -200,7 +200,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -26731,7 +26743,7 @@ dwarf2out_decl (tree decl)
+@@ -26761,7 +26773,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -209,7 +209,7 @@ relevant documentation about the GDC front end.
  	return;
        if (TREE_STATIC (decl) && decl_function_context (decl))
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
-@@ -29126,6 +29138,7 @@ prune_unused_types_walk_local_classes (d
+@@ -29162,6 +29174,7 @@ prune_unused_types_walk_local_classes (d
      case DW_TAG_structure_type:
      case DW_TAG_union_type:
      case DW_TAG_class_type:
@@ -217,7 +217,7 @@ relevant documentation about the GDC front end.
        break;
  
      case DW_TAG_subprogram:
-@@ -29159,6 +29172,7 @@ prune_unused_types_walk (dw_die_ref die)
+@@ -29195,6 +29208,7 @@ prune_unused_types_walk (dw_die_ref die)
      case DW_TAG_structure_type:
      case DW_TAG_union_type:
      case DW_TAG_class_type:
@@ -225,7 +225,7 @@ relevant documentation about the GDC front end.
        if (die->die_perennial_p)
  	break;
  
-@@ -29185,7 +29199,6 @@ prune_unused_types_walk (dw_die_ref die)
+@@ -29221,7 +29235,6 @@ prune_unused_types_walk (dw_die_ref die)
      case DW_TAG_volatile_type:
      case DW_TAG_typedef:
      case DW_TAG_array_type:
