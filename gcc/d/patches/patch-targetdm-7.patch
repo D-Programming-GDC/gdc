@@ -318,6 +318,14 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
+@@ -4586,6 +4614,7 @@ case ${target} in
+ 		out_file=rs6000/rs6000.c
+ 		c_target_objs="${c_target_objs} rs6000-c.o"
+ 		cxx_target_objs="${cxx_target_objs} rs6000-c.o"
++		d_target_objs="${d_target_objs} rs6000-d.o"
+ 		tmake_file="rs6000/t-rs6000 ${tmake_file}"
+ 		;;
+ 
 --- /dev/null
 +++ b/gcc/config/aarch64/aarch64-d.c
 @@ -0,0 +1,31 @@
