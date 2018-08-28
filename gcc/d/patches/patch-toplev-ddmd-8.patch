@@ -27,7 +27,7 @@
  // Not all; these are the ones which don't have special options.
 --- a/Makefile.in
 +++ b/Makefile.in
-@@ -1190,13 +1190,17 @@ all-target: maybe-all-target-newlib
+@@ -1192,13 +1192,17 @@ all-target: maybe-all-target-newlib
  @if target-libgcc-no-bootstrap
  all-target: maybe-all-target-libgcc
  @endif target-libgcc-no-bootstrap
@@ -45,7 +45,7 @@
  all-target: maybe-all-target-libtermcap
  all-target: maybe-all-target-winsup
  all-target: maybe-all-target-libgloss
-@@ -1208,7 +1212,9 @@ all-target: maybe-all-target-libada
+@@ -1210,7 +1214,9 @@ all-target: maybe-all-target-libada
  all-target: maybe-all-target-libgomp
  @endif target-libgomp-no-bootstrap
  all-target: maybe-all-target-libitm
@@ -55,7 +55,7 @@
  
  # Do a target for all the subdirectories.  A ``make do-X'' will do a
  # ``make X'' in all subdirectories (because, in general, there is a
-@@ -45506,7 +45512,6 @@ configure-target-libbacktrace: stage_cur
+@@ -45508,7 +45514,6 @@ configure-target-libbacktrace: stage_cur
  @if target-libbacktrace
  maybe-configure-target-libbacktrace: configure-target-libbacktrace
  configure-target-libbacktrace: 
@@ -63,7 +63,7 @@
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	echo "Checking multilib configuration for libbacktrace..."; \
-@@ -45544,6 +45549,412 @@ configure-target-libbacktrace:
+@@ -45546,6 +45551,412 @@ configure-target-libbacktrace:
  
  
  
@@ -476,7 +476,7 @@
  
  
  .PHONY: all-target-libbacktrace maybe-all-target-libbacktrace
-@@ -45555,7 +45966,6 @@ all-target-libbacktrace: stage_current
+@@ -45557,7 +45968,6 @@ all-target-libbacktrace: stage_current
  TARGET-target-libbacktrace=all
  maybe-all-target-libbacktrace: all-target-libbacktrace
  all-target-libbacktrace: configure-target-libbacktrace
@@ -484,7 +484,7 @@
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	$(NORMAL_TARGET_EXPORTS)  \
-@@ -45566,6 +45976,387 @@ all-target-libbacktrace: configure-targe
+@@ -45568,6 +45978,387 @@ all-target-libbacktrace: configure-targe
  
  
  
@@ -872,7 +872,7 @@
  
  
  .PHONY: check-target-libbacktrace maybe-check-target-libbacktrace
-@@ -48254,7 +49045,6 @@ configure-target-libphobos: stage_curren
+@@ -48256,7 +49047,6 @@ configure-target-libphobos: stage_curren
  @if target-libphobos
  maybe-configure-target-libphobos: configure-target-libphobos
  configure-target-libphobos: 
@@ -880,7 +880,7 @@
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	echo "Checking multilib configuration for libphobos..."; \
-@@ -48292,6 +49082,412 @@ configure-target-libphobos:
+@@ -48294,6 +49084,412 @@ configure-target-libphobos:
  
  
  
@@ -1293,7 +1293,7 @@
  
  
  .PHONY: all-target-libphobos maybe-all-target-libphobos
-@@ -48303,7 +49499,6 @@ all-target-libphobos: stage_current
+@@ -48305,7 +49501,6 @@ all-target-libphobos: stage_current
  TARGET-target-libphobos=all
  maybe-all-target-libphobos: all-target-libphobos
  all-target-libphobos: configure-target-libphobos
@@ -1301,7 +1301,7 @@
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	$(NORMAL_TARGET_EXPORTS)  \
-@@ -48314,6 +49509,387 @@ all-target-libphobos: configure-target-l
+@@ -48316,6 +49511,387 @@ all-target-libphobos: configure-target-l
  
  
  
@@ -1689,7 +1689,7 @@
  
  
  .PHONY: check-target-libphobos maybe-check-target-libphobos
-@@ -53539,7 +55115,6 @@ configure-target-libatomic: stage_curren
+@@ -53541,7 +55117,6 @@ configure-target-libatomic: stage_curren
  @if target-libatomic
  maybe-configure-target-libatomic: configure-target-libatomic
  configure-target-libatomic: 
@@ -1697,7 +1697,7 @@
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	echo "Checking multilib configuration for libatomic..."; \
-@@ -53577,6 +55152,412 @@ configure-target-libatomic:
+@@ -53579,6 +55154,412 @@ configure-target-libatomic:
  
  
  
@@ -2110,7 +2110,7 @@
  
  
  .PHONY: all-target-libatomic maybe-all-target-libatomic
-@@ -53588,7 +55569,6 @@ all-target-libatomic: stage_current
+@@ -53590,7 +55571,6 @@ all-target-libatomic: stage_current
  TARGET-target-libatomic=all
  maybe-all-target-libatomic: all-target-libatomic
  all-target-libatomic: configure-target-libatomic
@@ -2118,7 +2118,7 @@
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	$(NORMAL_TARGET_EXPORTS)  \
-@@ -53599,6 +55579,387 @@ all-target-libatomic: configure-target-l
+@@ -53601,6 +55581,387 @@ all-target-libatomic: configure-target-l
  
  
  
@@ -2506,7 +2506,7 @@
  
  
  .PHONY: check-target-libatomic maybe-check-target-libatomic
-@@ -57288,13 +59649,29 @@ configure-stagetrain-target-libgcc: mayb
+@@ -57290,13 +59651,29 @@ configure-stagetrain-target-libgcc: mayb
  configure-stagefeedback-target-libgcc: maybe-all-stagefeedback-gcc
  configure-stageautoprofile-target-libgcc: maybe-all-stageautoprofile-gcc
  configure-stageautofeedback-target-libgcc: maybe-all-stageautofeedback-gcc
@@ -2538,7 +2538,7 @@
  configure-target-libtermcap: stage_last
  configure-target-winsup: stage_last
  configure-target-libgloss: stage_last
-@@ -57312,7 +59689,15 @@ configure-stagefeedback-target-libgomp:
+@@ -57314,7 +59691,15 @@ configure-stagefeedback-target-libgomp:
  configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-gcc
  configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-gcc
  configure-target-libitm: stage_last
@@ -2555,7 +2555,7 @@
  @endif gcc-bootstrap
  
  @if gcc-no-bootstrap
-@@ -58448,10 +60833,40 @@ all-target-libgo: maybe-all-target-libba
+@@ -58450,10 +60835,40 @@ all-target-libgo: maybe-all-target-libba
  all-target-libgo: maybe-all-target-libffi
  all-target-libgo: maybe-all-target-libatomic
  configure-target-libphobos: maybe-configure-target-libbacktrace
@@ -2596,7 +2596,7 @@
  configure-target-libstdc++-v3: maybe-configure-target-libgomp
  
  configure-stage1-target-libstdc++-v3: maybe-configure-stage1-target-libgomp
-@@ -58561,6 +60976,24 @@ configure-stagetrain-target-libvtv: mayb
+@@ -58563,6 +60978,24 @@ configure-stagetrain-target-libvtv: mayb
  configure-stagefeedback-target-libvtv: maybe-all-stagefeedback-target-libgcc
  configure-stageautoprofile-target-libvtv: maybe-all-stageautoprofile-target-libgcc
  configure-stageautofeedback-target-libvtv: maybe-all-stageautofeedback-target-libgcc
@@ -2621,7 +2621,7 @@
  configure-stage1-target-libgomp: maybe-all-stage1-target-libgcc
  configure-stage2-target-libgomp: maybe-all-stage2-target-libgcc
  configure-stage3-target-libgomp: maybe-all-stage3-target-libgcc
-@@ -58570,6 +61003,15 @@ configure-stagetrain-target-libgomp: may
+@@ -58572,6 +61005,15 @@ configure-stagetrain-target-libgomp: may
  configure-stagefeedback-target-libgomp: maybe-all-stagefeedback-target-libgcc
  configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-target-libgcc
  configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-target-libgcc
