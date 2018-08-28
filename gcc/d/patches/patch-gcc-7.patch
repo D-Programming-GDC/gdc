@@ -185,7 +185,7 @@ relevant documentation about the GDC front end.
  	return;
        if (TREE_STATIC (decl) && decl_function_context (decl))
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
-@@ -29054,6 +29066,7 @@ prune_unused_types_walk_local_classes (d
+@@ -27804,6 +27816,7 @@ prune_unused_types_walk_local_classes (d
      case DW_TAG_structure_type:
      case DW_TAG_union_type:
      case DW_TAG_class_type:
@@ -193,7 +193,7 @@ relevant documentation about the GDC front end.
        break;
  
      case DW_TAG_subprogram:
-@@ -29087,6 +29100,7 @@ prune_unused_types_walk (dw_die_ref die)
+@@ -27837,6 +27850,7 @@ prune_unused_types_walk (dw_die_ref die)
      case DW_TAG_structure_type:
      case DW_TAG_union_type:
      case DW_TAG_class_type:
@@ -201,7 +201,7 @@ relevant documentation about the GDC front end.
        if (die->die_perennial_p)
  	break;
  
-@@ -29113,7 +29127,6 @@ prune_unused_types_walk (dw_die_ref die)
+@@ -27863,7 +27877,6 @@ prune_unused_types_walk (dw_die_ref die)
      case DW_TAG_volatile_type:
      case DW_TAG_typedef:
      case DW_TAG_array_type:
