@@ -430,12 +430,16 @@ d_init_versions (void)
     VersionCondition::addPredefinedGlobalIdent ("D_Coverage");
   if (flag_pic)
     VersionCondition::addPredefinedGlobalIdent ("D_PIC");
+
   if (global.params.doDocComments)
     VersionCondition::addPredefinedGlobalIdent ("D_Ddoc");
+
   if (global.params.useUnitTests)
     VersionCondition::addPredefinedGlobalIdent ("unittest");
+
   if (global.params.useAssert)
     VersionCondition::addPredefinedGlobalIdent ("assert");
+
   if (global.params.useArrayBounds == BOUNDSCHECKoff)
     VersionCondition::addPredefinedGlobalIdent ("D_NoBoundsChecks");
 

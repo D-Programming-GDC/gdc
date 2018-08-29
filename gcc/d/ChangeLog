@@ -1,4 +1,10 @@
+2018-08-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang.opt (fproperty): Remove option.
+	* d-lang.cc (d_handle_option): Remove case for OPT_fproperty.
+
 2018-07-23  Eugene Wissner  <belka@caraus.de>
+
 	* d-lang.cc (d_handle_option): Change function argument to HOST_WIDE_INT.
 	* lang.opt (Walloca-larger-than=, Wno-alloca-larger-than): New options.
 	* opt.texi (Walloca-larger-than=, Wno-alloca-larger-than): Likewise.
