@@ -3630,6 +3630,19 @@ MATCH TypeBasic::implicitConvTo(Type *to)
         TypeVector *tv = (TypeVector *)to;
         tob = tv->elementType();
     }
+    else if (to->ty == Tenum)
+    {
+        EnumDeclaration *ed = ((TypeEnum *)to)->sym;
+        if (ed->isSpecial())
+        {
+            /* Special enums that allow implicit conversions to them.  */
+            tob = to->toBasetype()->isTypeBasic();
+            if (tob)
+                return implicitConvTo(tob);
+        }
+        else
+            return MATCHnomatch;
+    }
     else
         tob = to->isTypeBasic();
     if (!tob)
@@ -7563,7 +7576,13 @@ Expression *TypeEnum::dotExp(Scope *sc, Expression *e, Identifier *ident, int fl
         sym->semantic(sym->_scope);
     if (!sym->members)
     {
-        if (!(flag & 1))
+        if (sym->isSpecial())
+        {
+            /* Special enums forward to the base type
+             */
+            e = sym->memtype->dotExp(sc, e, ident, flag);
+        }
+        else if (!(flag & 1))
         {
             sym->error("is forward referenced when looking for '%s'", ident->toChars());
             e = new ErrorExp();
