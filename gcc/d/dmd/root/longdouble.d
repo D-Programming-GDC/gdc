@@ -41,6 +41,7 @@ struct longdouble
     }
 
     longdouble opAssign(T)(T r)
+        if (!is (T : longdouble))
     {
         this.set(r);
         return this;

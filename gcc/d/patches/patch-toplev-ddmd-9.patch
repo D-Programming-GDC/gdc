@@ -30,7 +30,7 @@ This implements building of self hosted D compiler in GCC.
  // Not all; these are the ones which don't have special options.
 --- a/Makefile.in
 +++ b/Makefile.in
-@@ -1192,13 +1192,17 @@ all-target: maybe-all-target-newlib
+@@ -1195,13 +1195,17 @@ all-target: maybe-all-target-newlib
  @if target-libgcc-no-bootstrap
  all-target: maybe-all-target-libgcc
  @endif target-libgcc-no-bootstrap
@@ -48,7 +48,7 @@ This implements building of self hosted D compiler in GCC.
  all-target: maybe-all-target-libtermcap
  all-target: maybe-all-target-winsup
  all-target: maybe-all-target-libgloss
-@@ -1210,7 +1214,9 @@ all-target: maybe-all-target-libada
+@@ -1213,7 +1217,9 @@ all-target: maybe-all-target-libada
  all-target: maybe-all-target-libgomp
  @endif target-libgomp-no-bootstrap
  all-target: maybe-all-target-libitm
@@ -58,7 +58,7 @@ This implements building of self hosted D compiler in GCC.
  
  # Do a target for all the subdirectories.  A ``make do-X'' will do a
  # ``make X'' in all subdirectories (because, in general, there is a
-@@ -44249,7 +44255,6 @@ configure-target-libbacktrace: stage_cur
+@@ -44252,7 +44258,6 @@ configure-target-libbacktrace: stage_cur
  @if target-libbacktrace
  maybe-configure-target-libbacktrace: configure-target-libbacktrace
  configure-target-libbacktrace: 
@@ -66,7 +66,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	echo "Checking multilib configuration for libbacktrace..."; \
-@@ -44287,6 +44292,412 @@ configure-target-libbacktrace:
+@@ -44290,6 +44295,412 @@ configure-target-libbacktrace:
  
  
  
@@ -479,7 +479,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: all-target-libbacktrace maybe-all-target-libbacktrace
-@@ -44298,7 +44709,6 @@ all-target-libbacktrace: stage_current
+@@ -44301,7 +44712,6 @@ all-target-libbacktrace: stage_current
  TARGET-target-libbacktrace=all
  maybe-all-target-libbacktrace: all-target-libbacktrace
  all-target-libbacktrace: configure-target-libbacktrace
@@ -487,7 +487,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	$(NORMAL_TARGET_EXPORTS)  \
-@@ -44309,6 +44719,387 @@ all-target-libbacktrace: configure-targe
+@@ -44312,6 +44722,387 @@ all-target-libbacktrace: configure-targe
  
  
  
@@ -875,7 +875,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: check-target-libbacktrace maybe-check-target-libbacktrace
-@@ -46997,7 +47788,6 @@ configure-target-libphobos: stage_curren
+@@ -47000,7 +47791,6 @@ configure-target-libphobos: stage_curren
  @if target-libphobos
  maybe-configure-target-libphobos: configure-target-libphobos
  configure-target-libphobos: 
@@ -883,7 +883,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	echo "Checking multilib configuration for libphobos..."; \
-@@ -47035,6 +47825,412 @@ configure-target-libphobos:
+@@ -47038,6 +47828,412 @@ configure-target-libphobos:
  
  
  
@@ -1296,7 +1296,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: all-target-libphobos maybe-all-target-libphobos
-@@ -47046,7 +48242,6 @@ all-target-libphobos: stage_current
+@@ -47049,7 +48245,6 @@ all-target-libphobos: stage_current
  TARGET-target-libphobos=all
  maybe-all-target-libphobos: all-target-libphobos
  all-target-libphobos: configure-target-libphobos
@@ -1304,7 +1304,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	$(NORMAL_TARGET_EXPORTS)  \
-@@ -47057,6 +48252,387 @@ all-target-libphobos: configure-target-l
+@@ -47060,6 +48255,387 @@ all-target-libphobos: configure-target-l
  
  
  
@@ -1692,7 +1692,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: check-target-libphobos maybe-check-target-libphobos
-@@ -52282,7 +53858,6 @@ configure-target-libatomic: stage_curren
+@@ -52285,7 +53861,6 @@ configure-target-libatomic: stage_curren
  @if target-libatomic
  maybe-configure-target-libatomic: configure-target-libatomic
  configure-target-libatomic: 
@@ -1700,7 +1700,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	echo "Checking multilib configuration for libatomic..."; \
-@@ -52320,6 +53895,412 @@ configure-target-libatomic:
+@@ -52323,6 +53898,412 @@ configure-target-libatomic:
  
  
  
@@ -2113,7 +2113,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: all-target-libatomic maybe-all-target-libatomic
-@@ -52331,7 +54312,6 @@ all-target-libatomic: stage_current
+@@ -52334,7 +54315,6 @@ all-target-libatomic: stage_current
  TARGET-target-libatomic=all
  maybe-all-target-libatomic: all-target-libatomic
  all-target-libatomic: configure-target-libatomic
@@ -2121,7 +2121,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	$(NORMAL_TARGET_EXPORTS)  \
-@@ -52342,6 +54322,387 @@ all-target-libatomic: configure-target-l
+@@ -52345,6 +54325,387 @@ all-target-libatomic: configure-target-l
  
  
  
@@ -2509,7 +2509,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: check-target-libatomic maybe-check-target-libatomic
-@@ -56026,13 +58387,29 @@ configure-stagetrain-target-libgcc: mayb
+@@ -56029,13 +58390,29 @@ configure-stagetrain-target-libgcc: mayb
  configure-stagefeedback-target-libgcc: maybe-all-stagefeedback-gcc
  configure-stageautoprofile-target-libgcc: maybe-all-stageautoprofile-gcc
  configure-stageautofeedback-target-libgcc: maybe-all-stageautofeedback-gcc
@@ -2541,7 +2541,7 @@ This implements building of self hosted D compiler in GCC.
  configure-target-libtermcap: stage_last
  configure-target-winsup: stage_last
  configure-target-libgloss: stage_last
-@@ -56050,7 +58427,15 @@ configure-stagefeedback-target-libgomp:
+@@ -56053,7 +58430,15 @@ configure-stagefeedback-target-libgomp:
  configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-gcc
  configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-gcc
  configure-target-libitm: stage_last
@@ -2558,11 +2558,14 @@ This implements building of self hosted D compiler in GCC.
  @endif gcc-bootstrap
  
  @if gcc-no-bootstrap
-@@ -57064,10 +59449,40 @@ all-target-libgo: maybe-all-target-libba
+@@ -57063,14 +59448,39 @@ all-m4: maybe-all-build-texinfo
+ configure-target-fastjar: maybe-configure-target-zlib
+ all-target-fastjar: maybe-all-target-zlib
+ configure-target-libgo: maybe-configure-target-libffi
+-all-target-libgo: maybe-all-target-libbacktrace
  all-target-libgo: maybe-all-target-libffi
- all-target-libgo: maybe-all-target-libatomic
+-all-target-libgo: maybe-all-target-libatomic
  configure-target-libphobos: maybe-configure-target-libbacktrace
-+
 +configure-stage1-target-libphobos: maybe-configure-stage1-target-libbacktrace
 +configure-stage2-target-libphobos: maybe-configure-stage2-target-libbacktrace
 +configure-stage3-target-libphobos: maybe-configure-stage3-target-libbacktrace
@@ -2574,7 +2577,6 @@ This implements building of self hosted D compiler in GCC.
 +configure-stageautofeedback-target-libphobos: maybe-configure-stageautofeedback-target-libbacktrace
  configure-target-libphobos: maybe-configure-target-zlib
  all-target-libphobos: maybe-all-target-libbacktrace
-+
 +all-stage1-target-libphobos: maybe-all-stage1-target-libbacktrace
 +all-stage2-target-libphobos: maybe-all-stage2-target-libbacktrace
 +all-stage3-target-libphobos: maybe-all-stage3-target-libbacktrace
@@ -2586,7 +2588,6 @@ This implements building of self hosted D compiler in GCC.
 +all-stageautofeedback-target-libphobos: maybe-all-stageautofeedback-target-libbacktrace
  all-target-libphobos: maybe-all-target-zlib
  all-target-libphobos: maybe-all-target-libatomic
-+
 +all-stage1-target-libphobos: maybe-all-stage1-target-libatomic
 +all-stage2-target-libphobos: maybe-all-stage2-target-libatomic
 +all-stage3-target-libphobos: maybe-all-stage3-target-libatomic
@@ -2599,7 +2600,29 @@ This implements building of self hosted D compiler in GCC.
  configure-target-libstdc++-v3: maybe-configure-target-libgomp
  configure-stage1-target-libstdc++-v3: maybe-configure-stage1-target-libgomp
  configure-stage2-target-libstdc++-v3: maybe-configure-stage2-target-libgomp
-@@ -57212,6 +59627,24 @@ configure-stagetrain-target-libvtv: mayb
+@@ -57127,7 +59537,6 @@ install-target-libstdc++-v3: maybe-insta
+ all-target-libgloss: maybe-all-target-newlib
+ all-target-winsup: maybe-all-target-libtermcap
+ configure-target-libgfortran: maybe-all-target-libquadmath
+-configure-target-libgfortran: maybe-all-target-libbacktrace
+ 
+ 
+ @if gcc-bootstrap
+@@ -57176,10 +59585,13 @@ all-bison: maybe-all-intl
+ all-flex: maybe-all-intl
+ all-m4: maybe-all-intl
+ configure-target-libgo: maybe-all-target-libstdc++-v3
++all-target-libgo: maybe-all-target-libbacktrace
++all-target-libgo: maybe-all-target-libatomic
+ configure-target-liboffloadmic: maybe-configure-target-libgomp
+ all-target-liboffloadmic: maybe-all-target-libgomp
+ configure-target-newlib: maybe-all-binutils
+ configure-target-newlib: maybe-all-ld
++configure-target-libgfortran: maybe-all-target-libbacktrace
+ @endunless gcc-bootstrap
+ 
+ # Dependencies for target modules on other target modules are
+@@ -57215,6 +59627,24 @@ configure-stagetrain-target-libvtv: mayb
  configure-stagefeedback-target-libvtv: maybe-all-stagefeedback-target-libgcc
  configure-stageautoprofile-target-libvtv: maybe-all-stageautoprofile-target-libgcc
  configure-stageautofeedback-target-libvtv: maybe-all-stageautofeedback-target-libgcc
@@ -2624,7 +2647,7 @@ This implements building of self hosted D compiler in GCC.
  configure-stage1-target-libgomp: maybe-all-stage1-target-libgcc
  configure-stage2-target-libgomp: maybe-all-stage2-target-libgcc
  configure-stage3-target-libgomp: maybe-all-stage3-target-libgcc
-@@ -57221,6 +59654,15 @@ configure-stagetrain-target-libgomp: may
+@@ -57224,6 +59654,15 @@ configure-stagetrain-target-libgomp: may
  configure-stagefeedback-target-libgomp: maybe-all-stagefeedback-target-libgcc
  configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-target-libgcc
  configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-target-libgcc
