@@ -90,10 +90,19 @@ setup() {
     # Build typically takes around 10 minutes with -j4, could this be cached across CI runs?
     mkdir ${SEMAPHORE_PROJECT_DIR}/build
     cd ${SEMAPHORE_PROJECT_DIR}/build
+}
 
-    ## Configure GCC to build a D compiler.
+configure_test() {
+    ## Configure GCC to build a stage1 D compiler.
     ${SEMAPHORE_PROJECT_DIR}/configure --enable-languages=c++,d,lto --enable-checking \
         --enable-link-mutex --disable-bootstrap --disable-libgomp --disable-libmudflap \
+        --disable-libquadmath --disable-multilib --with-bugurl="http://bugzilla.gdcproject.org"
+}
+
+configure_release() {
+    ## Configure GCC to build a stage3 D compiler.
+    ${SEMAPHORE_PROJECT_DIR}/configure --enable-languages=c++,d,lto --enable-checking=release \
+        --enable-link-mutex --disable-libgomp --disable-libmudflap \
         --disable-libquadmath --disable-multilib --with-bugurl="http://bugzilla.gdcproject.org"
 }
 
@@ -147,6 +156,10 @@ if [ "$1" != "" ]; then
     $1
 else
     setup
+    configure_test
+    build
+    alltests
+    configure_release
     build
     alltests
 fi
