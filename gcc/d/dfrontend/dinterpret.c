@@ -689,16 +689,6 @@ public:
         // we can't compile asm statements
     }
 
-#ifdef IN_GCC
-    void visit(ExtAsmStatement *)
-    {
-    #if LOGCOMPILE
-        printf("%s ExtAsmStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
-        // we can't compile ext asm statements
-    }
-#endif
-
     void ctfeCompile(Statement *s)
     {
         s->accept(this);
@@ -1997,24 +1987,6 @@ public:
         s->error("asm statements cannot be interpreted at compile time");
         result = CTFEExp::cantexp;
     }
-
-#ifdef IN_GCC
-    void visit(ExtAsmStatement *s)
-    {
-    #if LOG
-        printf("%s ExtAsmStatement::interpret()\n", s->loc.toChars());
-    #endif
-        if (istate->start)
-        {
-            if (istate->start != s)
-                return;
-            istate->start = NULL;
-        }
-
-        s->error("extended asm statements cannot be interpreted at compile time");
-        result = CTFEExp::cantexp;
-    }
-#endif
 
     void visit(ImportStatement *s)
     {

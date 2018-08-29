@@ -3453,72 +3453,12 @@ public:
         result = asmSemantic(s, sc);
     }
 
-#ifdef IN_GCC
-    void visit(ExtAsmStatement *s)
-    {
-        // Fold the instruction template string.
-        s->insn = semantic(s->insn, sc);
-        s->insn->ctfeInterpret();
-
-        if (s->insn->op != TOKstring || ((StringExp *) s->insn)->sz != 1)
-            s->insn->error("instruction template must be a constant char string");
-
-        if (s->labels && s->outputargs)
-            s->error("extended asm statements with labels cannot have output constraints");
-
-        // Analyse all input and output operands.
-        if (s->args)
-        {
-            for (size_t i = 0; i < s->args->dim; i++)
-            {
-                Expression *e = (*s->args)[i];
-                e = semantic(e, sc);
-                // Check argument is a valid lvalue/rvalue.
-                if (i < s->outputargs)
-                    e = e->modifiableLvalue(sc, NULL);
-                else if (e->checkValue())
-                    e = new ErrorExp();
-                (*s->args)[i] = e;
-
-                e = (*s->constraints)[i];
-                e = semantic(e, sc);
-                assert(e->op == TOKstring && ((StringExp *) e)->sz == 1);
-                (*s->constraints)[i] = e;
-            }
-        }
-
-        // Analyse all clobbers.
-        if (s->clobbers)
-        {
-            for (size_t i = 0; i < s->clobbers->dim; i++)
-            {
-                Expression *e = (*s->clobbers)[i];
-                e = semantic(e, sc);
-                assert(e->op == TOKstring && ((StringExp *) e)->sz == 1);
-                (*s->clobbers)[i] = e;
-            }
-        }
-
-        // Analyse all goto labels.
-        if (s->labels)
-        {
-            for (size_t i = 0; i < s->labels->dim; i++)
-            {
-                Identifier *ident = (*s->labels)[i];
-                GotoStatement *gs = new GotoStatement(s->loc, ident);
-                if (!s->gotos)
-                    s->gotos = new GotoStatements();
-                s->gotos->push(gs);
-                semantic(gs, sc);
-            }
-        }
-
-        result = s;
-    }
-#endif
-
     void visit(CompoundAsmStatement *cas)
     {
+        // Apply postfix attributes of the asm block to each statement.
+        sc = sc->push();
+        sc->stc |= cas->stc;
+
         for (size_t i = 0; i < cas->statements->dim; i++)
         {
             Statement *s = (*cas->statements)[i];
@@ -3535,6 +3475,7 @@ public:
         if (!(cas->stc & (STCtrusted|STCsafe)) && sc->func->setUnsafe())
             cas->error("asm statement is assumed to be @system - mark it with '@trusted' if it is not");
 
+        sc->pop();
         result = cas;
     }
 

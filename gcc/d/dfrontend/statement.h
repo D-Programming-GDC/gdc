@@ -725,15 +725,42 @@ class AsmStatement : public Statement
 {
 public:
     Token *tokens;
+
+    AsmStatement(Loc loc, Token *tokens);
+    Statement *syntaxCopy();
+    void accept(Visitor *v) { v->visit(this); }
+};
+
+class InlineAsmStatement : public AsmStatement
+{
+public:
     code *asmcode;
     unsigned asmalign;          // alignment of this statement
     unsigned regs;              // mask of registers modified (must match regm_t in back end)
     bool refparam;              // true if function parameter is referenced
     bool naked;                 // true if function is to be naked
 
-    AsmStatement(Loc loc, Token *tokens);
+    InlineAsmStatement(Loc loc, Token *tokens);
     Statement *syntaxCopy();
+    void accept(Visitor *v) { v->visit(this); }
+};
 
+// A GCC asm statement - assembler instructions with D expression operands
+class GccAsmStatement : public AsmStatement
+{
+public:
+    StorageClass stc;           // attributes of the asm {} block
+    Expression *insn;           // string expression that is the template for assembler code
+    Expressions *args;          // input and output operands of the statement
+    unsigned outputargs;        // of the operands in 'args', the number of output operands
+    Identifiers *names;         // list of symbolic names for the operands
+    Expressions *constraints;   // list of string constants specifying constraints on operands
+    Expressions *clobbers;      // list of string constants specifying clobbers and scratch registers
+    Identifiers *labels;        // list of goto labels
+    GotoStatements *gotos;      // of the goto labels, the equivalent statements they represent
+
+    GccAsmStatement(Loc loc, Token *tokens);
+    Statement *syntaxCopy();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -760,32 +787,5 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 };
-
-#ifdef IN_GCC
-
-// Assembler instructions with D expression operands
-class ExtAsmStatement : public Statement
-{
-public:
-    StorageClass stc;
-    Expression *insn;
-    Expressions *args;
-    Identifiers *names;
-    Expressions *constraints;   // Array of StringExp's
-    unsigned outputargs;
-    Expressions *clobbers;      // Array of StringExp's
-    Identifiers *labels;
-    GotoStatements *gotos;
-
-    ExtAsmStatement(Loc loc, StorageClass stc, Expression *insn,
-                    Expressions *args, Identifiers *names,
-                    Expressions *constraints, int outputargs,
-                    Expressions *clobbers, Identifiers *labels);
-    Statement *syntaxCopy();
-
-    void accept(Visitor *v) { v->visit(this); }
-};
-
-#endif
 
 #endif /* DMD_STATEMENT_H */
