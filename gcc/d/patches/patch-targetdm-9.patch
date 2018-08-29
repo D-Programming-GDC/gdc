@@ -82,7 +82,7 @@ The following OS versions are implemented:
  MACHMODE_H = machmode.h mode-classes.def
  HOOKS_H = hooks.h
  HOSTHOOKS_DEF_H = hosthooks-def.h $(HOOKS_H)
-@@ -1188,6 +1193,9 @@ C_TARGET_OBJS=@c_target_objs@
+@@ -1187,6 +1192,9 @@ C_TARGET_OBJS=@c_target_objs@
  # Target specific, C++ specific object file
  CXX_TARGET_OBJS=@cxx_target_objs@
  
@@ -225,7 +225,7 @@ The following OS versions are implemented:
  	c_target_objs="aarch64-c.o"
  	cxx_target_objs="aarch64-c.o"
 +	d_target_objs="aarch64-d.o"
- 	extra_objs="aarch64-builtins.o aarch-common.o cortex-a57-fma-steering.o"
+ 	extra_objs="aarch64-builtins.o aarch-common.o cortex-a57-fma-steering.o aarch64-speculation.o"
  	target_gtfiles="\$(srcdir)/config/aarch64/aarch64-builtins.c"
  	target_has_targetm_common=yes
  	;;
@@ -308,7 +308,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3203,6 +3227,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3231,6 +3255,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4813,6 +4841,7 @@ case ${target} in
+@@ -4845,6 +4873,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -381,9 +381,9 @@ The following OS versions are implemented:
 +/* Defined in aarch64-d.c  */
 +extern void aarch64_d_target_versions (void);
 +
- rtl_opt_pass *make_pass_fma_steering (gcc::context *ctxt);
+ rtl_opt_pass *make_pass_fma_steering (gcc::context *);
+ rtl_opt_pass *make_pass_track_speculation (gcc::context *);
  
- poly_uint64 aarch64_regmode_natural_size (machine_mode);
 --- a/gcc/config/aarch64/aarch64.h
 +++ b/gcc/config/aarch64/aarch64.h
 @@ -26,6 +26,9 @@
@@ -565,7 +565,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/arm/arm-protos.h
 +++ b/gcc/config/arm/arm-protos.h
-@@ -373,6 +373,9 @@ extern void arm_lang_object_attributes_i
+@@ -375,6 +375,9 @@ extern void arm_lang_object_attributes_i
  extern void arm_register_target_pragmas (void);
  extern void arm_cpu_cpp_builtins (struct cpp_reader *);
  
@@ -1300,7 +1300,7 @@ The following OS versions are implemented:
 +extern void s390_d_target_versions (void);
 --- a/gcc/config/s390/s390.h
 +++ b/gcc/config/s390/s390.h
-@@ -194,6 +194,9 @@ enum processor_flags
+@@ -200,6 +200,9 @@ enum processor_flags
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() s390_cpu_cpp_builtins (pfile)
  
@@ -1309,7 +1309,7 @@ The following OS versions are implemented:
 +
  #ifdef DEFAULT_TARGET_64BIT
  #define TARGET_DEFAULT     (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP	\
-                             | MASK_OPT_HTM | MASK_OPT_VX)
+ 			    | MASK_OPT_HTM | MASK_OPT_VX)
 --- a/gcc/config/s390/t-s390
 +++ b/gcc/config/s390/t-s390
 @@ -25,3 +25,7 @@ s390-c.o: $(srcdir)/config/s390/s390-c.c
