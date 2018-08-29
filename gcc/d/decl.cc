@@ -29,6 +29,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dmd/identifier.h"
 #include "dmd/import.h"
 #include "dmd/init.h"
+#include "dmd/mangle.h"
 #include "dmd/module.h"
 #include "dmd/nspace.h"
 #include "dmd/target.h"
@@ -52,7 +53,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-pretty-print.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 
 
 /* Return identifier for the external mangled name of DECL.  */

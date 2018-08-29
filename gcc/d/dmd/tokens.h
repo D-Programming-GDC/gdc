@@ -5,15 +5,10 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/dlang/dmd/blob/master/src/tokens.h
+ * https://github.com/dlang/dmd/blob/master/src/dmd/tokens.h
  */
 
-#ifndef DMD_TOKENS_H
-#define DMD_TOKENS_H
-
-#ifdef __DMC__
 #pragma once
-#endif /* __DMC__ */
 
 #include "root/port.h"
 #include "mars.h"
@@ -231,5 +226,3 @@ struct Token
     const char *toChars() const;
     static const char *toChars(TOK);
 };
-
-#endif /* DMD_TOKENS_H */

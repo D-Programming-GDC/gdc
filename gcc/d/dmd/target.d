@@ -65,7 +65,7 @@ struct Target
      */
     extern (C++) struct FPTypeProperties(T)
     {
-        static __gshared
+        __gshared
         {
             real_t max;                         /// largest representable value that's not infinity
             real_t min_normal;                  /// smallest representable normalized value that's not 0

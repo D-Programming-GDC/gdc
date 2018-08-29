@@ -5,11 +5,10 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/dlang/dmd/blob/master/src/objc.h
+ * https://github.com/dlang/dmd/blob/master/src/dmd/objc.h
  */
 
-#ifndef DMD_OBJC_H
-#define DMD_OBJC_H
+#pragma once
 
 #include "root/root.h"
 #include "root/stringtable.h"
@@ -66,5 +65,3 @@ public:
     virtual void setMetaclass(ClassDeclaration* id) = 0;
     virtual ClassDeclaration* getRuntimeMetaclass(ClassDeclaration* cd) = 0;
 };
-
-#endif /* DMD_OBJC_H */

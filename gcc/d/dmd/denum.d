@@ -395,7 +395,13 @@ extern (C++) final class EnumMember : VarDeclaration
     override Dsymbol syntaxCopy(Dsymbol s)
     {
         assert(!s);
-        return new EnumMember(loc, ident, value ? value.syntaxCopy() : null, origType ? origType.syntaxCopy() : null);
+        return new EnumMember(
+            loc, ident,
+            value ? value.syntaxCopy() : null,
+            origType ? origType.syntaxCopy() : null,
+            storage_class,
+            userAttribDecl ? cast(UserAttributeDeclaration)userAttribDecl.syntaxCopy(s) : null,
+            depdecl ? cast(DeprecatedDeclaration)depdecl.syntaxCopy(s) : null);
     }
 
     override const(char)* kind() const
@@ -409,6 +415,11 @@ extern (C++) final class EnumMember : VarDeclaration
         if (errors)
             return new ErrorExp();
         checkDisabled(loc, sc);
+
+        if (depdecl && !depdecl._scope)
+            depdecl._scope = sc;
+        checkDeprecated(loc, sc);
+
         if (errors)
             return new ErrorExp();
         Expression e = new VarExp(loc, this);

@@ -20,6 +20,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 
 #include "dmd/declaration.h"
+#include "dmd/mangle.h"
 #include "dmd/module.h"
 #include "dmd/template.h"
 
@@ -30,7 +31,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 
 
 /* An internal struct used to hold information on D intrinsics.  */

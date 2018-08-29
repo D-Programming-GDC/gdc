@@ -26,8 +26,9 @@ public import dmd.root.longdouble : real_t = longdouble;
 // Compile-time floating-point helper
 extern (C++) struct CTFloat
 {
-    static __gshared bool yl2x_supported = false;
-    static __gshared bool yl2xp1_supported = false;
+  nothrow:
+    enum yl2x_supported = false;
+    enum yl2xp1_supported = false;
 
     static void yl2x(const real_t* x, const real_t* y, real_t* res);
     static void yl2xp1(const real_t* x, const real_t* y, real_t* res);
@@ -45,8 +46,8 @@ extern (C++) struct CTFloat
     static real_t parse(const(char)* literal, bool* isOutOfRange = null);
     static int sprint(char* str, char fmt, real_t x);
 
-    static __gshared real_t zero;
-    static __gshared real_t one;
-    static __gshared real_t minusone;
-    static __gshared real_t half;
+    __gshared real_t zero;
+    __gshared real_t one;
+    __gshared real_t minusone;
+    __gshared real_t half;
 }

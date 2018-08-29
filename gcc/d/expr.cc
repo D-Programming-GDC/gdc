@@ -40,7 +40,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 
 
 /* Implements the visitor interface to build the GCC trees of all Expression
