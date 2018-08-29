@@ -93,7 +93,7 @@ setup() {
 
     ## Configure GCC to build a D compiler.
     ${SEMAPHORE_PROJECT_DIR}/configure --enable-languages=c++,d,lto --enable-checking \
-        --enable-link-mutex --disable-bootstrap --disable-libgomp --disable-libmudflap \
+        --enable-link-mutex --disable-libgomp --disable-libmudflap \
         --disable-libquadmath --disable-multilib --with-bugurl="http://bugzilla.gdcproject.org"
 }
 
