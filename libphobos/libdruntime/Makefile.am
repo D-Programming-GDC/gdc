@@ -171,19 +171,18 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
 	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
 	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
-	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d \
-	rt/backtrace/elf.d rt/cast_.d rt/config.d rt/critical_.d rt/deh.d \
-	rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d \
-	rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
-	rt/sections_elf_shared.d rt/sections_osx.d rt/sections_solaris.d \
-	rt/sections_win32.d rt/sections_win64.d rt/switch_.d rt/tlsgc.d \
-	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
-	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
-	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
-	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
-	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
-	rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d \
-	rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
+	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d \
+	rt/critical_.d rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d \
+	rt/memory.d rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
+	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx.d \
+	rt/sections_solaris.d rt/sections_win32.d rt/sections_win64.d \
+	rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_Acdouble.d \
+	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
+	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
+	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
+	rt/typeinfo/ti_Ashort.d rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d \
+	rt/typeinfo/ti_cdouble.d rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d \
+	rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
 	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
 	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
 	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
@@ -212,22 +211,35 @@ DRUNTIME_DSOURCES_DARWIN = core/sys/darwin/dlfcn.d \
 	core/sys/darwin/mach/getsect.d core/sys/darwin/mach/kern_return.d \
 	core/sys/darwin/mach/loader.d core/sys/darwin/mach/port.d \
 	core/sys/darwin/mach/semaphore.d core/sys/darwin/mach/thread_act.d \
-	core/sys/darwin/pthread.d core/sys/darwin/sys/cdefs.d \
-	core/sys/darwin/sys/event.d core/sys/darwin/sys/mman.d
+	core/sys/darwin/netinet/in_.d core/sys/darwin/pthread.d \
+	core/sys/darwin/sys/cdefs.d core/sys/darwin/sys/event.d \
+	core/sys/darwin/sys/mman.d
+
+DRUNTIME_DSOURCES_DRAGONFLYBSD = core/sys/dragonflybsd/dlfcn.d \
+	core/sys/dragonflybsd/execinfo.d core/sys/dragonflybsd/netinet/in_.d \
+	core/sys/dragonflybsd/pthread_np.d core/sys/dragonflybsd/sys/_bitset.d \
+	core/sys/dragonflybsd/sys/_cpuset.d core/sys/dragonflybsd/sys/cdefs.d \
+	core/sys/dragonflybsd/sys/elf.d core/sys/dragonflybsd/sys/elf32.d \
+	core/sys/dragonflybsd/sys/elf64.d \
+	core/sys/dragonflybsd/sys/elf_common.d \
+	core/sys/dragonflybsd/sys/event.d core/sys/dragonflybsd/sys/link_elf.d \
+	core/sys/dragonflybsd/sys/mman.d core/sys/dragonflybsd/time.d
 
 DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
-	core/sys/freebsd/execinfo.d core/sys/freebsd/pthread_np.d \
-	core/sys/freebsd/sys/_bitset.d core/sys/freebsd/sys/_cpuset.d \
-	core/sys/freebsd/sys/cdefs.d core/sys/freebsd/sys/elf.d \
-	core/sys/freebsd/sys/elf32.d core/sys/freebsd/sys/elf64.d \
-	core/sys/freebsd/sys/elf_common.d core/sys/freebsd/sys/event.d \
-	core/sys/freebsd/sys/link_elf.d core/sys/freebsd/sys/mman.d \
+	core/sys/freebsd/execinfo.d core/sys/freebsd/netinet/in_.d \
+	core/sys/freebsd/pthread_np.d core/sys/freebsd/sys/_bitset.d \
+	core/sys/freebsd/sys/_cpuset.d core/sys/freebsd/sys/cdefs.d \
+	core/sys/freebsd/sys/elf.d core/sys/freebsd/sys/elf32.d \
+	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
+	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
+	core/sys/freebsd/sys/mman.d core/sys/freebsd/sys/mount.d \
 	core/sys/freebsd/time.d
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
 	core/sys/linux/errno.d core/sys/linux/execinfo.d \
 	core/sys/linux/fcntl.d core/sys/linux/ifaddrs.d core/sys/linux/link.d \
+	core/sys/linux/netinet/in_.d core/sys/linux/netinet/tcp.d \
 	core/sys/linux/sched.d core/sys/linux/stdio.d \
 	core/sys/linux/sys/auxv.d core/sys/linux/sys/eventfd.d \
 	core/sys/linux/sys/file.d core/sys/linux/sys/inotify.d \
@@ -255,27 +267,27 @@ DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
 	core/sys/osx/sys/cdefs.d core/sys/osx/sys/event.d \
 	core/sys/osx/sys/mman.d
 
-DRUNTIME_DSOURCES_POSIX = core/sys/posix/arpa/inet.d \
-	core/sys/posix/config.d core/sys/posix/dirent.d core/sys/posix/dlfcn.d \
-	core/sys/posix/fcntl.d core/sys/posix/grp.d core/sys/posix/iconv.d \
-	core/sys/posix/inttypes.d core/sys/posix/libgen.d \
-	core/sys/posix/mqueue.d core/sys/posix/net/if_.d \
-	core/sys/posix/netdb.d core/sys/posix/netinet/in_.d \
-	core/sys/posix/netinet/tcp.d core/sys/posix/poll.d \
-	core/sys/posix/pthread.d core/sys/posix/pwd.d core/sys/posix/sched.d \
-	core/sys/posix/semaphore.d core/sys/posix/setjmp.d \
-	core/sys/posix/signal.d core/sys/posix/stdio.d core/sys/posix/stdlib.d \
-	core/sys/posix/sys/filio.d core/sys/posix/sys/ioccom.d \
-	core/sys/posix/sys/ioctl.d core/sys/posix/sys/ipc.d \
-	core/sys/posix/sys/mman.d core/sys/posix/sys/msg.d \
-	core/sys/posix/sys/resource.d core/sys/posix/sys/select.d \
-	core/sys/posix/sys/shm.d core/sys/posix/sys/socket.d \
-	core/sys/posix/sys/stat.d core/sys/posix/sys/statvfs.d \
-	core/sys/posix/sys/time.d core/sys/posix/sys/ttycom.d \
-	core/sys/posix/sys/types.d core/sys/posix/sys/uio.d \
-	core/sys/posix/sys/un.d core/sys/posix/sys/utsname.d \
-	core/sys/posix/sys/wait.d core/sys/posix/syslog.d \
-	core/sys/posix/termios.d core/sys/posix/time.d \
+DRUNTIME_DSOURCES_POSIX = core/sys/posix/aio.d \
+	core/sys/posix/arpa/inet.d core/sys/posix/config.d \
+	core/sys/posix/dirent.d core/sys/posix/dlfcn.d core/sys/posix/fcntl.d \
+	core/sys/posix/grp.d core/sys/posix/iconv.d core/sys/posix/inttypes.d \
+	core/sys/posix/libgen.d core/sys/posix/mqueue.d \
+	core/sys/posix/net/if_.d core/sys/posix/netdb.d \
+	core/sys/posix/netinet/in_.d core/sys/posix/netinet/tcp.d \
+	core/sys/posix/poll.d core/sys/posix/pthread.d core/sys/posix/pwd.d \
+	core/sys/posix/sched.d core/sys/posix/semaphore.d \
+	core/sys/posix/setjmp.d core/sys/posix/signal.d core/sys/posix/stdio.d \
+	core/sys/posix/stdlib.d core/sys/posix/sys/filio.d \
+	core/sys/posix/sys/ioccom.d core/sys/posix/sys/ioctl.d \
+	core/sys/posix/sys/ipc.d core/sys/posix/sys/mman.d \
+	core/sys/posix/sys/msg.d core/sys/posix/sys/resource.d \
+	core/sys/posix/sys/select.d core/sys/posix/sys/shm.d \
+	core/sys/posix/sys/socket.d core/sys/posix/sys/stat.d \
+	core/sys/posix/sys/statvfs.d core/sys/posix/sys/time.d \
+	core/sys/posix/sys/ttycom.d core/sys/posix/sys/types.d \
+	core/sys/posix/sys/uio.d core/sys/posix/sys/un.d \
+	core/sys/posix/sys/utsname.d core/sys/posix/sys/wait.d \
+	core/sys/posix/syslog.d core/sys/posix/termios.d core/sys/posix/time.d \
 	core/sys/posix/ucontext.d core/sys/posix/unistd.d \
 	core/sys/posix/utime.d
 
