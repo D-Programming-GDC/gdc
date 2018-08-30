@@ -4,6 +4,7 @@
 # - SEMAPHORE_PROJECT_DIR
 # - SEMAPHORE_CACHE_DIR
 # See https://semaphoreci.com/docs/available-environment-variables.html
+#
 
 ## Find out which branch we are building.
 GCC_VERSION=$(cat gcc.version)
