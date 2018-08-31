@@ -54,9 +54,8 @@ class DebugStatement;
 class GotoStatement;
 class LabelStatement;
 class AsmStatement;
-#ifdef IN_GCC
-class ExtAsmStatement;
-#endif
+class InlineAsmStatement;
+class GccAsmStatement;
 class CompoundAsmStatement;
 class ImportStatement;
 
@@ -346,9 +345,8 @@ public:
     virtual void visit(GotoStatement *s) { visit((Statement *)s); }
     virtual void visit(LabelStatement *s) { visit((Statement *)s); }
     virtual void visit(AsmStatement *s) { visit((Statement *)s); }
-#ifdef IN_GCC
-    virtual void visit(ExtAsmStatement *s) { visit((Statement *)s); }
-#endif
+    virtual void visit(InlineAsmStatement *s) { visit((AsmStatement *)s); }
+    virtual void visit(GccAsmStatement *s) { visit((AsmStatement *)s); }
     virtual void visit(CompoundAsmStatement *s) { visit((CompoundStatement *)s); }
     virtual void visit(ImportStatement *s) { visit((Statement *)s); }
 

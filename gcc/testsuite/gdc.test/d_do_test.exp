@@ -92,9 +92,6 @@ proc gdc-convert-args { base args } {
         } elseif [string match "-O" $arg] {
             lappend out "-O2"
 
-        } elseif [string match "-property" $arg] {
-            lappend out "-fproperty"
-
         } elseif [string match "-release" $arg] {
             lappend out "-frelease"
 

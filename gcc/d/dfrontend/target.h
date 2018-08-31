@@ -72,10 +72,10 @@ struct Target
     static Expression *paintAsType(Expression *e, Type *type);
     // ABI and backend.
     static void loadModule(Module *m);
-    static void prefixName(OutBuffer *buf, LINK linkage);
     static const char *toCppMangle(Dsymbol *s);
     static const char *cppTypeInfoMangle(ClassDeclaration *cd);
     static const char *cppTypeMangle(Type *t);
+    static Type *cppParameterType(Parameter *p);
     static LINK systemLinkage();
 };
 

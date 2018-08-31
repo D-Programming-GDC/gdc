@@ -29,18 +29,31 @@ else version (WatchOS)
 extern (C):
 @system:
 
-/* Placed outside @nogc in order to not constrain what the callback does.
+/* Placed outside `nothrow` and `@nogc` in order to not constrain what the callback does.
  */
 ///
-alias int function(scope const void*, scope const void*) _compare_fp_t;
-///
-inout(void)* bsearch(scope const void* key, scope inout(void)* base, size_t nmemb, size_t size, _compare_fp_t compar);
-///
-void    qsort(scope void* base, size_t nmemb, size_t size, _compare_fp_t compar);
-
+alias _compare_fp_t = int function(const void*, const void*);
 
 nothrow:
 @nogc:
+
+///
+inout(void)* bsearch(const void* key, inout(void)* base, size_t nmemb, size_t size, _compare_fp_t compar);
+///
+void    qsort(void* base, size_t nmemb, size_t size, _compare_fp_t compar);
+
+// https://issues.dlang.org/show_bug.cgi?id=17188
+@system unittest
+{
+    struct S
+    {
+        extern(C) static int cmp(const void*, const void*) { return 0; }
+    }
+    int[4] arr;
+    qsort(arr.ptr, arr[0].sizeof, arr.length, &S.cmp);
+    int key;
+    bsearch(&key, arr.ptr, arr[0].sizeof, arr.length, &S.cmp);
+}
 
 ///
 struct div_t
@@ -74,11 +87,14 @@ enum MB_CUR_MAX   = 1;
 version(Windows)      enum RAND_MAX = 0x7fff;
 else version(CRuntime_Glibc)  enum RAND_MAX = 0x7fffffff;
 else version(Darwin)  enum RAND_MAX = 0x7fffffff;
-else version(FreeBSD) enum RAND_MAX = 0x7fffffff;
+else version(FreeBSD) enum RAND_MAX = 0x7ffffffd;
 else version(NetBSD)  enum RAND_MAX = 0x7fffffff;
 else version(OpenBSD) enum RAND_MAX = 0x7fffffff;
+else version(DragonFlyBSD) enum RAND_MAX = 0x7fffffff;
 else version(Solaris) enum RAND_MAX = 0x7fff;
 else version(CRuntime_Bionic) enum RAND_MAX = 0x7fffffff;
+else version(CRuntime_Musl) enum RAND_MAX = 0x7fffffff;
+else version(CRuntime_UClibc) enum RAND_MAX = 0x7fffffff;
 else static assert( false, "Unsupported platform" );
 
 ///
@@ -119,38 +135,19 @@ else version (MinGW)
     ///
     alias __mingw_strtold strtold;
 }
-else version (CRuntime_Bionic)
-{
-    ///
-    real strtold(scope inout(char)* nptr, scope inout(char)** endptr)
-    {   // Fake it again till we make it
-        return strtod(nptr, endptr);
-    }
-}
 else
 {
-    ///
+    /// Added to Bionic since Lollipop.
     real strtold(scope inout(char)* nptr, scope inout(char)** endptr);
 }
 
 // No unsafe pointer manipulation.
 @trusted
 {
-    version(CRuntime_Bionic)
-    {
-       import core.sys.posix.stdlib: lrand48, srand48;
-       ///
-       alias core.sys.posix.stdlib.lrand48 rand;
-       ///
-       alias core.sys.posix.stdlib.srand48 srand;
-    }
-    else
-    {
-        ///
-       int     rand();
-       ///
-       void    srand(uint seed);
-    }
+    /// These two were added to Bionic in Lollipop.
+    int     rand();
+    ///
+    void    srand(uint seed);
 }
 
 // We don't mark these @trusted. Given that they return a void*, one has
@@ -218,6 +215,11 @@ version( DigitalMars )
 else version( GNU )
 {
     void* alloca(size_t size) pure; // compiler intrinsic
+}
+else version( LDC )
+{
+    pragma(LDC_alloca)
+    void* alloca(size_t size) pure;
 }
 
 version( CRuntime_Microsoft )

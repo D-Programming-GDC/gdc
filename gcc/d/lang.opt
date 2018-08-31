@@ -269,10 +269,6 @@ fpreconditions
 D Var(flag_preconditions)
 Generate code for precondition contracts.
 
-fproperty
-D
-This switch is deprecated; do not use.
-
 frelease
 D
 Compile release version.

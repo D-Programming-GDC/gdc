@@ -87,6 +87,8 @@ Msgtable msgtable[] =
     { "gate", "__gate" },
     { "__c_long", NULL },
     { "__c_ulong", NULL },
+    { "__c_longlong", NULL },
+    { "__c_ulonglong", NULL },
     { "__c_long_double", NULL },
     { "cpp_type_info_ptr", "__cpp_type_info_ptr" },
     { "_assert", "assert" },

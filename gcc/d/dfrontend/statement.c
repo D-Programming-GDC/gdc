@@ -192,9 +192,6 @@ bool Statement::comeFrom()
         void visit(DefaultStatement *) { stop = true; }
         void visit(LabelStatement *)   { stop = true; }
         void visit(AsmStatement *)     { stop = true; }
-#ifdef IN_GCC
-        void visit(ExtAsmStatement *)  { stop = true; }
-#endif
     };
 
     ComeFrom cf;
@@ -1579,11 +1576,6 @@ AsmStatement::AsmStatement(Loc loc, Token *tokens)
     : Statement(loc)
 {
     this->tokens = tokens;
-    asmcode = NULL;
-    asmalign = 0;
-    refparam = false;
-    naked = false;
-    regs = 0;
 }
 
 Statement *AsmStatement::syntaxCopy()
@@ -1592,37 +1584,44 @@ Statement *AsmStatement::syntaxCopy()
 }
 
 
-#ifdef IN_GCC
-/************************ ExtAsmStatement ***************************************/
+/************************ InlineAsmStatement **********************************/
 
-ExtAsmStatement::ExtAsmStatement(Loc loc, StorageClass stc, Expression *insn,
-                                 Expressions *args, Identifiers *names,
-                                 Expressions *constraints, int outputargs,
-                                 Expressions *clobbers, Identifiers *labels)
-        : Statement(loc)
+InlineAsmStatement::InlineAsmStatement(Loc loc, Token *tokens)
+    : AsmStatement(loc, tokens)
 {
-    this->stc = stc;
-    this->insn = insn;
-    this->args = args;
-    this->names = names;
-    this->constraints = constraints;
-    this->outputargs = outputargs;
-    this->clobbers = clobbers;
-    this->labels = labels;
+    asmcode = NULL;
+    asmalign = 0;
+    refparam = false;
+    naked = false;
+    regs = 0;
+}
+
+Statement *InlineAsmStatement::syntaxCopy()
+{
+    return new InlineAsmStatement(loc, tokens);
+}
+
+
+/************************ GccAsmStatement ***************************************/
+
+GccAsmStatement::GccAsmStatement(Loc loc, Token *tokens)
+        : AsmStatement(loc, tokens)
+{
+    this->stc = STCundefined;
+    this->insn = NULL;
+    this->args = NULL;
+    this->outputargs = 0;
+    this->names = NULL;
+    this->constraints = NULL;
+    this->clobbers = NULL;
+    this->labels = NULL;
     this->gotos = NULL;
 }
 
-Statement *ExtAsmStatement::syntaxCopy()
+Statement *GccAsmStatement::syntaxCopy()
 {
-    Expressions *c_args = Expression::arraySyntaxCopy(args);
-    Expressions *c_constraints = Expression::arraySyntaxCopy(constraints);
-    Expressions *c_clobbers = Expression::arraySyntaxCopy(clobbers);
-
-    return new ExtAsmStatement(loc, stc, insn->syntaxCopy(), c_args, names,
-                               c_constraints, outputargs, c_clobbers, labels);
+    return new GccAsmStatement(loc, tokens);
 }
-
-#endif
 
 /************************ CompoundAsmStatement ***************************************/
 

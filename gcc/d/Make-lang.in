@@ -94,6 +94,8 @@ D_FRONTEND_OBJS = \
 	d/filename.o \
 	d/func.o \
 	d/hdrgen.o \
+	d/iasm.o \
+	d/iasmgcc.o \
 	d/identifier.o \
 	d/imphint.o \
 	d/init.o \

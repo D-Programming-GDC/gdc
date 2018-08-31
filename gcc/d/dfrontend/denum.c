@@ -303,6 +303,13 @@ Expression *EnumDeclaration::getMaxMinValue(Loc loc, Identifier *id)
         goto Lerrors;
     if (semanticRun == PASSinit || !members)
     {
+        if (isSpecial())
+        {
+            /* Allow these special enums to not need a member list
+             */
+            return memtype->getProperty(loc, id, 0);
+        }
+
         error("is forward referenced looking for .%s", id->toChars());
         goto Lerrors;
     }
@@ -365,6 +372,20 @@ Lerrors:
     return *pval;
 }
 
+/****************
+ * Determine if enum is a 'special' one.
+ * Returns:
+ *  true if special
+ */
+bool EnumDeclaration::isSpecial() const
+{
+    return (ident == Id::__c_long ||
+            ident == Id::__c_ulong ||
+            ident == Id::__c_longlong ||
+            ident == Id::__c_ulonglong ||
+            ident == Id::__c_long_double) && memtype;
+}
+
 Expression *EnumDeclaration::getDefaultValue(Loc loc)
 {
     //printf("EnumDeclaration::getDefaultValue() %p %s\n", this, toChars());
@@ -377,6 +398,13 @@ Expression *EnumDeclaration::getDefaultValue(Loc loc)
         goto Lerrors;
     if (semanticRun == PASSinit || !members)
     {
+        if (isSpecial())
+        {
+            /* Allow these special enums to not need a member list
+             */
+            return memtype->defaultInit(loc);
+        }
+
         error(loc, "forward reference of %s.init", toChars());
         goto Lerrors;
     }

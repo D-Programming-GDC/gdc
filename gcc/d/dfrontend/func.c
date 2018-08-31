@@ -211,9 +211,6 @@ public:
             visitStmt(s->statement);
     }
     void visit(AsmStatement *) {  }
-#ifdef IN_GCC
-    void visit(ExtAsmStatement *) {  }
-#endif
     void visit(ImportStatement *) {  }
 };
 
