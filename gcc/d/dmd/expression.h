@@ -5,16 +5,14 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/dlang/dmd/blob/master/src/expression.h
+ * https://github.com/dlang/dmd/blob/master/src/dmd/expression.h
  */
 
-#ifndef DMD_EXPRESSION_H
-#define DMD_EXPRESSION_H
+#pragma once
 
 #include "mars.h"
 #include "identifier.h"
 #include "arraytypes.h"
-#include "intrange.h"
 #include "visitor.h"
 #include "tokens.h"
 
@@ -77,10 +75,8 @@ Expression *integralPromotions(Expression *e, Scope *sc);
 bool discardValue(Expression *e);
 bool isTrivialExp(Expression *e);
 
-int isConst(Expression *e);
 Expression *toDelegate(Expression *e, Type* t, Scope *sc);
 AggregateDeclaration *isAggregate(Type *t);
-IntRange getIntRange(Expression *e);
 bool checkNonAssignmentArrayOp(Expression *e, bool suggestion = false);
 bool isUnaArrayOp(TOK op);
 bool isBinArrayOp(TOK op);
@@ -90,13 +86,7 @@ Expression *arrayOp(BinExp *e, Scope *sc);
 Expression *arrayOp(BinAssignExp *e, Scope *sc);
 bool hasSideEffect(Expression *e);
 bool canThrow(Expression *e, FuncDeclaration *func, bool mustNotThrow);
-Expression *Expression_optimize(Expression *e, int result, bool keepLvalue);
-MATCH implicitConvTo(Expression *e, Type *t);
-Expression *implicitCastTo(Expression *e, Scope *sc, Type *t);
-Expression *castTo(Expression *e, Scope *sc, Type *t);
-Expression *ctfeInterpret(Expression *);
 Expression *inlineCopy(Expression *e, Scope *sc);
-Expression *op_overload(Expression *e, Scope *sc);
 Type *toStaticArrayType(SliceExp *e);
 Expression *scaleFactor(BinExp *be, Scope *sc);
 Expression *typeCombine(BinExp *be, Scope *sc);
@@ -159,18 +149,9 @@ public:
     virtual bool isLvalue();
     virtual Expression *toLvalue(Scope *sc, Expression *e);
     virtual Expression *modifiableLvalue(Scope *sc, Expression *e);
-    Expression *implicitCastTo(Scope *sc, Type *t)
-    {
-        return ::implicitCastTo(this, sc, t);
-    }
-    MATCH implicitConvTo(Type *t)
-    {
-        return ::implicitConvTo(this, t);
-    }
-    Expression *castTo(Scope *sc, Type *t)
-    {
-        return ::castTo(this, sc, t);
-    }
+    Expression *implicitCastTo(Scope *sc, Type *t);
+    MATCH implicitConvTo(Type *t);
+    Expression *castTo(Scope *sc, Type *t);
     virtual Expression *resolveLoc(const Loc &loc, Scope *sc);
     virtual bool checkType();
     virtual bool checkValue();
@@ -193,24 +174,14 @@ public:
     Expression *addressOf();
     Expression *deref();
 
-    Expression *optimize(int result, bool keepLvalue = false)
-    {
-        return Expression_optimize(this, result, keepLvalue);
-    }
+    Expression *optimize(int result, bool keepLvalue = false);
 
     // Entry point for CTFE.
     // A compile-time result is required. Give an error if not possible
-    Expression *ctfeInterpret()
-    {
-        return ::ctfeInterpret(this);
-    }
-
-    int isConst() { return ::isConst(this); }
+    Expression *ctfeInterpret();
+    int isConst();
     virtual bool isBool(bool result);
-    Expression *op_overload(Scope *sc)
-    {
-        return ::op_overload(this, sc);
-    }
+    Expression *op_overload(Scope *sc);
 
     virtual bool hasCode()
     {
@@ -568,12 +539,6 @@ public:
 class VarExp : public SymbolExp
 {
 public:
-    /**
-    * Semantic can be called multiple times for a single expression.
-    * This field is needed to ensure the deprecation message will be printed only once.
-    */
-    bool hasCheckedAttrs;
-
     static VarExp *create(Loc loc, Declaration *var, bool hasOverloads = true);
     bool equals(RootObject *o);
     int checkModifiable(Scope *sc, int flag);
@@ -691,9 +656,6 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 };
-
-typedef UnionExp (*fp_t)(const Loc &loc, Type *, Expression *, Expression *);
-typedef int (*fp2_t)(const Loc &loc, TOK, Expression *, Expression *);
 
 class BinExp : public Expression
 {
@@ -1396,49 +1358,3 @@ class ObjcClassReferenceExp : public Expression
 
     void accept(Visitor *v) { v->visit(this); }
 };
-
-/* Special values used by the interpreter
- */
-
-Expression *expType(Type *type, Expression *e);
-
-UnionExp Neg(Type *type, Expression *e1);
-UnionExp Com(Type *type, Expression *e1);
-UnionExp Not(Type *type, Expression *e1);
-UnionExp Bool(Type *type, Expression *e1);
-UnionExp Cast(Loc loc, Type *type, Type *to, Expression *e1);
-UnionExp ArrayLength(Type *type, Expression *e1);
-UnionExp Ptr(Type *type, Expression *e1);
-
-UnionExp Add(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Min(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Mul(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Div(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Mod(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Pow(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Shl(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Shr(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Ushr(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp And(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Or(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Xor(const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Index(Type *type, Expression *e1, Expression *e2);
-UnionExp Cat(Type *type, Expression *e1, Expression *e2);
-
-UnionExp Equal(TOK op, const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Cmp(TOK op, const Loc &loc, Type *type, Expression *e1, Expression *e2);
-UnionExp Identity(TOK op, const Loc &loc, Type *type, Expression *e1, Expression *e2);
-
-UnionExp Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr);
-
-// Const-folding functions used by CTFE
-
-void sliceAssignArrayLiteralFromString(ArrayLiteralExp *existingAE, StringExp *newval, size_t firstIndex);
-void sliceAssignStringFromArrayLiteral(StringExp *existingSE, ArrayLiteralExp *newae, size_t firstIndex);
-void sliceAssignStringFromString(StringExp *existingSE, StringExp *newstr, size_t firstIndex);
-
-int sliceCmpStringWithString(StringExp *se1, StringExp *se2, size_t lo1, size_t lo2, size_t len);
-int sliceCmpStringWithArray(StringExp *se1, ArrayLiteralExp *ae2, size_t lo1, size_t lo2, size_t len);
-
-
-#endif /* DMD_EXPRESSION_H */

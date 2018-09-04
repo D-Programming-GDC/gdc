@@ -3,18 +3,13 @@
  * All Rights Reserved, written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
- * (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
- * https://github.com/dlang/dmd/blob/master/src/root/object.h
+ * http://www.boost.org/LICENSE_1_0.txt
+ * https://github.com/dlang/dmd/blob/master/src/dmd/root/object.h
  */
 
-#ifndef OBJECT_H
-#define OBJECT_H
+#pragma once
 
 #define POSIX (__linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __DragonFly__ || __sun)
-
-#if __DMC__
-#pragma once
-#endif
 
 #include "dcompat.h"
 #include <stddef.h>
@@ -69,5 +64,3 @@ public:
      */
     virtual int dyncast() const;
 };
-
-#endif

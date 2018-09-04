@@ -5,15 +5,10 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/dlang/dmd/blob/master/src/declaration.h
+ * https://github.com/dlang/dmd/blob/master/src/dmd/declaration.h
  */
 
-#ifndef DMD_DECLARATION_H
-#define DMD_DECLARATION_H
-
-#ifdef __DMC__
 #pragma once
-#endif /* __DMC__ */
 
 #include "dsymbol.h"
 #include "mtype.h"
@@ -35,6 +30,7 @@ class ExpInitializer;
 class StructDeclaration;
 struct CompiledCtfeFunction;
 struct ObjcSelector;
+struct IntRange;
 
 enum LINK;
 enum TOK;
@@ -850,5 +846,3 @@ public:
     DeleteDeclaration *isDeleteDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 };
-
-#endif /* DMD_DECLARATION_H */

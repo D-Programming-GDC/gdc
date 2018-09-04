@@ -5,15 +5,10 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/dlang/dmd/blob/master/src/module.h
+ * https://github.com/dlang/dmd/blob/master/src/dmd/module.h
  */
 
-#ifndef DMD_MODULE_H
-#define DMD_MODULE_H
-
-#ifdef __DMC__
 #pragma once
-#endif /* __DMC__ */
 
 #include "root/root.h"
 #include "dsymbol.h"
@@ -179,5 +174,3 @@ struct ModuleDeclaration
 
     const char *toChars() const;
 };
-
-#endif /* DMD_MODULE_H */

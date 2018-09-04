@@ -5,11 +5,10 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/dlang/dmd/blob/master/src/init.h
+ * https://github.com/dlang/dmd/blob/master/src/dmd/init.h
  */
 
-#ifndef INIT_H
-#define INIT_H
+#pragma once
 
 #include "root/root.h"
 
@@ -111,4 +110,4 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 };
 
-#endif
+Expression *initializerToExpression(Initializer *init, Type *t = NULL);

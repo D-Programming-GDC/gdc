@@ -717,7 +717,7 @@ extern (C++) Expression resolvePropertiesOnly(Scope* sc, Expression e1)
         fd = dve.var.isFuncDeclaration();
         goto Lfd;
     }
-    else if (e1.op == TOK.variable && e1.type.ty == Tfunction && (sc.intypeof || !(cast(VarExp)e1).var.needThis()))
+    else if (e1.op == TOK.variable && e1.type && e1.type.ty == Tfunction && (sc.intypeof || !(cast(VarExp)e1).var.needThis()))
     {
         fd = (cast(VarExp)e1).var.isFuncDeclaration();
     Lfd:
@@ -3454,16 +3454,6 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
          * variables as alias template parameters.
          */
         //checkAccess(loc, sc, NULL, var);
-        if (!e.hasCheckedAttrs && e.var.isEnumMember())
-        {
-            e.hasCheckedAttrs = true;
-            if (e.var.depdecl && !e.var.depdecl._scope)
-            {
-                e.var.depdecl._scope = sc;
-            }
-            e.checkDeprecated(sc, e.var);
-
-        }
 
         if (auto vd = e.var.isVarDeclaration())
         {

@@ -29,10 +29,10 @@ import dmd.globals;
  * Determine if function is a builtin one that we can
  * evaluate at compile time.
  */
-extern (C++) BUILTIN isBuiltin(FuncDeclaration fd);
+public extern (C++) BUILTIN isBuiltin(FuncDeclaration fd);
 
 /**************************************
  * Evaluate builtin function.
  * Return result; NULL if cannot evaluate it.
  */
-extern (C++) Expression eval_builtin(Loc loc, FuncDeclaration fd, Expressions* arguments);
+public extern (C++) Expression eval_builtin(Loc loc, FuncDeclaration fd, Expressions* arguments);

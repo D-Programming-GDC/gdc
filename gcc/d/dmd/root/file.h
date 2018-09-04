@@ -3,16 +3,11 @@
  * All Rights Reserved, written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
- * (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
- * https://github.com/dlang/dmd/blob/master/src/root/file.h
+ * http://www.boost.org/LICENSE_1_0.txt
+ * https://github.com/dlang/dmd/blob/master/src/dmd/root/file.h
  */
 
-#ifndef FILE_H
-#define FILE_H
-
-#if __DMC__
 #pragma once
-#endif
 
 #include <stddef.h>
 
@@ -56,5 +51,3 @@ struct File
 
     void remove();              // delete file
 };
-
-#endif

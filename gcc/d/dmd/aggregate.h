@@ -5,15 +5,10 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/dlang/dmd/blob/master/src/aggregate.h
+ * https://github.com/dlang/dmd/blob/master/src/dmd/aggregate.h
  */
 
-#ifndef DMD_AGGREGATE_H
-#define DMD_AGGREGATE_H
-
-#ifdef __DMC__
 #pragma once
-#endif /* __DMC__ */
 
 #include "root/root.h"
 
@@ -74,6 +69,7 @@ FuncDeclaration *buildXtoHash(StructDeclaration *ad, Scope *sc);
 FuncDeclaration *buildPostBlit(StructDeclaration *sd, Scope *sc);
 DtorDeclaration *buildDtor(AggregateDeclaration *ad, Scope *sc);
 FuncDeclaration *buildInv(AggregateDeclaration *ad, Scope *sc);
+FuncDeclaration *search_toString(StructDeclaration *sd);
 
 struct ClassKind
 {
@@ -349,5 +345,3 @@ public:
     InterfaceDeclaration *isInterfaceDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 };
-
-#endif /* DMD_AGGREGATE_H */

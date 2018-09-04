@@ -21,9 +21,11 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "dmd/aggregate.h"
 #include "dmd/cond.h"
+#include "dmd/doc.h"
 #include "dmd/hdrgen.h"
 #include "dmd/id.h"
 #include "dmd/json.h"
+#include "dmd/mangle.h"
 #include "dmd/module.h"
 #include "dmd/mtype.h"
 #include "dmd/target.h"
@@ -47,7 +49,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "debug.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 
 
 /* Array of D frontend type/decl nodes.  */

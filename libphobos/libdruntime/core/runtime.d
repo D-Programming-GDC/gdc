@@ -586,7 +586,7 @@ extern (C) UnitTestResult runModuleUnitTests()
     // backtrace
     version(GNU)
         import gcc.backtrace;
-    version( CRuntime_Glibc )
+    else version( CRuntime_Glibc )
         import core.sys.linux.execinfo;
     else version( Darwin )
         import core.sys.darwin.execinfo;
@@ -603,7 +603,37 @@ extern (C) UnitTestResult runModuleUnitTests()
     else version( CRuntime_UClibc )
         import core.sys.linux.execinfo;
 
-    static if( __traits( compiles, new LibBacktrace(0) ) )
+    static if( __traits( compiles, backtrace ) )
+    {
+        import core.sys.posix.signal; // segv handler
+
+        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr ) nothrow
+        {
+            static enum MAXFRAMES = 128;
+            void*[MAXFRAMES]  callstack;
+            int               numframes;
+
+            numframes = backtrace( callstack.ptr, MAXFRAMES );
+            backtrace_symbols_fd( callstack.ptr, numframes, 2 );
+        }
+
+        sigaction_t action = void;
+        sigaction_t oldseg = void;
+        sigaction_t oldbus = void;
+
+        (cast(byte*) &action)[0 .. action.sizeof] = 0;
+        sigfillset( &action.sa_mask ); // block other signals
+        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+        action.sa_sigaction = &unittestSegvHandler;
+        sigaction( SIGSEGV, &action, &oldseg );
+        sigaction( SIGBUS, &action, &oldbus );
+        scope( exit )
+        {
+            sigaction( SIGSEGV, &oldseg, null );
+            sigaction( SIGBUS, &oldbus, null );
+        }
+    }
+    else static if( __traits( compiles, new LibBacktrace(0) ) )
     {
         import core.sys.posix.signal; // segv handler
 
@@ -627,36 +657,6 @@ extern (C) UnitTestResult runModuleUnitTests()
 
             foreach (size_t i, const(char[]) msg; bt)
                 fprintf(stderr, "%s\n", msg.ptr ? msg.ptr : "???");
-        }
-
-        sigaction_t action = void;
-        sigaction_t oldseg = void;
-        sigaction_t oldbus = void;
-
-        (cast(byte*) &action)[0 .. action.sizeof] = 0;
-        sigfillset( &action.sa_mask ); // block other signals
-        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
-        action.sa_sigaction = &unittestSegvHandler;
-        sigaction( SIGSEGV, &action, &oldseg );
-        sigaction( SIGBUS, &action, &oldbus );
-        scope( exit )
-        {
-            sigaction( SIGSEGV, &oldseg, null );
-            sigaction( SIGBUS, &oldbus, null );
-        }
-    }
-    else static if( __traits( compiles, backtrace ) )
-    {
-        import core.sys.posix.signal; // segv handler
-
-        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr ) nothrow
-        {
-            static enum MAXFRAMES = 128;
-            void*[MAXFRAMES]  callstack;
-            int               numframes;
-
-            numframes = backtrace( callstack.ptr, MAXFRAMES );
-            backtrace_symbols_fd( callstack.ptr, numframes, 2 );
         }
 
         sigaction_t action = void;
@@ -748,7 +748,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
     // backtrace
     version(GNU)
         import gcc.backtrace;
-    version( CRuntime_Glibc )
+    else version( CRuntime_Glibc )
         import core.sys.linux.execinfo;
     else version( Darwin )
         import core.sys.darwin.execinfo;
@@ -771,23 +771,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         return null;
 
     //printf("runtime.defaultTraceHandler()\n");
-    static if( __traits( compiles, new LibBacktrace(0) ) )
-    {
-        version(Posix)
-        {
-            static enum FIRSTFRAME = 4;
-        }
-        else version (Win64)
-        {
-            static enum FIRSTFRAME = 4;
-        }
-        else
-        {
-            static enum FIRSTFRAME = 0;
-        }
-        return new LibBacktrace(FIRSTFRAME);
-    }
-    else static if( __traits( compiles, backtrace ) )
+    static if( __traits( compiles, backtrace ) )
     {
         import core.demangle;
         import core.stdc.stdlib : free;
@@ -1066,6 +1050,22 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         import core.sys.windows.windows : CONTEXT;
         auto s = new StackTrace(FIRSTFRAME, cast(CONTEXT*)ptr);
         return s;
+    }
+    else static if( __traits( compiles, new LibBacktrace(0) ) )
+    {
+        version(Posix)
+        {
+            static enum FIRSTFRAME = 4;
+        }
+        else version (Win64)
+        {
+            static enum FIRSTFRAME = 4;
+        }
+        else
+        {
+            static enum FIRSTFRAME = 0;
+        }
+        return new LibBacktrace(FIRSTFRAME);
     }
     else static if( __traits( compiles, new UnwindBacktrace(0) ) )
     {

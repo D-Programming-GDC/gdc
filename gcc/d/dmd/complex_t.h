@@ -5,11 +5,10 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/dlang/dmd/blob/master/src/complex_t.h
+ * https://github.com/dlang/dmd/blob/master/src/dmd/complex_t.h
  */
 
-#ifndef DMD_COMPLEX_T_H
-#define DMD_COMPLEX_T_H
+#pragma once
 
 #include "root/ctfloat.h"
 
@@ -70,5 +69,3 @@ inline real_t cimagl(complex_t x)
 {
     return x.im;
 }
-
-#endif

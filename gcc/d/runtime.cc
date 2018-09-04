@@ -27,7 +27,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 
 
 /* During the codegen pass, the compiler may do lowering of expressions to call

@@ -18,17 +18,21 @@
 
 module dmd.root.port;
 
+nothrow @nogc:
+
 extern (C++) struct Port
 {
-    static int memicmp(const char* s1, const char* s2, size_t n);
-    static char* strupr(char* s);
-    static bool isFloat32LiteralOutOfRange(const(char)* s);
-    static bool isFloat64LiteralOutOfRange(const(char)* s);
-    static void writelongLE(uint value, void* buffer);
-    static uint readlongLE(void* buffer);
-    static void writelongBE(uint value, void* buffer);
-    static uint readlongBE(void* buffer);
-    static uint readwordLE(void* buffer);
-    static uint readwordBE(void* buffer);
-    static void valcpy(void *dst, ulong val, size_t size);
+    nothrow @nogc:
+
+    static int memicmp(scope const char* s1, scope const char* s2, size_t n) pure;
+    static char* strupr(char* s) pure;
+    static bool isFloat32LiteralOutOfRange(scope const(char)* s);
+    static bool isFloat64LiteralOutOfRange(scope const(char)* s);
+    static void writelongLE(uint value, scope void* buffer) pure;
+    static uint readlongLE(scope void* buffer) pure;
+    static void writelongBE(uint value, scope void* buffer) pure;
+    static uint readlongBE(scope void* buffer) pure;
+    static uint readwordLE(scope void* buffer) pure;
+    static uint readwordBE(scope void* buffer) pure;
+    static void valcpy(scope void *dst, ulong val, size_t size) pure;
 }
