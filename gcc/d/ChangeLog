@@ -1,3 +1,8 @@
+2018-09-05  Eugene Wissner  <belka@caraus.de>
+
+	* d-frontend.cc (eval_builtin): Replace DECL_BUILT_IN with
+	fndecl_built_in_p.
+
 2018-08-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-target.cc (Target::prefixName): Remove function.

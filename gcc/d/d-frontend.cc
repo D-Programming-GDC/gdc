@@ -463,7 +463,7 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
     return NULL;
 
   tree decl = get_symbol_decl (fd);
-  gcc_assert (DECL_BUILT_IN (decl)
+  gcc_assert (fndecl_built_in_p (decl)
 	      || DECL_INTRINSIC_CODE (decl) != INTRINSIC_NONE);
 
   TypeFunction *tf = (TypeFunction *) fd->type;
