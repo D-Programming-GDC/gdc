@@ -32,7 +32,7 @@ $(TR $(TD Exceptions) $(TD
 ))
 )
 
-Copyright: Copyright Digital Mars 2007-.
+Copyright: Copyright The D Language Foundation 2007-.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
@@ -4339,15 +4339,23 @@ if (is(UT == Unqual!UT))
 }
 
 //emplace helper functions
-private void emplaceInitializer(T)(ref T chunk) @trusted pure nothrow
+private void emplaceInitializer(T)(scope ref T chunk) @trusted pure nothrow
 {
     static if (!hasElaborateAssign!T && isAssignable!T)
         chunk = T.init;
     else
     {
-        import core.stdc.string : memcpy;
-        static immutable T init = T.init;
-        memcpy(&chunk, &init, T.sizeof);
+        static if (__traits(isZeroInit, T))
+        {
+            import core.stdc.string : memset;
+            memset(&chunk, 0, T.sizeof);
+        }
+        else
+        {
+            import core.stdc.string : memcpy;
+            static immutable T init = T.init;
+            memcpy(&chunk, &init, T.sizeof);
+        }
     }
 }
 

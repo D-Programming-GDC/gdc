@@ -24,6 +24,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dmd/ctfe.h"
 #include "dmd/declaration.h"
 #include "dmd/enum.h"
+#include "dmd/errors.h"
 #include "dmd/globals.h"
 #include "dmd/hdrgen.h"
 #include "dmd/identifier.h"

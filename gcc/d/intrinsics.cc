@@ -801,6 +801,10 @@ maybe_expand_intrinsic (tree callexp)
       return call_builtin_fn (callexp, BUILT_IN_ISFINITE, 1,
 			      CALL_EXPR_ARG (callexp, 0));
 
+    case INTRINSIC_EXP:
+      return call_builtin_fn (callexp, BUILT_IN_EXPL, 1,
+			      CALL_EXPR_ARG (callexp, 0));
+
     case INTRINSIC_EXPM1:
       return call_builtin_fn (callexp, BUILT_IN_EXPM1L, 1,
 			      CALL_EXPR_ARG (callexp, 0));

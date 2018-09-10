@@ -2675,6 +2675,11 @@ Params:
         assert(e != 12);
     }
 
+    size_t toHash() const @safe nothrow
+    {
+        return _isNull ? 0 : typeid(T).getHash(&_value.payload);
+    }
+
     /**
      * Gives the string `"Nullable.null"` if `isNull` is `true`. Otherwise, the
      * result is equivalent to calling $(REF formattedWrite, std,format) on the
@@ -3382,6 +3387,21 @@ auto nullable(T)(T t)
         destructorCalled = false; // reset after S was destroyed in the NS constructor
     }
     assert(destructorCalled);
+}
+
+// check that toHash on Nullable is forwarded to the contained type
+@system unittest
+{
+    struct S
+    {
+        size_t toHash() const @safe pure nothrow { return 5; }
+    }
+
+    Nullable!S s1 = S();
+    Nullable!S s2 = Nullable!S();
+
+    assert(typeid(Nullable!S).getHash(&s1) == 5);
+    assert(typeid(Nullable!S).getHash(&s2) == 0);
 }
 
 /**
@@ -6162,11 +6182,13 @@ if (!is(T == class) && !(is(T == interface)))
                 else
                     enum sz = T.sizeof;
 
-                auto init = typeid(T).initializer();
-                if (init.ptr is null) // null ptr means initialize to 0s
+                static if (__traits(isZeroInit, T))
                     memset(&source, 0, sz);
                 else
+                {
+                    auto init = typeid(T).initializer();
                     memcpy(&source, init.ptr, sz);
+                }
             }
 
             _store._count = 1;

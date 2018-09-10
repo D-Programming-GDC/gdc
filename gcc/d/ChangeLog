@@ -1,3 +1,17 @@
+2018-09-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_init_options): Set-up global.params.argv0 as D array.
+	(d_parse_file): Use global.params.argv0 pointer field as format value.
+	* intrinsics.cc (maybe_expand_intrinsic): Handle INTRINSIC_EXP.
+	* intrinsics.def (EXP): Add CTFE intrinsic.
+
+2018-09-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc: Include errors.h, mars.h.
+	* decl.cc: Include errors.h.
+	* typeinfo.cc: Include globals.h, errors.h.
+	* verstr.h: Update to 2.082.0
+
 2018-09-05  Eugene Wissner  <belka@caraus.de>
 
 	* d-frontend.cc (eval_builtin): Replace DECL_BUILT_IN with

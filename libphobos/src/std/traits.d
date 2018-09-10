@@ -146,7 +146,7 @@
  * )
  * )
  *
- * Copyright: Copyright Digital Mars 2005 - 2009.
+ * Copyright: Copyright The D Language Foundation 2005 - 2009.
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   $(HTTP digitalmars.com, Walter Bright),
  *            Tomasz Stachowiak (`isExpressions`),
@@ -158,7 +158,7 @@
  *            Shoichi Kato
  * Source:    $(PHOBOSSRC std/traits.d)
  */
-/*          Copyright Digital Mars 2005 - 2009.
+/*          Copyright The D Language Foundation 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -2886,6 +2886,8 @@ private template hasRawAliasing(T...)
         {
             static if (is(T[0] foo : U*, U) && !isFunctionPointer!(T[0]))
                 enum has = !is(U == immutable);
+            else static if (is(T[0] foo : U[N], U, size_t N))
+                enum has = hasRawAliasing!U;
             else static if (is(T[0] foo : U[], U) && !isStaticArray!(T[0]))
                 enum has = !is(U == immutable);
             else static if (isAssociativeArray!(T[0]))
@@ -2916,6 +2918,16 @@ private template hasRawAliasing(T...)
     // indirect aggregation
     struct S2 { S1 a; double b; }
     static assert(!hasRawAliasing!S2);
+}
+
+// Issue 19228
+@safe unittest
+{
+    static struct C
+    {
+        int*[1] a;
+    }
+    static assert(hasRawAliasing!C);
 }
 
 @safe unittest

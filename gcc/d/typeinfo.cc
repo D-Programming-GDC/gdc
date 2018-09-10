@@ -21,6 +21,8 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "dmd/aggregate.h"
 #include "dmd/enum.h"
+#include "dmd/errors.h"
+#include "dmd/globals.h"
 #include "dmd/module.h"
 #include "dmd/mtype.h"
 #include "dmd/template.h"

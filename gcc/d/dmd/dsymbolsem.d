@@ -1617,6 +1617,24 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
     {
         // Should be merged with PragmaStatement
         //printf("\tPragmaDeclaration::semantic '%s'\n", pd.toChars());
+        if (global.params.mscoff)
+        {
+            if (pd.ident == Id.linkerDirective)
+            {
+                if (!pd.args || pd.args.dim != 1)
+                    pd.error("one string argument expected for pragma(linkerDirective)");
+                else
+                {
+                    auto se = semanticString(sc, (*pd.args)[0], "linker directive");
+                    if (!se)
+                        goto Lnodecl;
+                    (*pd.args)[0] = se;
+                    if (global.params.verbose)
+                        message("linkopt   %.*s", cast(int)se.len, se.string);
+                }
+                goto Lnodecl;
+            }
+        }
         if (pd.ident == Id.msg)
         {
             if (pd.args)
@@ -3459,19 +3477,30 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
                 if (s)
                 {
-                    auto fd = s.isFuncDeclaration();
-                    assert(fd);
-
                     HdrGenState hgs;
-                    OutBuffer buf1, buf2;
+                    OutBuffer buf;
 
-                    functionToBufferFull(cast(TypeFunction)(fd.type), &buf1,
-                        new Identifier(fd.toPrettyChars()), &hgs, null);
-                    functionToBufferFull(cast(TypeFunction)(funcdecl.type), &buf2,
+                    auto fd = s.isFuncDeclaration();
+                    functionToBufferFull(cast(TypeFunction)(funcdecl.type), &buf,
                         new Identifier(funcdecl.toPrettyChars()), &hgs, null);
+                    const(char)* funcdeclToChars = buf.peekString();
 
-                    error(funcdecl.loc, "function `%s` does not override any function, did you mean to override `%s`?",
-                        buf2.extractString(), buf1.extractString());
+                    if (fd)
+                    {
+                        OutBuffer buf1;
+
+                        functionToBufferFull(cast(TypeFunction)(fd.type), &buf1,
+                            new Identifier(fd.toPrettyChars()), &hgs, null);
+
+                        error(funcdecl.loc, "function `%s` does not override any function, did you mean to override `%s`?",
+                            funcdeclToChars, buf1.peekString());
+                    }
+                    else
+                    {
+                        error(funcdecl.loc, "function `%s` does not override any function, did you mean to override %s `%s`?",
+                            funcdeclToChars, s.kind, s.toPrettyChars());
+                        errorSupplemental(funcdecl.loc, "Functions are the only declarations that may be overriden");
+                    }
                 }
                 else
                     funcdecl.error("does not override any function");
