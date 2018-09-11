@@ -225,7 +225,7 @@ The following OS versions are implemented:
  	c_target_objs="aarch64-c.o"
  	cxx_target_objs="aarch64-c.o"
 +	d_target_objs="aarch64-d.o"
- 	extra_objs="aarch64-builtins.o aarch-common.o cortex-a57-fma-steering.o aarch64-speculation.o"
+ 	extra_objs="aarch64-builtins.o aarch-common.o cortex-a57-fma-steering.o aarch64-speculation.o falkor-tag-collision-avoidance.o"
  	target_gtfiles="\$(srcdir)/config/aarch64/aarch64-builtins.c"
  	target_has_targetm_common=yes
  	;;
@@ -374,7 +374,7 @@ The following OS versions are implemented:
  /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -570,6 +570,9 @@ enum aarch64_parse_opt_result aarch64_pa
+@@ -618,6 +618,9 @@ enum aarch64_parse_opt_result aarch64_pa
  std::string aarch64_get_extension_string_for_isa_flags (unsigned long,
  							unsigned long);
  
@@ -383,7 +383,7 @@ The following OS versions are implemented:
 +
  rtl_opt_pass *make_pass_fma_steering (gcc::context *);
  rtl_opt_pass *make_pass_track_speculation (gcc::context *);
- 
+ rtl_opt_pass *make_pass_tag_collision_avoidance (gcc::context *);
 --- a/gcc/config/aarch64/aarch64.h
 +++ b/gcc/config/aarch64/aarch64.h
 @@ -26,6 +26,9 @@
@@ -1291,13 +1291,16 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/s390/s390-protos.h
 +++ b/gcc/config/s390/s390-protos.h
-@@ -165,3 +165,6 @@ extern void s390_register_target_pragmas
- 
+@@ -166,6 +166,9 @@ extern void s390_register_target_pragmas
  /* Routines for s390-c.c */
  extern bool s390_const_operand_ok (tree, int, int, tree);
-+
+ 
 +/* Routines for s390-d.c  */
 +extern void s390_d_target_versions (void);
++
+ /* Pass management.  */
+ namespace gcc { class context; }
+ class rtl_opt_pass;
 --- a/gcc/config/s390/s390.h
 +++ b/gcc/config/s390/s390.h
 @@ -200,6 +200,9 @@ enum processor_flags
@@ -1312,7 +1315,7 @@ The following OS versions are implemented:
  			    | MASK_OPT_HTM | MASK_OPT_VX)
 --- a/gcc/config/s390/t-s390
 +++ b/gcc/config/s390/t-s390
-@@ -25,3 +25,7 @@ s390-c.o: $(srcdir)/config/s390/s390-c.c
+@@ -26,3 +26,7 @@ s390-c.o: $(srcdir)/config/s390/s390-c.c
    $(TARGET_H) $(TARGET_DEF_H) $(CPPLIB_H) $(C_PRAGMA_H)
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/s390/s390-c.c
@@ -1564,7 +1567,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10655,6 +10664,22 @@ unloaded. The default is to return false
+@@ -10659,6 +10668,22 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1612,7 +1615,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7306,6 +7315,16 @@ floating-point support; they are not inc
+@@ -7308,6 +7317,16 @@ floating-point support; they are not inc
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  
