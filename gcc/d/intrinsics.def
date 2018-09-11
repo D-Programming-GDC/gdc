@@ -114,6 +114,7 @@ DEF_CTFE_BUILTIN (ISINFINITY, ISINFINITY, "isInfinity", "std.math",
 		  "FNaNbNiNeI1XZb")
 DEF_CTFE_BUILTIN (ISFINITE, ISFINITE, "isFinite", "std.math", "FNaNbNiNeI1XZb")
 
+DEF_CTFE_BUILTIN (EXP, EXP, "exp", "std.math", "FNaNbNiNeeZe")
 DEF_CTFE_BUILTIN (EXPM1, EXPM1, "expm1", "std.math", "FNaNbNiNeeZe")
 DEF_CTFE_BUILTIN (EXP2, EXP2, "exp2", "std.math", "FNaNbNiNeeZe")
 

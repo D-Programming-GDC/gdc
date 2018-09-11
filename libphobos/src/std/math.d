@@ -106,7 +106,7 @@ $(TR $(TDNW Hardware Control) $(TD
  *      SQRT = &radic;
  *      HALF = &frac12;
  *
- * Copyright: Copyright Digital Mars 2000 - 2011.
+ * Copyright: Copyright The D Language Foundation 2000 - 2011.
  *            D implementations of tan, atan, atan2, exp, expm1, exp2, log, log10, log1p,
  *            log2, floor, ceil and lrint functions are based on the CEPHES math library,
  *            which is Copyright (C) 2001 Stephen L. Moshier $(LT)steve@moshier.net$(GT)
@@ -5844,7 +5844,7 @@ version (GNU)
     }
 }
 else
-version(D_HardFloat) @safe unittest
+@safe unittest
 {
     import std.meta : AliasSeq;
 
@@ -6165,6 +6165,20 @@ nothrow @nogc:
     else
         static assert(false, "Not implemented for this architecture");
 
+    version (ARM_Any)
+    {
+        static bool hasExceptionTraps_impl() @safe
+        {
+            auto oldState = getControlState();
+            // If exceptions are not supported, we set the bit but read it back as zero
+            // https://sourceware.org/ml/libc-ports/2012-06/msg00091.html
+            setControlState(oldState | divByZeroException);
+            immutable result = (getControlState() & allExceptions) != 0;
+            setControlState(oldState);
+            return result;
+        }
+    }
+
 public:
     /// Returns: true if the current FPU supports exception trapping
     @property static bool hasExceptionTraps() @safe pure
@@ -6177,13 +6191,11 @@ public:
             return true;
         else version(ARM_Any)
         {
-            auto oldState = getControlState();
-            // If exceptions are not supported, we set the bit but read it back as zero
-            // https://sourceware.org/ml/libc-ports/2012-06/msg00091.html
-            setControlState(oldState | divByZeroException);
-            immutable result = (getControlState() & allExceptions) != 0;
-            setControlState(oldState);
-            return result;
+            // The hasExceptionTraps_impl function is basically pure,
+            // as it restores all global state
+            auto fptr = ( () @trusted => cast(bool function() @safe
+                pure nothrow @nogc)&hasExceptionTraps_impl)();
+            return fptr();
         }
         else
             assert(0, "Not yet supported");

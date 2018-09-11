@@ -22,10 +22,12 @@ along with GCC; see the file COPYING3.  If not see
 #include "dmd/aggregate.h"
 #include "dmd/cond.h"
 #include "dmd/doc.h"
+#include "dmd/errors.h"
 #include "dmd/hdrgen.h"
 #include "dmd/id.h"
 #include "dmd/json.h"
 #include "dmd/mangle.h"
+#include "dmd/mars.h"
 #include "dmd/module.h"
 #include "dmd/mtype.h"
 #include "dmd/target.h"
@@ -277,7 +279,8 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global._init ();
 
   global.compiler.vendor = lang_hooks.name;
-  global.params.argv0 = xstrdup (decoded_options[0].arg);
+  global.params.argv0.ptr = xstrdup (decoded_options[0].arg);
+  global.params.argv0.length = strlen (decoded_options[0].arg);
   global.params.errorLimit = flag_max_errors;
 
   /* Silently allow deprecations unless -Wdeprecated.  */
@@ -1021,7 +1024,7 @@ d_parse_file (void)
 {
   if (global.params.verbose)
     {
-      message ("binary    %s", global.params.argv0);
+      message ("binary    %s", global.params.argv0.ptr);
       message ("version   %s", global.version);
 
       if (global.versionids)

@@ -30,12 +30,6 @@ extern (C++) struct CTFloat
     enum yl2x_supported = false;
     enum yl2xp1_supported = false;
 
-    static void yl2x(const real_t* x, const real_t* y, real_t* res);
-    static void yl2xp1(const real_t* x, const real_t* y, real_t* res);
-    static real_t sin(real_t x);
-    static real_t cos(real_t x);
-    static real_t tan(real_t x);
-    static real_t sqrt(real_t x);
     static real_t fabs(real_t x);
     static real_t ldexp(real_t n, int exp);
     static bool isIdentical(real_t a, real_t b);
@@ -46,8 +40,11 @@ extern (C++) struct CTFloat
     static real_t parse(const(char)* literal, bool* isOutOfRange = null);
     static int sprint(char* str, char fmt, real_t x);
 
+    // Constant real values 0, 1, -1 and 0.5.
     __gshared real_t zero;
     __gshared real_t one;
     __gshared real_t minusone;
     __gshared real_t half;
+
+    static void initialize();
 }

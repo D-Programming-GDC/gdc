@@ -2300,6 +2300,13 @@ else
                 }
             }
         }
+        else if (ps.ident == Id.linkerDirective)
+        {
+            /* Should this be allowed?
+             */
+            ps.error("`pragma(linkerDirective)` not allowed as statement");
+            return setError();
+        }
         else if (ps.ident == Id.startaddress)
         {
             if (!ps.args || ps.args.dim != 1)
@@ -2374,6 +2381,11 @@ else
 
         if (ps._body)
         {
+            if (ps.ident == Id.msg || ps.ident == Id.startaddress)
+            {
+                ps.error("`pragma(%s)` is missing a terminating `;`", ps.ident.toChars());
+                return setError();
+            }
             ps._body = ps._body.statementSemantic(sc);
         }
         result = ps._body;
