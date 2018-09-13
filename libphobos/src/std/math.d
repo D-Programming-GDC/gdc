@@ -148,6 +148,8 @@ version(DigitalMars)
 
 version (X86)       version = X86_Any;
 version (X86_64)    version = X86_Any;
+version (RISCV32)   version = RISCV_Any;
+version (RISCV64)   version = RISCV_Any;
 version (PPC)       version = PPC_Any;
 version (PPC64)     version = PPC_Any;
 version (MIPS32)    version = MIPS_Any;
@@ -6116,6 +6118,21 @@ nothrow @nogc:
                                  | inexactException,
         }
     }
+    else version (RISCV_Any)
+    {
+        enum : ExceptionMask
+        {
+            inexactException      = 0x01,
+            divByZeroException    = 0x08,
+            overflowException     = 0x04,
+            underflowException    = 0x02,
+            invalidException      = 0x10,
+            severeExceptions   = overflowException | divByZeroException
+                                 | invalidException,
+            allExceptions      = severeExceptions | underflowException
+                                 | inexactException,
+        }
+    }
     else version (SPARC64)
     {
         enum : ExceptionMask
@@ -6255,6 +6272,10 @@ private:
         alias ControlState = uint;
     }
     else version(MIPS_Any)
+    {
+        alias ControlState = uint;
+    }
+    else version (RISCV_Any)
     {
         alias ControlState = uint;
     }

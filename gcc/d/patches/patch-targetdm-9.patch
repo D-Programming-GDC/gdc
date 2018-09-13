@@ -31,6 +31,8 @@ The following CPU versions are implemented:
 * PPC64
 ** PPC_HardFloat
 ** PPC_SoftFloat
+* RISCV32
+* RISCV64
 * S390
 * S390X (deprecated)
 * SystemZ
@@ -267,7 +269,15 @@ The following OS versions are implemented:
  	extra_headers="loongson.h msa.h"
  	extra_objs="frame-header-opt.o"
  	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
-@@ -505,6 +522,7 @@ sparc*-*-*)
+@@ -496,6 +513,7 @@ powerpc*-*-*)
+ riscv*)
+ 	cpu_type=riscv
+ 	extra_objs="riscv-builtins.o riscv-c.o"
++	d_target_objs="riscv-d.o"
+ 	;;
+ rs6000*-*-*)
+ 	extra_options="${extra_options} g.opt fused-madd.opt rs6000/rs6000-tables.opt"
+@@ -505,6 +523,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -275,7 +285,7 @@ The following OS versions are implemented:
  	extra_headers="visintrin.h"
  	;;
  spu*-*-*)
-@@ -512,6 +530,7 @@ spu*-*-*)
+@@ -512,6 +531,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -283,7 +293,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
-@@ -541,10 +560,13 @@ tilepro*-*-*)
+@@ -541,10 +561,13 @@ tilepro*-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -297,7 +307,7 @@ The following OS versions are implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -814,8 +836,10 @@ case ${target} in
+@@ -814,8 +837,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -308,7 +318,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3231,6 +3255,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3231,6 +3256,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +329,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4845,6 +4873,7 @@ case ${target} in
+@@ -4845,6 +4874,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -329,7 +339,7 @@ The following OS versions are implemented:
  
 --- /dev/null
 +++ b/gcc/config/aarch64/aarch64-d.c
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,32 @@
 +/* Subroutines for the D front end on the AArch64 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -360,6 +370,7 @@ The following OS versions are implemented:
 +{
 +  d_add_builtin_version ("AArch64");
 +  d_add_builtin_version ("D_HardFloat");
++  d_add_builtin_version ("D_DoubleFloat");
 +}
 --- a/gcc/config/aarch64/aarch64-linux.h
 +++ b/gcc/config/aarch64/aarch64-linux.h
@@ -411,7 +422,7 @@ The following OS versions are implemented:
  cortex-a57-fma-steering.o: $(srcdir)/config/aarch64/cortex-a57-fma-steering.c \
 --- /dev/null
 +++ b/gcc/config/alpha/alpha-d.c
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,42 @@
 +/* Subroutines for the D front end on the Alpha architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -450,6 +461,7 @@ The following OS versions are implemented:
 +  else
 +    {
 +      d_add_builtin_version ("D_HardFloat");
++      d_add_builtin_version ("D_DoubleFloat");
 +      d_add_builtin_version ("Alpha_HardFloat");
 +    }
 +}
@@ -509,7 +521,7 @@ The following OS versions are implemented:
  PASSES_EXTRA += $(srcdir)/config/alpha/alpha-passes.def
 --- /dev/null
 +++ b/gcc/config/arm/arm-d.c
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,56 @@
 +/* Subroutines for the D front end on the ARM architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -561,7 +573,10 @@ The following OS versions are implemented:
 +  if (TARGET_SOFT_FLOAT)
 +    d_add_builtin_version ("D_SoftFloat");
 +  else if (TARGET_HARD_FLOAT)
-+    d_add_builtin_version ("D_HardFloat");
++    {
++      d_add_builtin_version ("D_HardFloat");
++      d_add_builtin_version ("D_DoubleFloat");
++    }
 +}
 --- a/gcc/config/arm/arm-protos.h
 +++ b/gcc/config/arm/arm-protos.h
@@ -721,7 +736,7 @@ The following OS versions are implemented:
 +    } while (0)
 --- /dev/null
 +++ b/gcc/config/i386/i386-d.c
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,47 @@
 +/* Subroutines for the D front end on the x86 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -762,7 +777,10 @@ The following OS versions are implemented:
 +    d_add_builtin_version ("X86");
 +
 +  if (TARGET_80387)
-+    d_add_builtin_version ("D_HardFloat");
++    {
++      d_add_builtin_version ("D_HardFloat");
++      d_add_builtin_version ("D_DoubleFloat");
++    }
 +  else
 +    d_add_builtin_version ("D_SoftFloat");
 +}
@@ -898,7 +916,7 @@ The following OS versions are implemented:
    LINUX_OR_ANDROID_LD (GNU_USER_TARGET_LINK_SPEC,			\
 --- /dev/null
 +++ b/gcc/config/mips/mips-d.c
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,59 @@
 +/* Subroutines for the D front end on the MIPS architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -954,6 +972,9 @@ The following OS versions are implemented:
 +      d_add_builtin_version ("MIPS_SoftFloat");
 +      d_add_builtin_version ("D_SoftFloat");
 +    }
++
++  if (TARGET_DOUBLE_FLOAT)
++    d_add_builtin_version ("D_DoubleFloat");
 +}
 --- a/gcc/config/mips/mips-protos.h
 +++ b/gcc/config/mips/mips-protos.h
@@ -1033,7 +1054,7 @@ The following OS versions are implemented:
  
 --- /dev/null
 +++ b/gcc/config/powerpcspe/powerpcspe-d.c
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,48 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1078,6 +1099,9 @@ The following OS versions are implemented:
 +      d_add_builtin_version ("PPC_SoftFloat");
 +      d_add_builtin_version ("D_SoftFloat");
 +    }
++
++  if (TARGET_DOUBLE_FLOAT)
++    d_add_builtin_version ("D_DoubleFloat");
 +}
 --- a/gcc/config/powerpcspe/powerpcspe-protos.h
 +++ b/gcc/config/powerpcspe/powerpcspe-protos.h
@@ -1116,6 +1140,85 @@ The following OS versions are implemented:
  $(srcdir)/config/powerpcspe/powerpcspe-tables.opt: $(srcdir)/config/powerpcspe/genopt.sh \
    $(srcdir)/config/powerpcspe/powerpcspe-cpus.def
  	$(SHELL) $(srcdir)/config/powerpcspe/genopt.sh $(srcdir)/config/powerpcspe > \
+--- /dev/null
++++ b/gcc/config/riscv/riscv-d.c
+@@ -0,0 +1,42 @@
++/* Subroutines for the D front end on the RISC-V architecture.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 3, or (at your option)
++any later version.
++
++GCC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "target.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++
++/* Implement TARGET_D_CPU_VERSIONS for RISC-V targets.  */
++
++void
++riscv_d_target_versions (void)
++{
++  if (TARGET_64BIT)
++    d_add_builtin_version ("RISCV64");
++  else
++    d_add_builtin_version ("RISCV32");
++
++  if (TARGET_HARD_FLOAT)
++    d_add_builtin_version ("D_HardFloat");
++  else
++    d_add_builtin_version ("D_SoftFloat");
++
++  if (TARGET_DOUBLE_FLOAT)
++    d_add_builtin_version ("D_DoubleFloat");
++}
+--- a/gcc/config/riscv/riscv-protos.h
++++ b/gcc/config/riscv/riscv-protos.h
+@@ -75,6 +75,9 @@ extern bool riscv_expand_block_move (rtx
+ /* Routines implemented in riscv-c.c.  */
+ void riscv_cpu_cpp_builtins (cpp_reader *);
+ 
++/* Routines implemented in riscv-d.c  */
++extern void riscv_d_target_versions (void);
++
+ /* Routines implemented in riscv-builtins.c.  */
+ extern void riscv_atomic_assign_expand_fenv (tree *, tree *, tree *);
+ extern rtx riscv_expand_builtin (tree, rtx, rtx, machine_mode, int);
+--- a/gcc/config/riscv/riscv.h
++++ b/gcc/config/riscv/riscv.h
+@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.
+ /* Target CPU builtins.  */
+ #define TARGET_CPU_CPP_BUILTINS() riscv_cpu_cpp_builtins (pfile)
+ 
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS riscv_d_target_versions
++
+ /* Default target_flags if no switches are specified  */
+ 
+ #ifndef TARGET_DEFAULT
+--- a/gcc/config/riscv/t-riscv
++++ b/gcc/config/riscv/t-riscv
+@@ -9,3 +9,7 @@ riscv-c.o: $(srcdir)/config/riscv/riscv-
+     coretypes.h $(TM_H) $(TREE_H) output.h $(C_COMMON_H) $(TARGET_H)
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+ 		$(srcdir)/config/riscv/riscv-c.c
++
++riscv-d.o: $(srcdir)/config/riscv/riscv-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/rs6000/linux.h
 +++ b/gcc/config/rs6000/linux.h
 @@ -57,6 +57,19 @@
@@ -1162,7 +1265,7 @@ The following OS versions are implemented:
  
 --- /dev/null
 +++ b/gcc/config/rs6000/rs6000-d.c
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,46 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1201,6 +1304,7 @@ The following OS versions are implemented:
 +    {
 +      d_add_builtin_version ("PPC_HardFloat");
 +      d_add_builtin_version ("D_HardFloat");
++      d_add_builtin_version ("D_DoubleFloat");
 +    }
 +  else if (TARGET_SOFT_FLOAT)
 +    {
@@ -1247,7 +1351,7 @@ The following OS versions are implemented:
  	$(SHELL) $(srcdir)/config/rs6000/genopt.sh $(srcdir)/config/rs6000 > \
 --- /dev/null
 +++ b/gcc/config/s390/s390-d.c
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,44 @@
 +/* Subroutines for the D front end on the IBM S/390 and zSeries architectures.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1287,7 +1391,10 @@ The following OS versions are implemented:
 +  if (TARGET_SOFT_FLOAT)
 +    d_add_builtin_version ("D_SoftFloat");
 +  else if (TARGET_HARD_FLOAT)
-+    d_add_builtin_version ("D_HardFloat");
++    {
++      d_add_builtin_version ("D_HardFloat");
++      d_add_builtin_version ("D_DoubleFloat");
++    }
 +}
 --- a/gcc/config/s390/s390-protos.h
 +++ b/gcc/config/s390/s390-protos.h
@@ -1325,7 +1432,7 @@ The following OS versions are implemented:
 +	$(POSTCOMPILE)
 --- /dev/null
 +++ b/gcc/config/sparc/sparc-d.c
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,49 @@
 +/* Subroutines for the D front end on the SPARC architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1366,6 +1473,7 @@ The following OS versions are implemented:
 +  if (TARGET_FPU)
 +    {
 +      d_add_builtin_version ("D_HardFloat");
++      d_add_builtin_version ("D_DoubleFloat");
 +      d_add_builtin_version ("SPARC_HardFloat");
 +    }
 +  else

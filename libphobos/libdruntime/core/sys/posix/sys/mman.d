@@ -363,6 +363,10 @@ version( CRuntime_Glibc )
         enum MS_INVALIDATE = 2;
         enum MS_SYNC = 4;
     }
+    else version (RISCV32)
+        private enum DEFAULTS = true;
+    else version (RISCV64)
+        private enum DEFAULTS = true;
     else version (SPARC)
         private enum DEFAULTS = true;
     else version (SPARC64)

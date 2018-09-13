@@ -75,6 +75,18 @@ else version (AArch64)
     enum EFD_CLOEXEC = 0x80000; // octal!2000000
     enum EFD_NONBLOCK = 0x800; // octal!4000
 }
+else version (RISCV32)
+{
+    enum EFD_SEMAPHORE = 1;
+    enum EFD_CLOEXEC = 0x80000; // octal!2000000
+    enum EFD_NONBLOCK = 0x800; // octal!4000
+}
+else version (RISCV64)
+{
+    enum EFD_SEMAPHORE = 1;
+    enum EFD_CLOEXEC = 0x80000; // octal!2000000
+    enum EFD_NONBLOCK = 0x800; // octal!4000
+}
 else version (SPARC64)
 {
     enum EFD_SEMAPHORE = 1;

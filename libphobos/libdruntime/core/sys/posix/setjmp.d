@@ -125,6 +125,30 @@ version( CRuntime_Glibc )
                 double[6] __fpregs;
         }
     }
+    else version (RISCV32)
+    {
+        struct __riscv_jmp_buf
+        {
+            c_long __pc;
+            c_long[12] __regs;
+            c_long __sp;
+            version (D_DoubleFloat)
+                double[12] __fpregs;
+        }
+        alias __jmp_buf = __riscv_jmp_buf[1];
+    }
+    else version (RISCV64)
+    {
+        struct __riscv_jmp_buf
+        {
+            c_long __pc;
+            c_long[12] __regs;
+            c_long __sp;
+            version (D_DoubleFloat)
+                double[12] __fpregs;
+        }
+        alias __jmp_buf = __riscv_jmp_buf[1];
+    }
     else version (SystemZ)
     {
         struct __s390_jmp_buf

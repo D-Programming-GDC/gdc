@@ -261,8 +261,12 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
                         msg = formatLine(sym.symbol, buffer);
                         int ret = dg(i, msg);
 
-                        if (!ret && sym.symbol.funcName && strcmp(sym.symbol.funcName, "_Dmain") == 0)
+                        if (!ret && sym.symbol.funcName &&
+                            (strcmp(sym.symbol.funcName, "_Dmain") == 0 ||
+                             strcmp(sym.symbol.funcName, "_d_run_main") == 0))
+                        {
                             return 1;
+                        }
                         return ret;
                     }
                 }

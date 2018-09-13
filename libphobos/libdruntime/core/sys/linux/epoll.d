@@ -112,6 +112,22 @@ else version (MIPS64)
         epoll_data_t data;
     }
 }
+else version (RISCV32)
+{
+    struct epoll_event
+    {
+        uint events;
+        epoll_data_t data;
+    }
+}
+else version (RISCV64)
+{
+    struct epoll_event
+    {
+        uint events;
+        epoll_data_t data;
+    }
+}
 else version (SPARC64)
 {
     struct epoll_event

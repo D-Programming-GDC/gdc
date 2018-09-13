@@ -174,6 +174,20 @@ else version (CRuntime_Glibc)
         ///
         enum int FP_ILOGBNAN      = int.max;
     }
+    else version (RISCV32)
+    {
+        ///
+        enum int FP_ILOGB0        = -int.max;
+        ///
+        enum int FP_ILOGBNAN      = int.max;
+    }
+    else version (RISCV64)
+    {
+        ///
+        enum int FP_ILOGB0        = -int.max;
+        ///
+        enum int FP_ILOGBNAN      = int.max;
+    }
     else version (SPARC64)
     {
         ///

@@ -353,6 +353,54 @@ version( CRuntime_Glibc )
             c_ulong     __unused6;
         }
     }
+    else version (RISCV32)
+    {
+        struct stat_t
+        {
+            dev_t       st_dev;
+            ino_t       st_ino;
+            mode_t      st_mode;
+            nlink_t     st_nlink;
+            uid_t       st_uid;
+            gid_t       st_gid;
+            dev_t       st_rdev;
+            dev_t       __pad1;
+            off_t       st_size;
+            blksize_t   st_blksize;
+            int         __pad2;
+            time_t      st_atime;
+            c_ulong     st_atime_nsec;
+            time_t      st_mtime;
+            c_ulong     st_mtime_nsec;
+            time_t      st_ctime;
+            c_ulong     st_ctime_nsec;
+            int[2]      __reserved;
+        }
+    }
+    else version (RISCV64)
+    {
+        struct stat_t
+        {
+            dev_t       st_dev;
+            ino_t       st_ino;
+            mode_t      st_mode;
+            nlink_t     st_nlink;
+            uid_t       st_uid;
+            gid_t       st_gid;
+            dev_t       st_rdev;
+            dev_t       __pad1;
+            off_t       st_size;
+            blksize_t   st_blksize;
+            int         __pad2;
+            time_t      st_atime;
+            c_ulong     st_atime_nsec;
+            time_t      st_mtime;
+            c_ulong     st_mtime_nsec;
+            time_t      st_ctime;
+            c_ulong     st_ctime_nsec;
+            int[2]      __reserved;
+        }
+    }
     else version (ARM)
     {
         private

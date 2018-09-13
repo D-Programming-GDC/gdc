@@ -63,6 +63,18 @@ else version (AArch64)
     alias __WORDSIZE __ELF_NATIVE_CLASS;
     alias uint32_t Elf_Symndx;
 }
+else version (RISCV32)
+{
+    // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
+    alias __WORDSIZE __ELF_NATIVE_CLASS;
+    alias uint32_t Elf_Symndx;
+}
+else version (RISCV64)
+{
+    // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
+    alias __WORDSIZE __ELF_NATIVE_CLASS;
+    alias uint32_t Elf_Symndx;
+}
 else version (SPARC64)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
