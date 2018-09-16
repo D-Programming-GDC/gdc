@@ -209,14 +209,7 @@ void inlineasm()
 {
     version(GNU)
     {
-        version(X86)
-            static assert(!__traits(compiles, { asm { "nop"; } }() ));
-        else version(X86_64)
-            static assert(!__traits(compiles, { asm { "nop"; } }() ));
-        else version(ARM)
-            static assert(!__traits(compiles, { asm { "nop"; } }() ));
-        else
-            static assert(false, "ASM code not implemented for this architecture");
+        static assert(!__traits(compiles, { asm { ""; } }() ));
     }
     else
         static assert(!__traits(compiles, { asm { int 3; } }() ));
