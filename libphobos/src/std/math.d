@@ -5338,6 +5338,7 @@ private:
             }
             else version (AArch64)
             {
+                ControlState cont;
                 asm pure nothrow @nogc
                 {
                     "mrs %0, FPCR;" : "=r" cont;
