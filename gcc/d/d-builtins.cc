@@ -19,12 +19,12 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/attrib.h"
-#include "dfrontend/aggregate.h"
-#include "dfrontend/cond.h"
-#include "dfrontend/declaration.h"
-#include "dfrontend/module.h"
-#include "dfrontend/mtype.h"
+#include "dmd/attrib.h"
+#include "dmd/aggregate.h"
+#include "dmd/cond.h"
+#include "dmd/declaration.h"
+#include "dmd/module.h"
+#include "dmd/mtype.h"
 
 #include "tree.h"
 #include "fold-const.h"

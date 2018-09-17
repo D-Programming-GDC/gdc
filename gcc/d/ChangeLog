@@ -1,3 +1,15 @@
+2018-09-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_INCLUDES): Rename dfrontend to dmd.
+	(d/%.o): Likewise.
+	(d/%.dmdgen.o): Likewise.
+
+2018-09-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc: Include errors.h, mars.h.
+	* decl.cc: Include errors.h.
+	* typeinfo.cc: Include globals.h, errors.h.
+
 2018-09-05  Eugene Wissner  <belka@caraus.de>
 
 	* d-frontend.cc (eval_builtin): Replace DECL_BUILT_IN with
@@ -28,6 +40,29 @@
 	DECL_EXTERNAL. Move logic for determining TREE_STATIC ...
 	(start_function): ... here.
 	(d_finish_decl): Update TLS model after finishing variable linkage.
+
+2018-07-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (d.tags): Rename dfrontend to dmd.
+	* d-attribs.c: Rename dfrontend includes to dmd.
+	* d-builtins.cc: Likewise.
+	* d-codegen.cc: Likewise.
+	* d-convert.cc: Likewise.
+	* d-diagnostic.cc: Likewise.
+	* d-frontend.cc: Likewise.
+	* d-incpath.cc: Likewise.
+	* d-lang.cc: Likewise.
+	* d-longdouble.cc: Likewise.
+	* d-target.cc: Likewise.
+	* decl.cc: Likewise.
+	* expr.cc: Likewise.
+	* imports.cc: Likewise.
+	* intrinsics.cc: Likewise.
+	* modules.cc: Likewise.
+	* runtime.cc: Likewise.
+	* toir.cc: Likewise.
+	* typeinfo.cc: Likewise.
+	* types.cc: Likewise.
 
 2018-07-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
