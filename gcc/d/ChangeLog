@@ -3,6 +3,7 @@
 	* Make-lang.in (D_INCLUDES): Rename dfrontend to dmd.
 	(d/%.o): Likewise.
 	(d/%.dmdgen.o): Likewise.
+	* verstr.h: Update to 2.076.1
 
 2018-09-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
