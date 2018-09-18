@@ -349,7 +349,7 @@ private extern (C++) FuncDeclaration buildPostBlit(StructDeclaration sd, Scope* 
     return xpostblit;
 }
 
-private uint setMangleOverride(Dsymbol s, char* sym)
+private uint setMangleOverride(Dsymbol s, const(char)[] sym)
 {
     AttribDeclaration ad = s.isAttribDeclaration();
     if (ad)
@@ -1846,7 +1846,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                         char* name = cast(char*)mem.xmalloc(se.len + 1);
                         memcpy(name, se.string, se.len);
                         name[se.len] = 0;
-                        uint cnt = setMangleOverride(s, name);
+                        uint cnt = setMangleOverride(s, name[0 .. se.len]);
                         if (cnt > 1)
                             pd.error("can only apply to a single declaration");
                     }
@@ -4952,7 +4952,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         Module.dprogress++;
         cldec.semanticRun = PASS.semanticdone;
         //printf("-ClassDeclaration.dsymbolSemantic(%s), type = %p\n", toChars(), type);
-        //members.print();
 
         sc2.pop();
 
@@ -5310,7 +5309,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         Module.dprogress++;
         idec.semanticRun = PASS.semanticdone;
         //printf("-InterfaceDeclaration.dsymbolSemantic(%s), type = %p\n", toChars(), type);
-        //members.print();
 
         sc2.pop();
 

@@ -1,3 +1,9 @@
+2018-09-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (deps_write): Use toChars accessor to get module path.
+	* decl.cc (get_symbol_decl): Use get_identifier_with_length to get
+	mangle override identifier node.
+
 2018-09-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (d_init_options): Set-up global.params.argv0 as D array.

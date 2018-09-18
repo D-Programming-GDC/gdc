@@ -1103,8 +1103,12 @@ get_symbol_decl (Declaration *decl)
     {
       tree mangled_name;
 
-      if (decl->mangleOverride)
-	mangled_name = get_identifier (decl->mangleOverride);
+      if (decl->mangleOverride.length)
+	{
+	  mangled_name =
+	    get_identifier_with_length (decl->mangleOverride.ptr,
+					decl->mangleOverride.length);
+	}
       else
 	mangled_name = get_identifier (mangle_decl (decl));
 
