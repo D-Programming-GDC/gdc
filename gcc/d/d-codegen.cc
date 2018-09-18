@@ -19,11 +19,11 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/ctfe.h"
-#include "dfrontend/declaration.h"
-#include "dfrontend/target.h"
-#include "dfrontend/template.h"
+#include "dmd/aggregate.h"
+#include "dmd/ctfe.h"
+#include "dmd/declaration.h"
+#include "dmd/target.h"
+#include "dmd/template.h"
 
 #include "tree.h"
 #include "tree-iterator.h"

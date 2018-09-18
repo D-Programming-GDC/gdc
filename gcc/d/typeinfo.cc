@@ -19,12 +19,14 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/enum.h"
-#include "dfrontend/module.h"
-#include "dfrontend/mtype.h"
-#include "dfrontend/template.h"
-#include "dfrontend/target.h"
+#include "dmd/aggregate.h"
+#include "dmd/enum.h"
+#include "dmd/errors.h"
+#include "dmd/globals.h"
+#include "dmd/module.h"
+#include "dmd/mtype.h"
+#include "dmd/template.h"
+#include "dmd/target.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -34,7 +36,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 #include "d-target.h"
 
 

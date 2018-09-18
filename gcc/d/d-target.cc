@@ -19,11 +19,12 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/module.h"
-#include "dfrontend/mtype.h"
-#include "dfrontend/tokens.h"
-#include "dfrontend/target.h"
+#include "dmd/aggregate.h"
+#include "dmd/mangle.h"
+#include "dmd/module.h"
+#include "dmd/mtype.h"
+#include "dmd/tokens.h"
+#include "dmd/target.h"
 
 #include "tree.h"
 #include "memmodel.h"
@@ -34,7 +35,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 #include "d-target.h"
 
 /* Implements the Target interface defined by the front end.

@@ -19,13 +19,16 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/cond.h"
-#include "dfrontend/hdrgen.h"
-#include "dfrontend/json.h"
-#include "dfrontend/module.h"
-#include "dfrontend/mtype.h"
-#include "dfrontend/target.h"
+#include "dmd/aggregate.h"
+#include "dmd/cond.h"
+#include "dmd/doc.h"
+#include "dmd/hdrgen.h"
+#include "dmd/json.h"
+#include "dmd/mangle.h"
+#include "dmd/mars.h"
+#include "dmd/module.h"
+#include "dmd/mtype.h"
+#include "dmd/target.h"
 
 #include "opts.h"
 #include "alias.h"
@@ -46,7 +49,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "debug.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 #include "id.h"
 
 
