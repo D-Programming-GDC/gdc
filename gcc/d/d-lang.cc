@@ -175,7 +175,7 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
     }
   else
     {
-      str = module->objfile->name->str;
+      str = module->objfile->name.toChars ();
       size = strlen (str);
     }
 
@@ -189,7 +189,7 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
   {
     Module *depmod = modlist.pop ();
 
-    str = depmod->srcfile->name->str;
+    str = depmod->srcfile->name.toChars ();
     size = strlen (str);
 
     /* Skip dependencies that have already been written.  */
@@ -256,7 +256,7 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
       Module *m = phonylist[i];
 
       buffer->writenl ();
-      buffer->writestring (m->srcfile->name->str);
+      buffer->writestring (m->srcfile->name.toChars ());
       buffer->writestring (":\n");
     }
 }

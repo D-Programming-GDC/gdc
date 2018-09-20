@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "root/dcompat.h"
 #include "root/root.h"
 #include "root/rmem.h"
 #include "root/stringtable.h"
@@ -18,14 +19,12 @@ class Identifier : public RootObject
 {
 private:
     int value;
-    const char *string;
-    size_t len;
+    DArray<const char> string;
 
 public:
     static Identifier* create(const char *string);
     bool equals(RootObject *o);
     int compare(RootObject *o);
-    void print();
     const char *toChars();
     int getValue() const;
     const char *toHChars2();
