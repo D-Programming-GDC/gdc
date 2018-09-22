@@ -28,10 +28,10 @@ proc gdc-convert-args { base args } {
     foreach arg [split [lindex $args 0] " "] {
         # List of switches kept in ASCII collated order.
         if { [regexp -- {^-I([\w+/-]+)} $arg pattern path] } {
-            lappend out "-I$base/$path"
+            lappend out "-I$path"
 
         } elseif { [regexp -- {^-J([\w+/-]+)} $arg pattern path] } {
-            lappend out "-J$base/$path"
+            lappend out "-J$path"
 
         } elseif [string match "-allinst" $arg] {
             lappend out "-fall-instantiations"
@@ -353,7 +353,7 @@ proc gdc-do-test { } {
         }
 
         # Convert to DG test.
-        set imports [format "-I%s/%s" $base $dir]
+        set imports [format "-I%s" $dir]
         set filename [dmd2dg $base $dir/$name.$ext]
 
         if { $dir == "runnable" } {
