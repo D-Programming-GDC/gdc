@@ -3141,7 +3141,8 @@ float ldexp(float n, int exp) @safe pure nothrow @nogc { return ldexp(cast(real)
 
 @safe pure nothrow @nogc unittest
 {
-    static if (floatTraits!(real).realFormat == RealFormat.ieeeExtended)
+    static if (floatTraits!(real).realFormat == RealFormat.ieeeExtended ||
+               floatTraits!(real).realFormat == RealFormat.ieeeQuadruple)
     {
         assert(ldexp(1.0L, -16384) == 0x1p-16384L);
         assert(ldexp(1.0L, -16382) == 0x1p-16382L);
