@@ -68,7 +68,7 @@ import std.traits;
 
     // Generate a uniformly-distributed real in the range [0, 100)
     auto r = uniform(0.0L, 100.0L, rnd);
-    assert(r == 79.65429843861011285);
+    assert(r >= 0 && r < 100);
 
     // Generate a 32-bit random number
     auto u = uniform!uint(rnd);
