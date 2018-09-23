@@ -164,9 +164,9 @@ am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	core/sync/barrier.lo core/sync/condition.lo \
 	core/sync/config.lo core/sync/exception.lo core/sync/mutex.lo \
 	core/sync/rwmutex.lo core/sync/semaphore.lo core/thread.lo \
-	core/time.lo core/vararg.lo etc/linux/memoryerror.lo \
-	gcc/attribute.lo gcc/backtrace.lo gcc/builtins.lo gcc/deh.lo \
-	gcc/unwind/arm.lo gcc/unwind/arm_common.lo gcc/unwind/c6x.lo \
+	core/time.lo core/vararg.lo gcc/attribute.lo gcc/backtrace.lo \
+	gcc/builtins.lo gcc/deh.lo gcc/unwind/arm.lo \
+	gcc/unwind/arm_common.lo gcc/unwind/c6x.lo \
 	gcc/unwind/generic.lo gcc/unwind/package.lo gcc/unwind/pe.lo \
 	object.lo rt/aApply.lo rt/aApplyR.lo rt/aaA.lo rt/adi.lo \
 	rt/arrayassign.lo rt/arraycast.lo rt/arraycat.lo rt/cast_.lo \
@@ -723,23 +723,22 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/stdc/wctype.d core/sync/barrier.d core/sync/condition.d \
 	core/sync/config.d core/sync/exception.d core/sync/mutex.d \
 	core/sync/rwmutex.d core/sync/semaphore.d core/thread.d core/time.d \
-	core/vararg.d etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
-	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
-	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
-	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
-	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d \
-	rt/critical_.d rt/deh.d rt/dmain2.d rt/ehalloc.d rt/invariant.d \
-	rt/lifetime.d rt/memory.d rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d \
-	rt/sections.d rt/sections_android.d rt/sections_elf_shared.d \
-	rt/sections_osx_x86.d rt/sections_osx_x86_64.d rt/sections_solaris.d \
-	rt/sections_win32.d rt/sections_win64.d rt/tlsgc.d \
-	rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
-	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
-	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
-	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
-	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
-	rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d \
-	rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
+	core/vararg.d gcc/attribute.d gcc/backtrace.d gcc/builtins.d gcc/deh.d \
+	gcc/unwind/arm.d gcc/unwind/arm_common.d gcc/unwind/c6x.d \
+	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
+	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
+	rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d rt/critical_.d \
+	rt/deh.d rt/dmain2.d rt/ehalloc.d rt/invariant.d rt/lifetime.d \
+	rt/memory.d rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
+	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx_x86.d \
+	rt/sections_osx_x86_64.d rt/sections_solaris.d rt/sections_win32.d \
+	rt/sections_win64.d rt/tlsgc.d rt/typeinfo/ti_Acdouble.d \
+	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
+	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
+	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
+	rt/typeinfo/ti_Ashort.d rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d \
+	rt/typeinfo/ti_cdouble.d rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d \
+	rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
 	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
 	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
 	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
@@ -1079,10 +1078,6 @@ core/sync/semaphore.lo: core/sync/$(am__dirstamp)
 core/thread.lo: core/$(am__dirstamp)
 core/time.lo: core/$(am__dirstamp)
 core/vararg.lo: core/$(am__dirstamp)
-etc/linux/$(am__dirstamp):
-	@$(MKDIR_P) etc/linux
-	@: > etc/linux/$(am__dirstamp)
-etc/linux/memoryerror.lo: etc/linux/$(am__dirstamp)
 gcc/$(am__dirstamp):
 	@$(MKDIR_P) gcc
 	@: > gcc/$(am__dirstamp)
@@ -2404,8 +2399,6 @@ mostlyclean-compile:
 	-rm -f core/time.lo
 	-rm -f core/vararg.$(OBJEXT)
 	-rm -f core/vararg.lo
-	-rm -f etc/linux/memoryerror.$(OBJEXT)
-	-rm -f etc/linux/memoryerror.lo
 	-rm -f gc/bits.$(OBJEXT)
 	-rm -f gc/bits.lo
 	-rm -f gc/config.$(OBJEXT)
@@ -2678,7 +2671,6 @@ clean-libtool:
 	-rm -rf core/sys/solaris/.libs core/sys/solaris/_libs
 	-rm -rf core/sys/solaris/sys/.libs core/sys/solaris/sys/_libs
 	-rm -rf core/sys/windows/.libs core/sys/windows/_libs
-	-rm -rf etc/linux/.libs etc/linux/_libs
 	-rm -rf gc/.libs gc/_libs
 	-rm -rf gc/impl/conservative/.libs gc/impl/conservative/_libs
 	-rm -rf gc/impl/manual/.libs gc/impl/manual/_libs
@@ -2807,7 +2799,6 @@ distclean-generic:
 	-rm -f core/sys/solaris/$(am__dirstamp)
 	-rm -f core/sys/solaris/sys/$(am__dirstamp)
 	-rm -f core/sys/windows/$(am__dirstamp)
-	-rm -f etc/linux/$(am__dirstamp)
 	-rm -f gc/$(am__dirstamp)
 	-rm -f gc/impl/conservative/$(am__dirstamp)
 	-rm -f gc/impl/manual/$(am__dirstamp)

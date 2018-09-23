@@ -22,6 +22,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "dmd/attrib.h"
 #include "dmd/aggregate.h"
 #include "dmd/enum.h"
+#include "dmd/expression.h"
+#include "dmd/identifier.h"
 #include "dmd/mtype.h"
 #include "dmd/target.h"
 

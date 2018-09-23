@@ -10,10 +10,7 @@
 
 #pragma once
 
-#include "root/root.h"
-
 #include "dsymbol.h"
-#include "declaration.h"
 #include "objc.h"
 
 class Identifier;
@@ -23,7 +20,6 @@ class Expression;
 class FuncDeclaration;
 class CtorDeclaration;
 class DtorDeclaration;
-class InvariantDeclaration;
 class NewDeclaration;
 class DeleteDeclaration;
 class InterfaceDeclaration;
@@ -59,16 +55,6 @@ enum Abstract
     ABSno,              // is not abstract class
 };
 
-FuncDeclaration *hasIdentityOpAssign(AggregateDeclaration *ad, Scope *sc);
-FuncDeclaration *buildOpAssign(StructDeclaration *sd, Scope *sc);
-bool needOpEquals(StructDeclaration *sd);
-FuncDeclaration *buildOpEquals(StructDeclaration *sd, Scope *sc);
-FuncDeclaration *buildXopEquals(StructDeclaration *sd, Scope *sc);
-FuncDeclaration *buildXopCmp(StructDeclaration *sd, Scope *sc);
-FuncDeclaration *buildXtoHash(StructDeclaration *ad, Scope *sc);
-FuncDeclaration *buildPostBlit(StructDeclaration *sd, Scope *sc);
-DtorDeclaration *buildDtor(AggregateDeclaration *ad, Scope *sc);
-FuncDeclaration *buildInv(AggregateDeclaration *ad, Scope *sc);
 FuncDeclaration *search_toString(StructDeclaration *sd);
 
 struct ClassKind

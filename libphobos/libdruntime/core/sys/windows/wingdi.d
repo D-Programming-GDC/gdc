@@ -10,8 +10,7 @@ module core.sys.windows.wingdi;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "gdi32");
+pragma(lib, "gdi32");
 
 // FIXME: clean up Windows version support
 

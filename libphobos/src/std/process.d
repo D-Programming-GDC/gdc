@@ -4004,8 +4004,7 @@ version (Windows)
 {
     import core.sys.windows.windows;
 
-    version (GNU) {}
-    else pragma(lib,"shell32.lib");
+    pragma(lib,"shell32.lib");
 
     void browse(scope const(char)[] url)
     {

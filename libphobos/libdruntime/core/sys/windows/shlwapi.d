@@ -10,8 +10,7 @@ module core.sys.windows.shlwapi;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "shlwapi");
+pragma(lib, "shlwapi");
 
 /* Changes compared to MinGW:
 wnsprintf functions are not included.

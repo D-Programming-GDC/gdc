@@ -10,8 +10,7 @@ module core.sys.windows.oleacc;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "oleacc");
+pragma(lib, "oleacc");
 
 private import core.sys.windows.basetyps, core.sys.windows.oaidl, core.sys.windows.unknwn, core.sys.windows.wtypes,
   core.sys.windows.windef;

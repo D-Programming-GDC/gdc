@@ -10,8 +10,7 @@ module core.sys.windows.imm;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "imm32");
+pragma(lib, "imm32");
 
 import core.sys.windows.windef, core.sys.windows.wingdi;
 import core.sys.windows.winuser; // for the MFS_xxx enums.

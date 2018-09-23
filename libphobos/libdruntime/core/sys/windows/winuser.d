@@ -10,8 +10,7 @@ module core.sys.windows.winuser;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "user32");
+pragma(lib, "user32");
 
 // Conversion Notes:
 // The following macros were for win16 only, and are not included in this file:

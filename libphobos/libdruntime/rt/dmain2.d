@@ -9,9 +9,6 @@
  * Source: $(DRUNTIMESRC rt/_dmain2.d)
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
- * work with the GDC compiler.
- */
 module rt.dmain2;
 
 private
@@ -31,8 +28,7 @@ version (Windows)
     private import core.stdc.wchar_;
     private import core.sys.windows.windows;
 
-    version (GNU) {}
-    else pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
+    pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
 }
 
 version (FreeBSD)

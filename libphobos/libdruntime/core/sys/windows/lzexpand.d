@@ -10,8 +10,7 @@ module core.sys.windows.lzexpand;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "lz32");
+pragma(lib, "lz32");
 
 private import core.sys.windows.winbase, core.sys.windows.windef;
 

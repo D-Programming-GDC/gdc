@@ -10,8 +10,7 @@ module core.sys.windows.mmsystem;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "winmm");
+pragma(lib, "winmm");
 
 /*  The #defines MAKEFOURCC, mmioFOURCC, sndAlias are used to define
  *  compile-time constants, so they are implemented as templates.

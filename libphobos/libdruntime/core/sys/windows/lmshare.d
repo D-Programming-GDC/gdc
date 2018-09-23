@@ -8,8 +8,7 @@
  */
 module core.sys.windows.lmshare;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "netapi32");
+pragma(lib, "netapi32");
 
 import core.sys.windows.lmcons;
 private import core.sys.windows.w32api, core.sys.windows.windef;

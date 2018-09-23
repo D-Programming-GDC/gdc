@@ -11,8 +11,7 @@ module core.sys.windows.winver;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "version");
+pragma(lib, "version");
 
 private import core.sys.windows.windef;
 
