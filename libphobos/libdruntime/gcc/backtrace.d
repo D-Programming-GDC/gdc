@@ -271,13 +271,23 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 
         int opApply(scope ApplyCallback dg) const
         {
+            initLibBacktrace();
+
             // If backtrace_simple produced an error report it and exit
             if (!state || error != 0)
             {
                 size_t pos = 0;
                 SymbolOrError symError;
-                symError.errnum = error;
-                symError.msg = errorBuf.ptr;
+                if (!state)
+                {
+                    symError.msg = "libbacktrace failed to initialize\0";
+                    symError.errnum = 1;
+                }
+                else
+                {
+                    symError.errnum = error;
+                    symError.msg = errorBuf.ptr;
+                }
 
                 return dg(pos, symError);
             }
@@ -342,7 +352,7 @@ static if (BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 
         int       error = 0;
         int _firstFrame = 0;
-        char[128] errorBuf;
+        char[128] errorBuf = "\0";
     }
 }
 else
