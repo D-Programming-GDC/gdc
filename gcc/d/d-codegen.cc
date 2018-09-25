@@ -2048,7 +2048,7 @@ d_assert_call (const Loc& loc, libcall_fn libcall, tree msg)
   if (loc.filename)
     {
       unsigned len = strlen (loc.filename);
-      tree str = build_string (len + 1, loc.filename);
+      tree str = build_string (len, loc.filename);
       TREE_TYPE (str) = make_array_type (Type::tchar, len);
 
       file = d_array_value (build_ctype (Type::tchar->arrayOf ()),

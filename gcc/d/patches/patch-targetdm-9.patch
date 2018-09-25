@@ -297,7 +297,7 @@ The following OS versions are implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -814,8 +836,10 @@ case ${target} in
+@@ -808,8 +830,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -308,7 +308,7 @@ The following OS versions are implemented:
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -3231,6 +3255,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3230,6 +3254,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4845,6 +4873,7 @@ case ${target} in
+@@ -4856,6 +4884,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -374,7 +374,7 @@ The following OS versions are implemented:
  /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -618,6 +618,9 @@ enum aarch64_parse_opt_result aarch64_pa
+@@ -619,6 +619,9 @@ enum aarch64_parse_opt_result aarch64_pa
  std::string aarch64_get_extension_string_for_isa_flags (unsigned long,
  							unsigned long);
  
@@ -780,7 +780,7 @@ The following OS versions are implemented:
  extern void i386_pe_declare_function_type (FILE *, const char *, int);
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -710,6 +710,9 @@ extern const char *host_detect_local_cpu
+@@ -718,6 +718,9 @@ extern const char *host_detect_local_cpu
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  

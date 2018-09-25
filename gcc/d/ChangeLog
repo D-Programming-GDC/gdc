@@ -1,3 +1,10 @@
+2018-09-25  Eugene Wissner  <belka@caraus.de>
+
+	* d-codegen.cc (d_assert_call): Don't make STRING_CSTs larger than they
+	are.
+	* expr.cc (ExprVisitor::visit(StringExp)): Likewise.
+	* typeinfo.cc (TypeInfoVisitor::layout_string): Likewise.
+
 2018-09-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_INCLUDES): Rename dfrontend to dmd.
