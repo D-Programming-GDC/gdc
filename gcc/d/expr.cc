@@ -2618,7 +2618,7 @@ public:
 	string[length] = '\0';
 
 	/* String value and type includes the null terminator.  */
-	tree value = build_string (length + 1, string);
+	tree value = build_string (length, string);
 	TREE_TYPE (value) = make_array_type (tb->nextOf (), length + 1);
 	value = build_address (value);
 

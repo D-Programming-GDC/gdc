@@ -336,7 +336,7 @@ class TypeInfoVisitor : public Visitor
   void layout_string (const char *str)
   {
     unsigned len = strlen (str);
-    tree value = build_string (len + 1, str);
+    tree value = build_string (len, str);
 
     TREE_TYPE (value) = make_array_type (Type::tchar, len);
     TREE_CONSTANT (value) = 1;

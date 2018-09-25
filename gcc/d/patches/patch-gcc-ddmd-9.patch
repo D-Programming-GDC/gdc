@@ -140,21 +140,21 @@ This implements building of self hosted D compiler in GCC back end.
  # Determine PICFLAG for target gnatlib.
  
  
-@@ -18460,7 +18563,7 @@ else
+@@ -18463,7 +18566,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18463 "configure"
-+#line 18566 "configure"
+-#line 18466 "configure"
++#line 18569 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18566,7 +18669,7 @@ else
+@@ -18569,7 +18672,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18569 "configure"
-+#line 18672 "configure"
+-#line 18572 "configure"
++#line 18675 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H

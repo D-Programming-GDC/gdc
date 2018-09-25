@@ -1,3 +1,10 @@
+2018-09-25  Eugene Wissner  <belka@caraus.de>
+
+	* d-codegen.cc (d_assert_call): Don't make STRING_CSTs larger than they
+	are.
+	* expr.cc (ExprVisitor::visit(StringExp)): Likewise.
+	* typeinfo.cc (TypeInfoVisitor::layout_string): Likewise.
+
 2018-09-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (deps_write): Use toChars accessor to get module path.

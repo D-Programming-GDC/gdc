@@ -21,7 +21,7 @@ relevant documentation about the GDC front end.
        else if (! strcmp (language_string, "GNU F77")
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -28405,11 +28405,12 @@ rs6000_output_function_epilogue (FILE *f
+@@ -28410,11 +28410,12 @@ rs6000_output_function_epilogue (FILE *f
  	 use language_string.
  	 C is 0.  Fortran is 1.  Pascal is 2.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -147,7 +147,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
-@@ -5506,6 +5506,16 @@ is_ada (void)
+@@ -5521,6 +5521,16 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -164,7 +164,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  Return TRUE if removal
     was successful.  */
  
-@@ -24471,6 +24481,8 @@ gen_compile_unit_die (const char *filena
+@@ -24550,6 +24560,8 @@ gen_compile_unit_die (const char *filena
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)
  	language = DW_LANG_ObjC_plus_plus;
@@ -173,7 +173,7 @@ relevant documentation about the GDC front end.
        else if (dwarf_version >= 5 || !dwarf_strict)
  	{
  	  if (strcmp (language_string, "GNU Go") == 0)
-@@ -26071,7 +26083,7 @@ declare_in_namespace (tree thing, dw_die
+@@ -26150,7 +26162,7 @@ declare_in_namespace (tree thing, dw_die
  
    if (ns_context != context_die)
      {
@@ -182,7 +182,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, NULL, ns_context);
-@@ -26094,7 +26106,7 @@ gen_namespace_die (tree decl, dw_die_ref
+@@ -26173,7 +26185,7 @@ gen_namespace_die (tree decl, dw_die_ref
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -191,7 +191,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -26160,7 +26172,7 @@ gen_decl_die (tree decl, tree origin, st
+@@ -26239,7 +26251,7 @@ gen_decl_die (tree decl, tree origin, st
        break;
  
      case CONST_DECL:
@@ -200,7 +200,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -26760,7 +26772,7 @@ dwarf2out_decl (tree decl)
+@@ -26839,7 +26851,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -209,7 +209,7 @@ relevant documentation about the GDC front end.
  	return;
        if (TREE_STATIC (decl) && decl_function_context (decl))
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
-@@ -29161,6 +29173,7 @@ prune_unused_types_walk_local_classes (d
+@@ -29242,6 +29254,7 @@ prune_unused_types_walk_local_classes (d
      case DW_TAG_structure_type:
      case DW_TAG_union_type:
      case DW_TAG_class_type:
@@ -217,7 +217,7 @@ relevant documentation about the GDC front end.
        break;
  
      case DW_TAG_subprogram:
-@@ -29194,6 +29207,7 @@ prune_unused_types_walk (dw_die_ref die)
+@@ -29275,6 +29288,7 @@ prune_unused_types_walk (dw_die_ref die)
      case DW_TAG_structure_type:
      case DW_TAG_union_type:
      case DW_TAG_class_type:
@@ -225,7 +225,7 @@ relevant documentation about the GDC front end.
        if (die->die_perennial_p)
  	break;
  
-@@ -29220,7 +29234,6 @@ prune_unused_types_walk (dw_die_ref die)
+@@ -29301,7 +29315,6 @@ prune_unused_types_walk (dw_die_ref die)
      case DW_TAG_volatile_type:
      case DW_TAG_typedef:
      case DW_TAG_array_type:
@@ -235,7 +235,7 @@ relevant documentation about the GDC front end.
      case DW_TAG_subroutine_type:
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
-@@ -1307,6 +1307,7 @@ static const struct compiler default_com
+@@ -1305,6 +1305,7 @@ static const struct compiler default_com
    {".f08", "#Fortran", 0, 0, 0}, {".F08", "#Fortran", 0, 0, 0},
    {".r", "#Ratfor", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},
