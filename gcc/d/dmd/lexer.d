@@ -527,25 +527,7 @@ class Lexer : ErrorHandler
                         }
                         else if (id == Id.VENDOR)
                         {
-                            t.ustring = global.compiler.vendor;
-                            goto Lstr;
-                        }
-                        else if (id == Id.CXXLIB)
-                        {
-                            // TODO: other targets might also like to populate this with knowledge for library authors
-                            //       additional plumbing required...
-                            if (!global.params.mscrtlib)
-                            {
-                                t.ustring = "";
-                            }
-                            else
-                            {
-                                size_t len = strlen(global.params.mscrtlib) + 1;
-                                char* lower = cast(char*)mem.xmalloc(len);
-                                foreach (i; 0 .. len)
-                                    lower[i] = cast(char)tolower(global.params.mscrtlib[i]);
-                                t.ustring = lower;
-                            }
+                            t.ustring = global.vendor;
                             goto Lstr;
                         }
                         else if (id == Id.TIMESTAMP)

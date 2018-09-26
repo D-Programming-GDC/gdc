@@ -20,7 +20,6 @@ module dmd.target;
 
 import dmd.argtypes;
 import dmd.dclass;
-import dmd.dmodule;
 import dmd.dsymbol;
 import dmd.expression;
 import dmd.globals;
@@ -154,28 +153,6 @@ struct Target
     extern (C++) static bool isVectorOpSupported(Type type, TOK op, Type t2 = null);
 
     /**
-     * Encode the given expression, which is assumed to be an rvalue literal
-     * as another type for use in CTFE.
-     * This corresponds roughly to the idiom `*cast(T*)&e`.
-     * Params:
-     *      e    = literal constant expression
-     *      type = target type of the result
-     * Returns:
-     *      resulting `Expression` re-evaluated as `type`
-     */
-    extern (C++) static Expression paintAsType(Expression e, Type type);
-
-    /**
-     * Perform any post parsing analysis on the given module.
-     * Certain compiler backends (ie: GDC) have special placeholder
-     * modules whose source are empty, but code gets injected
-     * immediately after loading.
-     * Params:
-     *      m = module to inspect
-     */
-    extern (C++) static void loadModule(Module m);
-
-    /**
      * Mangle the given symbol for C++ ABI.
      * Params:
      *      s = declaration with C++ linkage
@@ -254,4 +231,14 @@ struct Target
      *  size used on parameter stack
      */
     extern (C++) static ulong parameterSize(const ref Loc loc, Type t);
+
+    /**
+     * Get targetInfo by key
+     * Params:
+     *  name = name of targetInfo to get
+     *  loc = location to use for error messages
+     * Returns:
+     *  Expression for the requested targetInfo
+     */
+    extern (C++) static Expression getTargetInfo(const(char)* name, const ref Loc loc);
 }

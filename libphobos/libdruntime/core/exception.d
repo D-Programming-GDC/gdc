@@ -435,7 +435,7 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
  */
 extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) nothrow
 {
-    if( _assertHandler is null )
+    if ( _assertHandler is null )
         throw new AssertError( file, line );
     _assertHandler( file, line, null);
 }
@@ -453,7 +453,7 @@ extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) 
  */
 extern (C) void onAssertErrorMsg( string file, size_t line, string msg ) nothrow
 {
-    if( _assertHandler is null )
+    if ( _assertHandler is null )
         throw new AssertError( msg, file, line );
     _assertHandler( file, line, msg );
 }

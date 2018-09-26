@@ -454,9 +454,9 @@ extern (C++) abstract class Type : RootObject
     extern (C++) __gshared TemplateDeclaration rtinfo;
 
     extern (C++) __gshared Type[TMAX] basic;
-    extern (C++) __gshared StringTable stringtable;
 
-    extern (C++) __gshared ubyte[TMAX] sizeTy = ()
+    extern (D) __gshared StringTable stringtable;
+    extern (D) private __gshared ubyte[TMAX] sizeTy = ()
         {
             ubyte[TMAX] sizeTy = __traits(classInstanceSize, TypeBasic);
             sizeTy[Tsarray] = __traits(classInstanceSize, TypeSArray);
@@ -2072,7 +2072,7 @@ extern (C++) abstract class Type : RootObject
         return null;
     }
 
-    final bool checkAliasThisRec()
+    extern (D) final bool checkAliasThisRec()
     {
         Type tb = toBasetype();
         AliasThisRec* pflag;
@@ -2647,7 +2647,7 @@ extern (C++) abstract class Type : RootObject
      *  loc = The source location.
      *  sc = scope of the type
      */
-    final bool checkComplexTransition(const ref Loc loc, Scope* sc)
+    extern (D) final bool checkComplexTransition(const ref Loc loc, Scope* sc)
     {
         if (sc.isDeprecated())
             return false;
@@ -2697,22 +2697,6 @@ extern (C++) abstract class Type : RootObject
             }
         }
         return false;
-    }
-
-    static void error(const ref Loc loc, const(char)* format, ...)
-    {
-        va_list ap;
-        va_start(ap, format);
-        .verror(loc, format, ap);
-        va_end(ap);
-    }
-
-    static void warning(const ref Loc loc, const(char)* format, ...)
-    {
-        va_list ap;
-        va_start(ap, format);
-        .vwarning(loc, format, ap);
-        va_end(ap);
     }
 
     // For eliminating dynamic_cast
@@ -4694,7 +4678,7 @@ extern (C++) final class TypeFunction : TypeNext
      * Returns:
      *      MATCHxxxx
      */
-    MATCH callMatch(Type tthis, Expressions* args, int flag = 0, const(char)** pMessage = null)
+    extern (D) MATCH callMatch(Type tthis, Expressions* args, int flag = 0, const(char)** pMessage = null)
     {
         //printf("TypeFunction::callMatch() %s\n", toChars());
         MATCH match = MATCH.exact; // assume exact match
@@ -4970,7 +4954,7 @@ extern (C++) final class TypeFunction : TypeNext
         return MATCH.nomatch;
     }
 
-    bool checkRetType(const ref Loc loc)
+    extern (D) bool checkRetType(const ref Loc loc)
     {
         Type tb = next.toBasetype();
         if (tb.ty == Tfunction)
@@ -6309,7 +6293,7 @@ extern (C++) final class Parameter : RootObject
         v.visit(this);
     }
 
-    static Parameters* arraySyntaxCopy(Parameters* parameters)
+    extern (D) static Parameters* arraySyntaxCopy(Parameters* parameters)
     {
         Parameters* params = null;
         if (parameters)
@@ -6425,7 +6409,7 @@ extern (C++) final class Parameter : RootObject
         return isCovariantScope(returnByRef, this.storageClass, p.storageClass);
     }
 
-    static bool isCovariantScope(bool returnByRef, StorageClass from, StorageClass to) pure nothrow @nogc @safe
+    extern (D) private static bool isCovariantScope(bool returnByRef, StorageClass from, StorageClass to) pure nothrow @nogc @safe
     {
         if (from == to)
             return true;
@@ -6464,7 +6448,7 @@ extern (C++) final class Parameter : RootObject
 
     /* Classification of 'scope-return-ref' possibilities
      */
-    enum SR
+    private enum SR
     {
         None,
         Scope,
@@ -6476,7 +6460,7 @@ extern (C++) final class Parameter : RootObject
         Ref_ReturnScope,
     }
 
-    static bool[SR.max + 1][SR.max + 1] covariantInit() pure nothrow @nogc @safe
+    extern (D) private static bool[SR.max + 1][SR.max + 1] covariantInit() pure nothrow @nogc @safe
     {
         /* Initialize covariant[][] with this:
 
@@ -6511,7 +6495,7 @@ extern (C++) final class Parameter : RootObject
         return covariant;
     }
 
-    extern (D) static immutable bool[SR.max + 1][SR.max + 1] covariant = covariantInit();
+    extern (D) private static immutable bool[SR.max + 1][SR.max + 1] covariant = covariantInit();
 }
 
 /*************************************************************

@@ -167,14 +167,14 @@ import std.typecons : Flag, Yes, No, Tuple;
 // Curl tests for FreeBSD 32-bit are temporarily disabled.
 // https://github.com/braddr/d-tester/issues/70
 // https://issues.dlang.org/show_bug.cgi?id=18519
-version(unittest)
-version(FreeBSD)
-version(X86)
+version (unittest)
+version (FreeBSD)
+version (X86)
     version = DisableCurlTests;
 
-version(DisableCurlTests) {} else:
+version (DisableCurlTests) {} else:
 
-version(unittest)
+version (unittest)
 {
     import std.socket : Socket;
 
@@ -332,7 +332,7 @@ version(unittest)
 
     private enum httpContinue = "HTTP/1.1 100 Continue\r\n\r\n";
 }
-version(StdDdoc) import std.stdio;
+version (StdDdoc) import std.stdio;
 
 // Default data timeout for Protocols
 private enum _defaultDataTimeout = dur!"minutes"(2);
@@ -669,19 +669,27 @@ if (is(T == char) || is(T == ubyte))
 {
     import std.uri : urlEncode;
 
-    return post(url, urlEncode(postDict), conn);
+    return post!T(url, urlEncode(postDict), conn);
 }
 
 @system unittest
 {
+    import std.algorithm.searching : canFind;
+    import std.meta : AliasSeq;
+
+    static immutable expected = ["name1=value1&name2=value2", "name2=value2&name1=value1"];
+
     foreach (host; [testServer.addr, "http://" ~ testServer.addr])
     {
-        testServer.handle((s) {
-            auto req = s.recvReq!char;
-            s.send(httpOK(req.bdy));
-        });
-        auto res = post(host ~ "/path", ["name1" : "value1", "name2" : "value2"]);
-        assert(res == "name1=value1&name2=value2" || res == "name2=value2&name1=value1");
+        foreach (T; AliasSeq!(char, ubyte))
+        {
+            testServer.handle((s) {
+                auto req = s.recvReq!char;
+                s.send(httpOK(req.bdy));
+            });
+            auto res = post!T(host ~ "/path", ["name1" : "value1", "name2" : "value2"]);
+            assert(canFind(expected, res));
+        }
     }
 }
 

@@ -1344,7 +1344,7 @@ build_typeinfo (const Loc& loc, Type *type)
 
       if (!warned)
 	{
-	  type->error (loc, "`object.TypeInfo` cannot be used with -fno-rtti");
+	  error (loc, "`object.TypeInfo` cannot be used with -fno-rtti");
 	  warned = 1;
 	}
     }
