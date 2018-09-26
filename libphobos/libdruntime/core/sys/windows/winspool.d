@@ -10,8 +10,7 @@ module core.sys.windows.winspool;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "winspool");
+pragma(lib, "winspool");
 
 private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.wingdi;
 private import core.sys.windows.winbase; // for SYSTEMTIME

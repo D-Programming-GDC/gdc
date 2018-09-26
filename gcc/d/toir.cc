@@ -21,6 +21,8 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "dmd/aggregate.h"
 #include "dmd/declaration.h"
+#include "dmd/expression.h"
+#include "dmd/identifier.h"
 #include "dmd/init.h"
 #include "dmd/statement.h"
 

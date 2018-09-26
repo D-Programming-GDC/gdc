@@ -8,8 +8,7 @@
  */
 module core.sys.windows.rpcndr;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "rpcrt4");
+pragma(lib, "rpcrt4");
 
 /* Translation notes:
  RPC_CLIENT_ALLOC*, RPC_CLIENT_FREE* were replaced with PRPC_CLIENT_ALLOC, PRPC_CLIENT_FREE

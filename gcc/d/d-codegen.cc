@@ -22,6 +22,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dmd/aggregate.h"
 #include "dmd/ctfe.h"
 #include "dmd/declaration.h"
+#include "dmd/identifier.h"
 #include "dmd/target.h"
 #include "dmd/template.h"
 

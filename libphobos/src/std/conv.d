@@ -4013,11 +4013,32 @@ private S textImpl(S, U...)(U args)
     else
     {
         import std.array : appender;
+        import std.traits : isSomeChar, isSomeString;
 
         auto app = appender!S();
 
+        // assume that on average, parameters will have less
+        // than 20 elements
+        app.reserve(U.length * 20);
+
         foreach (arg; args)
-            app.put(to!S(arg));
+        {
+            static if (
+                isSomeChar!(typeof(arg)) || isSomeString!(typeof(arg)) ||
+                ( isInputRange!(typeof(arg)) && isSomeChar!(ElementType!(typeof(arg))) )
+            )
+                app.put(arg);
+            else static if (
+
+                is(Unqual!(typeof(arg)) == uint) || is(Unqual!(typeof(arg)) == ulong) ||
+                is(Unqual!(typeof(arg)) == int) || is(Unqual!(typeof(arg)) == long)
+            )
+                // https://issues.dlang.org/show_bug.cgi?id=17712#c15
+                app.put(textImpl!(S)(arg));
+            else
+                app.put(to!S(arg));
+        }
+
         return app.data;
     }
 }

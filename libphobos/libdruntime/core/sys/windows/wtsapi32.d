@@ -10,8 +10,7 @@ module core.sys.windows.wtsapi32;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "wtsapi32");
+pragma(lib, "wtsapi32");
 private import core.sys.windows.w32api;
 import core.sys.windows.windef;
 

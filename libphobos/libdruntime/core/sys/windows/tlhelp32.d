@@ -8,8 +8,7 @@
  */
 module core.sys.windows.tlhelp32;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "kernel32");
+pragma(lib, "kernel32");
 
 version (ANSI) {} else version = Unicode;
 
