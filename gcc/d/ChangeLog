@@ -1,3 +1,7 @@
+2018-10-01  Eugene Wissner  <belka@caraus.de>
+
+	* decl.cc (finish_thunk): Adjust call to cgraph_node::create_thunk.
+
 2018-09-25  Eugene Wissner  <belka@caraus.de>
 
 	* d-codegen.cc (d_assert_call): Don't make STRING_CSTs larger than they
