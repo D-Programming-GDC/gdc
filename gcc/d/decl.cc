@@ -1675,7 +1675,7 @@ finish_thunk (tree thunk, tree function)
   funcn = cgraph_node::get_create (function);
   gcc_assert (funcn);
   thunk_node = funcn->create_thunk (thunk, thunk, this_adjusting,
-				    fixed_offset, 0, 0, alias);
+				    fixed_offset, 0, 0, 0, alias);
 
   if (DECL_ONE_ONLY (function))
     thunk_node->add_to_same_comdat_group (funcn);
