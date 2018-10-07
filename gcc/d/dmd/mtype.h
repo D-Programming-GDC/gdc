@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include "root/stringtable.h"
 #include "root/rmem.h" // for d_size_t
 
 #include "arraytypes.h"
@@ -219,8 +218,6 @@ public:
     static TemplateDeclaration *rtinfo;
 
     static Type *basic[TMAX];
-    static unsigned char sizeTy[TMAX];
-    static StringTable stringtable;
 
     virtual const char *kind();
     Type *copy();
@@ -289,7 +286,6 @@ public:
     Type *arrayOf();
     Type *sarrayOf(dinteger_t dim);
     Type *aliasthisOf();
-    bool checkAliasThisRec();
     virtual Type *makeConst();
     virtual Type *makeImmutable();
     virtual Type *makeShared();
@@ -324,10 +320,6 @@ public:
     uinteger_t sizemask();
     virtual bool needsDestruction();
     virtual bool needsNested();
-    bool checkComplexTransition(const Loc &loc, Scope *sc);
-
-    static void error(const Loc &loc, const char *format, ...);
-    static void warning(const Loc &loc, const char *format, ...);
 
     // For eliminating dynamic_cast
     virtual TypeBasic *isTypeBasic();
@@ -521,10 +513,6 @@ enum TRUST
     TRUSTsafe = 3,      // @safe
 };
 
-// in hdrgen.c
-void trustToBuffer(OutBuffer *buf, TRUST trust);
-const char *trustToChars(TRUST trust);
-
 enum TRUSTformat
 {
     TRUSTformatDefault,  // do not emit @system when trust == TRUSTdefault
@@ -577,8 +565,6 @@ public:
     int attributesApply(void *param, int (*fp)(void *, const char *), TRUSTformat trustFormat = TRUSTformatDefault);
 
     Type *substWildTo(unsigned mod);
-    MATCH callMatch(Type *tthis, Expressions *toargs, int flag = 0);
-    bool checkRetType(const Loc &loc);
 
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -824,12 +810,10 @@ public:
     int dyncast() const { return DYNCAST_PARAMETER; }
     virtual void accept(Visitor *v) { v->visit(this); }
 
-    static Parameters *arraySyntaxCopy(Parameters *parameters);
     static size_t dim(Parameters *parameters);
     static Parameter *getNth(Parameters *parameters, d_size_t nth, d_size_t *pn = NULL);
     const char *toChars();
     bool isCovariant(bool returnByRef, const Parameter *p) const;
-    static bool isCovariantScope(bool returnByRef, StorageClass from, StorageClass to);
 };
 
 bool arrayTypeCompatible(Loc loc, Type *t1, Type *t2);

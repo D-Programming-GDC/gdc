@@ -105,10 +105,6 @@ struct Prot
     bool isSubsetOf(const Prot& other) const;
 };
 
-// in hdrgen.c
-void protectionToBuffer(OutBuffer *buf, Prot prot);
-const char *protectionToChars(Prot::Kind kind);
-
 /* State of symbol in winding its way through the passes of the compiler
  */
 enum PASS
@@ -185,8 +181,6 @@ public:
     // kludge for template.isSymbol()
     int dyncast() const { return DYNCAST_DSYMBOL; }
 
-    static Dsymbols *arraySyntaxCopy(Dsymbols *a);
-
     virtual Identifier *getIdent();
     virtual const char *toPrettyChars(bool QualifyTypes = false);
     virtual const char *kind() const;
@@ -216,7 +210,6 @@ public:
     virtual Prot prot();
     virtual Dsymbol *syntaxCopy(Dsymbol *s);    // copy only syntax trees
     virtual bool oneMember(Dsymbol **ps, Identifier *ident);
-    static bool oneMembers(Dsymbols *members, Dsymbol **ps, Identifier *ident);
     virtual void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     virtual bool hasPointers();
     virtual bool hasStaticCtorOrDtor();
@@ -306,9 +299,6 @@ public:
     virtual Dsymbol *symtabInsert(Dsymbol *s);
     virtual Dsymbol *symtabLookup(Dsymbol *s, Identifier *id);
     bool hasStaticCtorOrDtor();
-
-    static size_t dim(Dsymbols *members);
-    static Dsymbol *getNth(Dsymbols *members, size_t nth, size_t *pn = NULL);
 
     ScopeDsymbol *isScopeDsymbol() { return this; }
     void accept(Visitor *v) { v->visit(this); }

@@ -16,7 +16,7 @@ module object;
 //alias typeof(int.sizeof)                    size_t;
 //alias typeof(cast(void*)0 - cast(void*)0)   ptrdiff_t;
 
-version(D_LP64)
+version (D_LP64)
 {
     alias size_t = ulong;
     alias ptrdiff_t = long;
@@ -559,7 +559,7 @@ nothrow @safe @nogc unittest
     /// ditto
     void destroy(T)(T obj) if (is(T == class))
     {
-        static if(__traits(getLinkage, T) == "C++")
+        static if (__traits(getLinkage, T) == "C++")
         {
             obj.__xdtor();
 
@@ -692,7 +692,7 @@ nothrow @safe @nogc unittest
             assert(b.s == "B");
         }
         // this test is invalid now that the default ctor is not run after clearing
-        version(none)
+        version (none)
         {
             class C
             {
@@ -1931,7 +1931,7 @@ class TypeInfo_Struct : TypeInfo
             return false;
         else if (xopEquals)
         {
-            version(GNU)
+            version (GNU)
             {   // BUG: GDC and DMD use different calling conventions
                 return (*xopEquals)(p2, p1);
             }
@@ -1958,7 +1958,7 @@ class TypeInfo_Struct : TypeInfo
                     return true;
                 else if (xopCmp)
                 {
-                    version(GNU)
+                    version (GNU)
                     {   // BUG: GDC and DMD use different calling conventions
                         return (*xopCmp)(p1, p2);
                     }
@@ -3272,7 +3272,7 @@ void _postblitRecurse(E, size_t n)(ref E[n] arr)
 
     struct InnerMiddle {}
 
-    version(none) // https://issues.dlang.org/show_bug.cgi?id=14242
+    version (none) // https://issues.dlang.org/show_bug.cgi?id=14242
     struct InnerElement
     {
         static char counter = '1';
@@ -3306,7 +3306,7 @@ void _postblitRecurse(E, size_t n)(ref E[n] arr)
         char[] s;
         InnerTop top;
         InnerMiddle middle;
-        version(none) InnerElement[3] array; // https://issues.dlang.org/show_bug.cgi?id=14242
+        version (none) InnerElement[3] array; // https://issues.dlang.org/show_bug.cgi?id=14242
         int a;
         InnerBottom bottom;
         ~this() @safe nothrow pure { order ~= "destroy outer"; }
@@ -3438,7 +3438,7 @@ unittest
         this(this)
         {
             order ~= "copy inner #" ~ id;
-            if(id == '2')
+            if (id == '2')
                 throw new FailedPostblitException();
         }
 
@@ -3474,15 +3474,15 @@ unittest
     auto outer = Outer('1', '2', '3');
 
     try _postblitRecurse(outer);
-    catch(FailedPostblitException) {}
-    catch(Exception) assert(false);
+    catch (FailedPostblitException) {}
+    catch (Exception) assert(false);
 
     auto postblitRecurseOrder = order;
     order = null;
 
     try auto copy = outer;
-    catch(FailedPostblitException) {}
-    catch(Exception) assert(false);
+    catch (FailedPostblitException) {}
+    catch (Exception) assert(false);
 
     assert(postblitRecurseOrder == order);
     order = null;
@@ -3490,15 +3490,15 @@ unittest
     Outer[3] arr = [Outer('1', '1', '1'), Outer('1', '2', '3'), Outer('3', '3', '3')];
 
     try _postblitRecurse(arr);
-    catch(FailedPostblitException) {}
-    catch(Exception) assert(false);
+    catch (FailedPostblitException) {}
+    catch (Exception) assert(false);
 
     postblitRecurseOrder = order;
     order = null;
 
     try auto arrCopy = arr;
-    catch(FailedPostblitException) {}
-    catch(Exception) assert(false);
+    catch (FailedPostblitException) {}
+    catch (Exception) assert(false);
 
     assert(postblitRecurseOrder == order);
 }
@@ -3641,7 +3641,7 @@ unittest
     assert(newcap >= 2000);
     assert(newcap == arr.capacity);
     auto ptr = arr.ptr;
-    foreach(i; 0..2000)
+    foreach (i; 0..2000)
         arr ~= i;
     assert(ptr == arr.ptr);
     arr = arr[0..1];
@@ -3766,14 +3766,6 @@ else
             return hash;
         }
     }
-}
-
-unittest
-{
-    // Issue # 16654 / 16764
-    auto a = [1];
-    auto b = a.dup;
-    assert(hashOf(a) == hashOf(b));
 }
 
 bool _xopEquals(in void*, in void*)
@@ -3911,7 +3903,7 @@ unittest
 
         static int bug5381(immutable(T)[] s)
         {
-            switch(s)
+            switch (s)
             {
                 case "unittest":        return 1;
                 case "D_Version2":      return 2;
@@ -3942,7 +3934,7 @@ unittest
 
         static int binarySearch(immutable(T)[] s)
         {
-            switch(s)
+            switch (s)
             {
                 static foreach (i; 0 .. 16)
                 case i.stringof: return i;
@@ -3986,15 +3978,15 @@ void __switch_error()(string file = __FILE__, size_t line = __LINE__)
 private inout(TypeInfo) getElement(inout TypeInfo value) @trusted pure nothrow
 {
     TypeInfo element = cast() value;
-    for(;;)
+    for (;;)
     {
-        if(auto qualified = cast(TypeInfo_Const) element)
+        if (auto qualified = cast(TypeInfo_Const) element)
             element = qualified.base;
-        else if(auto redefined = cast(TypeInfo_Enum) element)
+        else if (auto redefined = cast(TypeInfo_Enum) element)
             element = redefined.base;
-        else if(auto staticArray = cast(TypeInfo_StaticArray) element)
+        else if (auto staticArray = cast(TypeInfo_StaticArray) element)
             element = staticArray.value;
-        else if(auto vector = cast(TypeInfo_Vector) element)
+        else if (auto vector = cast(TypeInfo_Vector) element)
             element = vector.base;
         else
             break;
@@ -4004,18 +3996,18 @@ private inout(TypeInfo) getElement(inout TypeInfo value) @trusted pure nothrow
 
 private size_t getArrayHash(in TypeInfo element, in void* ptr, in size_t count) @trusted nothrow
 {
-    if(!count)
+    if (!count)
         return 0;
 
     const size_t elementSize = element.tsize;
-    if(!elementSize)
+    if (!elementSize)
         return 0;
 
     static bool hasCustomToHash(in TypeInfo value) @trusted pure nothrow
     {
         const element = getElement(value);
 
-        if(const struct_ = cast(const TypeInfo_Struct) element)
+        if (const struct_ = cast(const TypeInfo_Struct) element)
             return !!struct_.xtoHash;
 
         return cast(const TypeInfo_Array) element
@@ -4025,39 +4017,13 @@ private size_t getArrayHash(in TypeInfo element, in void* ptr, in size_t count) 
     }
 
     import core.internal.traits : externDFunc;
-    if(!hasCustomToHash(element))
+    if (!hasCustomToHash(element))
         return hashOf(ptr[0 .. elementSize * count]);
 
     size_t hash = 0;
-    foreach(size_t i; 0 .. count)
+    foreach (size_t i; 0 .. count)
         hash = hashOf(element.getHash(ptr + i * elementSize), hash);
     return hash;
-}
-
-
-// Tests ensure TypeInfo_Array.getHash  uses element hash functions instead of hashing array data
-
-unittest
-{
-    class C
-    {
-        int i;
-        this(in int i) { this.i = i; }
-        override hash_t toHash() { return 0; }
-    }
-    C[] a1 = [new C(11)], a2 = [new C(12)];
-    assert(typeid(C[]).getHash(&a1) == typeid(C[]).getHash(&a2));
-}
-
-unittest
-{
-    struct S
-    {
-        int i;
-        hash_t toHash() const @safe nothrow { return 0; }
-    }
-    S[] a1 = [S(11)], a2 = [S(12)];
-    assert(typeid(S[]).getHash(&a1) == typeid(S[]).getHash(&a2));
 }
 
 /// Provide the .dup array property.

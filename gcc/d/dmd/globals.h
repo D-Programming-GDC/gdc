@@ -124,6 +124,8 @@ struct Param
                         // https://issues.dlang.org/show_bug.cgi?id=16997
     bool vsafe;         // use enhanced @safe checking
     bool ehnogc;        // use @nogc exception handling
+    bool dtorFields;        // destruct fields of partially constructed objects
+                            // https://issues.dlang.org/show_bug.cgi?id=14246
     bool showGaggedErrors;  // print gagged errors anyway
     bool manual;            // open browser on compiler manual
     bool usage;             // print usage and exit
@@ -222,9 +224,9 @@ struct Global
     Array<const char *> *path;        // Array of char*'s which form the import lookup path
     Array<const char *> *filePath;    // Array of char*'s which form the file import lookup path
 
-    const char *version;
+    const char *version;     // Compiler version string
+    const char *vendor;      // Compiler backend name
 
-    Compiler compiler;
     Param params;
     unsigned errors;         // number of errors reported so far
     unsigned warnings;       // number of warnings reported so far

@@ -22,9 +22,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dmd/aggregate.h"
 #include "dmd/declaration.h"
 #include "dmd/expression.h"
-#include "dmd/identifier.h"
 #include "dmd/mangle.h"
-#include "dmd/module.h"
 #include "dmd/mtype.h"
 #include "dmd/tokens.h"
 #include "dmd/target.h"
@@ -227,119 +225,6 @@ Target::va_listType (void)
   return Type::tvalist;
 }
 
-/* Perform a reinterpret cast of EXPR to type TYPE for use in CTFE.
-   The front end should have already ensured that EXPR is a constant,
-   so we just lower the value to GCC and return the converted CST.  */
-
-Expression *
-Target::paintAsType (Expression *expr, Type *type)
-{
-  /* We support up to 512-bit values.  */
-  unsigned char buffer[64];
-  tree cst;
-
-  Type *tb = type->toBasetype ();
-
-  if (expr->type->isintegral ())
-    cst = build_integer_cst (expr->toInteger (), build_ctype (expr->type));
-  else if (expr->type->isfloating ())
-    cst = build_float_cst (expr->toReal (), expr->type);
-  else if (expr->op == TOKarrayliteral)
-    {
-      /* Build array as VECTOR_CST, assumes EXPR is constant.  */
-      Expressions *elements = ((ArrayLiteralExp *) expr)->elements;
-      vec<constructor_elt, va_gc> *elms = NULL;
-
-      vec_safe_reserve (elms, elements->dim);
-      for (size_t i = 0; i < elements->dim; i++)
-	{
-	  Expression *e = (*elements)[i];
-	  if (e->type->isintegral ())
-	    {
-	      tree value = build_integer_cst (e->toInteger (),
-					      build_ctype (e->type));
-	      CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
-	    }
-	  else if (e->type->isfloating ())
-	    {
-	      tree value = build_float_cst (e->toReal (), e->type);
-	      CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
-	    }
-	  else
-	    gcc_unreachable ();
-	}
-
-      /* Build vector type.  */
-      int nunits = ((TypeSArray *) expr->type)->dim->toUInteger ();
-      Type *telem = expr->type->nextOf ();
-      tree vectype = build_vector_type (build_ctype (telem), nunits);
-
-      cst = build_vector_from_ctor (vectype, elms);
-    }
-  else
-    gcc_unreachable ();
-
-  /* Encode CST to buffer.  */
-  int len = native_encode_expr (cst, buffer, sizeof (buffer));
-
-  if (tb->ty == Tsarray)
-    {
-      /* Interpret value as a vector of the same size,
-	 then return the array literal.  */
-      int nunits = ((TypeSArray *) type)->dim->toUInteger ();
-      Type *elem = type->nextOf ();
-      tree vectype = build_vector_type (build_ctype (elem), nunits);
-
-      cst = native_interpret_expr (vectype, buffer, len);
-
-      Expression *e = d_eval_constant_expression (cst);
-      gcc_assert (e != NULL && e->op == TOKvector);
-
-      return ((VectorExp *) e)->e1;
-    }
-  else
-    {
-      /* Normal interpret cast.  */
-      cst = native_interpret_expr (build_ctype (type), buffer, len);
-
-      Expression *e = d_eval_constant_expression (cst);
-      gcc_assert (e != NULL);
-
-      return e;
-    }
-}
-
-/* Check imported module M for any special processing.
-   Modules we look out for are:
-    - object: For D runtime type information.
-    - gcc.builtins: For all gcc builtins.
-    - core.stdc.*: For all gcc library builtins.  */
-
-void
-Target::loadModule (Module *m)
-{
-  ModuleDeclaration *md = m->md;
-
-  if (!md || !md->id || !md->packages)
-    {
-      Identifier *id = (md && md->id) ? md->id : m->ident;
-      if (!strcmp (id->toChars (), "object"))
-	create_tinfo_types (m);
-    }
-  else if (md->packages->dim == 1)
-    {
-      if (!strcmp ((*md->packages)[0]->toChars (), "gcc")
-	  && !strcmp (md->id->toChars (), "builtins"))
-	d_build_builtins_module (m);
-    }
-  else if (md->packages->dim == 2)
-    {
-      if (!strcmp ((*md->packages)[0]->toChars (), "core")
-	  && !strcmp ((*md->packages)[1]->toChars (), "stdc"))
-	d_add_builtin_module (m);
-    }
-}
-
 /* Checks whether the target supports a vector type with total size SZ
    (in bytes) and element type TYPE.  */
 
@@ -501,4 +386,20 @@ Target::isReturnOnStack (TypeFunction *, bool)
      frontend before semantic processing is finished.  An accurate value
      is not currently needed anyway.  */
   return true;
+}
+
+/* Return the result of a __traits(getTargetInfo) query or NULL if it is
+   not information that's known at compile-time.  */
+
+Expression *
+Target::getTargetInfo (const char *name, const Loc& loc)
+{
+  switch (strlen (name))
+    {
+    case 17:
+      if (strcmp (name, "cppRuntimeLibrary") == 0)
+	return StringExp::create (loc, CONST_CAST (char *, ""), 0);
+      break;
+    }
+  return NULL;
 }

@@ -22,6 +22,7 @@ import dmd.astcodegen;
 import dmd.attrib;
 import dmd.blockexit;
 import dmd.clone;
+import dmd.compiler;
 import dmd.dcast;
 import dmd.dclass;
 import dmd.declaration;
@@ -71,8 +72,6 @@ import dmd.typesem;
 import dmd.visitor;
 
 enum LOG = false;
-
-extern (C++) void genCmain(Scope* sc);
 
 /*****************************************
  * Create inclusive postblit for struct by aggregating
@@ -3610,7 +3609,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         }
 
         if (funcdecl.fbody && funcdecl.isMain() && sc._module.isRoot())
-            genCmain(sc);
+            Compiler.genCmain(sc);
 
         assert(funcdecl.type.ty != Terror || funcdecl.errors);
 

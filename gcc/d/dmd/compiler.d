@@ -1,18 +1,62 @@
-/**
- * Compiler implementation of the
- * $(LINK2 http://www.dlang.org, D programming language).
+/* compiler.d -- Compiler interface for the D front end.
+ * Copyright (C) 2018 Free Software Foundation, Inc.
  *
- * Copyright:   Copyright (C) 1999-2018 by The D Language Foundation, All Rights Reserved
- * Authors:     $(LINK2 http://www.digitalmars.com, Walter Bright)
- * License:     $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source:      $(LINK2 https://github.com/dlang/dmd/blob/master/src/dmd/compiler.d, _compiler.d)
- * Documentation:  https://dlang.org/phobos/dmd_compiler.html
- * Coverage:    https://codecov.io/gh/dlang/dmd/src/master/src/dmd/compiler.d
+ * GCC is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * GCC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GCC; see the file COPYING3.  If not see
+ * <http://www.gnu.org/licenses/>.
  */
 
 module dmd.compiler;
 
+import dmd.dmodule;
+import dmd.dscope;
+import dmd.expression;
+import dmd.mtype;
+
+/**
+ * A data structure that describes a back-end compiler and implements
+ * compiler-specific actions.
+ */
 struct Compiler
 {
-    const(char)* vendor; // Compiler backend name
+    /**
+     * Generate C main() in response to seeing D main().
+     *
+     * This function will generate a module called `__entrypoint`,
+     * and set the globals `entrypoint` and `rootHasMain`.
+     *
+     * This used to be in druntime, but contained a reference to _Dmain
+     * which didn't work when druntime was made into a dll and was linked
+     * to a program, such as a C++ program, that didn't have a _Dmain.
+     *
+     * Params:
+     *   sc = Scope which triggered the generation of the C main,
+     *        used to get the module where the D main is.
+     */
+    extern (C++) static void genCmain(Scope* sc);
+
+    /******************************
+     * Encode the given expression, which is assumed to be an rvalue literal
+     * as another type for use in CTFE.
+     * This corresponds roughly to the idiom *(Type *)&e.
+     */
+    extern (C++) static Expression paintAsType(Expression e, Type type);
+
+    /******************************
+     * For the given module, perform any post parsing analysis.
+     * Certain compiler backends (ie: GDC) have special placeholder
+     * modules whose source are empty, but code gets injected
+     * immediately after loading.
+     */
+    extern (C++) static void loadModule(Module m);
 }

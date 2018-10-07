@@ -365,18 +365,18 @@ private struct _Cache(R, bool bidir)
 
     E front() @property
     {
-        version(assert) if (empty) throw new RangeError();
+        version (assert) if (empty) throw new RangeError();
         return caches[0];
     }
     static if (bidir) E back() @property
     {
-        version(assert) if (empty) throw new RangeError();
+        version (assert) if (empty) throw new RangeError();
         return caches[1];
     }
 
     void popFront()
     {
-        version(assert) if (empty) throw new RangeError();
+        version (assert) if (empty) throw new RangeError();
         source.popFront();
         if (!source.empty)
             caches[0] = source.front;
@@ -385,7 +385,7 @@ private struct _Cache(R, bool bidir)
     }
     static if (bidir) void popBack()
     {
-        version(assert) if (empty) throw new RangeError();
+        version (assert) if (empty) throw new RangeError();
         source.popBack();
         if (!source.empty)
             caches[1] = source.back;
@@ -2137,7 +2137,7 @@ if (isInputRange!Range)
     ]));
 }
 
-version(none) // this example requires support for non-equivalence relations
+version (none) // this example requires support for non-equivalence relations
 @safe unittest
 {
     // Grouping by maximum adjacent difference:
@@ -2278,7 +2278,7 @@ version(none) // this example requires support for non-equivalence relations
 }
 
 // Issue 13595
-version(none) // This requires support for non-equivalence relations
+version (none) // This requires support for non-equivalence relations
 @system unittest
 {
     import std.algorithm.comparison : equal;
@@ -4849,7 +4849,7 @@ private struct SplitterResult(alias isTerminator, Range)
 
     @property auto front()
     {
-        version(assert)
+        version (assert)
         {
             import core.exception : RangeError;
             if (empty)
@@ -4866,7 +4866,7 @@ private struct SplitterResult(alias isTerminator, Range)
 
     void popFront()
     {
-        version(assert)
+        version (assert)
         {
             import core.exception : RangeError;
             if (empty)
@@ -5043,14 +5043,14 @@ if (isSomeChar!C)
 
         @property C[] front() pure @safe
         {
-            version(assert) if (empty) throw new RangeError();
+            version (assert) if (empty) throw new RangeError();
             return _s[0 .. _frontLength];
         }
 
         void popFront() pure @safe
         {
             import std.string : stripLeft;
-            version(assert) if (empty) throw new RangeError();
+            version (assert) if (empty) throw new RangeError();
             _s = _s[_frontLength .. $].stripLeft();
             getFirst();
         }
@@ -5466,7 +5466,7 @@ if (isInputRange!R && Substs.length >= 2 && !is(CommonType!(Substs) == void))
                     else
                     {
                         // find with one needle returns the range
-                        auto hitValue = needles[0];
+                        auto hitValue = match;
                         hitNr = match.empty ? 0 : 1;
                     }
 
@@ -5813,6 +5813,17 @@ if (isInputRange!R && Substs.length >= 2 && !is(CommonType!(Substs) == void))
         dummyRange.substitute (2, 22, 5, 55, 7, 77).equal([1, 22, 3, 4, 55, 6, 77, 8, 9, 10]);
         dummyRange.substitute!(2, 22, 5, 55, 7, 77).equal([1, 22, 3, 4, 55, 6, 77, 8, 9, 10]);
     }}
+}
+
+// issue 19207
+@safe pure nothrow unittest
+{
+    import std.algorithm.comparison : equal;
+    assert([1, 2, 3, 4].substitute([1], [7]).equal([7, 2, 3, 4]));
+    assert([1, 2, 3, 4].substitute([2], [7]).equal([1, 7, 3, 4]));
+    assert([1, 2, 3, 4].substitute([4], [7]).equal([1, 2, 3, 7]));
+    assert([1, 2, 3, 4].substitute([2, 3], [7]).equal([1, 7, 4]));
+    assert([1, 2, 3, 4].substitute([3, 4], [7, 8]).equal([1, 2, 7, 8]));
 }
 
 // sum

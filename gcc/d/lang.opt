@@ -309,6 +309,10 @@ ftransition=dip25
 D RejectNegative
 Implement DIP25: Sealed references (experimental)
 
+ftransition=dtorfields
+D RejectNegative
+Destruct fields of partially constructed objects.
+
 ftransition=field
 D RejectNegative
 List all non-mutable fields which occupy an object instance.

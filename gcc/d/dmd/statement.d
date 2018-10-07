@@ -60,6 +60,18 @@ TypeIdentifier getThrowable()
     return tid;
 }
 
+/**
+ * Returns:
+ *      TypeIdentifier corresponding to `object.Exception`
+ */
+TypeIdentifier getException()
+{
+    auto tid = new TypeIdentifier(Loc.initial, Id.empty);
+    tid.addIdent(Id.object);
+    tid.addIdent(Id.Exception);
+    return tid;
+}
+
 
 /***********************************************************
  * Specification: http://dlang.org/spec/statement.html
@@ -472,7 +484,7 @@ extern (C++) final class PeelStatement : Statement
 /***********************************************************
  * Convert TemplateMixin members (== Dsymbols) to Statements.
  */
-extern (C++) Statement toStatement(Dsymbol s)
+private Statement toStatement(Dsymbol s)
 {
     extern (C++) final class ToStmt : Visitor
     {
@@ -1579,7 +1591,7 @@ extern (C++) final class SwitchStatement : Statement
      * Returns:
      *  true if error
      */
-    bool checkLabel()
+    extern (D) bool checkLabel()
     {
         /*
          * Checks the scope of a label for existing variable declaration.
@@ -2204,7 +2216,7 @@ extern (C++) final class GotoStatement : Statement
         return new GotoStatement(loc, ident);
     }
 
-    bool checkLabel()
+    extern (D) bool checkLabel()
     {
         if (!label.statement)
         {

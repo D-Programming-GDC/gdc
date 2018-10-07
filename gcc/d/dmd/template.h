@@ -79,17 +79,8 @@ public:
 
     Prot prot();
 
-    bool evaluateConstraint(TemplateInstance *ti, Scope *sc, Scope *paramscope, Objects *dedtypes, FuncDeclaration *fd);
-
-    MATCH matchWithInstance(Scope *sc, TemplateInstance *ti, Objects *atypes, Expressions *fargs, int flag);
     MATCH leastAsSpecialized(Scope *sc, TemplateDeclaration *td2, Expressions *fargs);
-
-    MATCH deduceFunctionTemplateMatch(TemplateInstance *ti, Scope *sc, FuncDeclaration *&fd, Type *tthis, Expressions *fargs);
     RootObject *declareParameter(Scope *sc, TemplateParameter *tp, RootObject *o);
-    FuncDeclaration *doHeaderInstantiation(TemplateInstance *ti, Scope *sc, FuncDeclaration *fd, Type *tthis, Expressions *fargs);
-    TemplateInstance *findExistingInstance(TemplateInstance *tithis, Expressions *fargs);
-    TemplateInstance *addInstance(TemplateInstance *ti);
-    void removeInstance(TemplateInstance *handle);
 
     TemplateDeclaration *isTemplateDeclaration() { return this; }
 
@@ -159,8 +150,6 @@ public:
     Type *specType;     // type parameter: if !=NULL, this is the type specialization
     Type *defaultType;
 
-    static Type *tdummy;
-
     TemplateTypeParameter *isTemplateTypeParameter();
     TemplateParameter *syntaxCopy();
     bool declareParameter(Scope *sc);
@@ -215,8 +204,6 @@ public:
     Type *specType;
     RootObject *specAlias;
     RootObject *defaultAlias;
-
-    static Dsymbol *sdummy;
 
     TemplateAliasParameter *isTemplateAliasParameter();
     TemplateParameter *syntaxCopy();
@@ -291,7 +278,6 @@ public:
     TemplateInstance *tnext;            // non-first instantiated instances
     Module *minst;                      // the top module that instantiated this instance
 
-    static Objects *arraySyntaxCopy(Objects *objs);
     Dsymbol *syntaxCopy(Dsymbol *);
     Dsymbol *toAlias();                 // resolve real symbol
     const char *kind() const;
@@ -304,21 +290,6 @@ public:
     hash_t toHash();
 
     bool needsCodegen();
-
-    // Internal
-    bool findTempDecl(Scope *sc, WithScopeSymbol **pwithsym);
-    bool updateTempDecl(Scope *sc, Dsymbol *s);
-    static bool semanticTiargs(const Loc &loc, Scope *sc, Objects *tiargs, int flags);
-    bool semanticTiargs(Scope *sc);
-    bool findBestMatch(Scope *sc, Expressions *fargs);
-    bool needsTypeInference(Scope *sc, int flag = 0);
-    bool hasNestedArgs(Objects *tiargs, bool isstatic);
-    Dsymbols *appendToModuleMember();
-    void declareParameters(Scope *sc);
-    Identifier *genIdent(Objects *args);
-    void expandMembers(Scope *sc);
-    void tryExpandMembers(Scope *sc);
-    void trySemantic3(Scope *sc2);
 
     TemplateInstance *isTemplateInstance() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -336,8 +307,6 @@ public:
     bool hasPointers();
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     const char *toChars();
-
-    bool findTempDecl(Scope *sc);
 
     TemplateMixin *isTemplateMixin() { return this; }
     void accept(Visitor *v) { v->visit(this); }
