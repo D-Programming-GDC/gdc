@@ -59,4 +59,11 @@ struct Compiler
      * immediately after loading.
      */
     extern (C++) static void loadModule(Module m);
+
+    /**
+     * A callback function that is called once an imported module is
+     * parsed. If the callback returns true, then it tells the
+     * frontend that the driver intends on compiling the import.
+     */
+    extern(C++) static bool onImport(Module m);
 }

@@ -102,7 +102,7 @@ enum module_info_flags
   MIunitTest	    = 0x200,
   MIimportedModules = 0x400,
   MIlocalClasses    = 0x800,
-  MIname	    = 0x1000,
+  MIname	    = 0x1000
 };
 
 /* The ModuleInfo information structure for the module currently being compiled.
