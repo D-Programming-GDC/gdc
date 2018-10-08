@@ -477,11 +477,9 @@ final class Parser(AST) : Lexer
                         {
                             // mixin(string)
                             nextToken();
-                            check(TOK.leftParentheses, "`mixin`");
-                            AST.Expression e = parseAssignExp();
-                            check(TOK.rightParentheses);
+                            auto exps = parseArguments();
                             check(TOK.semicolon);
-                            s = new AST.CompileDeclaration(loc, e);
+                            s = new AST.CompileDeclaration(loc, exps);
                             break;
                         }
                     case TOK.template_:
@@ -5577,7 +5575,7 @@ final class Parser(AST) : Lexer
                     if (e.op == TOK.mixin_)
                     {
                         AST.CompileExp cpe = cast(AST.CompileExp)e;
-                        s = new AST.CompileStatement(loc, (*cpe.exps)[0]);
+                        s = new AST.CompileStatement(loc, cpe.exps);
                     }
                     else
                     {

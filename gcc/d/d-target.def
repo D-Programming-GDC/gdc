@@ -56,5 +56,22 @@ DEFHOOK
  unsigned, (void),
  hook_uint_void_0)
 
+/* The floating point ABI, may be "hard" or "soft".  */
+DEFHOOK
+(d_float_abi_type,
+ "Returns a string specifying which floating-point ABI is in use, or whether\
+ floating-point value types are passed in FPU registers.  For most targets,\
+ this would be described as either \"hard\" or \"soft\".",
+ const char *, (void),
+ hook_constcharptr_void_null)
+
+/* The target object format.  */
+DEFHOOK
+(d_object_format,
+ "Returns a string specifying the executable object format of the platform the\
+ compiler is generating code for.",
+ const char *, (void),
+ hook_constcharptr_void_null)
+
 /* Close the 'struct gcc_targetdm' definition.  */
 HOOK_VECTOR_END (C90_EMPTY_HACK)
