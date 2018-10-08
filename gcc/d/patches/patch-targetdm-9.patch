@@ -374,7 +374,7 @@ The following OS versions are implemented:
  /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -619,6 +619,9 @@ enum aarch64_parse_opt_result aarch64_pa
+@@ -620,6 +620,9 @@ enum aarch64_parse_opt_result aarch64_pa
  std::string aarch64_get_extension_string_for_isa_flags (unsigned long,
  							unsigned long);
  
@@ -1093,7 +1093,7 @@ The following OS versions are implemented:
  #endif
 --- a/gcc/config/powerpcspe/powerpcspe.h
 +++ b/gcc/config/powerpcspe/powerpcspe.h
-@@ -822,6 +822,9 @@ extern unsigned char rs6000_recip_bits[]
+@@ -702,6 +702,9 @@ extern unsigned char rs6000_recip_bits[]
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1222,7 +1222,7 @@ The following OS versions are implemented:
  #endif
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -743,6 +743,9 @@ extern unsigned char rs6000_recip_bits[]
+@@ -613,6 +613,9 @@ extern unsigned char rs6000_recip_bits[]
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1376,7 +1376,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/sparc/sparc-protos.h
 +++ b/gcc/config/sparc/sparc-protos.h
-@@ -110,4 +110,7 @@ unsigned int sparc_regmode_natural_size
+@@ -111,4 +111,7 @@ unsigned int sparc_regmode_natural_size
  
  extern rtl_opt_pass *make_pass_work_around_errata (gcc::context *);
  
@@ -1567,7 +1567,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10659,6 +10668,22 @@ unloaded. The default is to return false
+@@ -10667,6 +10676,22 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1615,7 +1615,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7308,6 +7317,16 @@ floating-point support; they are not inc
+@@ -7310,6 +7319,16 @@ floating-point support; they are not inc
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  
