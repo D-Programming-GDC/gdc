@@ -519,6 +519,16 @@ Compiler::loadModule (Module *m)
     }
 }
 
+/* A callback function that is called once an imported module is parsed.
+   If the callback returns true, then it tells the front-end that the
+   driver intends on compiling the import.  */
+
+bool
+Compiler::onImport (Module *)
+{
+  return false;
+}
+
 /* Implements backend-specific interfaces used by the frontend.  */
 
 /* Determine if function FD is a builtin one that we can evaluate in CTFE.  */

@@ -45,8 +45,8 @@ gdc-cross$(exeext): gdc$(exeext)
 	-rm -f gdc-cross$(exeext)
 	cp gdc$(exeext) gdc-cross$(exeext)
 
-# Filter out pedantic and virtual overload warnings.
-d-warn = $(filter-out -pedantic -Woverloaded-virtual, $(STRICT_WARN))
+# Use strict warnings.
+d-warn = $(STRICT_WARN)
 
 # D compiler and flags for building the front-end.
 ifeq ($(TREECHECKING),)

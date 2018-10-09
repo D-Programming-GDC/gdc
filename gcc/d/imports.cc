@@ -37,6 +37,8 @@ along with GCC; see the file COPYING3.  If not see
    backend representation to be returned.  */
 class ImportVisitor : public Visitor
 {
+  using Visitor::visit;
+
   /* Build the declaration DECL as an imported symbol.  */
   tree make_import (tree decl)
   {

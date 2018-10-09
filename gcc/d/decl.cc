@@ -171,6 +171,8 @@ apply_pragma_crt (Dsymbol *sym, bool isctor)
 
 class DeclVisitor : public Visitor
 {
+  using Visitor::visit;
+
 public:
   DeclVisitor (void) { }
 
