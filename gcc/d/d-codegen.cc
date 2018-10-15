@@ -258,6 +258,8 @@ d_array_length (tree exp)
   if (error_operand_p (exp))
     return exp;
 
+  gcc_assert (TYPE_DYNAMIC_ARRAY (TREE_TYPE (exp)));
+
   /* Get the back-end type for the array and pick out the array
      length field (assumed to be the first field).  */
   tree len_field = TYPE_FIELDS (TREE_TYPE (exp));
@@ -272,6 +274,8 @@ d_array_ptr (tree exp)
   if (error_operand_p (exp))
     return exp;
 
+  gcc_assert (TYPE_DYNAMIC_ARRAY (TREE_TYPE (exp)));
+
   /* Get the back-end type for the array and pick out the array
      data pointer field (assumed to be the second field).  */
   tree ptr_field = TREE_CHAIN (TYPE_FIELDS (TREE_TYPE (exp)));
@@ -284,10 +288,10 @@ d_array_ptr (tree exp)
 tree
 d_array_value (tree type, tree len, tree data)
 {
-  /* TODO: Assert type is a D array.  */
   tree len_field, ptr_field;
   vec<constructor_elt, va_gc> *ce = NULL;
 
+  gcc_assert (TYPE_DYNAMIC_ARRAY (type));
   len_field = TYPE_FIELDS (type);
   ptr_field = TREE_CHAIN (len_field);
 
@@ -375,6 +379,7 @@ delegate_method (tree exp)
 {
   /* Get the back-end type for the delegate and pick out the funcptr field
      (assumed to be the second field).  */
+  gcc_assert (TYPE_DELEGATE (TREE_TYPE (exp)));
   tree method_field = TREE_CHAIN (TYPE_FIELDS (TREE_TYPE (exp)));
   return component_ref (exp, method_field);
 }
@@ -386,6 +391,7 @@ delegate_object (tree exp)
 {
   /* Get the back-end type for the delegate and pick out the object field
      (assumed to be the first field).  */
+  gcc_assert (TYPE_DELEGATE (TREE_TYPE (exp)));
   tree obj_field = TYPE_FIELDS (TREE_TYPE (exp));
   return component_ref (exp, obj_field);
 }
