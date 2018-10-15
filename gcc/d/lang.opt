@@ -197,14 +197,6 @@ fdebug=
 D Joined RejectNegative
 -fdebug=<level|ident>	Compile in debug code, code <= <level>, or code identified by <ident>.
 
-fdeps
-D
-This switch is deprecated; do not use.
-
-fdeps=
-D Joined RejectNegative
-This switch is deprecated; do not use.
-
 fdoc
 D
 Generate documentation.
@@ -232,18 +224,6 @@ Display the frontend AST after parsing and semantic passes.
 fignore-unknown-pragmas
 D
 Ignore unsupported pragmas.
-
-fintfc
-D Alias(H)
-; Deprecated in favour of -H
-
-fintfc-dir=
-D Joined RejectNegative Alias(Hd)
-; Deprecated in favour of -Hd
-
-fintfc-file=
-D Joined RejectNegative Alias(Hf)
-; Deprecated in favour of -Hf
 
 finvariants
 D Var(flag_invariants)
@@ -328,10 +308,6 @@ Use C-style integral promotion for unary '+', '-' and '~'.
 ftransition=nogc
 D RejectNegative
 List all hidden GC allocations.
-
-ftransition=safe
-D Alias(ftransition=dip1000)
-; Deprecated in favor of -ftransition=dip1000
 
 ftransition=tls
 D RejectNegative
