@@ -1,5 +1,14 @@
 2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.cc (d_array_length): Assert that argument type is a
+	dynamic array.
+	(d_array_ptr): Likewise.
+	(d_array_value): Likewise.
+	(delegate_method): Assert that argument type is a delegate.
+	(delegate_object): Likewise.
+
+2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-attribs.c (handle_malloc_attribute): Use gcc_assert instead of
 	gcc_unreachable.
 	(handle_pure_attribute): Likewise.
