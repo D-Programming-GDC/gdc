@@ -1,3 +1,8 @@
+2018-10-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attrib.c (attr_noreturn_exclusions): Attribute not mutually
+	exclusive with self.
+
 2018-10-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-target.cc (Target::getTargetInfo): Handle floatAbi, objectFormat,

@@ -71,7 +71,6 @@ static tree d_handle_weak_attribute (tree *, tree, tree, int, bool *) ;
 /* Define attributes that are mutually exclusive with one another.  */
 static const struct attribute_spec::exclusions attr_noreturn_exclusions[] =
 {
-  ATTR_EXCL ("noreturn", true, true, true),
   ATTR_EXCL ("const", true, true, true),
   ATTR_EXCL ("malloc", true, true, true),
   ATTR_EXCL ("pure", true, true, true),
