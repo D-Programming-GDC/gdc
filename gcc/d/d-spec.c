@@ -353,9 +353,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 				  &new_decoded_options[j++]);
     }
 
-  /* If we didn't see a -o option, add one.  This is because we need
-     the driver to pass all .d files to cc1d.  Without a -o option the
-     driver will invoke cc1d separately for each input file.  */
+  /* If we didn't see a -o option, add one.  This is because we need the
+     driver to pass all .d files to the D compiler.  Without a -o option
+     the driver will invoke the compiler separately for each input file.  */
   if (first_d_file != NULL && !saw_opt_o)
     {
       if (saw_opt_c || saw_opt_S)
