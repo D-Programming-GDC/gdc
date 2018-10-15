@@ -444,17 +444,6 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
       error ("bad argument for -fdebug '%s'", arg);
       break;
 
-    case OPT_fdeps:
-      global.params.moduleDeps = new OutBuffer;
-      break;
-
-    case OPT_fdeps_:
-      global.params.moduleDepsFile = arg;
-      if (!global.params.moduleDepsFile[0])
-	error ("bad argument for -fdeps");
-      global.params.moduleDeps = new OutBuffer;
-      break;
-
     case OPT_fdoc:
       global.params.doDocComments = value;
       break;
@@ -1199,22 +1188,6 @@ d_parse_file (void)
       OutBuffer buf;
       mangleToBuffer (Module::rootModule, &buf);
       first_global_object_name = buf.extractString ();
-    }
-
-  /* Module dependencies (imports, file, version, debug, lib).  */
-  if (global.params.moduleDeps)
-    {
-      OutBuffer *buf = global.params.moduleDeps;
-
-      if (global.params.moduleDepsFile)
-	{
-	  File *fdeps = File::create (global.params.moduleDepsFile);
-	  fdeps->setbuffer ((void *) buf->data, buf->offset);
-	  fdeps->ref = 1;
-	  writeFile (Loc (), fdeps);
-	}
-      else
-	message ("%.*s", (int) buf->offset, (char *) buf->data);
     }
 
   /* Make dependencies.  */
