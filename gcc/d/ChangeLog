@@ -1,5 +1,9 @@
 2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* lang.opt: Add missing periods to the ends of sentences.
+
+2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_handle_option): Remove handling of -fdeps.
 	(d_parse_file): Don't generate module dependencies.
 	* lang.opt (fdeps, fdeps=): Remove options.
