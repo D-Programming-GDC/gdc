@@ -384,7 +384,6 @@ d_init (void)
 static void
 d_init_ts (void)
 {
-  MARK_TS_TYPED (IASM_EXPR);
   MARK_TS_TYPED (FLOAT_MOD_EXPR);
   MARK_TS_TYPED (UNSIGNED_RSHIFT_EXPR);
 }
@@ -922,7 +921,6 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p,
       break;
 
     case FLOAT_MOD_EXPR:
-    case IASM_EXPR:
       gcc_unreachable ();
 
     default:
