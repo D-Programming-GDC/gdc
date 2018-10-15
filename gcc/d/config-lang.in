@@ -23,7 +23,7 @@
 
 language="d"
 
-compilers="cc1d\$(exeext)"
+compilers="d21\$(exeext)"
 
 target_libs="target-libphobos target-zlib target-libbacktrace"
 
