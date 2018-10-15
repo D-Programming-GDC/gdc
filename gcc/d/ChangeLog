@@ -1,5 +1,12 @@
 2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-attribs.c (handle_malloc_attribute): Use gcc_assert instead of
+	gcc_unreachable.
+	(handle_pure_attribute): Likewise.
+	(handle_nothrow_attribute): Likewise.
+
+2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* Make-lang.in: Rename compiler proper to d21.
 	* config-lang.in (compilers): Rename compiler to d21.
 	* d-spec.c (lang_specific_driver): Update comments.

@@ -397,12 +397,9 @@ handle_malloc_attribute (tree *node, tree ARG_UNUSED (name),
 			 tree ARG_UNUSED (args), int ARG_UNUSED (flags),
 			 bool * ARG_UNUSED (no_add_attrs))
 {
-  if (TREE_CODE (*node) == FUNCTION_DECL
-      && POINTER_TYPE_P (TREE_TYPE (TREE_TYPE (*node))))
-    DECL_IS_MALLOC (*node) = 1;
-  else
-    gcc_unreachable ();
-
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL
+	      && POINTER_TYPE_P (TREE_TYPE (TREE_TYPE (*node))));
+  DECL_IS_MALLOC (*node) = 1;
   return NULL_TREE;
 }
 
@@ -414,11 +411,8 @@ handle_pure_attribute (tree *node, tree ARG_UNUSED (name),
 		       tree ARG_UNUSED (args), int ARG_UNUSED (flags),
 		       bool * ARG_UNUSED (no_add_attrs))
 {
-  if (TREE_CODE (*node) == FUNCTION_DECL)
-    DECL_PURE_P (*node) = 1;
-  else
-    gcc_unreachable ();
-
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
+  DECL_PURE_P (*node) = 1;
   return NULL_TREE;
 }
 
@@ -508,11 +502,8 @@ handle_nothrow_attribute (tree *node, tree ARG_UNUSED (name),
 			  tree ARG_UNUSED (args), int ARG_UNUSED (flags),
 			  bool * ARG_UNUSED (no_add_attrs))
 {
-  if (TREE_CODE (*node) == FUNCTION_DECL)
-    TREE_NOTHROW (*node) = 1;
-  else
-    gcc_unreachable ();
-
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
+  TREE_NOTHROW (*node) = 1;
   return NULL_TREE;
 }
 
