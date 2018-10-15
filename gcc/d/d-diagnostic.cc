@@ -321,7 +321,7 @@ message (const Loc& loc, const char *format, ...)
 }
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-vmessage(const Loc& loc, const char *format, va_list ap)
+vmessage (const Loc& loc, const char *format, va_list ap)
 {
   d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, true);
 }

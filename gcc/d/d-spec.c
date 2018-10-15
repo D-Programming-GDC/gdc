@@ -25,7 +25,7 @@ along with GCC; see the file COPYING3.  If not see
 
 /* This bit is set if the arguments is a D source file. */
 #define DSOURCE		(1<<1)
-/* this bit is set if they did `-lstdc++'.  */
+/* This bit is set if they did `-lstdc++'.  */
 #define WITHLIBCXX	(1<<2)
 /* Skip this option.  */
 #define SKIPOPT		(1<<3)
@@ -73,7 +73,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* If nonzero, the user gave us the `-p' or `-pg' flag.  */
   int saw_profile_flag = 0;
 
-  /* If true, the user gave `-g'.  Used by -debuglib */
+  /* If true, the user gave `-g'.  Used by -debuglib.  */
   bool saw_debug_flag = false;
 
   /* The new argument list will be contained in this.  */
@@ -91,10 +91,10 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* True if we should add -shared-libgcc to the command-line.  */
   bool shared_libgcc = true;
 
-  /* What default library to use instead of phobos */
+  /* What default library to use instead of phobos.  */
   const char *defaultlib = NULL;
 
-  /* What debug library to use instead of phobos */
+  /* What debug library to use instead of phobos.  */
   const char *debuglib = NULL;
 
   /* The total number of arguments with the new stuff.  */
@@ -262,37 +262,37 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_SPECIAL_input_file:
-	    {
-	      if (arg[0] == '\0' || arg[1] == '\0')
-		continue;
+	  {
+	    if (arg[0] == '\0' || arg[1] == '\0')
+	      continue;
 
-	      /* Record that this is a D source file.  */
-	      int len = strlen (arg);
-	      if (len <= 2 || strcmp (arg + len - 2, ".d") == 0)
-		{
-		  if (first_d_file == NULL)
-		    first_d_file = arg;
+	    /* Record that this is a D source file.  */
+	    int len = strlen (arg);
+	    if (len <= 2 || strcmp (arg + len - 2, ".d") == 0)
+	      {
+		if (first_d_file == NULL)
+		  first_d_file = arg;
 
-		  args[i] |= DSOURCE;
-		}
+		args[i] |= DSOURCE;
+	      }
 
-	      /* If we don't know that this is a interface file, we might
-		 need to link against libphobos library.  */
-	      if (library == 0)
-		{
-		  if (len <= 3 || strcmp (arg + len - 3, ".di") != 0)
-		    library = 1;
-		}
+	    /* If we don't know that this is an interface file, we might
+	       need to link against libphobos library.  */
+	    if (library == 0)
+	      {
+		if (len <= 3 || strcmp (arg + len - 3, ".di") != 0)
+		  library = 1;
+	      }
 
-	      /* If this is a C++ source file, we'll need to link
-		 against libstdc++ library.  */
-	      if ((len <= 3 || strcmp (arg + len - 3, ".cc") == 0)
-		  || (len <= 4 || strcmp (arg + len - 4, ".cpp") == 0)
-		  || (len <= 4 || strcmp (arg + len - 4, ".c++") == 0))
-		need_stdcxx = true;
+	    /* If this is a C++ source file, we'll need to link
+	       against libstdc++ library.  */
+	    if ((len <= 3 || strcmp (arg + len - 3, ".cc") == 0)
+		|| (len <= 4 || strcmp (arg + len - 4, ".cpp") == 0)
+		|| (len <= 4 || strcmp (arg + len - 4, ".c++") == 0))
+	      need_stdcxx = true;
 
-	      break;
-	    }
+	    break;
+	  }
 	}
     }
 
@@ -398,7 +398,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
     {
       /* Default to static linking.  */
       if (library == 1)
-        library = 2;
+	library = 2;
 
 #ifdef HAVE_LD_STATIC_DYNAMIC
       if (library == 3 && static_link)
@@ -479,7 +479,8 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 /* Called before linking.  Returns 0 on success and -1 on failure.  */
 
-int lang_specific_pre_link (void)
+int
+lang_specific_pre_link (void)
 {
   if (library > 0 && need_phobos)
     do_spec ("%:include(libgphobos.spec)");

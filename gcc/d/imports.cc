@@ -34,7 +34,7 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Implements the visitor interface to build debug trees for all
    module and import declarations, where ISYM holds the cached
-   backend representation to be returned.  */
+   back-end representation to be returned.  */
 class ImportVisitor : public Visitor
 {
   using Visitor::visit;

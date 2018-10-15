@@ -412,7 +412,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	  if (cdto->isBaseOf (cdfrom, &offset) && offset != OFFSET_RUNTIME)
 	    {
 	      /* Casting up the inheritance tree: Don't do anything special.
-		 Cast to an implemented interface: Handle at compile time.  */
+		 Cast to an implemented interface: Handle at compile-time.  */
 	      if (offset)
 		{
 		  /* Forward references should not leak from the frontend.  */
@@ -439,7 +439,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 		break;
 
 	      /* Casting from a C++ interface to a class/non-C++ interface
-		 always results in null as there is no runtime information,
+		 always results in null as there is no run-time information,
 		 and no way one can derive from the other.  */
 	      warning (OPT_Wcast_result, "cast to %qs will produce null result",
 		       totype->toChars ());
@@ -452,7 +452,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	      break;
 	    }
 
-	  /* The offset can only be determined at runtime, do dynamic cast.  */
+	  /* The offset can only be determined at run-time, do dynamic cast.  */
 	  libcall_fn libcall = cdfrom->isInterfaceDeclaration ()
 	    ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST;
 
@@ -533,7 +533,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	}
       else if (tbtype->ty == Tsarray)
 	{
-	  /* Strings are treated as dynamic arrays D2.  */
+	  /* Strings are treated as dynamic arrays in D2.  */
 	  if (ebtype->isString () && tbtype->isString ())
 	    return indirect_ref (build_ctype (totype), d_array_ptr (exp));
 	}
@@ -601,15 +601,14 @@ convert_expr (tree exp, Type *etype, Type *totype)
       break;
     }
 
-  return result ? result :
-    convert (build_ctype (totype), exp);
+  return result ? result : convert (build_ctype (totype), exp);
 }
 
 
-/* Apply semantics of assignment to a values of type TOTYPE to EXPR
+/* Apply semantics of assignment to a value of type TOTYPE to EXPR
    (e.g., pointer = array -> pointer = &array[0])
 
-   Return a TREE representation of EXPR implictly converted to TOTYPE
+   Return a TREE representation of EXPR implicitly converted to TOTYPE
    for use in assignment expressions MODIFY_EXPR, INIT_EXPR.  */
 
 tree

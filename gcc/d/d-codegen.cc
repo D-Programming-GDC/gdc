@@ -258,7 +258,7 @@ d_array_length (tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  /* Get the backend type for the array and pick out the array
+  /* Get the back-end type for the array and pick out the array
      length field (assumed to be the first field).  */
   tree len_field = TYPE_FIELDS (TREE_TYPE (exp));
   return component_ref (exp, len_field);
@@ -272,7 +272,7 @@ d_array_ptr (tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  /* Get the backend type for the array and pick out the array
+  /* Get the back-end type for the array and pick out the array
      data pointer field (assumed to be the second field).  */
   tree ptr_field = TREE_CHAIN (TYPE_FIELDS (TREE_TYPE (exp)));
   return component_ref (exp, ptr_field);
@@ -373,8 +373,8 @@ build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
 tree
 delegate_method (tree exp)
 {
-  /* Get the backend type for the array and pick out the array length
-     field (assumed to be the second field).  */
+  /* Get the back-end type for the delegate and pick out the funcptr field
+     (assumed to be the second field).  */
   tree method_field = TREE_CHAIN (TYPE_FIELDS (TREE_TYPE (exp)));
   return component_ref (exp, method_field);
 }
@@ -384,8 +384,8 @@ delegate_method (tree exp)
 tree
 delegate_object (tree exp)
 {
-  /* Get the backend type for the array and pick out the array data
-     pointer field (assumed to be the first field).  */
+  /* Get the back-end type for the delegate and pick out the object field
+     (assumed to be the first field).  */
   tree obj_field = TYPE_FIELDS (TREE_TYPE (exp));
   return component_ref (exp, obj_field);
 }
@@ -458,7 +458,7 @@ build_vindex_ref (tree object, tree fntype, size_t index)
   return build_memref (fntype, result, size_int (Target::ptrsize * index));
 }
 
-/* Return TRUE if EXP is a valid lvalue.  Lvalues references cannot be
+/* Return TRUE if EXP is a valid lvalue.  Lvalue references cannot be
    made into temporaries, otherwise any assignments will be lost.  */
 
 static bool
@@ -804,7 +804,7 @@ lower_struct_comparison (tree_code code, StructDeclaration *sd,
       return tmemcmp;
     }
 
-  /* Let backend take care of union comparisons.  */
+  /* Let back-end take care of union comparisons.  */
   if (sd->isUnionDeclaration ())
     {
       tmemcmp = build_call_expr (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
@@ -1071,7 +1071,7 @@ build_struct_literal (tree type, vec<constructor_elt, va_gc> *init)
 	  FOR_EACH_CONSTRUCTOR_ELT (init, idx, index, value)
 	    {
 	      /* If the index is NULL, then just assign it to the next field.
-		 This is expect of layout_typeinfo(), which generates a flat
+		 This comes from layout_typeinfo(), which generates a flat
 		 list of values that we must shape into the record type.  */
 	      if (index == field || index == NULL_TREE)
 		{
@@ -1301,7 +1301,7 @@ tree
 build_boolop (tree_code code, tree arg0, tree arg1)
 {
   /* Aggregate comparisons may get lowered to a call to builtin memcmp,
-     so need to remove all side effects incase it's address is taken.  */
+     so need to remove all side effects incase its address is taken.  */
   if (AGGREGATE_TYPE_P (TREE_TYPE (arg0)))
     arg0 = d_save_expr (arg0);
   if (AGGREGATE_TYPE_P (TREE_TYPE (arg1)))
@@ -1570,7 +1570,7 @@ build_array_set (tree ptr, tree length, tree value)
       value = t;
     }
 
-  /* Build loop to initialise { .length=length, .ptr=ptr } with value.  */
+  /* Build loop to initialize { .length=length, .ptr=ptr } with value.  */
   push_stmt_list ();
 
   /* Exit logic for the loop.
@@ -1720,7 +1720,7 @@ create_temporary_var (tree type)
   return decl;
 }
 
-/* Return an undeclared local temporary OUT_VAR initialised
+/* Return an undeclared local temporary OUT_VAR initialized
    with result of expression EXP.  */
 
 tree
@@ -2066,7 +2066,7 @@ get_frame_for_symbol (Dsymbol *sym)
     }
   else
     {
-      /* It's a class (or struct). NewExp codegen has already determined its
+      /* It's a class (or struct).  NewExp codegen has already determined its
 	 outer scope is not another class, so it must be a function.  */
       while (sym && !sym->isFuncDeclaration ())
 	sym = sym->toParent2 ();
@@ -2105,7 +2105,7 @@ get_frame_for_symbol (Dsymbol *sym)
 	      continue;
 	    }
 
-	  /* Check if enclosed by an aggregate. That means the current
+	  /* Check if enclosed by an aggregate.  That means the current
 	     function must be a member function of that aggregate.  */
 	  AggregateDeclaration *ad = dsym->isAggregateDeclaration ();
 
@@ -2384,7 +2384,7 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
     {
       VarDeclaration *v = fd->closureVars[i];
       tree vsym = get_symbol_decl (v);
-      tree ident =  v->ident
+      tree ident = v->ident
 	? get_identifier (v->ident->toChars ()) : NULL_TREE;
 
       tree field = build_decl (get_linemap (v->loc), FIELD_DECL, ident,
@@ -2421,7 +2421,7 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
 
 /* Closures are implemented by taking the local variables that
    need to survive the scope of the function, and copying them
-   into a GC allocated chuck of memory. That chunk, called the
+   into a GC allocated chuck of memory.  That chunk, called the
    closure here, is inserted into the linked list of stack
    frames instead of the usual stack frame.
 
@@ -2520,9 +2520,9 @@ get_frameinfo (FuncDeclaration *fd)
     }
   else
     {
-      /* For nested functions, default to creating a frame.  Even if there is no
-	 fields to populate the frame, create it anyway, as this will be used as
-	 the record type instead of `void*` for the this parameter.  */
+      /* For nested functions, default to creating a frame.  Even if there are
+	 no fields to populate the frame, create it anyway, as this will be
+	 used as the record type instead of `void*` for the this parameter.  */
       if (fd->vthis && fd->vthis->type == Type::tvoidptr)
 	FRAMEINFO_CREATES_FRAME (ffi) = 1;
 

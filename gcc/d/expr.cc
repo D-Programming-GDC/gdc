@@ -98,7 +98,7 @@ class ExprVisitor : public Visitor
   }
 
   /* Build an expression of code CODE, data type TYPE, and operands ARG0 and
-     ARG1.  Perform relevant conversions needs for correct code operations.  */
+     ARG1.  Perform relevant conversions needed for correct code operations.  */
 
   tree binary_op (tree_code code, tree type, tree arg0, tree arg1)
   {
@@ -179,7 +179,7 @@ class ExprVisitor : public Visitor
     tree lhs = build_expr (e1b);
     tree lexpr = stabilize_expr (&lhs);
 
-    /* The LHS expression could be an assignment, to which it's operation gets
+    /* The LHS expression could be an assignment, to which its operation gets
        lost during gimplification.  */
     if (TREE_CODE (lhs) == MODIFY_EXPR)
       {
@@ -264,7 +264,7 @@ public:
       }
     else if (tb1->isfloating () && tb1->ty != Tvector)
       {
-	/* For floating point values, identity is defined as the bits in the
+	/* For floating-point values, identity is defined as the bits in the
 	   operands being identical.  */
 	tree t1 = d_save_expr (build_expr (e->e1));
 	tree t2 = d_save_expr (build_expr (e->e2));
@@ -782,7 +782,7 @@ public:
     this->result_ = result;
   }
 
-  /* Build a assignment operator expression.  The right operand is implicitly
+  /* Build an assignment operator expression.  The right operand is implicitly
      converted to the type of the left operand, and assigned to it.  */
 
   void visit (BinAssignExp *e)
@@ -1421,7 +1421,7 @@ public:
 
     if (lwr_tree)
       {
-	/* Enforces lwr <= upr. No need to check lwr <= length as
+	/* Enforces lwr <= upr.  No need to check lwr <= length as
 	   we've already ensured that upr <= length.  */
 	if (!e->lowerIsLessThanUpper)
 	  {
@@ -2047,7 +2047,7 @@ public:
     tree condition = convert_for_condition (arg, e->e1->type);
 
     /* We expect the condition to always be true, as what happens if an assert
-       contract is false is undefined behaviour.  */
+       contract is false is undefined behavior.  */
     tree fn = builtin_decl_explicit (BUILT_IN_EXPECT);
     tree arg_types = TYPE_ARG_TYPES (TREE_TYPE (fn));
     tree pred_type = TREE_VALUE (arg_types);
@@ -2202,7 +2202,7 @@ public:
       }
     else if (e->var->ident == Identifier::idPool ("__ctfe"))
       {
-	/* __ctfe is always false at runtime.  */
+	/* __ctfe is always false at run-time.  */
 	this->result_ = integer_zero_node;
 	return;
       }
@@ -2564,7 +2564,7 @@ public:
     this->result_ = build_integer_cst (e->value, ctype);
   }
 
-  /* Build a floating point literal.  */
+  /* Build a floating-point literal.  */
 
   void visit (RealExp *e)
   {
@@ -2710,7 +2710,7 @@ public:
 	Expression *expr = e->getElement (i);
 	tree value = build_expr (expr, this->constp_);
 
-	/* Only append non-zero values, the backend will zero out the rest
+	/* Only append nonzero values, the backend will zero out the rest
 	   of the constructor as we don't set CONSTRUCTOR_NO_CLEARING.  */
 	if (!initializer_zerop (value))
 	  {
@@ -2861,7 +2861,7 @@ public:
       }
 
     /* Building sinit trees are delayed until after frontend semantic
-       processing has complete.  Build the static initialiser now.  */
+       processing has complete.  Build the static initializer now.  */
     if (e->useStaticInit && !this->constp_)
       {
 	this->result_ = aggregate_initializer_decl (e->sd);
@@ -3134,7 +3134,7 @@ build_return_dtor (Expression *e, Type *type, TypeFunction *tf)
   size_t saved_vars = vec_safe_length (d_function_chain->vars_in_scope);
   tree result = build_expr (e);
 
-  /* Convert for initialising the DECL_RESULT.  */
+  /* Convert for initializing the DECL_RESULT.  */
   result = convert_expr (result, e->type, type);
 
   /* If we are returning a reference, take the address.  */

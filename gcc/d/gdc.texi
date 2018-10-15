@@ -116,7 +116,7 @@ the options specific to @command{gdc}.
 @menu
 * Input and Output files::  Controlling the kind of output:
                             an executable, object files, assembler files,
-* Runtime Options::         Options controlling runtime behaviour
+* Runtime Options::         Options controlling runtime behavior
 * Directory Options::       Where to find module files
 * Code Generation::         Options controlling the output of gdc
 * Warnings::                Options controlling warnings specific to gdc
@@ -275,7 +275,7 @@ Turns off code generation for precondition @code{in} contracts.
 Turns on compiling in release mode, which means not emitting runtime
 checks for contracts and asserts.  Array bounds checking is not done
 for @code{@@system} and @code{@@trusted} functions, and assertion
-failures are undefined behaviour.
+failures are undefined behavior.
 
 This is equivalent to compiling with the following options:
 

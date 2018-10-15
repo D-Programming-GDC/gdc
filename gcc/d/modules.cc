@@ -38,7 +38,7 @@ along with GCC; see the file COPYING3.  If not see
 
 
 /* D generates module information to inform the runtime library which modules
-   needs some kind of special handling.  All `static this()', `static ~this()',
+   need some kind of special handling.  All `static this()', `static ~this()',
    and `unittest' functions for a given module are aggregated into a single
    function - one for each kind - and a pointer to that function is inserted
    into the ModuleInfo instance for that module.
@@ -497,7 +497,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
   if (decl->stest)
     layout_moduleinfo_field (ptr_type_node, type, offset);
 
-  /* Array of module imports is layed out as a length field, followed by
+  /* Array of module imports is laid out as a length field, followed by
      a static array of ModuleInfo pointers.  */
   size_t aimports_dim = decl->aimports.dim;
   for (size_t i = 0; i < decl->aimports.dim; i++)
@@ -514,7 +514,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
 			       type, offset);
     }
 
-  /* Array of local ClassInfo decls are layed out in the same way.  */
+  /* Array of local ClassInfo decls are laid out in the same way.  */
   ClassDeclarations aclasses;
   for (size_t i = 0; i < decl->members->dim; i++)
     {
@@ -694,7 +694,7 @@ layout_moduleinfo (Module *decl)
   register_moduleinfo (decl, minfo);
 }
 
-/* Send the Module AST class DECL to GCC backend.  */
+/* Send the Module AST class DECL to GCC back-end.  */
 
 void
 build_module_tree (Module *decl)
@@ -718,7 +718,7 @@ build_module_tree (Module *decl)
 	}
     }
 
-  /* Default behaviour is to always generate module info because of templates.
+  /* Default behavior is to always generate module info because of templates.
      Can be switched off for not compiling against runtime library.  */
   if (!global.params.betterC
       && decl->ident != Identifier::idPool ("__entrypoint"))

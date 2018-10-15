@@ -61,7 +61,7 @@ typedef Array<Expression *> Expressions;
    0: LABEL_VARIABLE_CASE (in LABEL_DECL).
       DECL_BUILT_IN_CTFE (in FUNCTION_DECL).  */
 
-/* The kinds of scopes we recognise.  */
+/* The kinds of scopes we recognize.  */
 
 enum level_kind
 {
@@ -73,7 +73,7 @@ enum level_kind
   level_switch,		/* The scope for a switch statement.  */
   level_loop,		/* A for, do-while, or unrolled-loop block.  */
   level_with,		/* The scope for a with statement.  */
-  level_function 	/* The block representing an entire function.  */
+  level_function	/* The block representing an entire function.  */
 };
 
 /* List of codes for internally recognised compiler intrinsics.  */
@@ -97,7 +97,7 @@ enum bc_kind
 };
 
 /* The datatype used to implement D scope.  It is needed primarily to support
-   the backend, but also helps debugging information for local variables.  */
+   the back-end, but also helps debugging information for local variables.  */
 
 struct GTY((chain_next ("%h.level_chain"))) binding_level
 {
@@ -170,15 +170,15 @@ struct GTY(()) d_label_entry
 
 struct GTY(()) tree_frame_info
 {
-    struct tree_common common;
-    tree frame_type;
+  struct tree_common common;
+  tree frame_type;
 };
 
 /* True if the function creates a nested frame.  */
 #define FRAMEINFO_CREATES_FRAME(NODE) \
   (TREE_LANG_FLAG_0 (FUNCFRAME_INFO_CHECK (NODE)))
 
-/* True if the function has a static chain passed in it's DECL_ARGUMENTS.  */
+/* True if the function has a static chain passed in its DECL_ARGUMENTS.  */
 #define FRAMEINFO_STATIC_CHAIN(NODE) \
   (TREE_LANG_FLAG_1 (FUNCFRAME_INFO_CHECK (NODE)))
 
@@ -198,7 +198,7 @@ struct GTY(()) lang_identifier
   /* The identifier as the user sees it.  */
   tree pretty_ident;
 
-  /* The backend tree associated with this identifier.  */
+  /* The back-end tree associated with this identifier.  */
   tree decl_tree;
 
   /* The frontend Declaration associated with this identifier.  */
@@ -461,7 +461,7 @@ enum libcall_fn
   LIBCALL_LAST
 };
 
-/* Gate for when the D frontend make an early call into the codegen pass, such
+/* Gate for when the D frontend makes an early call into the codegen pass, such
    as when it requires target information or CTFE evaluation.  As full semantic
    may not be completed, we only want to build the superficial tree structure
    without finishing any decls or types.  */

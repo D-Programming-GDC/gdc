@@ -359,7 +359,7 @@ class TypeInfoVisitor : public Visitor
     /* Internally, the compiler sees Interface as:
 	void*[4] interface;
 
-       The runtime layout of Interface is:
+       The run-time layout of Interface is:
 	TypeInfo_Class classinfo;
 	void*[] vtbl;
 	size_t offset;  */
@@ -405,7 +405,7 @@ class TypeInfoVisitor : public Visitor
 
   /* Write out the interfacing vtable[] of base class BCD that will be accessed
      from the overriding class CD.  If both are the same class, then this will
-     be it's own vtable.  INDEX is the offset in the interfaces array of the
+     be its own vtable.  INDEX is the offset in the interfaces array of the
      base class where the Interface reference can be found.
      This must be mirrored with base_vtable_offset().  */
 
@@ -729,7 +729,7 @@ public:
 	void function(Object) defaultConstructor;
 	immutable(void)* m_RTInfo;
 
-     Information relating to interfaces, and their vtables are layed out
+     Information relating to interfaces, and their vtables are laid out
      immediately after the named fields, if there is anything to write.  */
 
   void visit (TypeInfoClassDeclaration *d)
@@ -975,8 +975,8 @@ public:
     this->layout_string (sd->toPrettyChars ());
 
     /* Default initializer for struct.  */
-    tree ptr = (sd->zeroInit) ? null_pointer_node :
-      build_address (aggregate_initializer_decl (sd));
+    tree ptr = (sd->zeroInit) ? null_pointer_node
+      : build_address (aggregate_initializer_decl (sd));
     this->layout_field (d_array_value (array_type_node,
 				       size_int (sd->structsize), ptr));
 
@@ -1079,8 +1079,8 @@ public:
     tree ctor = build_constructor (build_ctype (satype), elms);
     tree decl = build_artificial_decl (TREE_TYPE (ctor), ctor);
 
-    /* Internal reference should be public, but not visible outside the
-       compilation unit, as itself is referencing public COMDATs.  */
+    /* The internal pointer reference should be public, but not visible outside
+       the compilation unit, as it's referencing COMDAT decls.  */
     TREE_PUBLIC (decl) = 1;
     DECL_VISIBILITY (decl) = VISIBILITY_INTERNAL;
     DECL_COMDAT (decl) = 1;
@@ -1196,7 +1196,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
   return type;
 }
 
-/* Returns true if the TypeInfo for type should be placed in
+/* Returns true if the TypeInfo for TYPE should be placed in
    the runtime library.  */
 
 static bool
@@ -1334,7 +1334,7 @@ layout_cpp_typeinfo (ClassDeclaration *cd)
   CONSTRUCTOR_APPEND_ELT (init, NULL_TREE, null_pointer_node);
 
   /* Let C++ do the RTTI generation, and just reference the symbol as
-     extern, the knowing the underlying type is not required.  */
+     extern, knowing the underlying type is not required.  */
   const char *ident = Target::cppTypeInfoMangle (cd);
   tree typeinfo = declare_extern_var (get_identifier (ident),
 				      unknown_type_node);
@@ -1521,10 +1521,8 @@ create_typeinfo (Type *type, Module *mod)
 	    gcc_unreachable ();
 
 	  if (!tinfo_types[tk])
-	    {
-	      make_internal_typeinfo (tk, ident, ptr_type_node,
-				      array_type_node, NULL);
-	    }
+	    make_internal_typeinfo (tk, ident, ptr_type_node,
+				    array_type_node, NULL);
 	  break;
 
 	case TK_TYPELIST_TYPE:
@@ -1564,7 +1562,7 @@ create_typeinfo (Type *type, Module *mod)
 }
 
 /* Implements a visitor interface to check whether a type is speculative.
-   TypeInfo_Struct would refer the members of the struct it is representing
+   TypeInfo_Struct would reference the members of the struct it is representing
    (e.g. opEquals via xopEquals field), so if it's instantiated in speculative
    context, TypeInfo creation should also be stopped to avoid possible
    `unresolved symbol' linker errors.  */

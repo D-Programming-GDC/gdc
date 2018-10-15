@@ -16,8 +16,8 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 /* DEF_D_INTRINSIC (CODE, ALIAS, NAME, MODULE, DECO, CTFE)
-   CODE	    The enum code used to refer this intrinsic.
-   ALIAS    The enum code used to refer the function DECL_FUNCTION_CODE, if
+   CODE	    The enum code used to refer to this intrinsic.
+   ALIAS    The enum code used to reference the function DECL_FUNCTION_CODE, if
 	    there are multiple modules or decos for a single intrinsic, they
 	    would all refer to this code.
    NAME	    The name of this intrinsic as a string.

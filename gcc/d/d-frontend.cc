@@ -1,4 +1,4 @@
-/* d-frontend.cc -- D frontend interface to the gcc backend.
+/* d-frontend.cc -- D frontend interface to the gcc back-end.
    Copyright (C) 2013-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
@@ -171,7 +171,7 @@ Port::memicmp (const char *s1, const char *s2, size_t n)
   return result;
 }
 
-/* Convert all characters in S to upper case.  */
+/* Convert all characters in S to uppercase.  */
 
 char *
 Port::strupr (char *s)
@@ -187,7 +187,7 @@ Port::strupr (char *s)
   return t;
 }
 
-/* Return true a if the real_t value from string BUFFER overflows
+/* Return true if the real_t value from string BUFFER overflows
    as a result of rounding down to float mode.  */
 
 bool
@@ -200,7 +200,7 @@ Port::isFloat32LiteralOutOfRange (const char *buffer)
   return r == Target::RealProperties::infinity;
 }
 
-/* Return true a if the real_t value from string BUFFER overflows
+/* Return true if the real_t value from string BUFFER overflows
    as a result of rounding down to double mode.  */
 
 bool
@@ -238,12 +238,12 @@ Port::readwordBE (void *buffer)
 void
 Port::writelongLE (unsigned value, void *buffer)
 {
-    unsigned char *p = (unsigned char*) buffer;
+  unsigned char *p = (unsigned char*) buffer;
 
-    p[0] = (unsigned) value;
-    p[1] = (unsigned) value >> 8;
-    p[2] = (unsigned) value >> 16;
-    p[3] = (unsigned) value >> 24;
+  p[0] = (unsigned) value;
+  p[1] = (unsigned) value >> 8;
+  p[2] = (unsigned) value >> 16;
+  p[3] = (unsigned) value >> 24;
 }
 
 /* Fetch a little-endian 32-bit value from BUFFER.  */
@@ -254,9 +254,9 @@ Port::readlongLE (void *buffer)
   unsigned char *p = (unsigned char*) buffer;
 
   return (((unsigned) p[3] << 24)
-          | ((unsigned) p[2] << 16)
-          | ((unsigned) p[1] << 8)
-          | (unsigned) p[0]);
+	  | ((unsigned) p[2] << 16)
+	  | ((unsigned) p[1] << 8)
+	  | (unsigned) p[0]);
 }
 
 /* Write a big-endian 32-bit VALUE to BUFFER.  */
@@ -264,12 +264,12 @@ Port::readlongLE (void *buffer)
 void
 Port::writelongBE (unsigned value, void *buffer)
 {
-    unsigned char *p = (unsigned char*) buffer;
+  unsigned char *p = (unsigned char*) buffer;
 
-    p[0] = (unsigned) value >> 24;
-    p[1] = (unsigned) value >> 16;
-    p[2] = (unsigned) value >> 8;
-    p[3] = (unsigned) value;
+  p[0] = (unsigned) value >> 24;
+  p[1] = (unsigned) value >> 16;
+  p[2] = (unsigned) value >> 8;
+  p[3] = (unsigned) value;
 }
 
 /* Fetch a big-endian 32-bit value from BUFFER.  */
@@ -280,9 +280,9 @@ Port::readlongBE (void *buffer)
   unsigned char *p = (unsigned char*) buffer;
 
   return (((unsigned) p[0] << 24)
-          | ((unsigned) p[1] << 16)
-          | ((unsigned) p[2] << 8)
-          | (unsigned) p[3]);
+	  | ((unsigned) p[1] << 16)
+	  | ((unsigned) p[2] << 8)
+	  | (unsigned) p[3]);
 }
 
 /* Write an SZ-byte sized VALUE to BUFFER, ignoring endian-ness.  */
@@ -428,7 +428,7 @@ CTFloat::sprint (char *buffer, char fmt, real_t r)
 size_t
 CTFloat::hash (real_t r)
 {
-    return real_hash (&r.rv ());
+  return real_hash (&r.rv ());
 }
 
 /* Implements the Compiler interface used by the frontend.  */
@@ -580,7 +580,7 @@ Compiler::loadModule (Module *m)
     }
 }
 
-/* Implements backend-specific interfaces used by the frontend.  */
+/* Implements back-end specific interfaces used by the frontend.  */
 
 /* Determine return style of function - whether in registers or through a
    hidden pointer to the caller's stack.  */

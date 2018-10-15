@@ -90,7 +90,7 @@ pop_label (Statement * const &s, d_label_entry *ent, tree block)
 /* The D front-end does not use the 'binding level' system for a symbol table,
    however it has been the goto structure for tracking code flow.
    Primarily it is only needed to get debugging information for local variables
-   and otherwise support the backend.  */
+   and otherwise support the back-end.  */
 
 void
 push_binding_level (level_kind kind)
@@ -130,7 +130,7 @@ pop_binding_level (void)
   else
     {
       /* Any uses of undefined labels, and any defined labels, now operate
-         under constraints of next binding contour.  */
+	 under constraints of next binding contour.  */
       if (d_function_chain && d_function_chain->labels)
 	{
 	  language_function *f = d_function_chain;
@@ -163,8 +163,8 @@ pop_stmt_list (void)
   tree t = d_function_chain->stmt_list->pop ();
 
   /* If the statement list is completely empty, just return it.  This is just
-     as good small as build_empty_stmt, with the advantage that statement
-     lists are merged when they appended to one another.  So using the
+     as good as build_empty_stmt, with the advantage that statement lists
+     are merged when they are appended to one another.  So using the
      STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P statements.  */
   if (TREE_SIDE_EFFECTS (t))
     {
@@ -261,7 +261,7 @@ public:
 
   /* Start a new scope for a KIND statement.
      Each user-declared variable will have a binding contour that begins
-     where the variable is declared and ends at it's containing scope.  */
+     where the variable is declared and ends at its containing scope.  */
 
   void start_scope (level_kind kind)
   {
@@ -529,7 +529,7 @@ public:
   }
 
   /* The frontend lowers `scope (exit/failure/success)' statements as
-     try/catch/finally. At this point, this statement is just an empty
+     try/catch/finally.  At this point, this statement is just an empty
      placeholder.  Maybe the frontend shouldn't leak these.  */
 
   void visit (OnScopeStatement *)
@@ -825,8 +825,8 @@ public:
       }
     else if (!condtype->isscalar ())
       {
-	::error ("cannot handle switch condition of type %s",
-		 condtype->toChars ());
+	error ("cannot handle switch condition of type %s",
+	       condtype->toChars ());
 	gcc_unreachable ();
       }
 
@@ -1002,7 +1002,7 @@ public:
       }
     else
       {
-	/* Convert for initialising the DECL_RESULT.  */
+	/* Convert for initializing the DECL_RESULT.  */
 	tree expr = build_return_dtor (s->exp, type, tf);
 	add_stmt (expr);
       }
@@ -1107,7 +1107,7 @@ public:
 
   /* Implements 'throw Object'.  Frontend already checks that the object
      thrown is a class type, but does not check if it is derived from
-     Object.  Foreign objects are not currently supported in runtime.  */
+     Object.  Foreign objects are not currently supported at run-time.  */
 
   void visit (ThrowStatement *s)
   {
@@ -1212,14 +1212,14 @@ public:
 
     tree catches = pop_stmt_list ();
 
-    /* Backend expects all catches in a TRY_CATCH_EXPR to be enclosed in a
-       statement list, however pop_stmt_list may optimise away the list
+    /* Back-end expects all catches in a TRY_CATCH_EXPR to be enclosed in a
+       statement list, however pop_stmt_list may optimize away the list
        if there is only a single catch to push.  */
     if (TREE_CODE (catches) != STATEMENT_LIST)
       {
-        tree stmt_list = alloc_stmt_list ();
-        append_to_statement_list_force (catches, &stmt_list);
-        catches = stmt_list;
+	tree stmt_list = alloc_stmt_list ();
+	append_to_statement_list_force (catches, &stmt_list);
+	catches = stmt_list;
       }
 
     add_stmt (build2 (TRY_CATCH_EXPR, void_type_node, trybody, catches));
@@ -1256,7 +1256,7 @@ public:
     gcc_unreachable ();
   }
 
-  /* D Inline Assembler is not implemented, as would require a writing
+  /* D Inline Assembler is not implemented, as it would require writing
      an assembly parser for each supported target.  Instead we leverage
      GCC extended assembler using the GccAsmStatement class.  */
 
@@ -1321,7 +1321,7 @@ public:
       }
 
     /* Collect all goto labels, these should have been already checked
-       by the front-end, so pass down the label symbol to the backend.  */
+       by the front-end, so pass down the label symbol to the back-end.  */
     if (s->labels)
       {
 	for (size_t i = 0; i < s->labels->dim; i++)

@@ -65,7 +65,7 @@ static const intrinsic_decl intrinsic_decls[] =
 #undef DEF_D_INTRINSIC
 };
 
-/* Checks if DECL is an intrinsic or runtime library function that requires
+/* Checks if DECL is an intrinsic or run time library function that requires
    special processing.  Sets DECL_INTRINSIC_CODE so it can be identified
    later in maybe_expand_intrinsic.  */
 
@@ -230,11 +230,12 @@ expand_intrinsic_bsf (tree callexp)
   int argsize = TYPE_PRECISION (TREE_TYPE (arg));
 
   /* Which variant of __builtin_ctz* should we call?  */
-  built_in_function code = (argsize <= INT_TYPE_SIZE) ? BUILT_IN_CTZ :
-    (argsize <= LONG_TYPE_SIZE) ? BUILT_IN_CTZL :
-    (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_CTZLL : END_BUILTINS;
+  built_in_function code = (argsize <= INT_TYPE_SIZE) ? BUILT_IN_CTZ
+    : (argsize <= LONG_TYPE_SIZE) ? BUILT_IN_CTZL
+    : (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_CTZLL
+    : END_BUILTINS;
 
-  /* Fallback on runtime implementation, which shouldn't happen as the
+  /* Fallback on run-time implementation, which shouldn't happen as the
      argument for bsf() is either 32-bit or 64-bit.  */
   if (code == END_BUILTINS)
     {
@@ -265,11 +266,12 @@ expand_intrinsic_bsr (tree callexp)
   int argsize = TYPE_PRECISION (type);
 
   /* Which variant of __builtin_clz* should we call?  */
-  built_in_function code = (argsize <= INT_TYPE_SIZE) ? BUILT_IN_CLZ :
-    (argsize <= LONG_TYPE_SIZE) ? BUILT_IN_CLZL :
-    (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_CLZLL : END_BUILTINS;
+  built_in_function code = (argsize <= INT_TYPE_SIZE) ? BUILT_IN_CLZ
+    : (argsize <= LONG_TYPE_SIZE) ? BUILT_IN_CLZL
+    : (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_CLZLL
+    : END_BUILTINS;
 
-  /* Fallback on runtime implementation, which shouldn't happen as the
+  /* Fallback on run-time implementation, which shouldn't happen as the
      argument for bsr() is either 32-bit or 64-bit.  */
   if (code == END_BUILTINS)
     {
@@ -329,9 +331,10 @@ expand_intrinsic_bt (intrinsic_code intrinsic, tree callexp)
   if (intrinsic == INTRINSIC_BT)
     return cond;
 
-  tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
-    (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
-    (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
+  tree_code code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR
+    : (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR
+    : (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR
+    : ERROR_MARK;
   gcc_assert (code != ERROR_MARK);
 
   /* ptr[bitnum / size] op= mask  */
@@ -364,10 +367,11 @@ expand_intrinsic_bswap (tree callexp)
   int argsize = TYPE_PRECISION (TREE_TYPE (arg));
 
   /* Which variant of __builtin_bswap* should we call?  */
-  built_in_function code = (argsize == 32) ? BUILT_IN_BSWAP32 :
-    (argsize == 64) ? BUILT_IN_BSWAP64 : END_BUILTINS;
+  built_in_function code = (argsize == 32) ? BUILT_IN_BSWAP32
+    : (argsize == 64) ? BUILT_IN_BSWAP64
+    : END_BUILTINS;
 
-  /* Fallback on runtime implementation, which shouldn't happen as the
+  /* Fallback on run-time implementation, which shouldn't happen as the
      argument for bswap() is either 32-bit or 64-bit.  */
   if (code == END_BUILTINS)
     {
@@ -394,11 +398,12 @@ expand_intrinsic_popcnt (tree callexp)
   int argsize = TYPE_PRECISION (TREE_TYPE (arg));
 
   /* Which variant of __builtin_popcount* should we call?  */
-  built_in_function code = (argsize <= INT_TYPE_SIZE) ? BUILT_IN_POPCOUNT :
-    (argsize <= LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTL :
-    (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTLL : END_BUILTINS;
+  built_in_function code = (argsize <= INT_TYPE_SIZE) ? BUILT_IN_POPCOUNT
+    : (argsize <= LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTL
+    : (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTLL
+    : END_BUILTINS;
 
-  /* Fallback on runtime implementation, which shouldn't happen as the
+  /* Fallback on run-time implementation, which shouldn't happen as the
      argument for popcnt() is either 32-bit or 64-bit.  */
   if (code == END_BUILTINS)
     {
@@ -431,9 +436,10 @@ expand_intrinsic_sqrt (intrinsic_code intrinsic, tree callexp)
     arg = fold_convert (double_type_node, arg);
 
   /* Which variant of __builtin_sqrt* should we call?  */
-  built_in_function code = (intrinsic == INTRINSIC_SQRT) ? BUILT_IN_SQRT :
-    (intrinsic == INTRINSIC_SQRTF) ? BUILT_IN_SQRTF :
-    (intrinsic == INTRINSIC_SQRTL) ? BUILT_IN_SQRTL : END_BUILTINS;
+  built_in_function code = (intrinsic == INTRINSIC_SQRT) ? BUILT_IN_SQRT
+    : (intrinsic == INTRINSIC_SQRTF) ? BUILT_IN_SQRTF
+    : (intrinsic == INTRINSIC_SQRTL) ? BUILT_IN_SQRTL
+    : END_BUILTINS;
 
   gcc_assert (code != END_BUILTINS);
   return call_builtin_fn (callexp, code, 1, arg);
@@ -467,9 +473,10 @@ expand_intrinsic_copysign (tree callexp)
     from = fold_convert (type, from);
 
   /* Which variant of __builtin_copysign* should we call?  */
-  built_in_function code = (type == float_type_node) ? BUILT_IN_COPYSIGNF :
-    (type == double_type_node) ? BUILT_IN_COPYSIGN :
-    (type == long_double_type_node) ? BUILT_IN_COPYSIGNL : END_BUILTINS;
+  built_in_function code = (type == float_type_node) ? BUILT_IN_COPYSIGNF
+    : (type == double_type_node) ? BUILT_IN_COPYSIGN
+    : (type == long_double_type_node) ? BUILT_IN_COPYSIGNL
+    : END_BUILTINS;
 
   gcc_assert (code != END_BUILTINS);
   return call_builtin_fn (callexp, code, 2, to, from);
@@ -501,17 +508,19 @@ expand_intrinsic_pow (tree callexp)
   if (SCALAR_FLOAT_TYPE_P (exptype))
     {
       /* Exponent is a float type, call pow{f,l}.  */
-      code = (exptype == float_type_node) ? BUILT_IN_POWF :
-	(exptype == double_type_node) ? BUILT_IN_POW :
-	(exptype == long_double_type_node) ? BUILT_IN_POWL : END_BUILTINS;
+      code = (exptype == float_type_node) ? BUILT_IN_POWF
+	: (exptype == double_type_node) ? BUILT_IN_POW
+	: (exptype == long_double_type_node) ? BUILT_IN_POWL
+	: END_BUILTINS;
     }
   else if (INTEGRAL_TYPE_P (exptype))
     {
       /* Exponent is an integer type, call powi{f,l}.  */
       tree basetype = TYPE_MAIN_VARIANT (TREE_TYPE (base));
-      code = (basetype == float_type_node) ? BUILT_IN_POWIF :
-	(basetype == double_type_node) ? BUILT_IN_POWI :
-	(basetype == long_double_type_node) ? BUILT_IN_POWIL : END_BUILTINS;
+      code = (basetype == float_type_node) ? BUILT_IN_POWIF
+	: (basetype == double_type_node) ? BUILT_IN_POWI
+	: (basetype == long_double_type_node) ? BUILT_IN_POWIL
+	: END_BUILTINS;
     }
   else
     gcc_unreachable ();
@@ -625,10 +634,11 @@ expand_intrinsic_checkedint (intrinsic_code intrinsic, tree callexp)
     }
 
   /* Which variant of *_OVERFLOW should we generate?  */
-  internal_fn icode = (intrinsic == INTRINSIC_ADDS) ? IFN_ADD_OVERFLOW :
-    (intrinsic == INTRINSIC_SUBS) ? IFN_SUB_OVERFLOW :
-    (intrinsic == INTRINSIC_MULS) ? IFN_MUL_OVERFLOW :
-    (intrinsic == INTRINSIC_NEGS) ? IFN_SUB_OVERFLOW : IFN_LAST;
+  internal_fn icode = (intrinsic == INTRINSIC_ADDS) ? IFN_ADD_OVERFLOW
+    : (intrinsic == INTRINSIC_SUBS) ? IFN_SUB_OVERFLOW
+    : (intrinsic == INTRINSIC_MULS) ? IFN_MUL_OVERFLOW
+    : (intrinsic == INTRINSIC_NEGS) ? IFN_SUB_OVERFLOW
+    : IFN_LAST;
   gcc_assert (icode != IFN_LAST);
 
   tree result
@@ -639,7 +649,7 @@ expand_intrinsic_checkedint (intrinsic_code intrinsic, tree callexp)
   overflow = build_deref (overflow);
 
   /* Assign returned result to overflow parameter, however if overflow is
-     already true, maintain it's value.  */
+     already true, maintain its value.  */
   type = TREE_TYPE (overflow);
   result = save_expr (result);
 
@@ -765,7 +775,7 @@ maybe_expand_intrinsic (tree callexp)
 
     case INTRINSIC_RNDTOL:
       /* Not sure if llroundl stands as a good replacement for the
-	 expected behaviour of rndtol.  */
+	 expected behavior of rndtol.  */
       return call_builtin_fn (callexp, BUILT_IN_LLROUNDL, 1,
 			      CALL_EXPR_ARG (callexp, 0));
 
@@ -834,15 +844,17 @@ maybe_expand_intrinsic (tree callexp)
     case INTRINSIC_FLOORF:
     case INTRINSIC_FLOOR:
     case INTRINSIC_FLOORL:
-      code = (intrinsic == INTRINSIC_FLOOR) ? BUILT_IN_FLOOR :
-	(intrinsic == INTRINSIC_FLOORF) ? BUILT_IN_FLOORF : BUILT_IN_FLOORL;
+      code = (intrinsic == INTRINSIC_FLOOR) ? BUILT_IN_FLOOR
+	: (intrinsic == INTRINSIC_FLOORF) ? BUILT_IN_FLOORF
+	: BUILT_IN_FLOORL;
       return call_builtin_fn (callexp, code, 1, CALL_EXPR_ARG (callexp, 0));
 
     case INTRINSIC_CEILF:
     case INTRINSIC_CEIL:
     case INTRINSIC_CEILL:
-      code = (intrinsic == INTRINSIC_CEIL) ? BUILT_IN_CEIL :
-	(intrinsic == INTRINSIC_CEILF) ? BUILT_IN_CEILF : BUILT_IN_CEILL;
+      code = (intrinsic == INTRINSIC_CEIL) ? BUILT_IN_CEIL
+	: (intrinsic == INTRINSIC_CEILF) ? BUILT_IN_CEILF
+	: BUILT_IN_CEILL;
       return call_builtin_fn (callexp, code, 1, CALL_EXPR_ARG (callexp, 0));
 
     case INTRINSIC_TRUNC:
