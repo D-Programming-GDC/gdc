@@ -412,7 +412,8 @@ class TypeInfoVisitor : public Visitor
 	if (!cd->isInterfaceDeclaration ())
 	  {
 	    /* The vtable of the interface length and ptr.  */
-	    size_t voffset = base_vtable_offset (cd, b);
+	    unsigned voffset = base_vtable_offset (cd, b);
+	    gcc_assert (voffset != 0u);
 	    value = build_offset (csym, size_int (voffset));
 
 	    CONSTRUCTOR_APPEND_ELT (v, size_int (1), size_int (id->vtbl.dim));
