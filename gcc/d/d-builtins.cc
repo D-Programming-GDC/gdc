@@ -60,11 +60,11 @@ struct builtin_data
 
 static vec<builtin_data> builtin_converted_decls;
 
-/* Build D frontend type from tree TYPE type given.  This will set the backend
-   type symbol directly for complex types to save build_ctype() the work.
-   For other types, it is not useful or will causes errors, such as casting
-   from `C char' to `D char', which also means that `char *` needs to be
-   specially handled.  */
+/* Build D frontend type from tree TYPE type given.  This will set the
+   back-end type symbol directly for complex types to save build_ctype()
+   the work.  For other types, it is not useful or will cause errors, such
+   as casting from `C char' to `D char', which also means that `char *`
+   needs to be specially handled.  */
 
 static Type *
 build_frontend_type (tree type)
@@ -91,7 +91,7 @@ build_frontend_type (tree type)
       dtype = build_frontend_type (TREE_TYPE (type));
       if (dtype)
 	{
-	  /* Check for char * first. Needs to be done for chars/string.  */
+	  /* Check for char * first.  Needs to be done for chars/string.  */
 	  if (TYPE_MAIN_VARIANT (TREE_TYPE (type)) == char_type_node)
 	    return Type::tchar->addMod (dtype->mod)->pointerTo ()->addMod (mod);
 
@@ -282,7 +282,7 @@ build_frontend_type (tree type)
 	      args->push (Parameter::create (sc, targ, NULL, NULL, NULL));
 	    }
 
-	  /* GCC generic and placeholder builtins are marked as variadic, yet
+	  /* GCC generic and placeholder built-ins are marked as variadic, yet
 	     have no named parameters, and so can't be represented in D.  */
 	  if (args->dim != 0 || !varargs_p)
 	    {
@@ -313,7 +313,7 @@ d_eval_constant_expression (tree cst)
     {
       /* Convert our GCC CST tree into a D Expression.  This seems like we are
 	 trying too hard, as these will only be converted back to a tree again
-	 later in the codegen pass, but satisfies the need to have GCC builtins
+	 later in the codegen pass, but satisfies the need to have GCC built-ins
 	 CTFE-able in the frontend.  */
       tree_code code = TREE_CODE (cst);
       if (code == COMPLEX_CST)
@@ -385,8 +385,10 @@ d_add_builtin_version (const char* ident)
     global.params.isOpenBSD = true;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = true;
+  /* The is64bit field only refers to x86_64 target.  */
   else if (strcmp (ident, "X86_64") == 0)
     global.params.is64bit = true;
+  /* No other fields are required to be set for the frontend.  */
 
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
@@ -489,23 +491,23 @@ d_build_builtins_module (Module *m)
 	continue;
 
       /* A few notes on D2 attributes applied to builtin functions:
-	 - It is assumed that builtins solely provided by the compiler are
+	 - It is assumed that built-ins solely provided by the compiler are
 	   considered @safe and pure.
-	 - Builtins that correspond to `extern(C)' functions in the standard
+	 - Built-ins that correspond to `extern(C)' functions in the standard
 	   library that have `__attribute__(nothrow)' are considered `@trusted'.
 	 - The purity of a built-in can vary depending on compiler flags set
 	   upon initialization, or by the `-foptions' passed, such as
 	   flag_unsafe_math_optimizations.
-	 - Builtins never use the GC or raise a D exception, and so are always
+	 - Built-ins never use the GC or raise a D exception, and so are always
 	   marked as `nothrow' and `@nogc'.  */
-      tf->purity = DECL_PURE_P (decl) ?   PUREstrong :
-	TREE_READONLY (decl) ? PUREconst :
-	DECL_IS_NOVOPS (decl) ? PUREweak :
-	!DECL_ASSEMBLER_NAME_SET_P (decl) ? PUREweak :
-	PUREimpure;
-      tf->trust = !DECL_ASSEMBLER_NAME_SET_P (decl) ? TRUSTsafe :
-	TREE_NOTHROW (decl) ? TRUSTtrusted :
-	TRUSTsystem;
+      tf->purity = DECL_PURE_P (decl) ? PUREstrong
+	: TREE_READONLY (decl) ? PUREconst
+	: DECL_IS_NOVOPS (decl) ? PUREweak
+	: !DECL_ASSEMBLER_NAME_SET_P (decl) ? PUREweak
+	: PUREimpure;
+      tf->trust = !DECL_ASSEMBLER_NAME_SET_P (decl) ? TRUSTsafe
+	: TREE_NOTHROW (decl) ? TRUSTtrusted
+	: TRUSTsystem;
       tf->isnothrow = true;
       tf->isnogc = true;
 
@@ -597,7 +599,7 @@ d_build_builtins_module (Module *m)
     t = build_frontend_type (lang_hooks.types.type_for_mode (ptr_mode, 1));
     members->push (build_alias_declaration ("__builtin_pointer_uint", t));
 
-    /* _Unwind_Word has it's own target specific mode.  */
+    /* _Unwind_Word has its own target specific mode.  */
     machine_mode mode = targetm.unwind_word_mode ();
     t = build_frontend_type (lang_hooks.types.type_for_mode (mode, 0));
     members->push (build_alias_declaration ("__builtin_unwind_int", t));
@@ -610,7 +612,7 @@ d_build_builtins_module (Module *m)
 }
 
 /* Search for any `extern(C)' functions that match any known GCC library builtin
-   function in D and override it's internal backend symbol.  */
+   function in D and override its internal back-end symbol.  */
 
 static void
 maybe_set_builtin_1 (Dsymbol *d)
@@ -670,7 +672,7 @@ d_maybe_set_builtin (Module *m)
 
 /* Used to help initialize the builtin-types.def table.  When a type of
    the correct size doesn't exist, use error_mark_node instead of NULL.
-   The later results in segfaults even when a decl using the type doesn't
+   The latter results in segfaults even when a decl using the type doesn't
    get invoked.  */
 
 static tree
@@ -717,7 +719,7 @@ static GTY(()) tree uintmax_type_node;
 static GTY(()) tree signed_size_type_node;
 
 
-/* Build nodes that would have be created by the C front-end; necessary
+/* Build nodes that would have been created by the C front-end; necessary
    for including builtin-types.def and ultimately builtins.def.  */
 
 static void
@@ -865,18 +867,18 @@ static void
 d_init_attributes (void)
 {
   /* Fill in the built_in_attributes array.  */
-#define DEF_ATTR_NULL_TREE(ENUM)                \
+#define DEF_ATTR_NULL_TREE(ENUM)	\
   built_in_attributes[(int) ENUM] = NULL_TREE;
-# define DEF_ATTR_INT(ENUM, VALUE)                                           \
+# define DEF_ATTR_INT(ENUM, VALUE)	\
   built_in_attributes[(int) ENUM] = build_int_cst (NULL_TREE, VALUE);
-#define DEF_ATTR_STRING(ENUM, VALUE)                                         \
+#define DEF_ATTR_STRING(ENUM, VALUE)	\
   built_in_attributes[(int) ENUM] = build_string (strlen (VALUE), VALUE);
-#define DEF_ATTR_IDENT(ENUM, STRING)                            \
+#define DEF_ATTR_IDENT(ENUM, STRING)	\
   built_in_attributes[(int) ENUM] = get_identifier (STRING);
-#define DEF_ATTR_TREE_LIST(ENUM, PURPOSE, VALUE, CHAIN) \
-  built_in_attributes[(int) ENUM]                       \
-  = tree_cons (built_in_attributes[(int) PURPOSE],    \
-	       built_in_attributes[(int) VALUE],      \
+#define DEF_ATTR_TREE_LIST(ENUM, PURPOSE, VALUE, CHAIN)	\
+  built_in_attributes[(int) ENUM]			\
+  = tree_cons (built_in_attributes[(int) PURPOSE],	\
+	       built_in_attributes[(int) VALUE],	\
 	       built_in_attributes[(int) CHAIN]);
 #include "builtin-attrs.def"
 #undef DEF_ATTR_NULL_TREE
@@ -1017,25 +1019,25 @@ d_define_builtins (tree va_list_ref_type_node ATTRIBUTE_UNUSED,
 #define DEF_FUNCTION_TYPE_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
   def_fn_type (ENUM, RETURN, 0, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_FUNCTION_TYPE_6(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-			    ARG6)                                       \
+			    ARG6)					\
   def_fn_type (ENUM, RETURN, 0, 6, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
 #define DEF_FUNCTION_TYPE_7(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-			    ARG6, ARG7)                                 \
+			    ARG6, ARG7)					\
   def_fn_type (ENUM, RETURN, 0, 7, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 #define DEF_FUNCTION_TYPE_8(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-			    ARG6, ARG7, ARG8)                           \
+			    ARG6, ARG7, ARG8)				\
   def_fn_type (ENUM, RETURN, 0, 8, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,  \
 	       ARG7, ARG8);
 #define DEF_FUNCTION_TYPE_9(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-			    ARG6, ARG7, ARG8, ARG9)                     \
+			    ARG6, ARG7, ARG8, ARG9)			\
   def_fn_type (ENUM, RETURN, 0, 9, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,  \
 	       ARG7, ARG8, ARG9);
 #define DEF_FUNCTION_TYPE_10(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-			    ARG6, ARG7, ARG8, ARG9, ARG10)              \
+			    ARG6, ARG7, ARG8, ARG9, ARG10)		 \
   def_fn_type (ENUM, RETURN, 0, 10, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,  \
 	       ARG7, ARG8, ARG9, ARG10);
 #define DEF_FUNCTION_TYPE_11(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-			    ARG6, ARG7, ARG8, ARG9, ARG10, ARG11)       \
+			    ARG6, ARG7, ARG8, ARG9, ARG10, ARG11)	 \
   def_fn_type (ENUM, RETURN, 0, 11, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,  \
 	       ARG7, ARG8, ARG9, ARG10, ARG11);
 #define DEF_FUNCTION_TYPE_VAR_0(ENUM, RETURN) \
@@ -1051,10 +1053,10 @@ d_define_builtins (tree va_list_ref_type_node ATTRIBUTE_UNUSED,
 #define DEF_FUNCTION_TYPE_VAR_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
   def_fn_type (ENUM, RETURN, 1, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_FUNCTION_TYPE_VAR_6(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-				ARG6)                                 \
+				ARG6)					    \
   def_fn_type (ENUM, RETURN, 1, 6, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
 #define DEF_FUNCTION_TYPE_VAR_7(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
-				ARG6, ARG7)                                 \
+				ARG6, ARG7)				    \
   def_fn_type (ENUM, RETURN, 1, 7, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 #define DEF_FUNCTION_TYPE_VAR_11(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
 				 ARG6, ARG7, ARG8, ARG9, ARG10, ARG11)       \
@@ -1126,7 +1128,7 @@ d_init_builtins (void)
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
       /* It might seem natural to make the argument type a pointer, but there
-         is no implicit casting from arrays to pointers in D.  */
+	 is no implicit casting from arrays to pointers in D.  */
       d_define_builtins (va_list_type_node, va_list_type_node);
     }
   else

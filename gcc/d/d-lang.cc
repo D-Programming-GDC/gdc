@@ -121,25 +121,25 @@ deps_add_target (const char *target, bool quoted)
   for (const char *p = target; *p != '\0'; p++)
     {
       switch (*p)
-        {
-        case ' ':
-        case '\t':
-          for (const char *q = p - 1; target <= q && *q == '\\';  q--)
+	{
+	case ' ':
+	case '\t':
+	  for (const char *q = p - 1; target <= q && *q == '\\';  q--)
 	    d_option.deps_target->writeByte ('\\');
 	  d_option.deps_target->writeByte ('\\');
-          break;
+	  break;
 
-        case '$':
+	case '$':
 	  d_option.deps_target->writeByte ('$');
-          break;
+	  break;
 
-        case '#':
+	case '#':
 	  d_option.deps_target->writeByte ('\\');
-          break;
+	  break;
 
-        default:
-          break;
-        }
+	default:
+	  break;
+	}
 
       d_option.deps_target->writeByte (*p);
     }
@@ -181,67 +181,68 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 
   /* Write out all make dependencies.  */
   while (modlist.dim > 0)
-  {
-    Module *depmod = modlist.pop ();
+    {
+      Module *depmod = modlist.pop ();
 
-    str = depmod->srcfile->name.toChars ();
-    size = strlen (str);
+      str = depmod->srcfile->name.toChars ();
+      size = strlen (str);
 
-    /* Skip dependencies that have already been written.  */
-    if (dependencies.add (str))
-      continue;
+      /* Skip dependencies that have already been written.  */
+      if (dependencies.add (str))
+	continue;
 
-    column += size;
+      column += size;
 
-    if (colmax && column > colmax)
-      {
-	buffer->writestring (" \\\n ");
-	column = size + 1;
-      }
-    else
-      {
-	buffer->writestring (" ");
-	column++;
-      }
+      if (colmax && column > colmax)
+	{
+	  buffer->writestring (" \\\n ");
+	  column = size + 1;
+	}
+      else
+	{
+	  buffer->writestring (" ");
+	  column++;
+	}
 
-    buffer->writestring (str);
+      buffer->writestring (str);
 
-    /* Add to list of phony targets if is not being compile.  */
-    if (d_option.deps_phony && !depmod->isRoot ())
-      phonylist.push (depmod);
+      /* Add to list of phony targets if is not being compile.  */
+      if (d_option.deps_phony && !depmod->isRoot ())
+	phonylist.push (depmod);
 
-    /* Search all imports of the written dependency.  */
-    for (size_t i = 0; i < depmod->aimports.dim; i++)
-      {
-	Module *m = depmod->aimports[i];
+      /* Search all imports of the written dependency.  */
+      for (size_t i = 0; i < depmod->aimports.dim; i++)
+	{
+	  Module *m = depmod->aimports[i];
 
-	/* Ignore compiler-generated modules.  */
-	if ((m->ident == Identifier::idPool ("__entrypoint")
-	     || m->ident == Identifier::idPool ("__main"))
-	    && m->parent == NULL)
-	  continue;
+	  /* Ignore compiler-generated modules.  */
+	  if ((m->ident == Identifier::idPool ("__entrypoint")
+	       || m->ident == Identifier::idPool ("__main"))
+	      && m->parent == NULL)
+	    continue;
 
-	/* Don't search system installed modules, this includes
-	   object, core.*, std.*, and gcc.* packages.  */
-	if (d_option.deps_skip_system)
-	  {
-	    if (m->ident == Identifier::idPool ("object") && m->parent == NULL)
-	      continue;
+	  /* Don't search system installed modules, this includes
+	     object, core.*, std.*, and gcc.* packages.  */
+	  if (d_option.deps_skip_system)
+	    {
+	      if (m->ident == Identifier::idPool ("object")
+		  && m->parent == NULL)
+		continue;
 
-	    if (m->md && m->md->packages)
-	      {
-		Identifier *package = (*m->md->packages)[0];
+	      if (m->md && m->md->packages)
+		{
+		  Identifier *package = (*m->md->packages)[0];
 
-		if (package == Identifier::idPool ("core")
-		    || package == Identifier::idPool ("std")
-		    || package == Identifier::idPool ("gcc"))
-		  continue;
-	      }
-	  }
+		  if (package == Identifier::idPool ("core")
+		      || package == Identifier::idPool ("std")
+		      || package == Identifier::idPool ("gcc"))
+		    continue;
+		}
+	    }
 
-	modlist.push (m);
-      }
-  }
+	  modlist.push (m);
+	}
+    }
 
   buffer->writenl ();
 
@@ -341,7 +342,7 @@ d_init (void)
   Expression::_init ();
   Objc::_init ();
 
-  /* Backend init.  */
+  /* Back-end init.  */
   global_binding_level = ggc_cleared_alloc<binding_level> ();
   current_binding_level = global_binding_level;
 
@@ -637,7 +638,7 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
 
     case OPT_MM:
       d_option.deps_skip_system = true;
-      /* fall through */
+      /* Fall through.  */
 
     case OPT_M:
       d_option.deps = true;
@@ -645,7 +646,7 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
 
     case OPT_MMD:
       d_option.deps_skip_system = true;
-      /* fall through */
+      /* Fall through.  */
 
     case OPT_MD:
       d_option.deps = true;
@@ -698,7 +699,7 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
 
     case OPT_Xf:
       global.params.jsonfilename = arg;
-      /* fall through */
+      /* Fall through.  */
 
     case OPT_X:
       global.params.doJsonGeneration = true;
@@ -1584,7 +1585,7 @@ d_getdecls (void)
 
 
 /* Implements the lang_hooks.get_alias_set routine for language D.
-   Get the alias set corresponding the type or expression T.
+   Get the alias set corresponding to type or expression T.
    Return -1 if we don't do anything special.  */
 
 static alias_set_type
@@ -1603,8 +1604,11 @@ d_get_alias_set (tree t)
   if (!TYPE_P (t))
     return get_alias_set (TREE_TYPE (t));
 
-  /* For now in D, assume everything aliases everything else,
-     until we define some solid rules.  */
+  /* For now in D, assume everything aliases everything else, until we define
+     some solid rules backed by a specification.  There are also some parts
+     of code generation routines that don't adhere to C alias rules, such as
+     build_vconvert.  In any case, a lot of user code already assumes there
+     is no strict aliasing and will break if we were to change that.  */
   return 0;
 }
 
@@ -1657,7 +1661,7 @@ d_finish_incomplete_decl (tree decl)
   if (VAR_P (decl))
     {
       /* D allows zero-length declarations.  Such a declaration ends up with
-	 DECL_SIZE (t) == NULL_TREE which is what the backend function
+	 DECL_SIZE (t) == NULL_TREE which is what the back-end function
 	 assembler_variable checks.  This could change in later versions, or
 	 maybe all of these variables should be aliased to one symbol. */
       if (DECL_SIZE (decl) == 0)
@@ -1757,7 +1761,7 @@ build_lang_type (Type *t)
 struct lang_decl *
 build_lang_decl (Declaration *d)
 {
-  /* For compiler generated runtime typeinfo, a lang_decl is allocated even if
+  /* For compiler generated run-time typeinfo, a lang_decl is allocated even if
      there's no associated frontend symbol to refer to (yet).  If the symbol
      appears later in the compilation, then the slot will be re-used.  */
   if (d == NULL)
@@ -1806,10 +1810,8 @@ static tree
 d_eh_personality (void)
 {
   if (!d_eh_personality_decl)
-    {
-      d_eh_personality_decl
-	= build_personality_function ("gdc");
-    }
+    d_eh_personality_decl = build_personality_function ("gdc");
+
   return d_eh_personality_decl;
 }
 
@@ -1877,7 +1879,7 @@ d_build_eh_runtime_type (tree type)
 #define LANG_HOOKS_POST_OPTIONS		    d_post_options
 #define LANG_HOOKS_PARSE_FILE		    d_parse_file
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE   d_langhook_common_attribute_table
-#define LANG_HOOKS_ATTRIBUTE_TABLE          d_langhook_attribute_table
+#define LANG_HOOKS_ATTRIBUTE_TABLE	    d_langhook_attribute_table
 #define LANG_HOOKS_GET_ALIAS_SET	    d_get_alias_set
 #define LANG_HOOKS_TYPES_COMPATIBLE_P	    d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION	    d_builtin_function

@@ -1,4 +1,4 @@
-/* longdouble.h -- Definitions of floating point access for the frontend.
+/* longdouble.h -- Definitions of floating-point access for the frontend.
    Copyright (C) 2015-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@ class Type;
 struct longdouble
 {
 public:
-   /* Return the hidden real_value from the longdouble type.  */
+  /* Return the hidden real_value from the longdouble type.  */
   const real_value& rv (void) const
   { return *(const real_value *) this; }
 
@@ -32,7 +32,7 @@ public:
   { return *(real_value *) this; }
 
   /* Normalize the value to be the precision supported by target.  */
-  longdouble normalize();
+  longdouble normalize (void);
 
   /* No constructor to be able to use this class in a union.  */
   template<typename T> longdouble& operator = (T x)
@@ -67,12 +67,12 @@ public:
   { return this->to_bool (); }
 
   /* Arithmetic operators.  */
-  longdouble add(const longdouble& r) const;
-  longdouble sub(const longdouble& r) const;
-  longdouble mul(const longdouble& r) const;
-  longdouble div(const longdouble& r) const;
-  longdouble mod(const longdouble& r) const;
-  longdouble neg() const;
+  longdouble add (const longdouble& r) const;
+  longdouble sub (const longdouble& r) const;
+  longdouble mul (const longdouble& r) const;
+  longdouble div (const longdouble& r) const;
+  longdouble mod (const longdouble& r) const;
+  longdouble neg () const;
 
   longdouble operator + (const longdouble& r)
   { return this->add (r); }
@@ -93,8 +93,8 @@ public:
   { return this->neg (); }
 
   /* Comparison operators.  */
-  int cmp(const longdouble& t) const;
-  int equals(const longdouble& t) const;
+  int cmp (const longdouble& t) const;
+  int equals (const longdouble& t) const;
 
   bool operator < (const longdouble& r)
   { return this->cmp (r) < 0; }
@@ -123,7 +123,7 @@ private:
 /* Declared, but "volatile" is not required.  */
 typedef longdouble volatile_longdouble;
 
-/* Use ldouble() to explicitely create a longdouble value.  */
+/* Use ldouble() to explicitly create a longdouble value.  */
 template<typename T>
 inline longdouble
 ldouble (T x)

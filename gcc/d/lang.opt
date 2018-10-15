@@ -255,7 +255,7 @@ Generate a default D main() function when compiling.
 
 fmodule-file=
 D Joined RejectNegative
--fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
+-fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>.
 
 fmoduleinfo
 D Var(flag_moduleinfo)
@@ -287,11 +287,11 @@ Generate code for switches without a default case.
 
 ftransition=all
 D RejectNegative
-List information on all language changes
+List information on all language changes.
 
 ftransition=checkimports
 D RejectNegative
-Give deprecation messages about -ftransition=import anomalies
+Give deprecation messages about -ftransition=import anomalies.
 
 ftransition=complex
 D RejectNegative
@@ -299,15 +299,15 @@ List all usages of complex or imaginary types.
 
 ftransition=dip1000
 D RejectNegative
-Implement DIP1000: Scoped pointers (experimental)
+Implement DIP1000: Scoped pointers (experimental).
 
 ftransition=dip1008
 D RejectNegative
-Implement DIP1008: Allow exceptions in @nogc code (experimental)
+Implement DIP1008: Allow exceptions in @nogc code (experimental).
 
 ftransition=dip25
 D RejectNegative
-Implement DIP25: Sealed references (experimental)
+Implement DIP25: Sealed references (experimental).
 
 ftransition=dtorfields
 D RejectNegative

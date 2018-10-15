@@ -262,7 +262,7 @@ vdeprecationSupplemental (const Loc& loc, const char *format, va_list ap)
 /* Print a verbose message with explicit location LOC.  */
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-vmessage(const Loc& loc, const char *format, va_list ap)
+vmessage (const Loc& loc, const char *format, va_list ap)
 {
   d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, true);
 }
