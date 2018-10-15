@@ -1,3 +1,10 @@
+2018-10-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc (Target::getTargetInfo): Handle floatAbi, objectFormat,
+	and cppRuntimeLibrary traits.
+	* d-target.def (d_float_abi_type): New hook.
+	(d_object_format): New hook.
+
 2018-10-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (d-warn): Use strict warnings.

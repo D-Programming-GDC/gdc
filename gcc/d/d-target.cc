@@ -265,7 +265,7 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
     return true;
 
   /* Don't support if type is non-scalar, such as __vector(void[]).  */
-  if (!type->isscalar())
+  if (!type->isscalar ())
     return false;
 
   /* Don't support if expression cannot be represented.  */
@@ -279,7 +279,7 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
     case TOKmod:
     case TOKmodass:
       /* fmod() is lowered as a function call.  */
-      if (type->isfloating())
+      if (type->isfloating ())
 	return false;
       break;
 
@@ -317,7 +317,7 @@ Target::toCppMangle (Dsymbol *s)
 /* Return the symbol mangling of CD for C++ linkage.  */
 
 const char *
-Target::cppTypeInfoMangle(ClassDeclaration *cd)
+Target::cppTypeInfoMangle (ClassDeclaration *cd)
 {
   return cppTypeInfoMangleItanium (cd);
 }
@@ -348,13 +348,13 @@ Target::cppParameterType (Parameter *arg)
       t = t->referenceTo ();
     else if (arg->storageClass & STClazy)
       {
-	// Mangle as delegate
+	/* Mangle as delegate.  */
 	Type *td = TypeFunction::create (NULL, t, 0, LINKd);
 	td = TypeDelegate::create (td);
 	t = t->merge2 ();
       }
 
-    // Could be a va_list, which we mangle as a pointer.
+    /* Could be a va_list, which we mangle as a pointer.  */
     if (t->ty == Tsarray && Type::tvalist->ty == Tsarray)
       {
 	Type *tb = t->toBasetype ()->mutableOf ();
@@ -394,12 +394,30 @@ Target::isReturnOnStack (TypeFunction *, bool)
 Expression *
 Target::getTargetInfo (const char *name, const Loc& loc)
 {
+  const char *result = NULL;
+
   switch (strlen (name))
     {
+    case 8:
+      if (strcmp (name, "floatAbi") == 0)
+	result = targetdm.d_float_abi_type ();
+      break;
+
+    case 12:
+      if (strcmp (name, "objectFormat") == 0)
+	result = targetdm.d_object_format ();
+      break;
+
     case 17:
+      /* The driver only ever optionally links to libstdc++.  */
       if (strcmp (name, "cppRuntimeLibrary") == 0)
-	return StringExp::create (loc, CONST_CAST (char *, ""), 0);
+	result = "libstdc++";
       break;
     }
+
+  if (result != NULL)
+    return StringExp::create (loc, CONST_CAST (char *, result),
+			      strlen (result));
+
   return NULL;
 }
