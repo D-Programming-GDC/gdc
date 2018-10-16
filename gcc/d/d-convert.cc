@@ -285,53 +285,40 @@ convert (tree type, tree expr)
 	  return fold_convert (type, ret);
 	}
 
-      ret = convert_to_integer (type, e);
-      goto maybe_fold;
+      return fold (convert_to_integer (type, e));
 
     case BOOLEAN_TYPE:
       return fold_convert (type, d_truthvalue_conversion (expr));
 
     case POINTER_TYPE:
     case REFERENCE_TYPE:
-      ret = convert_to_pointer (type, e);
-      goto maybe_fold;
+      return fold (convert_to_pointer (type, e));
 
     case REAL_TYPE:
       if (TREE_CODE (etype) == COMPLEX_TYPE && TYPE_IMAGINARY_FLOAT (type))
 	e = build1 (IMAGPART_EXPR, TREE_TYPE (etype), e);
 
-      ret = convert_to_real (type, e);
-      goto maybe_fold;
+      return fold (convert_to_real (type, e));
 
     case COMPLEX_TYPE:
       if (TREE_CODE (etype) == REAL_TYPE && TYPE_IMAGINARY_FLOAT (etype))
-	ret = build2 (COMPLEX_EXPR, type,
-		      build_zero_cst (TREE_TYPE (type)),
-		      convert (TREE_TYPE (type), expr));
-      else
-	ret = convert_to_complex (type, e);
-      goto maybe_fold;
+	return fold_build2 (COMPLEX_EXPR, type,
+			    build_zero_cst (TREE_TYPE (type)),
+			    convert (TREE_TYPE (type), expr));
+
+      return fold (convert_to_complex (type, e));
 
     case VECTOR_TYPE:
-      ret = convert_to_vector (type, e);
-      goto maybe_fold;
+      return fold (convert_to_vector (type, e));
 
     case RECORD_TYPE:
     case UNION_TYPE:
       if (lang_hooks.types_compatible_p (type, TREE_TYPE (expr)))
-	{
-	  ret = build1 (VIEW_CONVERT_EXPR, type, expr);
-	  goto maybe_fold;
-	}
+	return fold_build1 (VIEW_CONVERT_EXPR, type, expr);
       break;
 
     default:
       break;
-
-    maybe_fold:
-      if (!TREE_CONSTANT (ret))
-	ret = fold (ret);
-      return ret;
     }
 
   error ("conversion to non-scalar type requested");
