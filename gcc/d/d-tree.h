@@ -566,6 +566,7 @@ extern tree get_frameinfo (FuncDeclaration *);
 extern tree get_framedecl (FuncDeclaration *, FuncDeclaration *);
 
 /* In d-convert.cc.  */
+extern bool decl_with_nonnull_addr_p (const_tree);
 extern tree d_truthvalue_conversion (tree);
 extern tree d_convert (tree, tree);
 extern tree convert_expr (tree, Type *, Type *);

@@ -98,6 +98,10 @@ MQ
 D Joined Separate
 ; Documented in C
 
+Waddress
+D Warning Var(warn_address)
+; Documented in C
+
 Wall
 D
 ; Documented in C
