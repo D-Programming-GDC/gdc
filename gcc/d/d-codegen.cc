@@ -44,7 +44,7 @@ along with GCC; see the file COPYING3.  If not see
 /* Return the GCC location for the D frontend location LOC.   */
 
 location_t
-get_linemap (const Loc& loc)
+make_location_t (const Loc& loc)
 {
   location_t gcc_location = input_location;
 
@@ -2414,7 +2414,7 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
       tree ident = v->ident
 	? get_identifier (v->ident->toChars ()) : NULL_TREE;
 
-      tree field = build_decl (get_linemap (v->loc), FIELD_DECL, ident,
+      tree field = build_decl (make_location_t (v->loc), FIELD_DECL, ident,
 			       TREE_TYPE (vsym));
       SET_DECL_LANG_FRAME_FIELD (vsym, field);
       DECL_FIELD_CONTEXT (field) = frame_rec_type;

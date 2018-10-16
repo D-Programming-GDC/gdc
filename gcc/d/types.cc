@@ -335,7 +335,7 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 	  d_keep (type);
 
 	  /* Build the type declaration.  */
-	  tree decl = build_decl (get_linemap (ad->loc),
+	  tree decl = build_decl (make_location_t (ad->loc),
 				  TYPE_DECL, ident, type);
 	  DECL_CONTEXT (decl) = context;
 	  DECL_ARTIFICIAL (decl) = 1;
@@ -826,7 +826,7 @@ public:
 						basetype);
 
 		/* Build an identifier for the enumeration constant.  */
-		tree decl = build_decl (get_linemap (member->loc),
+		tree decl = build_decl (make_location_t (member->loc),
 					CONST_DECL, ident, basetype);
 		DECL_CONTEXT (decl) = t->ctype;
 		TREE_CONSTANT (decl) = 1;
