@@ -1301,6 +1301,18 @@ build_vconvert (tree type, tree exp)
   return indirect_ref (type, build_address (exp));
 }
 
+/* Maybe warn about ARG being an address that can never be null.  */
+
+static void
+warn_for_null_address (tree arg)
+{
+  if (TREE_CODE (arg) == ADDR_EXPR
+      && decl_with_nonnull_addr_p (TREE_OPERAND (arg, 0)))
+    warning (OPT_Waddress,
+	     "the address of %qD will never be %<null%>",
+	     TREE_OPERAND (arg, 0));
+}
+
 /* Build a boolean ARG0 op ARG1 expression.  */
 
 tree
@@ -1324,6 +1336,15 @@ build_boolop (tree_code code, tree arg0, tree arg1)
       return fold_build3_loc (input_location, VEC_COND_EXPR, type, cmp,
 			      build_minus_one_cst (type),
 			      build_zero_cst (type));
+    }
+
+  if (code == EQ_EXPR || code == NE_EXPR)
+    {
+      /* Check if comparing the address of a variable to null.  */
+      if (POINTER_TYPE_P (TREE_TYPE (arg0)) && integer_zerop (arg1))
+	warn_for_null_address (arg0);
+      if (POINTER_TYPE_P (TREE_TYPE (arg1)) && integer_zerop (arg0))
+	warn_for_null_address (arg1);
     }
 
   return fold_build2_loc (input_location, code, bool_type_node,

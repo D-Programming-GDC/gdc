@@ -86,6 +86,16 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
   return fold_build2 (code, bool_type_node, op0, op1);
 }
 
+/* Return whether EXPR is a declaration whose address can never be NULL.  */
+
+bool
+decl_with_nonnull_addr_p (const_tree expr)
+{
+  return (DECL_P (expr)
+	  && (TREE_CODE (expr) == PARM_DECL
+	      || TREE_CODE (expr) == LABEL_DECL
+	      || !DECL_WEAK (expr)));
+}
 
 /* Convert EXPR to be a truth-value, validating its type for this purpose.  */
 
@@ -133,11 +143,13 @@ d_truthvalue_conversion (tree expr)
     case ADDR_EXPR:
       /* If we are taking the address of a decl that can never be null,
 	 then the return result is always true.  */
-      if (DECL_P (TREE_OPERAND (expr, 0))
-	  && (TREE_CODE (TREE_OPERAND (expr, 0)) == PARM_DECL
-	      || TREE_CODE (TREE_OPERAND (expr, 0)) == LABEL_DECL
-	      || !DECL_WEAK (TREE_OPERAND (expr, 0))))
-	return boolean_true_node;
+      if (decl_with_nonnull_addr_p (TREE_OPERAND (expr, 0)))
+	{
+	  warning (OPT_Waddress,
+		   "the address of %qD will always evaluate as %<true%>",
+		   TREE_OPERAND (expr, 0));
+	  return boolean_true_node;
+	}
       break;
 
     case COMPLEX_EXPR:
