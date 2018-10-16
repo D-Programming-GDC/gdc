@@ -1,5 +1,10 @@
 2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-frontend.cc (Port::writelongLE): Remove function.
+	(Port::writelongBE): Remove function.
+
+2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-convert.cc (convert): Remove goto maybe_fold.
 
 2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>

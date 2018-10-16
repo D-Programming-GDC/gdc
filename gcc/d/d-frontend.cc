@@ -233,19 +233,6 @@ Port::readwordBE (void *buffer)
   return ((unsigned) p[0] << 8) | (unsigned) p[1];
 }
 
-/* Write a little-endian 32-bit VALUE to BUFFER.  */
-
-void
-Port::writelongLE (unsigned value, void *buffer)
-{
-  unsigned char *p = (unsigned char*) buffer;
-
-  p[0] = (unsigned) value;
-  p[1] = (unsigned) value >> 8;
-  p[2] = (unsigned) value >> 16;
-  p[3] = (unsigned) value >> 24;
-}
-
 /* Fetch a little-endian 32-bit value from BUFFER.  */
 
 unsigned
@@ -257,19 +244,6 @@ Port::readlongLE (void *buffer)
 	  | ((unsigned) p[2] << 16)
 	  | ((unsigned) p[1] << 8)
 	  | (unsigned) p[0]);
-}
-
-/* Write a big-endian 32-bit VALUE to BUFFER.  */
-
-void
-Port::writelongBE (unsigned value, void *buffer)
-{
-  unsigned char *p = (unsigned char*) buffer;
-
-  p[0] = (unsigned) value >> 24;
-  p[1] = (unsigned) value >> 16;
-  p[2] = (unsigned) value >> 8;
-  p[3] = (unsigned) value;
 }
 
 /* Fetch a big-endian 32-bit value from BUFFER.  */
