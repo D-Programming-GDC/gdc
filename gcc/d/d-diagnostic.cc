@@ -118,7 +118,7 @@ d_diagnostic_report_diagnostic (const Loc& loc, int opt, const char *format,
 
   if (loc.filename || !verbatim)
     {
-      rich_location rich_loc (line_table, get_linemap (loc));
+      rich_location rich_loc (line_table, make_location_t (loc));
       diagnostic_info diagnostic;
       char *xformat = expand_format (format);
 

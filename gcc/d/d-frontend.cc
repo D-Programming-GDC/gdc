@@ -533,7 +533,7 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
 
   TypeFunction *tf = (TypeFunction *) fd->type;
   Expression *e = NULL;
-  input_location = get_linemap (loc);
+  input_location = make_location_t (loc);
 
   tree result = d_build_call (tf, decl, NULL, arguments);
   result = fold (result);

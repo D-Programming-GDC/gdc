@@ -68,7 +68,7 @@ public:
     Loc loc = (m->md != NULL) ? m->md->loc
       : Loc (m->srcfile->toChars (), 1, 0);
 
-    m->isym = build_decl (get_linemap (loc), NAMESPACE_DECL,
+    m->isym = build_decl (make_location_t (loc), NAMESPACE_DECL,
 			  get_identifier (m->toPrettyChars ()),
 			  void_type_node);
     d_keep (m->isym);
@@ -195,7 +195,7 @@ build_import_decl (Dsymbol *d)
       location_t saved_location = input_location;
       ImportVisitor v;
 
-      input_location = get_linemap (d->loc);
+      input_location = make_location_t (d->loc);
       d->accept (&v);
       input_location = saved_location;
     }

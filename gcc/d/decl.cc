@@ -283,7 +283,7 @@ public:
 	if (d->ident == Identifier::idPool ("lib")
 	    || d->ident == Identifier::idPool ("startaddress"))
 	  {
-	    warning_at (get_linemap (d->loc), OPT_Wunknown_pragmas,
+	    warning_at (make_location_t (d->loc), OPT_Wunknown_pragmas,
 			"pragma(%s) not implemented", d->ident->toChars ());
 	  }
       }
@@ -1002,9 +1002,9 @@ build_decl_tree (Dsymbol *d)
 
   /* Set input location, empty DECL_SOURCE_FILE can crash debug generator.  */
   if (d->loc.filename)
-    input_location = get_linemap (d->loc);
+    input_location = make_location_t (d->loc);
   else
-    input_location = get_linemap (Loc ("<no_file>", 1, 0));
+    input_location = make_location_t (Loc ("<no_file>", 1, 0));
 
   DeclVisitor v = DeclVisitor ();
   d->accept (&v);
@@ -1066,7 +1066,7 @@ get_symbol_decl (Declaration *decl)
 	  return decl->csym;
 	}
 
-      decl->csym = build_decl (get_linemap (decl->loc), FUNCTION_DECL,
+      decl->csym = build_decl (make_location_t (decl->loc), FUNCTION_DECL,
 			       get_identifier (decl->ident->toChars ()),
 			       NULL_TREE);
 
@@ -1085,7 +1085,7 @@ get_symbol_decl (Declaration *decl)
       tree_code code = vd->isParameter () ? PARM_DECL
 	: !vd->canTakeAddressOf () ? CONST_DECL
 	: VAR_DECL;
-      decl->csym = build_decl (get_linemap (decl->loc), code,
+      decl->csym = build_decl (make_location_t (decl->loc), code,
 			       get_identifier (decl->ident->toChars ()),
 			       declaration_type (vd));
 
@@ -1859,7 +1859,7 @@ start_function (FuncDeclaration *fd)
   current_function_decl = fndecl;
 
   tree restype = TREE_TYPE (TREE_TYPE (fndecl));
-  tree resdecl = build_decl (get_linemap (fd->loc), RESULT_DECL,
+  tree resdecl = build_decl (make_location_t (fd->loc), RESULT_DECL,
 			     NULL_TREE, restype);
 
   DECL_RESULT (fndecl) = resdecl;
@@ -1872,7 +1872,7 @@ start_function (FuncDeclaration *fd)
 
   /* Store the end of the function.  */
   if (fd->endloc.filename)
-    cfun->function_end_locus = get_linemap (fd->endloc);
+    cfun->function_end_locus = make_location_t (fd->endloc);
   else
     cfun->function_end_locus = DECL_SOURCE_LOCATION (fndecl);
 
@@ -2298,7 +2298,7 @@ build_type_decl (tree type, Dsymbol *dsym)
 
   gcc_assert (!POINTER_TYPE_P (type));
 
-  tree decl = build_decl (get_linemap (dsym->loc), TYPE_DECL,
+  tree decl = build_decl (make_location_t (dsym->loc), TYPE_DECL,
 			  get_identifier (dsym->ident->toChars ()), type);
   SET_DECL_ASSEMBLER_NAME (decl, get_identifier (mangle_decl (dsym)));
   TREE_PUBLIC (decl) = 1;

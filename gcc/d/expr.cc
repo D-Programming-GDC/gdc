@@ -3085,7 +3085,7 @@ build_expr (Expression *e, bool const_p)
   ExprVisitor v = ExprVisitor (const_p);
   location_t saved_location = input_location;
 
-  input_location = get_linemap (e->loc);
+  input_location = make_location_t (e->loc);
   e->accept (&v);
   tree expr = v.result ();
   input_location = saved_location;

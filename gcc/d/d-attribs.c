@@ -286,7 +286,7 @@ build_attributes (Expressions *eattrs)
       const char *name = (const char *)(se->len ? se->string : "");
       if (!uda_attribute_p (name))
 	{
-	  warning_at (get_linemap (e0->loc), OPT_Wattributes,
+	  warning_at (make_location_t (e0->loc), OPT_Wattributes,
 		      "unknown attribute %qs", name);
 	  return error_mark_node;
 	}

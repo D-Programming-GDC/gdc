@@ -254,7 +254,7 @@ public:
   void build_stmt (Statement *s)
   {
     location_t saved_location = input_location;
-    input_location = get_linemap (s->loc);
+    input_location = make_location_t (s->loc);
     s->accept (this);
     input_location = saved_location;
   }
@@ -433,7 +433,7 @@ public:
     else
       {
 	tree name = ident ? get_identifier (ident->toChars ()) : NULL_TREE;
-	tree decl = build_decl (get_linemap (s->loc), LABEL_DECL,
+	tree decl = build_decl (make_location_t (s->loc), LABEL_DECL,
 				name, void_type_node);
 	DECL_CONTEXT (decl) = current_function_decl;
 	DECL_MODE (decl) = VOIDmode;
@@ -467,7 +467,7 @@ public:
 	TREE_VEC_ELT (vec, bc_break) = ent->label;
 
 	/* Build the continue label.  */
-	tree label = build_decl (get_linemap (s->loc), LABEL_DECL,
+	tree label = build_decl (make_location_t (s->loc), LABEL_DECL,
 				 NULL_TREE, void_type_node);
 	DECL_CONTEXT (label) = current_function_decl;
 	DECL_MODE (label) = VOIDmode;
@@ -1342,7 +1342,7 @@ public:
 
     tree exp = build5 (ASM_EXPR, void_type_node, string,
 		       outputs, inputs, clobbers, labels);
-    SET_EXPR_LOCATION (exp, get_linemap (s->loc));
+    SET_EXPR_LOCATION (exp, make_location_t (s->loc));
 
     /* If the extended syntax was not used, mark the ASM_EXPR.  */
     if (s->args == NULL && s->clobbers == NULL)
@@ -1379,7 +1379,7 @@ build_function_body (FuncDeclaration *fd)
 {
   IRVisitor v = IRVisitor (fd);
   location_t saved_location = input_location;
-  input_location = get_linemap (fd->loc);
+  input_location = make_location_t (fd->loc);
   v.build_stmt (fd->fbody);
   input_location = saved_location;
 }
