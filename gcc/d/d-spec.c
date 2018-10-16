@@ -264,9 +264,8 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 	  if (arg != NULL)
 	    {
-	      int len = strlen (only_source_option);
-	      if (len <= 2 || only_source_option[len-1] != 'd'
-		  || only_source_option[len-2] != '.')
+	      const char *suffix = strrchr (only_source_option, '.');
+	      if (suffix == NULL || strcmp (suffix, ".d") != 0)
 		only_source_option = concat (only_source_option, ".d", NULL);
 	    }
 	  break;
@@ -277,8 +276,8 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	      continue;
 
 	    /* Record that this is a D source file.  */
-	    int len = strlen (arg);
-	    if (len <= 2 || strcmp (arg + len - 2, ".d") == 0)
+	    const char *suffix = strrchr (arg, '.');
+	    if (suffix != NULL && strcmp (suffix, ".d") == 0)
 	      {
 		if (first_d_file == NULL)
 		  first_d_file = arg;
@@ -288,17 +287,16 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 	    /* If we don't know that this is an interface file, we might
 	       need to link against libphobos library.  */
-	    if (phobos_library == PHOBOS_DEFAULT)
-	      {
-		if (len <= 3 || strcmp (arg + len - 3, ".di") != 0)
-		  phobos_library = PHOBOS_LINK;
-	      }
+	    if (phobos_library == PHOBOS_DEFAULT
+		&& (suffix == NULL || strcmp (suffix, ".di") != 0))
+	      phobos_library = PHOBOS_LINK;
 
 	    /* If this is a C++ source file, we'll need to link
 	       against libstdc++ library.  */
-	    if ((len <= 3 || strcmp (arg + len - 3, ".cc") == 0)
-		|| (len <= 4 || strcmp (arg + len - 4, ".cpp") == 0)
-		|| (len <= 4 || strcmp (arg + len - 4, ".c++") == 0))
+	    if (suffix != NULL
+		&& (strcmp (suffix, ".cc") == 0
+		    || (strcmp (suffix, ".cpp") == 0)
+		    || (strcmp (suffix, ".c++") == 0)))
 	      need_stdcxx = true;
 
 	    break;
