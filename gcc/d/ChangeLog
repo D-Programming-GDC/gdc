@@ -1,5 +1,9 @@
 2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-convert.cc (convert): Remove goto maybe_fold.
+
+2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.cc (warn_for_null_address): New function.
 	(build_boolop): Warn about comparing address of decl to null.
 	* d-convert.cc (decl_with_nonnull_addr_p): New function.
