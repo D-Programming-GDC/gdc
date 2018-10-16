@@ -1,3 +1,10 @@
+2018-10-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-spec.c (phobos_action): New enum.
+	(library): Rename to phobos_library.
+	(lang_specific_driver): Update to use phobos_library.
+	(lang_specific_pre_link): Likewise.
+
 2018-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-frontend.cc (Port::writelongLE): Remove function.
