@@ -73,7 +73,7 @@ static tree stop_minfo_node;
 /* Record information about module initialization, termination,
    unit testing, and thread local storage in the compilation.  */
 
-struct module_info
+struct GTY(()) module_info
 {
   vec<tree, va_gc> *ctors;
   vec<tree, va_gc> *dtors;
@@ -116,8 +116,8 @@ static Module *current_module_decl;
 
 /* Static constructors and destructors (not D `static this').  */
 
-static vec<tree, va_gc> *static_ctor_list;
-static vec<tree, va_gc> *static_dtor_list;
+static GTY(()) vec<tree, va_gc> *static_ctor_list;
+static GTY(()) vec<tree, va_gc> *static_dtor_list;
 
 /* Returns an internal function identified by IDENT.  This is used
    by both module initialization and dso handlers.  */
@@ -849,3 +849,6 @@ d_finish_compilation (tree *vec, int len)
       decl_fini_priority_insert (decl, DEFAULT_INIT_PRIORITY);
     }
 }
+
+
+#include "gt-d-modules.h"
