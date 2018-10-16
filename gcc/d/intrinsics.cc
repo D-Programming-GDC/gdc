@@ -235,13 +235,7 @@ expand_intrinsic_bsf (tree callexp)
     : (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_CTZLL
     : END_BUILTINS;
 
-  /* Fallback on run-time implementation, which shouldn't happen as the
-     argument for bsf() is either 32-bit or 64-bit.  */
-  if (code == END_BUILTINS)
-    {
-      clear_intrinsic_flag (callexp);
-      return callexp;
-    }
+  gcc_assert (code != END_BUILTINS);
 
   return call_builtin_fn (callexp, code, 1, arg);
 }
@@ -271,13 +265,7 @@ expand_intrinsic_bsr (tree callexp)
     : (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_CLZLL
     : END_BUILTINS;
 
-  /* Fallback on run-time implementation, which shouldn't happen as the
-     argument for bsr() is either 32-bit or 64-bit.  */
-  if (code == END_BUILTINS)
-    {
-      clear_intrinsic_flag (callexp);
-      return callexp;
-    }
+  gcc_assert (code != END_BUILTINS);
 
   tree result = call_builtin_fn (callexp, code, 1, arg);
 
@@ -371,13 +359,7 @@ expand_intrinsic_bswap (tree callexp)
     : (argsize == 64) ? BUILT_IN_BSWAP64
     : END_BUILTINS;
 
-  /* Fallback on run-time implementation, which shouldn't happen as the
-     argument for bswap() is either 32-bit or 64-bit.  */
-  if (code == END_BUILTINS)
-    {
-      clear_intrinsic_flag (callexp);
-      return callexp;
-    }
+  gcc_assert (code != END_BUILTINS);
 
   return call_builtin_fn (callexp, code, 1, arg);
 }
@@ -403,13 +385,7 @@ expand_intrinsic_popcnt (tree callexp)
     : (argsize <= LONG_LONG_TYPE_SIZE) ? BUILT_IN_POPCOUNTLL
     : END_BUILTINS;
 
-  /* Fallback on run-time implementation, which shouldn't happen as the
-     argument for popcnt() is either 32-bit or 64-bit.  */
-  if (code == END_BUILTINS)
-    {
-      clear_intrinsic_flag (callexp);
-      return callexp;
-    }
+  gcc_assert (code != END_BUILTINS);
 
   return call_builtin_fn (callexp, code, 1, arg);
 }

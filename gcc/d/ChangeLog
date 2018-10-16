@@ -1,5 +1,13 @@
 2018-10-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* intrinsics.cc (expand_intrinsic_bsf): Assert that built-in function
+	code is not END_BUILTINS.
+	(expand_intrinsic_bsr): Likewise.
+	(expand_intrinsic_bswap): Likewise.
+	(expand_intrinsic_popcnt): Likewise.
+
+2018-10-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* config-lang.in (gtfiles): Add modules.cc.
 	* modules.cc: Include gt-d-modules.h.
 	(module_info): Mark with GTY.
