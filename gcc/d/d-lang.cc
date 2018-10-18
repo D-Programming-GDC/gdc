@@ -279,8 +279,9 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.argv0.length = strlen (decoded_options[0].arg);
   global.params.errorLimit = flag_max_errors;
 
-  /* Silently allow deprecations unless -Wdeprecated.  */
-  global.params.useDeprecated = 1;
+  /* Warnings and deprecations are disabled by default.  */
+  global.params.useDeprecated = DIAGNOSTICoff;
+  global.params.warnings = DIAGNOSTICoff;
 
   global.params.imppath = new Strings ();
   global.params.fileImppath = new Strings ();
@@ -668,16 +669,16 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
 
     case OPT_Wall:
       if (value)
-	global.params.warnings = 2;
+	global.params.warnings = DIAGNOSTICinform;
       break;
 
     case OPT_Wdeprecated:
-      global.params.useDeprecated = value ? 2 : 1;
+      global.params.useDeprecated = value ? DIAGNOSTICinform : DIAGNOSTICoff;
       break;
 
     case OPT_Werror:
       if (value)
-	global.params.warnings = 1;
+	global.params.warnings = DIAGNOSTICerror;
       break;
 
     case OPT_Wspeculative:
@@ -772,8 +773,9 @@ d_post_options (const char ** fn)
     }
 
   /* Error about use of deprecated features.  */
-  if (global.params.useDeprecated == 2 && global.params.warnings == 1)
-    global.params.useDeprecated = 0;
+  if (global.params.useDeprecated == DIAGNOSTICinform
+      && global.params.warnings == DIAGNOSTICerror)
+    global.params.useDeprecated = DIAGNOSTICerror;
 
   /* Make -fmax-errors visible to frontend's diagnostic machinery.  */
   if (global_options_set.x_flag_max_errors)

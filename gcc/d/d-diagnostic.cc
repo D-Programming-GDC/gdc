@@ -206,7 +206,7 @@ vwarning (const Loc& loc, const char *format, va_list ap)
   if (!global.gag && global.params.warnings)
     {
       /* Warnings don't count if not treated as errors.  */
-      if (global.params.warnings == 1)
+      if (global.params.warnings == DIAGNOSTICerror)
 	global.warnings++;
 
       d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_WARNING, false);
@@ -235,9 +235,9 @@ void ATTRIBUTE_GCC_DIAG(2,0)
 vdeprecation (const Loc& loc, const char *format, va_list ap,
 	      const char *prefix1, const char *prefix2)
 {
-  if (global.params.useDeprecated == 0)
+  if (global.params.useDeprecated == DIAGNOSTICerror)
     verror (loc, format, ap, prefix1, prefix2);
-  else if (global.params.useDeprecated == 2 && !global.gag)
+  else if (global.params.useDeprecated == DIAGNOSTICinform && !global.gag)
     {
       char *xformat;
 
@@ -263,9 +263,9 @@ vdeprecation (const Loc& loc, const char *format, va_list ap,
 void ATTRIBUTE_GCC_DIAG(2,0)
 vdeprecationSupplemental (const Loc& loc, const char *format, va_list ap)
 {
-  if (global.params.useDeprecated == 0)
+  if (global.params.useDeprecated == DIAGNOSTICerror)
     verrorSupplemental (loc, format, ap);
-  else if (global.params.useDeprecated == 2 && !global.gag)
+  else if (global.params.useDeprecated == DIAGNOSTICinform && !global.gag)
     d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, false);
 }
 
