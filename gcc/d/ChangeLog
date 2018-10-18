@@ -1,5 +1,9 @@
 2018-10-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_gimplify_expr): Don't handle TREE_THIS_VOLATILE.
+
+2018-10-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-diagnostic.cc (vwarning): Update to use Diagnostic enum.
 	(vdeprecation): Likewise.
 	(vdeprecationSupplemental): Likewise.
