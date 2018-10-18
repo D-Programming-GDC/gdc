@@ -824,19 +824,13 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p,
 	}
       else if (empty_modify_p (TREE_TYPE (op0), op1))
 	{
-	  /* Remove any copies of empty aggregates.  Also drop volatile
-	     loads on the RHS to avoid infinite recursion from
-	     gimplify_expr trying to load the value.  */
+	  /* Remove any copies of empty aggregates.  */
 	  gimplify_expr (&TREE_OPERAND (*expr_p, 0), pre_p, post_p,
 			 is_gimple_lvalue, fb_lvalue);
-	  if (TREE_SIDE_EFFECTS (op1))
-	    {
-	      if (TREE_THIS_VOLATILE (op1)
-		  && (REFERENCE_CLASS_P (op1) || DECL_P (op1)))
-		op1 = build_fold_addr_expr (op1);
 
-	      gimplify_and_add (op1, pre_p);
-	    }
+	  if (TREE_SIDE_EFFECTS (op1))
+	    gimplify_and_add (op1, pre_p);
+
 	  *expr_p = TREE_OPERAND (*expr_p, 0);
 	  ret = GS_OK;
 	}
