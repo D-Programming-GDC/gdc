@@ -21,7 +21,7 @@ relevant documentation about the GDC front end.
        else if (! strcmp (language_string, "GNU F77")
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -28575,11 +28575,12 @@ rs6000_output_function_epilogue (FILE *f
+@@ -28630,11 +28630,12 @@ rs6000_output_function_epilogue (FILE *f
  	 use language_string.
  	 C is 0.  Fortran is 1.  Ada is 3.  C++ is 9.
  	 Java is 13.  Objective-C is 14.  Objective-C++ isn't assigned
@@ -82,7 +82,7 @@ relevant documentation about the GDC front end.
  default language, but is built by default because @option{--enable-lto} is
  enabled by default.  The other languages are default languages.  If
  @code{all} is specified, then all available languages are built.  An
-@@ -2763,7 +2763,7 @@ on a simulator as described at @uref{htt
+@@ -2771,7 +2771,7 @@ on a simulator as described at @uref{htt
  
  In order to run sets of tests selectively, there are targets
  @samp{make check-gcc} and language specific @samp{make check-c},
