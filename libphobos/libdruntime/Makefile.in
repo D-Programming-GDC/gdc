@@ -32,9 +32,6 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-# This file contains some common rules for D source compilation
-# used for libdruntime and libphobos
-
 VPATH = @srcdir@
 am__make_dryrun = \
   { \
