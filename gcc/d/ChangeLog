@@ -1,3 +1,8 @@
+2018-10-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc (expand_format): Rename to expand_d_format.
+	Updated all callers.
+
 2018-10-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (get_linemap): Rename function to make_location_t.
