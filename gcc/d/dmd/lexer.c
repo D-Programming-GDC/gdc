@@ -153,7 +153,7 @@ void Lexer::deprecation(const char *format, ...)
     va_start(ap, format);
     ::vdeprecation(token.loc, format, ap);
     va_end(ap);
-    if (global.params.useDeprecated == 0)
+    if (global.params.useDeprecated == DIAGNOSTICerror)
         errors = true;
 }
 

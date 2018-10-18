@@ -1,3 +1,13 @@
+2018-10-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc (vwarning): Update to use Diagnostic enum.
+	(vdeprecation): Likewise.
+	(vdeprecationSupplemental): Likewise.
+	* d-lang.cc (d_init_options): Explicitly set warnings and deprecations
+	as DIAGNOSTICoff.
+	(d_handle_option): Update to use Diagnostic enum.
+	(d_post_options): Likewise.
+
 2018-10-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-diagnostic.cc (expand_format): Rename to expand_d_format.

@@ -297,7 +297,7 @@ void AggregateDeclaration::semantic3(Scope *sc)
     // don't do it for unused deprecated types
     // or error types
     if (!getRTInfo && Type::rtinfo &&
-        (!isDeprecated() || global.params.useDeprecated) &&
+        (!isDeprecated() || global.params.useDeprecated != DIAGNOSTICerror) &&
         (type && type->ty != Terror))
     {
         // Evaluate: RTinfo!type

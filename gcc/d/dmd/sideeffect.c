@@ -257,7 +257,7 @@ bool discardValue(Expression *e)
         }
         case TOKcall:
             /* Issue 3882: */
-            if (global.params.warnings && !global.gag)
+            if (global.params.warnings != DIAGNOSTICoff && !global.gag)
             {
                 CallExp *ce = (CallExp *)e;
                 if (e->type->ty == Tvoid)

@@ -6136,7 +6136,7 @@ public:
                     return setError();
             }
 
-            if (0 && global.params.warnings && !global.gag && exp->op == TOKassign &&
+            if (0 && global.params.warnings != DIAGNOSTICoff && !global.gag && exp->op == TOKassign &&
                 e2x->op != TOKslice && e2x->op != TOKassign &&
                 e2x->op != TOKarrayliteral && e2x->op != TOKstring &&
                 !(e2x->op == TOKadd || e2x->op == TOKmin ||
@@ -6200,7 +6200,7 @@ public:
         }
         else
         {
-            if (0 && global.params.warnings && !global.gag && exp->op == TOKassign &&
+            if (0 && global.params.warnings != DIAGNOSTICoff && !global.gag && exp->op == TOKassign &&
                 t1->ty == Tarray && t2->ty == Tsarray &&
                 e2x->op != TOKslice &&
                 t2->implicitConvTo(t1))
