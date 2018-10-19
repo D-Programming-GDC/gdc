@@ -1569,7 +1569,15 @@ The following OS versions are implemented:
  tm_p_include_list
  tm_p_file_list
  tm_defines
-@@ -11959,6 +11962,7 @@ fi
+@@ -5141,6 +5144,7 @@ esac
+ 
+ 
+ 
++
+ # Determine PICFLAG for target gnatlib.
+ 
+ 
+@@ -11959,6 +11963,7 @@ fi
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -1577,7 +1585,7 @@ The following OS versions are implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -12342,6 +12346,21 @@ for f in $tm_p_file; do
+@@ -12342,6 +12347,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -1599,24 +1607,34 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -18611,7 +18630,7 @@ else
+@@ -18611,7 +18631,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
 -#line 18614 "configure"
-+#line 18633 "configure"
++#line 18634 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18717,7 +18736,7 @@ else
+@@ -18717,7 +18737,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
 -#line 18720 "configure"
-+#line 18739 "configure"
++#line 18740 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
+@@ -29519,6 +29539,9 @@ fi
+ 
+ 
+ 
++
++
++
+ 
+ 
+ 
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
 @@ -1754,6 +1754,7 @@ AC_SUBST(build_subdir)
@@ -1691,7 +1709,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10667,6 +10676,30 @@ unloaded. The default is to return false
+@@ -10667,6 +10676,40 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1700,23 +1718,33 @@ The following OS versions are implemented:
 +@cindex parameters, d abi
 +
 +@deftypefn {D Target Hook} void TARGET_D_CPU_VERSIONS (void)
-+Declare all environmental version identifiers relating to the target CPU using the function @code{builtin_version}, which takes a string representing the name of the version.  Version identifiers predefined by this hook apply to all modules and being compiled and imported.
++Declare all environmental version identifiers relating to the target CPU
++using the function @code{builtin_version}, which takes a string representing
++the name of the version.  Version identifiers predefined by this hook apply
++to all modules that are being compiled and imported.
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} void TARGET_D_OS_VERSIONS (void)
-+Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions relating to the target operating system.
++Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions
++relating to the target operating system.
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} unsigned TARGET_D_CRITSEC_SIZE (void)
-+Returns the size of the data structure used by the targeted operating system for critical sections and monitors.  For example, on Microsoft Windows this would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that implement pthreads would return @code{sizeof(pthread_mutex_t)}.
++Returns the size of the data structure used by the target operating system
++for critical sections and monitors.  For example, on Microsoft Windows this
++would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that
++implement pthreads would return @code{sizeof(pthread_mutex_t)}.
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} {const char *} TARGET_D_FLOAT_ABI_TYPE (void)
-+Returns a string specifying which floating-point ABI is in use, or whether floating-point value types are passed in FPU registers.  For most targets, this would be described as either "hard" or "soft".
++Returns a string specifying which floating-point ABI is in use, or whether
++floating-point value types are passed in FPU registers.  For most targets,
++this would be described as either "hard" or "soft".
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} {const char *} TARGET_D_OBJECT_FORMAT (void)
-+Returns a string specifying the executable object format of the platform the compiler is generating code for.
++Returns a string specifying the executable object format of the platform
++the compiler is generating code for.
 +@end deftypefn
 +
  @node Named Address Spaces

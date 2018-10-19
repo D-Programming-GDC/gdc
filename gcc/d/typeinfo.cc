@@ -1263,7 +1263,9 @@ class TypeInfoDeclVisitor : public Visitor
   using Visitor::visit;
 
 public:
-  TypeInfoDeclVisitor (void) {}
+  TypeInfoDeclVisitor (void)
+  {
+  }
 
   void visit (TypeInfoDeclaration *tid)
   {
@@ -1607,7 +1609,7 @@ create_typeinfo (Type *type, Module *mod)
 
 /* Implements a visitor interface to check whether a type is speculative.
    TypeInfo_Struct would reference the members of the struct it is representing
-   (e.g. opEquals via xopEquals field), so if it's instantiated in speculative
+   (e.g: opEquals via xopEquals field), so if it's instantiated in speculative
    context, TypeInfo creation should also be stopped to avoid possible
    `unresolved symbol' linker errors.  */
 

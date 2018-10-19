@@ -306,7 +306,7 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
   return true;
 }
 
-/* Return the symbol mangling of S for C++ linkage. */
+/* Return the symbol mangling of S for C++ linkage.  */
 
 const char *
 Target::toCppMangle (Dsymbol *s)

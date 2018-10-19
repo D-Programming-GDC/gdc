@@ -41,7 +41,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "d-tree.h"
 
 
-/* Return the GCC location for the D frontend location LOC.   */
+/* Return the GCC location for the D frontend location LOC.  */
 
 location_t
 make_location_t (const Loc& loc)

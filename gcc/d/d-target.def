@@ -31,45 +31,45 @@ HOOK_VECTOR (TARGETDM_INITIALIZER, gcc_targetdm)
 /* Environmental version identifiers relating to the target CPU.  */
 DEFHOOK
 (d_cpu_versions,
- "Declare all environmental version identifiers relating to the target CPU\
- using the function @code{builtin_version}, which takes a string representing\
- the name of the version.  Version identifiers predefined by this hook apply\
- to all modules and being compiled and imported.",
+ "Declare all environmental version identifiers relating to the target CPU\n\
+using the function @code{builtin_version}, which takes a string representing\n\
+the name of the version.  Version identifiers predefined by this hook apply\n\
+to all modules that are being compiled and imported.",
  void, (void),
  hook_void_void)
 
 /* Environmental version identifiers relating to the target OS.  */
 DEFHOOK
 (d_os_versions,
- "Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions relating\
- to the target operating system.",
+ "Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions\n\
+relating to the target operating system.",
  void, (void),
  hook_void_void)
 
 /* The sizeof CRITICAL_SECTION or pthread_mutex_t.  */
 DEFHOOK
 (d_critsec_size,
- "Returns the size of the data structure used by the targeted operating system\
- for critical sections and monitors.  For example, on Microsoft Windows this\
- would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that\
- implement pthreads would return @code{sizeof(pthread_mutex_t)}.",
+ "Returns the size of the data structure used by the target operating system\n\
+for critical sections and monitors.  For example, on Microsoft Windows this\n\
+would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that\n\
+implement pthreads would return @code{sizeof(pthread_mutex_t)}.",
  unsigned, (void),
  hook_uint_void_0)
 
 /* The floating point ABI, may be "hard" or "soft".  */
 DEFHOOK
 (d_float_abi_type,
- "Returns a string specifying which floating-point ABI is in use, or whether\
- floating-point value types are passed in FPU registers.  For most targets,\
- this would be described as either \"hard\" or \"soft\".",
+ "Returns a string specifying which floating-point ABI is in use, or whether\n\
+floating-point value types are passed in FPU registers.  For most targets,\n\
+this would be described as either \"hard\" or \"soft\".",
  const char *, (void),
  hook_constcharptr_void_null)
 
 /* The target object format.  */
 DEFHOOK
 (d_object_format,
- "Returns a string specifying the executable object format of the platform the\
- compiler is generating code for.",
+ "Returns a string specifying the executable object format of the platform\n\
+the compiler is generating code for.",
  const char *, (void),
  hook_constcharptr_void_null)
 

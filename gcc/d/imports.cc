@@ -53,7 +53,9 @@ class ImportVisitor : public Visitor
   }
 
 public:
-  ImportVisitor (void) {}
+  ImportVisitor (void)
+  {
+  }
 
   /* This should be overridden by each symbol class.  */
   void visit (Dsymbol *)

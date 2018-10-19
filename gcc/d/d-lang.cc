@@ -65,18 +65,18 @@ bool doing_semantic_analysis_p = false;
 /* Options handled by the compiler that are separate from the frontend.  */
 struct d_option_data
 {
-  const char *fonly;                /* -fonly=<arg>  */
-  const char *multilib;             /* -imultilib <dir>  */
-  const char *prefix;               /* -iprefix <dir>  */
+  const char *fonly;		    /* -fonly=<arg>  */
+  const char *multilib;		    /* -imultilib <dir>  */
+  const char *prefix;		    /* -iprefix <dir>  */
 
-  bool deps;                        /* -M  */
-  bool deps_skip_system;            /* -MM  */
-  const char *deps_filename;        /* -M[M]D  */
+  bool deps;			    /* -M  */
+  bool deps_skip_system;	    /* -MM  */
+  const char *deps_filename;	    /* -M[M]D  */
   const char *deps_filename_user;   /* -MF <arg>  */
-  OutBuffer *deps_target;           /* -M[QT] <arg> */
-  bool deps_phony;                  /* -MP  */
+  OutBuffer *deps_target;	    /* -M[QT] <arg> */
+  bool deps_phony;		    /* -MP  */
 
-  bool stdinc;                      /* -nostdinc  */
+  bool stdinc;			    /* -nostdinc  */
 }
 d_option;
 
@@ -257,8 +257,9 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
     }
 }
 
-extern "C" int rt_init();
-extern "C" void gc_disable();
+/* These functions are defined in D runtime.  */
+extern "C" int rt_init (void);
+extern "C" void gc_disable (void);
 
 /* Implements the lang_hooks.init_options routine for language D.
    This initializes the global state for the D frontend before calling
@@ -1630,7 +1631,7 @@ d_finish_incomplete_decl (tree decl)
       /* D allows zero-length declarations.  Such a declaration ends up with
 	 DECL_SIZE (t) == NULL_TREE which is what the back-end function
 	 assembler_variable checks.  This could change in later versions, or
-	 maybe all of these variables should be aliased to one symbol. */
+	 maybe all of these variables should be aliased to one symbol.  */
       if (DECL_SIZE (decl) == 0)
 	{
 	  DECL_SIZE (decl) = bitsize_zero_node;
