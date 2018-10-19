@@ -659,48 +659,6 @@ public:
 				     build_expr (e->e1), build_expr (e->e2));
   }
 
-  /* Build a power expression, which raises its left operand to the power of
-     its right operand.  */
-
-  void visit (PowExp *e)
-  {
-    /* Result type determines what version of pow() we call.  */
-    tree powtype = build_ctype (e->type->toBasetype ());
-
-    /* If type is int, implicitly convert to double.  This allows backend
-       to fold the call into a constant return value.  */
-    if (e->type->isintegral ())
-      powtype = double_type_node;
-
-    /* Lookup compatible builtin.  */
-    tree powfn = NULL_TREE;
-    if (TYPE_MAIN_VARIANT (powtype) == double_type_node)
-      powfn = builtin_decl_explicit (BUILT_IN_POW);
-    else if (TYPE_MAIN_VARIANT (powtype) == float_type_node)
-      powfn = builtin_decl_explicit (BUILT_IN_POWF);
-    else if (TYPE_MAIN_VARIANT (powtype) == long_double_type_node)
-      powfn = builtin_decl_explicit (BUILT_IN_POWL);
-
-    if (powfn == NULL_TREE)
-      {
-	Type *tb1 = e->e1->type->toBasetype ();
-
-	if (tb1->ty == Tarray || tb1->ty == Tsarray)
-	  error ("Array operation %s not implemented", e->toChars ());
-	else
-	  error ("%s ^^ %s is not supported",
-		 e->e1->type->toChars (), e->e2->type->toChars ());
-
-	this->result_ = error_mark_node;
-	return;
-      }
-
-    tree t1 = d_convert (powtype, build_expr (e->e1));
-    tree t2 = d_convert (powtype, build_expr (e->e2));
-
-    this->result_ = d_convert (build_ctype (e->type),
-			       build_call_expr (powfn, 2, t1, t2));
-  }
 
   /* Build a concat expression, which concatenates two or more arrays of the
      same type, producing a dynamic array with the result.  If one operand
