@@ -1,3 +1,7 @@
+2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(PowExp)): Remove function.
+
 2018-10-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-attribs.c: Rename to d-attribs.cc.
