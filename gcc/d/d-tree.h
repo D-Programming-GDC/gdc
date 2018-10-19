@@ -666,4 +666,4 @@ extern void finish_aggregate_type (unsigned, unsigned, tree,
 				   UserAttributeDeclaration *);
 extern tree build_ctype (Type *);
 
-#endif  /* ! GCC_D_TREE_H */
+#endif  /* GCC_D_TREE_H  */

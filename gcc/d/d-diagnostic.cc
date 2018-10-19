@@ -46,7 +46,7 @@ expand_d_format (const char *format)
   OutBuffer buf;
   bool inbacktick = false;
 
-  for (const char *p = format; *p; )
+  for (const char *p = format; *p;)
     {
       while (*p != '\0' && *p != '%' && *p != '`')
 	{
@@ -86,7 +86,7 @@ expand_d_format (const char *format)
 	  gcc_unreachable ();
 
 	case '-':
-	  /* Remove whitespace formatting. */
+	  /* Remove whitespace formatting.  */
 	  p++;
 	  while (ISDIGIT (*p))
 	    p++;

@@ -122,7 +122,9 @@ class DeclVisitor : public Visitor
   using Visitor::visit;
 
 public:
-  DeclVisitor (void) { }
+  DeclVisitor (void)
+  {
+  }
 
   /* This should be overridden by each declaration class.  */
 
@@ -384,20 +386,17 @@ public:
 	      {
 		TypeFunction *tf = (TypeFunction *) fd->type;
 		if (tf->ty == Tfunction)
-		  {
-		    d->error ("use of %s%s is hidden by %s; "
-			      "use 'alias %s = %s.%s;' "
-			      "to introduce base class overload set.",
-			      fd->toPrettyChars (),
-			      parametersTypeToChars (tf->parameters, tf->varargs),
-			      d->toChars (), fd->toChars (),
-			      fd->parent->toChars (), fd->toChars ());
-		  }
+		  d->error ("use of %s%s is hidden by %s; "
+			    "use 'alias %s = %s.%s;' "
+			    "to introduce base class overload set.",
+			    fd->toPrettyChars (),
+			    parametersTypeToChars (tf->parameters, tf->varargs),
+			    d->toChars (), fd->toChars (),
+			    fd->parent->toChars (), fd->toChars ());
 		else
-		  {
-		    error ("use of %s is hidden by %s",
-			   fd->toPrettyChars (), d->toChars ());
-		  }
+		  error ("use of %s is hidden by %s",
+			 fd->toPrettyChars (), d->toChars ());
+
 		has_errors = true;
 		break;
 	      }
@@ -1056,8 +1055,8 @@ get_symbol_decl (Declaration *decl)
 	      return decl->csym;
 	    }
 
-	  IDENTIFIER_PRETTY_NAME (mangled_name) =
-	    get_identifier (decl->toPrettyChars (true));
+	  IDENTIFIER_PRETTY_NAME (mangled_name)
+	    = get_identifier (decl->toPrettyChars (true));
 	  IDENTIFIER_DSYMBOL (mangled_name) = decl;
 	}
 
@@ -2226,7 +2225,7 @@ build_type_decl (tree type, Dsymbol *dsym)
   TYPE_NAME (type) = decl;
 
   /* Not sure if there is a need for separate TYPE_DECLs in
-     TYPE_NAME and TYPE_STUB_DECL. */
+     TYPE_NAME and TYPE_STUB_DECL.  */
   if (TREE_CODE (type) == ENUMERAL_TYPE || RECORD_OR_UNION_TYPE_P (type))
     TYPE_STUB_DECL (type) = decl;
 

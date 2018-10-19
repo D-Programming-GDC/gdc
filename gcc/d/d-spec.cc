@@ -23,7 +23,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tm.h"
 #include "opts.h"
 
-/* This bit is set if the arguments is a D source file. */
+/* This bit is set if the arguments is a D source file.  */
 #define DSOURCE		(1<<1)
 /* This bit is set if they did `-lstdc++'.  */
 #define WITHLIBCXX	(1<<2)
@@ -69,7 +69,7 @@ enum phobos_action
 static phobos_action phobos_library = PHOBOS_DEFAULT;
 
 /* If true, use the standard D runtime library when linking with
-   standard libraries. */
+   standard libraries.  */
 static bool need_phobos = true;
 
 void
@@ -94,7 +94,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* Whether we need the C++ STD library.  */
   bool need_stdcxx = false;
 
-  /* True if we saw -static. */
+  /* True if we saw -static.  */
   bool static_link = false;
 
   /* True if we should add -shared-libgcc to the command-line.  */

@@ -621,11 +621,12 @@ Implements @uref{http://wiki.dlang.org/DIP25} (experimental).
 List all non-mutable fields which occupy an object instance.
 @item import
 Tells the compiler to revert to using an old lookup behavior for resolving
-unqualified symbol names, where this was done in a single pass, ignoring any
-protection attributes.  The default name lookup strategy is to use two passes,
-the first ignoring imported declarations, and the second only looking at imports.
-The protection (@code{private}, @code{package}, @code{protected}) of symbols is
-also enforced to resolve any conflicts between private and public symbols.
+unqualified symbol names, where this was done in a single pass, ignoring
+any protection attributes.  The default name lookup strategy is to use two
+passes, the first ignoring imported declarations, and the second only
+looking at imports.  The protection (@code{private}, @code{package},
+@code{protected}) of symbols is also enforced to resolve any conflicts
+between private and public symbols.
 @item nogc
 List all hidden GC allocations.
 @item tls
@@ -669,14 +670,14 @@ used normally, unless @option{-nostdlib} or @option{-nodefaultlibs} is used.
 @cindex @option{-shared-libphobos}
 On systems that provide @file{libgphobos} and @file{libgdruntime} as a
 shared and a static library, this option forces the use of the shared
-version. If no shared version was built when the compiler was configured,
+version.  If no shared version was built when the compiler was configured,
 this option has no effect.
 
 @item -static-libphobos
 @cindex @option{-static-libphobos}
 On systems that provide @file{libgphobos} and @file{libgdruntime} as a
 shared and a static library, this option forces the use of the static
-version. If no static version was built when the compiler was configured,
+version.  If no static version was built when the compiler was configured,
 this option has no effect.
 
 @end table

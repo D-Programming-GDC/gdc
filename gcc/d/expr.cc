@@ -660,7 +660,7 @@ public:
   }
 
   /* Build a power expression, which raises its left operand to the power of
-     its right operand.   */
+     its right operand.  */
 
   void visit (PowExp *e)
   {
@@ -1287,7 +1287,7 @@ public:
 	if (tb1->ty != Tpointer && !e->indexIsInBounds)
 	  index = build_bounds_condition (e->e2->loc, index, length, false);
 
-	/* Index the .ptr  */
+	/* Index the .ptr.  */
 	ptr = void_okay_p (ptr);
 	this->result_ = indirect_ref (TREE_TYPE (TREE_TYPE (ptr)),
 				      build_array_index (ptr, index));
@@ -1917,7 +1917,7 @@ public:
 
 	object = build_expr (e->e1);
 
-	/* Want reference to `this' object.     */
+	/* Want reference to `this' object.  */
 	if (e->e1->type->ty != Tclass && e->e1->type->ty != Tpointer)
 	  object = build_address (object);
 
@@ -2085,7 +2085,7 @@ public:
   }
 
   /* Build a typeid expression.  Returns an instance of class TypeInfo
-     corresponding to . */
+     corresponding to.  */
 
   void visit (TypeidExp *e)
   {
@@ -2674,7 +2674,7 @@ public:
     this->result_ = result;
   }
 
-  /* Build an array literal.   The common type of the all elements is taken to
+  /* Build an array literal.  The common type of the all elements is taken to
      be the type of the array element, and all elements are implicitly
      converted to that type.  */
 
@@ -2781,7 +2781,7 @@ public:
 	tree result = build_call_expr (tmemcpy, 3, mem,
 				       build_address (ctor), size);
 
-	/* Return the array pointed to by MEM.   */
+	/* Return the array pointed to by MEM.  */
 	result = compound_expr (result, mem);
 
 	if (tb->ty == Tarray)

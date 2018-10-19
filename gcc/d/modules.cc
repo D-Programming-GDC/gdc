@@ -408,7 +408,7 @@ register_moduleinfo (Module *decl, tree minfo)
   /* Build the initializer and emit.  Do not start section with a `.' character
      so that the linker will provide a __start_ and __stop_ symbol to indicate
      the start and end address of the section respectively.
-     https://sourceware.org/binutils/docs-2.26/ld/Orphan-Sections.html  */
+     https://sourceware.org/binutils/docs-2.26/ld/Orphan-Sections.html.  */
   DECL_INITIAL (mref) = build_address (minfo);
   DECL_EXTERNAL (mref) = 0;
   DECL_PRESERVE_P (mref) = 1;
@@ -831,7 +831,7 @@ d_finish_compilation (tree *vec, int len)
   /* If the target does not directly support static constructors,
      static_ctor_list contains a list of all static constructors defined
      so far.  This routine will create a function to call all of those
-     and is picked up by collect2. */
+     and is picked up by collect2.  */
   if (static_ctor_list)
     {
       tree decl = build_funcs_gates_fn (get_file_function_name ("I"),

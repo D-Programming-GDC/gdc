@@ -509,7 +509,9 @@ class TypeVisitor : public Visitor
   using Visitor::visit;
 
 public:
-  TypeVisitor (void) {}
+  TypeVisitor (void)
+  {
+  }
 
   /* This should be overridden by each type class.  */
 
@@ -783,8 +785,8 @@ public:
 
   void visit (TypeEnum *t)
   {
-    tree basetype = (t->sym->memtype) ?
-      build_ctype (t->sym->memtype) : void_type_node;
+    tree basetype = (t->sym->memtype)
+      ? build_ctype (t->sym->memtype) : void_type_node;
 
     if (!INTEGRAL_TYPE_P (basetype) || TREE_CODE (basetype) == BOOLEAN_TYPE)
       {
@@ -869,8 +871,8 @@ public:
 	   the context or laying out fields as those types may make
 	   recursive references to this type.  */
 	unsigned structsize = t->sym->structsize;
-	unsigned alignsize = (t->sym->alignment != STRUCTALIGN_DEFAULT) ?
-	  t->sym->alignment : t->sym->alignsize;
+	unsigned alignsize = (t->sym->alignment != STRUCTALIGN_DEFAULT)
+	  ? t->sym->alignment : t->sym->alignsize;
 
 	TYPE_SIZE (t->ctype) = bitsize_int (structsize * BITS_PER_UNIT);
 	TYPE_SIZE_UNIT (t->ctype) = size_int (structsize);

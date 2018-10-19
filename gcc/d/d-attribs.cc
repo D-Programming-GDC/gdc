@@ -104,9 +104,9 @@ static const struct attribute_spec::exclusions attr_noinline_exclusions[] =
 };
 
 /* Helper to define an attribute.  */
-#define ATTR_SPEC(name, min_len, max_len, decl_req, type_req, fn_type_req,  \
-		  affects_type_identity, handler, exclude)		    \
-  { name, min_len, max_len, decl_req, type_req, fn_type_req,		    \
+#define ATTR_SPEC(name, min_len, max_len, decl_req, type_req, fn_type_req, \
+		  affects_type_identity, handler, exclude)		   \
+  { name, min_len, max_len, decl_req, type_req, fn_type_req,		   \
     affects_type_identity, handler, exclude }
 
 /* Table of machine-independent attributes.
@@ -261,7 +261,7 @@ build_attributes (Expressions *eattrs)
       if (attr->op == TOKcall)
 	attr = attr->ctfeInterpret ();
 
-      /* Should now have a struct `Attribute("attrib", "value", ... )'
+      /* Should now have a struct `Attribute("attrib", "value", ...)'
 	 initializer list.  */
       gcc_assert (attr->op == TOKstructliteral);
       Expressions *elems = ((StructLiteralExp*) attr)->elements;

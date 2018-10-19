@@ -55,7 +55,8 @@ struct builtin_data
   Dsymbol *dsym;
 
   builtin_data (Type *t, tree c, Dsymbol *d = NULL)
-    : dtype(t), ctype(c), dsym(d) { }
+    : dtype(t), ctype(c), dsym(d)
+  { }
 };
 
 static vec<builtin_data> builtin_converted_decls;
@@ -420,16 +421,16 @@ d_init_versions (void)
   VersionCondition::addPredefinedGlobalIdent ("GNU_StackGrowsDown");
 #endif
 
-  /* Should define this anyway to set us apart from the competition. */
+  /* Should define this anyway to set us apart from the competition.  */
   VersionCondition::addPredefinedGlobalIdent ("GNU_InlineAsm");
 
-  /* LP64 only means 64bit pointers in D. */
+  /* LP64 only means 64bit pointers in D.  */
   if (global.params.isLP64)
     VersionCondition::addPredefinedGlobalIdent ("D_LP64");
 
   /* Setting `global.params.cov' forces module info generation which is
      not needed for the GCC coverage implementation.  Instead, just
-     test flag_test_coverage while leaving `global.params.cov' unset. */
+     test flag_test_coverage while leaving `global.params.cov' unset.  */
   if (flag_test_coverage)
     VersionCondition::addPredefinedGlobalIdent ("D_Coverage");
   if (flag_pic)
@@ -475,7 +476,8 @@ d_build_builtins_module (Module *m)
   for (size_t i = 0; vec_safe_iterate (gcc_builtins_functions, i, &decl); ++i)
     {
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
-      TypeFunction *tf = (TypeFunction *) build_frontend_type (TREE_TYPE (decl));
+      TypeFunction *tf
+	= (TypeFunction *) build_frontend_type (TREE_TYPE (decl));
 
       /* Cannot create built-in function type for DECL.  */
       if (!tf)
@@ -502,9 +504,10 @@ d_build_builtins_module (Module *m)
       tf->isnothrow = true;
       tf->isnogc = true;
 
-      FuncDeclaration *func = FuncDeclaration::create (Loc (), Loc (),
-						       Identifier::idPool (name),
-						       STCextern, tf);
+      FuncDeclaration *func
+	= FuncDeclaration::create (Loc (), Loc (),
+				   Identifier::idPool (name),
+				   STCextern, tf);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (func);
       func->csym = decl;
       func->builtin = BUILTINyes;
@@ -1084,12 +1087,12 @@ d_define_builtins (tree va_list_ref_type_node ATTRIBUTE_UNUSED,
 
   d_init_attributes ();
 
-#define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P,   \
-		    NONANSI_P, ATTRS, IMPLICIT, COND)			    \
-  if (NAME && COND)							    \
-    do_build_builtin_fn (ENUM, NAME, CLASS,				    \
-			 builtin_types[(int) TYPE],			    \
-			 BOTH_P, FALLBACK_P,				    \
+#define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P, \
+		    NONANSI_P, ATTRS, IMPLICIT, COND)			  \
+  if (NAME && COND)							  \
+    do_build_builtin_fn (ENUM, NAME, CLASS,				  \
+			 builtin_types[(int) TYPE],			  \
+			 BOTH_P, FALLBACK_P,				  \
 			 built_in_attributes[(int) ATTRS], IMPLICIT);
 #include "builtins.def"
 #undef DEF_BUILTIN

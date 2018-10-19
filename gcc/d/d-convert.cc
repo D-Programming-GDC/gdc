@@ -204,11 +204,10 @@ d_truthvalue_conversion (tree expr)
   if (TREE_CODE (TREE_TYPE (expr)) == COMPLEX_TYPE)
     {
       tree t = save_expr (expr);
-      tree type = TREE_TYPE (TREE_TYPE (expr));
       return d_build_truthvalue_op ((TREE_SIDE_EFFECTS (expr)
 				     ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-			d_truthvalue_conversion (build1 (REALPART_EXPR, type, t)),
-			d_truthvalue_conversion (build1 (IMAGPART_EXPR, type, t)));
+			d_truthvalue_conversion (real_part (t)),
+			d_truthvalue_conversion (imaginary_part (t)));
     }
   else
     return d_build_truthvalue_op (NE_EXPR, expr,

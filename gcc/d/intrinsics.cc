@@ -325,7 +325,7 @@ expand_intrinsic_bt (intrinsic_code intrinsic, tree callexp)
     : ERROR_MARK;
   gcc_assert (code != ERROR_MARK);
 
-  /* ptr[bitnum / size] op= mask  */
+  /* ptr[bitnum / size] op= mask;  */
   if (intrinsic == INTRINSIC_BTR)
     bitnum = fold_build1 (BIT_NOT_EXPR, TREE_TYPE (bitnum), bitnum);
 
