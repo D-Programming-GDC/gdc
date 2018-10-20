@@ -321,7 +321,7 @@ get_array_length (tree exp, Type *type)
       return d_array_length (exp);
 
     default:
-      error ("can't determine the length of a %s", type->toChars ());
+      error ("can't determine the length of a %qs", type->toChars ());
       return error_mark_node;
     }
 }
@@ -1869,8 +1869,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object,
       /* Front-end apparently doesn't check this.  */
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
-	  error ("need 'this' to access member %s",
-		 IDENTIFIER_POINTER (DECL_NAME (callable)));
+	  error ("need %<this%> to access member %qE", DECL_NAME (callable));
 	  return error_mark_node;
 	}
 
@@ -2076,7 +2075,7 @@ get_frame_for_symbol (Dsymbol *sym)
       if (!fd->fbody)
 	{
 	  /* Should instead error on line that references 'fd'.  */
-	  fd->error ("nested function missing body");
+	  error_at (make_location_t (fd->loc), "nested function missing body");
 	  return null_pointer_node;
 	}
 
@@ -2108,8 +2107,9 @@ get_frame_for_symbol (Dsymbol *sym)
       /* If no frame pointer for this function.  */
       if (!thisfd->vthis)
 	{
-	  sym->error ("is a nested function and cannot be accessed from %s",
-		      thisfd->toChars ());
+	  error_at (make_location_t (sym->loc),
+		    "is a nested function and cannot be accessed from %qs",
+		    thisfd->toChars ());
 	  return null_pointer_node;
 	}
 
@@ -2146,8 +2146,9 @@ get_frame_for_symbol (Dsymbol *sym)
 	  if (!ad->isNested () || !ad->vthis)
 	    {
 	    Lnoframe:
-	      thisfd->error ("cannot get frame pointer to %s",
-			     sym->toPrettyChars ());
+	      error_at (make_location_t (thisfd->loc),
+			"cannot get frame pointer to %qs",
+			sym->toPrettyChars ());
 	      return null_pointer_node;
 	    }
 
@@ -2434,7 +2435,8 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
 	  /* Because the value needs to survive the end of the scope.  */
 	  if ((v->edtor && (v->storage_class & STCparameter))
 	      || v->needsScopeDtor ())
-	    v->error ("has scoped destruction, cannot build closure");
+	    error_at (make_location_t (v->loc),
+		      "has scoped destruction, cannot build closure");
 	}
     }
 
@@ -2651,7 +2653,8 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
     }
   else
     {
-      inner->error ("forward reference to frame of %s", outer->toChars ());
+      error_at (make_location_t (inner->loc),
+		"forward reference to frame of %qs", outer->toChars ());
       return null_pointer_node;
     }
 }
