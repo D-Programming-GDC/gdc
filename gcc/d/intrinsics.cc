@@ -173,23 +173,6 @@ maybe_set_intrinsic (FuncDeclaration *decl)
     }
 }
 
-/* Clear the DECL_BUILT_IN_CLASS flag on the function in CALLEXP.  */
-
-static void
-clear_intrinsic_flag (tree callexp)
-{
-  tree decl = CALL_EXPR_FN (callexp);
-
-  if (TREE_CODE (decl) == ADDR_EXPR)
-    decl = TREE_OPERAND (decl, 0);
-
-  gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
-
-  DECL_INTRINSIC_CODE (decl) = INTRINSIC_NONE;
-  DECL_BUILT_IN_CLASS (decl) = NOT_BUILT_IN;
-  DECL_FUNCTION_CODE (decl) = BUILT_IN_NONE;
-}
-
 /* Construct a function call to the built-in function CODE, N is the number of
    arguments, and the `...' parameters are the argument expressions.
    The original call expression is held in CALLEXP.  */
@@ -686,10 +669,7 @@ maybe_expand_intrinsic (tree callexp)
 
   /* Don't expand CTFE-only intrinsics outside of semantic processing.  */
   if (DECL_BUILT_IN_CTFE (callee) && !doing_semantic_analysis_p)
-    {
-      clear_intrinsic_flag (callexp);
-      return callexp;
-    }
+    return callexp;
 
   intrinsic_code intrinsic = DECL_INTRINSIC_CODE (callee);
   built_in_function code;
