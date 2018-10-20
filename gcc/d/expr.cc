@@ -510,7 +510,7 @@ public:
     if ((tb1->ty == Tsarray || tb1->ty == Tarray)
 	&& (tb2->ty == Tsarray || tb2->ty == Tarray))
       {
-	error ("cannot handle comparison of type `%s == %s`",
+	error ("cannot handle comparison of type %<%s == %s%>",
 	       tb1->toChars (), tb2->toChars ());
 	gcc_unreachable ();
       }
@@ -1251,7 +1251,7 @@ public:
     else
       {
 	/* Static arrays have already been handled by the front-end.  */
-	error ("unexpected type for array length: %s", e->type->toChars ());
+	error ("unexpected type for array length: %qs", e->type->toChars ());
 	this->result_ = error_mark_node;
       }
   }
@@ -1480,7 +1480,7 @@ public:
       }
     else
       {
-	error ("don't know how to delete %s", e->e1->toChars ());
+	error ("don't know how to delete %qs", e->e1->toChars ());
 	this->result_ = error_mark_node;
       }
   }
@@ -1504,7 +1504,7 @@ public:
       }
     else
       {
-	error ("%s is not an associative array", e->e1->toChars ());
+	error ("%qs is not an associative array", e->e1->toChars ());
 	this->result_ = error_mark_node;
       }
   }
@@ -1774,7 +1774,8 @@ public:
 	  }
 	else if (fd->needThis ())
 	  {
-	    e1b->error ("need 'this' to access member %s", fd->toChars ());
+	    error_at (make_location_t (e1b->loc),
+		      "need %<this%> to access member %qs", fd->toChars ());
 	    /* Continue compiling...  */
 	    object = null_pointer_node;
 	  }
@@ -1912,7 +1913,7 @@ public:
       }
     else
       {
-	error ("%s is not a field, but a %s",
+	error ("%qs is not a field, but a %qs",
 	       e->var->toChars (), e->var->kind ());
 	this->result_ = error_mark_node;
       }
@@ -2147,7 +2148,7 @@ public:
   {
     if (e->var->needThis ())
       {
-	error ("need 'this' to access member %s", e->var->ident->toChars ());
+	error ("need %<this%> to access member %qs", e->var->ident->toChars ());
 	this->result_ = error_mark_node;
 	return;
       }
@@ -2183,7 +2184,8 @@ public:
 	    && e->type->toBasetype ()->ty != Tsarray && var->_init)
 	  {
 	    if (var->inuse)
-	      e->error ("recursive reference %s", e->toChars ());
+	      error_at (make_location_t (e->loc), "recursive reference %qs",
+			e->toChars ());
 	    else
 	      {
 		var->inuse++;
@@ -2194,7 +2196,8 @@ public:
 	else if (sd && sd->dsym)
 	  init = layout_struct_initializer (sd->dsym);
 	else
-	  e->error ("non-constant expression %s", e->toChars ());
+	  error_at (make_location_t (e->loc), "non-constant expression %qs",
+		    e->toChars ());
 
 	if (init != NULL_TREE)
 	  this->result_ = init;
@@ -3021,13 +3024,15 @@ public:
 
   void visit (ScopeExp *e)
   {
-    e->error ("%s is not an expression", e->toChars ());
+    error_at (make_location_t (e->loc), "%qs is not an expression",
+	      e->toChars ());
     this->result_ = error_mark_node;
   }
 
   void visit (TypeExp *e)
   {
-    e->error ("type %s is not an expression", e->toChars ());
+    error_at (make_location_t (e->loc), "type %qs is not an expression",
+	      e->toChars ());
     this->result_ = error_mark_node;
   }
 };
@@ -3051,7 +3056,8 @@ build_expr (Expression *e, bool const_p)
   /* Check if initializer expression is valid constant.  */
   if (const_p && !initializer_constant_valid_p (expr, TREE_TYPE (expr)))
     {
-      e->error ("non-constant expression %s", e->toChars ());
+      error_at (make_location_t (e->loc), "non-constant expression %qs",
+		e->toChars ());
       return error_mark_node;
     }
 

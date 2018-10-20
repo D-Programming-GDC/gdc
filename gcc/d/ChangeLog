@@ -1,5 +1,46 @@
 2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.cc (get_frame_for_symbol): Use error_at.
+	(build_frame_type): Likewise.
+	(get_framedecl): Likewise.
+	* d-frontend.cc (getTypeInfoType): Likewise.
+	* d-lang.cc (d_parse_file): Likewise.
+	* decl.cc (apply_pragma_crt): Likewise.
+	(DeclVisitor::visit(PragmaDeclaration)): Likewise.
+	(DeclVisitor::visit(StructDeclaration)): Likewise.
+	(DeclVisitor::visit(StructDeclaration)): Likewise.
+	(DeclVisitor::finish_vtable): Likewise.
+	(DeclVisitor::visit(ClassDeclaration)): Likewise.
+	(DeclVisitor::visit(InterfaceDeclaration)): Likewise.
+	(DeclVisitor::visit(EnumDeclaration)): Likewise.
+	(DeclVisitor::visit(VarDeclaration)): Likewise.
+	* toir.cc (IRVisitor::check_goto): Likewise.
+	(IRVisitor::check_previous_goto): Likewise.
+	(IRVisitor::visit(ThrowStatement)): Likewise.
+	* typeinfo.cc (build_typeinfo): Likewise.
+
+2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (get_array_length): Use quoted format flag in message.
+	(d_build_call): Likewise.
+	* d-lang.cc (d_handle_option): Likewise.
+	* decl.cc (apply_pragma_crt): Likewise.
+	(DeclVisitor::finish_vtable): Likewise.
+	* expr.cc (ExprVisitor::visit(CmpExp)): Likewise.
+	(ExprVisitor::visit(ArrayLengthExp)): Likewise.
+	(ExprVisitor::visit(DeleteExp)): Likewise.
+	(ExprVisitor::visit(RemoveExp)): Likewise.
+	(ExprVisitor::visit(RemoveExp)): Likewise.
+	(ExprVisitor::visit(CallExp)): Likewise.
+	(ExprVisitor::visit(DotVarExp)): Likewise.
+	(ExprVisitor::visit(VarExp)): Likewise.
+	(ExprVisitor::visit(ScopeExp)): Likewise.
+	(ExprVisitor::visit(TypeExp)): Likewise.
+	(build_expr): Likewise.
+	* typeinfo.cc (build_typeinfo): Likewise.
+
+2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-diagnostic.cc (d_diagnostic_report_diagnostic): Skip translation
 	by instead calling diagnostic_set_info_translated.
 

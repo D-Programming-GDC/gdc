@@ -439,7 +439,7 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
 	  break;
 	}
 
-      error ("bad argument for -fdebug '%s'", arg);
+      error ("bad argument for -fdebug %qs", arg);
       break;
 
     case OPT_fdoc:
@@ -487,7 +487,7 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
     case OPT_fmodule_file_:
       global.params.modFileAliasStrings->push (arg);
       if (!strchr (arg, '='))
-	error ("bad argument for -fmodule-file");
+	error ("bad argument for -fmodule-file %qs", arg);
       break;
 
     case OPT_fmoduleinfo:
@@ -593,7 +593,7 @@ d_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
 	  break;
 	}
 
-      error ("bad argument for -fversion '%s'", arg);
+      error ("bad argument for -fversion %qs", arg);
       break;
 
     case OPT_H:
@@ -1188,7 +1188,8 @@ d_parse_file (void)
       for (size_t i = 0; i < Module::deferred.dim; i++)
 	{
 	  Dsymbol *sd = Module::deferred[i];
-	  sd->error ("unable to resolve forward reference in definition");
+	  error_at (make_location_t (sd->loc),
+		    "unable to resolve forward reference in definition");
 	}
     }
 

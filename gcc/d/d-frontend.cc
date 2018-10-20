@@ -561,7 +561,8 @@ getTypeInfoType (Loc loc, Type *type, Scope *sc)
 
 	  if (!warned)
 	    {
-	      error (loc, "`object.TypeInfo` cannot be used with -fno-rtti");
+	      error_at (make_location_t (loc),
+			"%<object.TypeInfo%> cannot be used with -fno-rtti");
 	      warned = 1;
 	    }
 	}
@@ -575,8 +576,9 @@ getTypeInfoType (Loc loc, Type *type, Scope *sc)
 
       if (!loc.equals (warnloc))
 	{
-	  error (loc, "`object.TypeInfo` could not be found, "
-		      "but is implicitly used");
+	  error_at (make_location_t (loc),
+		    "%<object.TypeInfo%> could not be found, "
+		    "but is implicitly used");
 	  warnloc = loc;
 	}
     }

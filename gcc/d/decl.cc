@@ -152,8 +152,9 @@ apply_pragma_crt (Dsymbol *sym, bool isctor)
 
       if (fd->linkage != LINKc)
 	{
-	  fd->error ("must be `extern(C)` for `pragma(%s)`",
-		     isctor ? "crt_constructor" : "crt_destructor");
+	  error_at (make_location_t (fd->loc),
+		    "must be %<extern(C)%> for %<pragma(%s)%>",
+		    isctor ? "crt_constructor" : "crt_destructor");
 	}
 
       return 1;
@@ -301,7 +302,8 @@ public:
 	bool isctor = (d->ident == Identifier::idPool ("crt_constructor"));
 
 	if (apply_pragma_crt (d, isctor) > 1)
-	  d->error ("can only apply to a single declaration");
+	  error_at (make_location_t (d->loc),
+		    "can only apply to a single declaration");
       }
   }
 
@@ -357,7 +359,8 @@ public:
   {
     if (d->type->ty == Terror)
       {
-	d->error ("had semantic errors when compiling");
+	error_at (make_location_t (d->loc),
+		  "had semantic errors when compiling");
 	return;
       }
 
@@ -451,16 +454,23 @@ public:
 	      {
 		TypeFunction *tf = (TypeFunction *) fd->type;
 		if (tf->ty == Tfunction)
-		  d->error ("use of %s%s is hidden by %s; "
-			    "use 'alias %s = %s.%s;' "
-			    "to introduce base class overload set.",
-			    fd->toPrettyChars (),
-			    parametersTypeToChars (tf->parameters, tf->varargs),
-			    d->toChars (), fd->toChars (),
+		  {
+		    error_at (make_location_t (fd->loc), "use of %qs",
+			      fd->toPrettyChars ());
+		    inform (make_location_t (fd2->loc), "is hidden by %qs",
+			    fd2->toPrettyChars ());
+		    inform (make_location_t (d->loc),
+			    "use %<alias %s = %s.%s;%> to introduce base class "
+			    "overload set.", fd->toChars (),
 			    fd->parent->toChars (), fd->toChars ());
+		  }
 		else
-		  error ("use of %s is hidden by %s",
-			 fd->toPrettyChars (), d->toChars ());
+		  {
+		    error_at (make_location_t (fd->loc), "use of %qs",
+			      fd->toPrettyChars ());
+		    inform (make_location_t (fd2->loc), "is hidden by %qs",
+			      fd2->toPrettyChars ());
+		  }
 
 		has_errors = true;
 		break;
@@ -478,7 +488,8 @@ public:
   {
     if (d->type->ty == Terror)
       {
-	d->error ("had semantic errors when compiling");
+	error_at (make_location_t (d->loc),
+		  "had semantic errors when compiling");
 	return;
       }
 
@@ -552,7 +563,8 @@ public:
   {
     if (d->type->ty == Terror)
       {
-	d->error ("had semantic errors when compiling");
+	error_at (make_location_t (d->loc),
+		  "had semantic errors when compiling");
 	return;
       }
 
@@ -596,7 +608,8 @@ public:
 
     if (d->errors || d->type->ty == Terror)
       {
-	d->error ("had semantic errors when compiling");
+	error_at (make_location_t (d->loc),
+		  "had semantic errors when compiling");
 	return;
       }
 
@@ -635,7 +648,8 @@ public:
   {
     if (d->type->ty == Terror)
       {
-	d->error ("had semantic errors when compiling");
+	error_at (make_location_t (d->loc),
+		  "had semantic errors when compiling");
 	return;
       }
 
@@ -686,7 +700,7 @@ public:
 				       build_ctype (Type::tsize_t));
 	if (!valid_constant_size_p (size))
 	  {
-	    d->error ("size is too large");
+	    error_at (make_location_t (d->loc), "size is too large");
 	    return;
 	  }
 
@@ -1537,7 +1551,7 @@ d_finish_decl (tree decl)
 	{
 	  tree name = DECL_ASSEMBLER_NAME (decl);
 
-	  internal_error ("Mismatch between declaration '%qE' size (%wd) and "
+	  internal_error ("Mismatch between declaration %qE size (%wd) and "
 			  "its initializer size (%wd).",
 			  IDENTIFIER_PRETTY_NAME (name)
 			  ? IDENTIFIER_PRETTY_NAME (name) : name,

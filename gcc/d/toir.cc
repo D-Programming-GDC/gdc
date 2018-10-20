@@ -367,9 +367,9 @@ public:
       }
 
     if (ent->in_try_scope)
-      from->error ("cannot goto into try block");
+      error_at (make_location_t (from->loc), "cannot goto into try block");
     else if (ent->in_catch_scope)
-      from->error ("cannot goto into catch block");
+      error_at (make_location_t (from->loc), "cannot goto into catch block");
   }
 
   /* Check that a previously seen jump to a newly defined label is valid.
@@ -385,21 +385,26 @@ public:
 
 	if (b->kind == level_try || b->kind == level_catch)
 	  {
+	    location_t location;
+
 	    if (s->isLabelStatement ())
 	      {
+		location = make_location_t (fwdref->statement->loc);
 		if (b->kind == level_try)
-		  fwdref->statement->error ("cannot goto into try block");
+		  error_at (location, "cannot goto into try block");
 		else
-		  fwdref->statement->error ("cannot goto into catch block");
+		  error_at (location, "cannot goto into catch block");
 	      }
 	    else if (s->isCaseStatement ())
 	      {
-		s->error ("case cannot be in different "
+		location = make_location_t (s->loc);
+		error_at (location, "case cannot be in different "
 			  "try block level from switch");
 	      }
 	    else if (s->isDefaultStatement ())
 	      {
-		s->error ("default cannot be in different "
+		location = make_location_t (s->loc);
+		error_at (location, "default cannot be in different "
 			  "try block level from switch");
 	      }
 	    else
@@ -1063,16 +1068,16 @@ public:
 	static int warned = 0;
 	if (!warned)
 	  {
-	    s->error ("exception handling disabled, "
+	    error_at (make_location_t (s->loc), "exception handling disabled, "
 		      "use -fexceptions to enable");
 	    warned = 1;
 	  }
       }
 
     if (cd->isCPPclass () || (id != NULL && id->isCPPclass ()))
-      s->error ("cannot throw C++ classes");
+      error_at (make_location_t (s->loc), "cannot throw C++ classes");
     else if (cd->com || (id != NULL && id->com))
-      s->error ("cannot throw COM objects");
+      error_at (make_location_t (s->loc), "cannot throw COM objects");
     else
       arg = build_nop (build_ctype (get_object_type ()), arg);
 
