@@ -1,5 +1,10 @@
 2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* expr.cc (ExprVisitor::binop_assignment): Call stabilize_reference on
+	LHS construct if it has side effects.
+
+2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* intrinsics.cc (clear_intrinsic_flag): Remove function.
 	(maybe_expand_intrinsic): Remove clear_intrinsic_flag call.
 
