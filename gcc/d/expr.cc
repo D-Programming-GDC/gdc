@@ -189,6 +189,13 @@ class ExprVisitor : public Visitor
        lost during gimplification.  */
     if (TREE_CODE (lhs) == MODIFY_EXPR)
       {
+	/* If LHS has side effects, call stabilize_reference on it, so it can
+	   be evaluated multiple times.  */
+	if (TREE_SIDE_EFFECTS (TREE_OPERAND (lhs, 0)))
+	  lhs = build_assign (MODIFY_EXPR,
+			      stabilize_reference (TREE_OPERAND (lhs, 0)),
+			      TREE_OPERAND (lhs, 1));
+
 	lexpr = compound_expr (lexpr, lhs);
 	lhs = TREE_OPERAND (lhs, 0);
       }
