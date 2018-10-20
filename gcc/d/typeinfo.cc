@@ -224,7 +224,7 @@ create_tinfo_types (Module *mod)
 			  Identifier::idPool ("TypeInfo_Class"),
 			  array_type_node, array_type_node, array_type_node,
 			  array_type_node, ptr_type_node, ptr_type_node,
-			  ptr_type_node, uint_type_node, ptr_type_node,
+			  ptr_type_node, d_uint_type, ptr_type_node,
 			  array_type_node, ptr_type_node, ptr_type_node, NULL);
 
   /* Create all frontend TypeInfo classes declarations.  We rely on all

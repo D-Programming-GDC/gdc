@@ -1292,19 +1292,19 @@ static tree
 d_type_for_mode (machine_mode mode, int unsignedp)
 {
   if (mode == QImode)
-    return unsignedp ? ubyte_type_node : byte_type_node;
+    return unsignedp ? d_ubyte_type : d_byte_type;
 
   if (mode == HImode)
-    return unsignedp ? ushort_type_node : short_type_node;
+    return unsignedp ? d_ushort_type : d_short_type;
 
   if (mode == SImode)
-    return unsignedp ? uint_type_node : int_type_node;
+    return unsignedp ? d_uint_type : d_int_type;
 
   if (mode == DImode)
-    return unsignedp ? ulong_type_node : long_type_node;
+    return unsignedp ? d_ulong_type : d_long_type;
 
-  if (mode == TYPE_MODE (cent_type_node))
-    return unsignedp ? ucent_type_node : cent_type_node;
+  if (mode == TYPE_MODE (d_cent_type))
+    return unsignedp ? d_ucent_type : d_cent_type;
 
   if (mode == TYPE_MODE (float_type_node))
     return float_type_node;
@@ -1318,8 +1318,8 @@ d_type_for_mode (machine_mode mode, int unsignedp)
   if (mode == TYPE_MODE (build_pointer_type (char8_type_node)))
     return build_pointer_type (char8_type_node);
 
-  if (mode == TYPE_MODE (build_pointer_type (int_type_node)))
-    return build_pointer_type (int_type_node);
+  if (mode == TYPE_MODE (build_pointer_type (d_int_type)))
+    return build_pointer_type (d_int_type);
 
   if (COMPLEX_MODE_P (mode))
     {
@@ -1354,20 +1354,20 @@ d_type_for_mode (machine_mode mode, int unsignedp)
 static tree
 d_type_for_size (unsigned bits, int unsignedp)
 {
-  if (bits <= TYPE_PRECISION (byte_type_node))
-    return unsignedp ? ubyte_type_node : byte_type_node;
+  if (bits <= TYPE_PRECISION (d_byte_type))
+    return unsignedp ? d_ubyte_type : d_byte_type;
 
-  if (bits <= TYPE_PRECISION (short_type_node))
-    return unsignedp ? ushort_type_node : short_type_node;
+  if (bits <= TYPE_PRECISION (d_short_type))
+    return unsignedp ? d_ushort_type : d_short_type;
 
-  if (bits <= TYPE_PRECISION (int_type_node))
-    return unsignedp ? uint_type_node : int_type_node;
+  if (bits <= TYPE_PRECISION (d_int_type))
+    return unsignedp ? d_uint_type : d_int_type;
 
-  if (bits <= TYPE_PRECISION (long_type_node))
-    return unsignedp ? ulong_type_node : long_type_node;
+  if (bits <= TYPE_PRECISION (d_long_type))
+    return unsignedp ? d_ulong_type : d_long_type;
 
-  if (bits <= TYPE_PRECISION (cent_type_node))
-    return unsignedp ? ucent_type_node : cent_type_node;
+  if (bits <= TYPE_PRECISION (d_cent_type))
+    return unsignedp ? d_ucent_type : d_cent_type;
 
   return 0;
 }
@@ -1381,20 +1381,20 @@ d_signed_or_unsigned_type (int unsignedp, tree type)
   if (TYPE_UNSIGNED (type) == (unsigned) unsignedp)
     return type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (cent_type_node))
-    return unsignedp ? ucent_type_node : cent_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_cent_type))
+    return unsignedp ? d_ucent_type : d_cent_type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (long_type_node))
-    return unsignedp ? ulong_type_node : long_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_long_type))
+    return unsignedp ? d_ulong_type : d_long_type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (int_type_node))
-    return unsignedp ? uint_type_node : int_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_int_type))
+    return unsignedp ? d_uint_type : d_int_type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (short_type_node))
-    return unsignedp ? ushort_type_node : short_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_short_type))
+    return unsignedp ? d_ushort_type : d_short_type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (byte_type_node))
-    return unsignedp ? ubyte_type_node : byte_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_byte_type))
+    return unsignedp ? d_ubyte_type : d_byte_type;
 
   return signed_or_unsigned_type_for (unsignedp, type);
 }

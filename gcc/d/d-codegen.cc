@@ -937,7 +937,7 @@ build_array_struct_comparison (tree_code code, StructDeclaration *sd,
 
   /* Build temporary for the result of the comparison.
      Initialize as either 0 or 1 depending on operation.  */
-  tree result = build_local_temp (bool_type_node);
+  tree result = build_local_temp (d_bool_type);
   tree init = build_boolop (code, integer_zero_node, integer_zero_node);
   add_stmt (build_assign (INIT_EXPR, result, init));
 
@@ -1347,7 +1347,7 @@ build_boolop (tree_code code, tree arg0, tree arg1)
 	warn_for_null_address (arg1);
     }
 
-  return fold_build2_loc (input_location, code, bool_type_node,
+  return fold_build2_loc (input_location, code, d_bool_type,
 			  arg0, d_convert (TREE_TYPE (arg0), arg1));
 }
 
@@ -1694,7 +1694,7 @@ build_bounds_condition (const Loc& loc, tree index, tree len, bool inclusive)
      No need to check whether INDEX >= 0 as the front-end should
      have already taken care of implicit casts to unsigned.  */
   tree condition = fold_build2 (inclusive ? GT_EXPR : GE_EXPR,
-				bool_type_node, index, len);
+				d_bool_type, index, len);
   tree boundserr = d_assert_call (loc, LIBCALL_ARRAY_BOUNDS);
 
   return build_condition (TREE_TYPE (index), condition, boundserr, index);

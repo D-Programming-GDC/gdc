@@ -419,25 +419,31 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define vtable_entry_type		d_global_trees[DTI_VTABLE_ENTRY_TYPE]
 #define vtbl_ptr_type_node		d_global_trees[DTI_VTBL_PTR_TYPE]
 #define vtbl_interface_type_node	d_global_trees[DTI_VTBL_INTERFACE_TYPE]
-#define bool_type_node			d_global_trees[DTI_BOOL_TYPE]
-#define char8_type_node			d_global_trees[DTI_CHAR_TYPE]
-#define char16_type_node		d_global_trees[DTI_DCHAR_TYPE]
-#define char32_type_node		d_global_trees[DTI_WCHAR_TYPE]
-#define byte_type_node			d_global_trees[DTI_BYTE_TYPE]
-#define ubyte_type_node			d_global_trees[DTI_UBYTE_TYPE]
-#define short_type_node			d_global_trees[DTI_SHORT_TYPE]
-#define ushort_type_node		d_global_trees[DTI_USHORT_TYPE]
-#define int_type_node			d_global_trees[DTI_INT_TYPE]
-#define uint_type_node			d_global_trees[DTI_UINT_TYPE]
-#define long_type_node			d_global_trees[DTI_LONG_TYPE]
-#define ulong_type_node			d_global_trees[DTI_ULONG_TYPE]
-#define cent_type_node			d_global_trees[DTI_CENT_TYPE]
-#define ucent_type_node			d_global_trees[DTI_UCENT_TYPE]
+/* D built-in language types.  */
+#define d_bool_type			d_global_trees[DTI_BOOL_TYPE]
+#define d_byte_type			d_global_trees[DTI_BYTE_TYPE]
+#define d_ubyte_type			d_global_trees[DTI_UBYTE_TYPE]
+#define d_short_type			d_global_trees[DTI_SHORT_TYPE]
+#define d_ushort_type			d_global_trees[DTI_USHORT_TYPE]
+#define d_int_type			d_global_trees[DTI_INT_TYPE]
+#define d_uint_type			d_global_trees[DTI_UINT_TYPE]
+#define d_long_type			d_global_trees[DTI_LONG_TYPE]
+#define d_ulong_type			d_global_trees[DTI_ULONG_TYPE]
+#define d_cent_type			d_global_trees[DTI_CENT_TYPE]
+#define d_ucent_type			d_global_trees[DTI_UCENT_TYPE]
+/* Imaginary floating-point types.  */
 #define ifloat_type_node		d_global_trees[DTI_IFLOAT_TYPE]
 #define idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
 #define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
+/* UTF-8, 16 and 32 types.  */
+#define char8_type_node			d_global_trees[DTI_CHAR_TYPE]
+#define char16_type_node		d_global_trees[DTI_DCHAR_TYPE]
+#define char32_type_node		d_global_trees[DTI_WCHAR_TYPE]
+/* Empty record type used as placeholder when real type is unknown.  */
 #define unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+/* Generic dynamic array type void[].  */
 #define array_type_node			d_global_trees[DTI_ARRAY_TYPE]
+/* Null initializer for dynamic arrays.  */
 #define null_array_node			d_global_trees[DTI_NULL_ARRAY]
 
 /* A prefix for internal variables, which are not user-visible.  */
@@ -492,7 +498,7 @@ extern bool declaration_reference_p (Declaration *);
 extern tree declaration_type (Declaration *);
 extern bool argument_reference_p (Parameter *);
 extern tree type_passed_as (Parameter *);
-extern tree build_integer_cst (dinteger_t, tree = int_type_node);
+extern tree build_integer_cst (dinteger_t, tree = d_int_type);
 extern tree build_float_cst (const real_t &, Type *);
 extern tree d_array_length (tree);
 extern tree d_array_ptr (tree);
