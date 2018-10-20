@@ -31,6 +31,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree.h"
 #include "fold-const.h"
 #include "stringpool.h"
+#include "builtins.h"
 
 #include "d-tree.h"
 
@@ -431,26 +432,24 @@ expand_intrinsic_copysign (tree callexp)
 {
   tree to = CALL_EXPR_ARG (callexp, 0);
   tree from = CALL_EXPR_ARG (callexp, 1);
-  tree type = TYPE_MAIN_VARIANT (TREE_TYPE (to));
+  tree type = TREE_TYPE (to);
 
   /* Convert parameters to the same type.  Prefer the first parameter unless it
      is an integral type.  */
   if (INTEGRAL_TYPE_P (type))
     {
       to = fold_convert (TREE_TYPE (from), to);
-      type = TYPE_MAIN_VARIANT (TREE_TYPE (to));
+      type = TREE_TYPE (to);
     }
   else
     from = fold_convert (type, from);
 
   /* Which variant of __builtin_copysign* should we call?  */
-  built_in_function code = (type == float_type_node) ? BUILT_IN_COPYSIGNF
-    : (type == double_type_node) ? BUILT_IN_COPYSIGN
-    : (type == long_double_type_node) ? BUILT_IN_COPYSIGNL
-    : END_BUILTINS;
+  tree builtin = mathfn_built_in (type, BUILT_IN_COPYSIGN);
+  gcc_assert (builtin != NULL_TREE);
 
-  gcc_assert (code != END_BUILTINS);
-  return call_builtin_fn (callexp, code, 2, to, from);
+  return call_builtin_fn (callexp, DECL_FUNCTION_CODE (builtin), 2,
+			  to, from);
 }
 
 /* Expand a front-end intrinsic call to pow().  This takes two arguments, the
@@ -468,32 +467,19 @@ expand_intrinsic_pow (tree callexp)
 {
   tree base = CALL_EXPR_ARG (callexp, 0);
   tree exponent = CALL_EXPR_ARG (callexp, 1);
-  tree exptype = TYPE_MAIN_VARIANT (TREE_TYPE (exponent));
-  built_in_function code;
+  tree exptype = TREE_TYPE (exponent);
 
   /* Which variant of __builtin_pow* should we call?  */
-  if (SCALAR_FLOAT_TYPE_P (exptype))
-    {
-      /* Exponent is a float type, call pow{f,l}.  */
-      code = (exptype == float_type_node) ? BUILT_IN_POWF
-	: (exptype == double_type_node) ? BUILT_IN_POW
-	: (exptype == long_double_type_node) ? BUILT_IN_POWL
-	: END_BUILTINS;
-    }
-  else if (INTEGRAL_TYPE_P (exptype))
-    {
-      /* Exponent is an integer type, call powi{f,l}.  */
-      tree basetype = TYPE_MAIN_VARIANT (TREE_TYPE (base));
-      code = (basetype == float_type_node) ? BUILT_IN_POWIF
-	: (basetype == double_type_node) ? BUILT_IN_POWI
-	: (basetype == long_double_type_node) ? BUILT_IN_POWIL
-	: END_BUILTINS;
-    }
-  else
-    gcc_unreachable ();
-
+  built_in_function code = SCALAR_FLOAT_TYPE_P (exptype) ? BUILT_IN_POW
+    : INTEGRAL_TYPE_P (exptype) ? BUILT_IN_POWI
+    : END_BUILTINS;
   gcc_assert (code != END_BUILTINS);
-  return call_builtin_fn (callexp, code, 2, base, exponent);
+
+  tree builtin = mathfn_built_in (TREE_TYPE (base), code);
+  gcc_assert (builtin != NULL_TREE);
+
+  return call_builtin_fn (callexp, DECL_FUNCTION_CODE (builtin), 2,
+			  base, exponent);
 }
 
 /* Expand a front-end intrinsic call to va_arg().  This takes either one or two

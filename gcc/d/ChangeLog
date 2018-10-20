@@ -1,5 +1,11 @@
 2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* intrinsics.cc (expand_intrinsic_copysign): Use mathfn_built_in to
+	determine correct built-in to call.
+	(expand_intrinsic_pow): Likewise.
+
+2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* intrinsics.cc (expand_intrinsic_sqrt): Remove implicit int to double
 	conversion.
 	(expand_intrinsic_pow): Likewise.
