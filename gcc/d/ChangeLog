@@ -1,5 +1,10 @@
 2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-diagnostic.cc (d_diagnostic_report_diagnostic): Skip translation
+	by instead calling diagnostic_set_info_translated.
+
+2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-tree.h (bool_type_node): Rename to d_bool_type.
 	(byte_type_node): Rename to d_byte_type.
 	(ubyte_type_node): Rename to d_ubyte_type.

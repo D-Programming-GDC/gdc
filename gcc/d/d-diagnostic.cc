@@ -114,8 +114,8 @@ expand_d_format (const char *format)
 }
 
 /* Helper routine for all error routines.  Reports a diagnostic specified by
-   KIND at the explicit location LOC, where the message FORMAT has not yet
-   been translated by the gcc diagnostic routines.  */
+   KIND at the explicit location LOC.  The message FORMAT comes from the dmd
+   front-end, which does not get translated by the gcc diagnostic routines.  */
 
 static void ATTRIBUTE_GCC_DIAG(3,0)
 d_diagnostic_report_diagnostic (const Loc& loc, int opt, const char *format,
@@ -130,7 +130,8 @@ d_diagnostic_report_diagnostic (const Loc& loc, int opt, const char *format,
       diagnostic_info diagnostic;
       char *xformat = expand_d_format (format);
 
-      diagnostic_set_info (&diagnostic, xformat, &argp, &rich_loc, kind);
+      diagnostic_set_info_translated (&diagnostic, xformat, &argp,
+				      &rich_loc, kind);
       if (opt != 0)
 	diagnostic.option_index = opt;
 
