@@ -404,11 +404,6 @@ static tree
 expand_intrinsic_sqrt (intrinsic_code intrinsic, tree callexp)
 {
   tree arg = CALL_EXPR_ARG (callexp, 0);
-  tree type = TYPE_MAIN_VARIANT (TREE_TYPE (arg));
-
-  /* arg is an integral type - use double precision.  */
-  if (INTEGRAL_TYPE_P (type))
-    arg = fold_convert (double_type_node, arg);
 
   /* Which variant of __builtin_sqrt* should we call?  */
   built_in_function code = (intrinsic == INTRINSIC_SQRT) ? BUILT_IN_SQRT
@@ -474,10 +469,6 @@ expand_intrinsic_pow (tree callexp)
   tree exponent = CALL_EXPR_ARG (callexp, 1);
   tree exptype = TYPE_MAIN_VARIANT (TREE_TYPE (exponent));
   built_in_function code;
-
-  /* base is an integral type - use double precision.  */
-  if (INTEGRAL_TYPE_P (TREE_TYPE (base)))
-    base = fold_convert (double_type_node, base);
 
   /* Which variant of __builtin_pow* should we call?  */
   if (SCALAR_FLOAT_TYPE_P (exptype))
