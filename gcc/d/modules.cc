@@ -214,8 +214,8 @@ get_moduleinfo_type (void)
   /* Layout of ModuleInfo is:
 	uint flags;
 	uint index;  */
-  tree fields = create_field_decl (uint_type_node, NULL, 1, 1);
-  DECL_CHAIN (fields) = create_field_decl (uint_type_node, NULL, 1, 1);
+  tree fields = create_field_decl (d_uint_type, NULL, 1, 1);
+  DECL_CHAIN (fields) = create_field_decl (d_uint_type, NULL, 1, 1);
 
   moduleinfo_type = make_node (RECORD_TYPE);
   finish_builtin_struct (moduleinfo_type, "ModuleInfo", fields, NULL_TREE);
@@ -596,10 +596,10 @@ layout_moduleinfo (Module *decl)
   vec<constructor_elt, va_gc> *minit = NULL;
 
   CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
-			  build_integer_cst (flags, uint_type_node));
+			  build_integer_cst (flags, d_uint_type));
 
   CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
-			  build_integer_cst (0, uint_type_node));
+			  build_integer_cst (0, d_uint_type));
 
   /* Order of appearance, depending on flags:
 	void function() tlsctor;

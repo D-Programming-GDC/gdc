@@ -1206,8 +1206,7 @@ get_symbol_decl (Declaration *decl)
 	    DECL_NAME (decl->csym) = get_identifier (fd->toPrettyChars (true));
 
 	  /* 'void main' is implicitly converted to returning an int.  */
-	  newfntype = build_function_type (int_type_node,
-					   TYPE_ARG_TYPES (fntype));
+	  newfntype = build_function_type (d_int_type, TYPE_ARG_TYPES (fntype));
 	}
 
       if (newfntype != NULL_TREE)

@@ -546,7 +546,7 @@ public:
 
 	/* Invert condition for logical or if expression.  */
 	if (e->op == TOKoror)
-	  t1 = build1 (TRUTH_NOT_EXPR, bool_type_node, t1);
+	  t1 = build1 (TRUTH_NOT_EXPR, d_bool_type, t1);
 
 	this->result_ = build_condition (build_ctype (e->type),
 					 t1, t2, void_node);
@@ -1515,7 +1515,7 @@ public:
   {
     tree result = convert_for_condition (build_expr (e->e1), e->e1->type);
     /* Need to convert to boolean type or this will fail.  */
-    result = fold_build1 (TRUTH_NOT_EXPR, bool_type_node, result);
+    result = fold_build1 (TRUTH_NOT_EXPR, d_bool_type, result);
 
     this->result_ = d_convert (build_ctype (e->type), result);
   }

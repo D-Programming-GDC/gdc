@@ -766,20 +766,20 @@ static void
 d_build_d_type_nodes (void)
 {
   /* Integral types.  */
-  byte_type_node = make_signed_type (8);
-  ubyte_type_node = make_unsigned_type (8);
+  d_byte_type = make_signed_type (8);
+  d_ubyte_type = make_unsigned_type (8);
 
-  short_type_node = make_signed_type (16);
-  ushort_type_node = make_unsigned_type (16);
+  d_short_type = make_signed_type (16);
+  d_ushort_type = make_unsigned_type (16);
 
-  int_type_node = make_signed_type (32);
-  uint_type_node = make_unsigned_type (32);
+  d_int_type = make_signed_type (32);
+  d_uint_type = make_unsigned_type (32);
 
-  long_type_node = make_signed_type (64);
-  ulong_type_node = make_unsigned_type (64);
+  d_long_type = make_signed_type (64);
+  d_ulong_type = make_unsigned_type (64);
 
-  cent_type_node = make_signed_type (128);
-  ucent_type_node = make_unsigned_type (128);
+  d_cent_type = make_signed_type (128);
+  d_ucent_type = make_unsigned_type (128);
 
   {
     /* Re-define size_t as a D type.  */
@@ -788,8 +788,8 @@ d_build_d_type_nodes (void)
   }
 
   /* Bool and Character types.  */
-  bool_type_node = make_unsigned_type (1);
-  TREE_SET_CODE (bool_type_node, BOOLEAN_TYPE);
+  d_bool_type = make_unsigned_type (1);
+  TREE_SET_CODE (d_bool_type, BOOLEAN_TYPE);
 
   char8_type_node = make_unsigned_type (8);
   TYPE_STRING_FLAG (char8_type_node) = 1;
@@ -817,7 +817,7 @@ d_build_d_type_nodes (void)
      its pointer type a name.  (This wins for gdb).  */
   {
     tree vfunc_type = make_node (FUNCTION_TYPE);
-    TREE_TYPE (vfunc_type) = int_type_node;
+    TREE_TYPE (vfunc_type) = d_int_type;
     TYPE_ARG_TYPES (vfunc_type) = NULL_TREE;
     layout_type (vfunc_type);
 

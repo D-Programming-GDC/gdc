@@ -570,17 +570,17 @@ public:
     switch (t->ty)
       {
       case Tvoid:	  t->ctype = void_type_node; break;
-      case Tbool:	  t->ctype = bool_type_node; break;
-      case Tint8:	  t->ctype = byte_type_node; break;
-      case Tuns8:	  t->ctype = ubyte_type_node; break;
-      case Tint16:	  t->ctype = short_type_node; break;
-      case Tuns16:	  t->ctype = ushort_type_node; break;
-      case Tint32:	  t->ctype = int_type_node; break;
-      case Tuns32:	  t->ctype = uint_type_node; break;
-      case Tint64:	  t->ctype = long_type_node; break;
-      case Tuns64:	  t->ctype = ulong_type_node; break;
-      case Tint128:	  t->ctype = cent_type_node; break;
-      case Tuns128:	  t->ctype = ucent_type_node; break;
+      case Tbool:	  t->ctype = d_bool_type; break;
+      case Tint8:	  t->ctype = d_byte_type; break;
+      case Tuns8:	  t->ctype = d_ubyte_type; break;
+      case Tint16:	  t->ctype = d_short_type; break;
+      case Tuns16:	  t->ctype = d_ushort_type; break;
+      case Tint32:	  t->ctype = d_int_type; break;
+      case Tuns32:	  t->ctype = d_uint_type; break;
+      case Tint64:	  t->ctype = d_long_type; break;
+      case Tuns64:	  t->ctype = d_ulong_type; break;
+      case Tint128:	  t->ctype = d_cent_type; break;
+      case Tuns128:	  t->ctype = d_ucent_type; break;
       case Tfloat32:	  t->ctype = float_type_node; break;
       case Tfloat64:	  t->ctype = double_type_node; break;
       case Tfloat80:	  t->ctype = long_double_type_node; break;

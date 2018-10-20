@@ -83,7 +83,7 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
 	op1 = convert (result_type, op1);
     }
 
-  return fold_build2 (code, bool_type_node, op0, op1);
+  return fold_build2 (code, d_bool_type, op0, op1);
 }
 
 /* Return whether EXPR is a declaration whose address can never be NULL.  */
@@ -106,9 +106,9 @@ d_truthvalue_conversion (tree expr)
     {
     case EQ_EXPR:   case NE_EXPR:   case LE_EXPR:
     case GE_EXPR:   case LT_EXPR:   case GT_EXPR:
-      if (TREE_TYPE (expr) == bool_type_node)
+      if (TREE_TYPE (expr) == d_bool_type)
 	return expr;
-      return build2 (TREE_CODE (expr), bool_type_node,
+      return build2 (TREE_CODE (expr), d_bool_type,
 		     TREE_OPERAND (expr, 0), TREE_OPERAND (expr, 1));
 
     case TRUTH_ANDIF_EXPR:
@@ -116,16 +116,16 @@ d_truthvalue_conversion (tree expr)
     case TRUTH_AND_EXPR:
     case TRUTH_OR_EXPR:
     case TRUTH_XOR_EXPR:
-      if (TREE_TYPE (expr) == bool_type_node)
+      if (TREE_TYPE (expr) == d_bool_type)
 	return expr;
-      return build2 (TREE_CODE (expr), bool_type_node,
+      return build2 (TREE_CODE (expr), d_bool_type,
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
 
     case TRUTH_NOT_EXPR:
-      if (TREE_TYPE (expr) == bool_type_node)
+      if (TREE_TYPE (expr) == d_bool_type)
 	return expr;
-      return build1 (TREE_CODE (expr), bool_type_node,
+      return build1 (TREE_CODE (expr), d_bool_type,
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
 
     case ERROR_MARK:
@@ -170,7 +170,7 @@ d_truthvalue_conversion (tree expr)
 	 we can't ignore them if their second arg has side-effects.  */
       if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1)))
 	{
-	  return build2 (COMPOUND_EXPR, bool_type_node, TREE_OPERAND (expr, 1),
+	  return build2 (COMPOUND_EXPR, d_bool_type, TREE_OPERAND (expr, 1),
 			 d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
 	}
       else
@@ -178,7 +178,7 @@ d_truthvalue_conversion (tree expr)
 
     case COND_EXPR:
       /* Distribute the conversion into the arms of a COND_EXPR.  */
-      return fold_build3 (COND_EXPR, bool_type_node, TREE_OPERAND (expr, 0),
+      return fold_build3 (COND_EXPR, d_bool_type, TREE_OPERAND (expr, 0),
 			  d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
 			  d_truthvalue_conversion (TREE_OPERAND (expr, 2)));
 
