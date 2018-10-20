@@ -9,8 +9,7 @@ import gcc.attribute;
 
 
 /******************************************/
-
-// Bug 2
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=2
 
 struct S
 {
@@ -24,8 +23,7 @@ void test2()
 }
 
 /******************************************/
-
-// Bug 4
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=4
 
 void test4()
 {
@@ -35,8 +33,7 @@ void test4()
 }
 
 /******************************************/
-
-// Bug 15
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=15
 
 class B
 {
@@ -55,8 +52,7 @@ class C
 }
 
 /******************************************/
-
-// Bug 16
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=16
 
 void test16()
 {
@@ -66,8 +62,7 @@ void test16()
 }
 
 /******************************************/
-
-// Bug 17
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=17
 
 /**
  * Parameters are not copied into a frame to be accessed from
@@ -104,8 +99,7 @@ void test17()
 }
 
 /******************************************/
-
-// Bug 18
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=18
 
 class C18
 {
@@ -158,8 +152,7 @@ void test18()
 }
 
 /******************************************/
-
-// Bug 19
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=19
 
 void test19()
 {
@@ -168,8 +161,7 @@ void test19()
 }
 
 /******************************************/
-
-// Bug 24
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=24
 
 void test24()
 {
@@ -185,8 +177,7 @@ void test24()
 }
 
 /******************************************/
-
-// Bug 29
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=29
 
 void test29()
 {
@@ -202,8 +193,7 @@ void test29()
 }
 
 /******************************************/
-
-// Bug 31
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=31
 
 class RedBlackTree(T, alias less)
 {
@@ -229,8 +219,7 @@ void test31()
 }
 
 /******************************************/
-
-// Bug 35
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=35
 
 /**
  * Here the BinaryHeap instance uses an alias parameter and therefore
@@ -303,8 +292,7 @@ void test35()
 }
 
 /******************************************/
-
-// Bug 36
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=36
 
 /**
  * Here getChar is a function in a template where template.isnested == false
@@ -422,8 +410,7 @@ void test36()
 }
 
 /******************************************/
-
-// Bug 37
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=37
 
 struct S37
 {
@@ -440,8 +427,7 @@ int test37()
 }
 
 /******************************************/
-
-// Bug 43
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=43
 
 void test43()
 {
@@ -471,8 +457,7 @@ void test43()
 }
 
 /******************************************/
-
-// Bug 47
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=47
 
 template Foo47()
 {
@@ -485,8 +470,7 @@ template Foo47()
 mixin Foo47!();
 
 /******************************************/
-
-// Bug 51
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=51
 
 struct S51
 {
@@ -515,8 +499,7 @@ void test51()
 }
 
 /******************************************/
-
-// Bug 52
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=52
 
 class C52
 {
@@ -564,8 +547,7 @@ void test52()
 }
 
 /******************************************/
-
-// Bug 57
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=57
 
 struct S57
 {
@@ -586,8 +568,7 @@ void test57()
 }
 
 /******************************************/
-
-// Bug 66
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=66
 
 void test66()
 {
@@ -601,15 +582,13 @@ void test66()
 }
 
 /******************************************/
-
-// Bug 67
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=67
 
 __vector(float[4]) d[2];  // ICE
 
 
 /******************************************/
-
-// Bug 71
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=71
 
 struct Leaf
 {
@@ -633,8 +612,7 @@ struct CanonicalHuffman
 }
 
 /******************************************/
-
-// Bug 77
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=77
 
 void fun(ubyte[3] buf)
 {
@@ -648,8 +626,7 @@ void test77()
 }
 
 /******************************************/
-
-// Bug 108
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=108
 
 @attribute("forceinline")
 void test108()
@@ -659,8 +636,7 @@ void test108()
 }
 
 /******************************************/
-
-// Bug 115
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=115
 
 void test115()
 {
@@ -676,14 +652,12 @@ void test115()
 }
 
 /******************************************/
-
-// Bug 121
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=121
 
 immutable char C121 = void; // ICE
 
 /******************************************/
-
-// Bug 122
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=122
 
 void test122()
 {
@@ -698,16 +672,14 @@ void test122()
 }
 
 /******************************************/
-
-// Bug 127
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=127
 
 int[0] test127a;     // OK
 int[1][0] test127b;  // OK
 int[0][1] test127c;  // ICE
 
 /******************************************/
-
-// Bug 131
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=131
 
 struct S131
 {
@@ -722,8 +694,7 @@ void test131()
 }
 
 /******************************************/
-
-// Bug 133
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=133
 
 void delegate()[] D133;
 
@@ -740,8 +711,7 @@ void test133()
 }
 
 /******************************************/
-
-// Bug 141
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=141
 
 bool test141a(int a)
 {
@@ -755,8 +725,7 @@ void test141()
 }
 
 /******************************************/
-
-// Bug 142
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=142
 
 @attribute("noinline")
 int test142a()()
@@ -770,8 +739,7 @@ void test142()
 }
 
 /******************************************/
-
-// Bug 171
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=171
 
 void test171a()
 {
@@ -809,8 +777,7 @@ void test171()
 }
 
 /******************************************/
-
-// Bug 179
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=179
 
 struct S179a
 {
@@ -840,8 +807,7 @@ void test179()
 }
 
 /******************************************/
-
-// Bug 183
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=183
 
 struct S183a
 {
@@ -902,8 +868,7 @@ void test183()
 }
 
 /******************************************/
-
-// Bug 186
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=186
 
 struct S186
 {
@@ -958,8 +923,7 @@ void test186()
 }
 
 /******************************************/
-
-// Bug 187
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=187
 
 align(1) struct S187b
 {
@@ -999,8 +963,7 @@ void test187()
 }
 
 /******************************************/
-
-// Bug 191
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=191
 
 class C191
 {
@@ -1201,8 +1164,7 @@ void test191()
 }
 
 /******************************************/
-
-// Bug 194
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=194
 
 auto test194(ref bool overflow)
 {
@@ -1212,8 +1174,7 @@ auto test194(ref bool overflow)
 }
 
 /******************************************/
-
-// Bug 196
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=196
 
 class C196
 {
@@ -1234,8 +1195,7 @@ void test196()
 }
 
 /******************************************/
-
-// Bug 198
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=198
 
 struct S198a
 {
@@ -1306,8 +1266,7 @@ auto test198()
 }
 
 /******************************************/
-
-// Bug 200
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=200
 
 void test200a(double x, double y)
 {
@@ -1323,8 +1282,7 @@ void test200()
 }
 
 /******************************************/
-
-// Bug 210
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=210
 
 struct S210
 {
@@ -1386,8 +1344,7 @@ void test210()
 }
 
 /******************************************/
-
-// Bug 240
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=240
 
 void test240a(int a, int b)
 {
@@ -1403,8 +1360,7 @@ void test240()
 }
 
 /******************************************/
-
-// Bug 242
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=242
 
 struct S242
 {
@@ -1429,8 +1385,7 @@ void test242()
 }
 
 /******************************************/
-
-// Bug 248
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=248
 
 class C248b
 {
@@ -1474,8 +1429,7 @@ void test248()
 }
 
 /******************************************/
-
-// Bug 250
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=250
 
 void test250()
 {
@@ -1493,8 +1447,7 @@ void test250()
 }
 
 /******************************************/
-
-// Bug 253
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=253
 
 interface A253
 {
@@ -1510,8 +1463,7 @@ class D253 : B253, C253
 }
 
 /******************************************/
-
-// Bug 273
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=273
 
 class B273
 {
@@ -1530,8 +1482,7 @@ void test273()
 }
 
 /******************************************/
-
-// Bug 285
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=285
 
 inout(char)[] test285a(inout(char)* s) @nogc @system pure nothrow
 {
@@ -1546,8 +1497,7 @@ void test285()
 }
 
 /******************************************/
-
-// Bug 286
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=286
 
 void test286()
 {

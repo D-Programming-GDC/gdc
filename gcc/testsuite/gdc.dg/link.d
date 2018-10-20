@@ -10,6 +10,7 @@ class C1()
 enum E1 = is(C1!());
 
 /******************************************/
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=300
 
 struct S300(Range)
 {
