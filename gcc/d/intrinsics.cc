@@ -138,34 +138,39 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 	      DECL_FUNCTION_CODE (decl->csym) = (built_in_function) code;
 	    }
 
-	  /* The intrinsic was marked as CTFE-only, let the front-end know
-	     that it can be evaluated at compile-time.  */
-	  if (intrinsic_decls[i].ctfeonly)
+	  /* Infer whether the intrinsic can be used for CTFE, let the
+	     front-end know that it can be evaluated at compile-time.  */
+	  switch (code)
 	    {
-	      DECL_BUILT_IN_CTFE (decl->csym) = 1;
-	      decl->builtin = BUILTINyes;
-	    }
-	  else
-	    {
-	      /* Infer whether the intrinsic can be used for CTFE.  */
-	      switch (code)
-		{
-		case INTRINSIC_VA_ARG:
-		case INTRINSIC_C_VA_ARG:
-		case INTRINSIC_VASTART:
-		case INTRINSIC_ADDS:
-		case INTRINSIC_SUBS:
-		case INTRINSIC_MULS:
-		case INTRINSIC_NEGS:
-		case INTRINSIC_VLOAD:
-		case INTRINSIC_VSTORE:
-		  break;
+	    case INTRINSIC_VA_ARG:
+	    case INTRINSIC_C_VA_ARG:
+	    case INTRINSIC_VASTART:
+	    case INTRINSIC_ADDS:
+	    case INTRINSIC_SUBS:
+	    case INTRINSIC_MULS:
+	    case INTRINSIC_NEGS:
+	    case INTRINSIC_VLOAD:
+	    case INTRINSIC_VSTORE:
+	      break;
 
-		default:
-		  decl->builtin = BUILTINyes;
-		  break;
-		}
+	    case INTRINSIC_POW:
+	    {
+	      /* Check that this overload of pow() is has an equivalent
+		 built-in function.  It could be `int pow(int, int)'.  */
+	      tree rettype = TREE_TYPE (TREE_TYPE (decl->csym));
+	      if (mathfn_built_in (rettype, BUILT_IN_POW) != NULL_TREE)
+		decl->builtin = BUILTINyes;
+	      break;
 	    }
+
+	    default:
+	      decl->builtin = BUILTINyes;
+	      break;
+	    }
+
+	  /* The intrinsic was marked as CTFE-only.  */
+	  if (intrinsic_decls[i].ctfeonly)
+	    DECL_BUILT_IN_CTFE (decl->csym) = 1;
 
 	  DECL_INTRINSIC_CODE (decl->csym) = code;
 	  break;
