@@ -319,6 +319,7 @@
 	* d-codegen.cc (find_aggregate_field): Move to decl.cc
 	(build_class_instance): Move to decl.cc, make static.
 	* d-tree.h (build_class_instance): Remove declaration.
+	* decl.cc (DeclVisitor::finish_vtable): New function.
 
 2018-06-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 

@@ -341,26 +341,11 @@ public:
       d->xhash->accept (this);
   }
 
-  /* Write out compiler generated TypeInfo, initializer and vtables for the
-     given class declaration, walking over all static members.  */
+  /* Finish semantic analysis of functions in vtbl for class CD.  */
 
-  void visit (ClassDeclaration *d)
+  bool finish_vtable (ClassDeclaration *d)
   {
-    if (d->type->ty == Terror)
-      {
-	d->error ("had semantic errors when compiling");
-	return;
-      }
-
-    if (!d->members)
-      return;
-
-    /* Put out the members.  */
-    for (size_t i = 0; i < d->members->dim; i++)
-      {
-	Dsymbol *member = (*d->members)[i];
-	member->accept (this);
-      }
+    bool has_errors = false;
 
     /* Finish semantic analysis of functions in vtbl[].  */
     for (size_t i = d->vtblOffset (); i < d->vtbl.dim; i++)
@@ -370,7 +355,9 @@ public:
 	if (!fd || (!fd->fbody && d->isAbstract ()))
 	  continue;
 
-	fd->functionSemantic ();
+	/* Ensure function has a return value.  */
+	if (!fd->functionSemantic ())
+	  has_errors = true;
 
 	/* No name hiding to check for.  */
 	if (!d->isFuncHidden (fd) || fd->isFuture ())
@@ -411,10 +398,40 @@ public:
 		    error ("use of %s is hidden by %s",
 			   fd->toPrettyChars (), d->toChars ());
 		  }
+		has_errors = true;
 		break;
 	      }
 	  }
       }
+
+    return !has_errors;
+  }
+
+  /* Write out compiler generated TypeInfo, initializer and vtables for the
+     given class declaration, walking over all static members.  */
+
+  void visit (ClassDeclaration *d)
+  {
+    if (d->type->ty == Terror)
+      {
+	d->error ("had semantic errors when compiling");
+	return;
+      }
+
+    if (!d->members)
+      return;
+
+    /* Put out the members.  */
+    for (size_t i = 0; i < d->members->dim; i++)
+      {
+	Dsymbol *member = (*d->members)[i];
+	member->accept (this);
+      }
+
+    /* If something goes wrong during final semantic pass, don't bother with
+       the rest as we may have incomplete info.  */
+    if (!this->finish_vtable (d))
+      return;
 
     /* Generate C symbols.  */
     d->csym = get_classinfo_decl (d);
