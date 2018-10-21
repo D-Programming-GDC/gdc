@@ -23,7 +23,6 @@
 #include "expression.h"
 #include "lexer.h"
 #include "attrib.h"
-#include "target.h"
 
 // For getcwd()
 #if _WIN32
@@ -297,7 +296,7 @@ Module *Module::load(Loc loc, Identifiers *packages, Identifier *ident)
 
     m = m->parse();
 
-    Target::loadModule(m);
+    Compiler::loadModule(m);
 
     return m;
 }

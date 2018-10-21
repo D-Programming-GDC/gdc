@@ -25,7 +25,6 @@
 #include "utf.h"
 #include "template.h"
 #include "ctfe.h"
-#include "target.h"
 
 int RealEquals(real_t x1, real_t x2);
 
@@ -996,7 +995,7 @@ Expression *paintFloatInt(Expression *fromVal, Type *to)
         return fromVal;
 
     assert(to->size() == 4 || to->size() == 8);
-    return Target::paintAsType(fromVal, to);
+    return Compiler::paintAsType(fromVal, to);
 }
 
 /******** Constant folding, with support for CTFE ***************************/

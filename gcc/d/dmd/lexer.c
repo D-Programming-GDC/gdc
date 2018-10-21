@@ -410,7 +410,7 @@ void Lexer::scan(Token *t)
                     }
                     else if (id == Id::VENDOR)
                     {
-                        t->ustring = (utf8_t *)const_cast<char *>(global.compiler.vendor);
+                        t->ustring = (utf8_t *)const_cast<char *>(global.vendor);
                         goto Lstr;
                     }
                     else if (id == Id::TIMESTAMP)

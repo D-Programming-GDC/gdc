@@ -42,7 +42,6 @@ Expression *semantic(Expression *e, Scope *sc);
 int blockExit(Statement *s, FuncDeclaration *func, bool mustNotThrow);
 TypeIdentifier *getThrowable();
 
-void genCmain(Scope *sc);
 RET retStyle(TypeFunction *tf);
 void MODtoBuffer(OutBuffer *buf, MOD mod);
 char *MODtoChars(MOD mod);
@@ -1220,7 +1219,7 @@ Ldone:
     }
 
     if (fbody && isMain() && sc->_module->isRoot())
-        genCmain(sc);
+        Compiler::genCmain(sc);
 
     assert(type->ty != Terror || errors);
 }

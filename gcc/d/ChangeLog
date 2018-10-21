@@ -1,3 +1,17 @@
+2018-10-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-frontend.cc: Include compiler.h, errors.h, expression.h.
+	(genCmain): Rename function to Compiler::genCmain.
+	(Compiler::paintAsType): New function.
+	(Compiler::loadModule): New function.
+	(getTypeInfoType): Call error function directly.
+	* d-lang.cc (deps_write): Use hash_set for dependency tracking.
+	(d_parse_file): Call Compiler::loadModule.
+	* d-target.cc: Remove include identifier.h, module.h.
+	(Target::paintAsType): Remove function.
+	(Target::loadModule): Remove function.
+	(Target::getTargetInfo): New function.
+
 2018-10-01  Eugene Wissner  <belka@caraus.de>
 
 	* decl.cc (finish_thunk): Adjust call to cgraph_node::create_thunk.

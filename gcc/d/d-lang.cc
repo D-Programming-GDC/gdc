@@ -151,15 +151,7 @@ deps_add_target (const char *target, bool quoted)
 static void
 deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 {
-  static StringTable *dependencies = NULL;
-
-  if (dependencies)
-    dependencies->reset ();
-  else
-    {
-      dependencies = new StringTable ();
-      dependencies->_init ();
-    }
+  hash_set <const char *> dependencies;
 
   Modules modlist;
   modlist.push (module);
@@ -196,7 +188,7 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
     size = strlen (str);
 
     /* Skip dependencies that have already been written.  */
-    if (!dependencies->insert (str, size, NULL))
+    if (dependencies.add (str))
       continue;
 
     column += size;
@@ -274,8 +266,7 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   /* Set default values.  */
   global._init ();
 
-  global.compiler.vendor = lang_hooks.name;
-
+  global.vendor = lang_hooks.name;
   global.params.argv0 = xstrdup (decoded_options[0].arg);
   global.params.link = true;
   global.params.useAssert = true;
@@ -1064,7 +1055,7 @@ d_parse_file (void)
 
       m->importedFrom = m;
       m->parse ();
-      Target::loadModule (m);
+      Compiler::loadModule (m);
 
       if (m->isDocFile)
 	{
