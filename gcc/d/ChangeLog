@@ -191,6 +191,12 @@
 	(FLOOR, FLOORL, CEILF, CEIL, CEILL, TRUNC, FMIN, FMAX, COPYSIGN),
 	(POW, FMA): Add math intrinsics.
 
+2018-06-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (find_aggregate_field): Move to decl.cc
+	(build_class_instance): Move to decl.cc, make static.
+	* d-tree.h (build_class_instance): Remove declaration.
+
 2018-06-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* types.cc (TypeVisitor::visit(TypeClass)): Handle get_symbol_decl

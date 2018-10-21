@@ -520,7 +520,6 @@ extern tree build_struct_comparison (tree_code, StructDeclaration *,
 extern tree build_array_struct_comparison (tree_code, StructDeclaration *,
 					   tree, tree, tree);
 extern tree build_struct_literal (tree, vec<constructor_elt, va_gc> *);
-extern tree build_class_instance (ClassReferenceExp *);
 extern tree component_ref (tree, tree);
 extern tree build_assign (tree_code, tree, tree);
 extern tree modify_expr (tree, tree);
