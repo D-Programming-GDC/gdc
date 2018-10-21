@@ -231,6 +231,8 @@ add_stmt (tree t)
 
 class IRVisitor : public Visitor
 {
+  using Visitor::visit;
+
   FuncDeclaration *func_;
 
   /* Stack of labels which are targets for "break" and "continue",

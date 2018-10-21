@@ -51,7 +51,7 @@ public:
     bool oneMember(Dsymbol **ps, Identifier *ident);
     Type *getType();
     const char *kind();
-    Dsymbol *search(Loc, Identifier *ident, int flags = SearchLocalsOnly);
+    Dsymbol *search(const Loc &loc, Identifier *ident, int flags = SearchLocalsOnly);
     bool isDeprecated();                // is Dsymbol deprecated?
     Prot prot();
     Expression *getMaxMinValue(Loc loc, Identifier *id);

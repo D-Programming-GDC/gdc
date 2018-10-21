@@ -187,7 +187,7 @@ bool Nspace::oneMember(Dsymbol **ps, Identifier *ident)
     return Dsymbol::oneMember(ps, ident);
 }
 
-Dsymbol *Nspace::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *Nspace::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("%s::Nspace::search('%s')\n", toChars(), ident->toChars());
     if (_scope && !symtab)

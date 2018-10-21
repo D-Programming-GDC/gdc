@@ -3787,12 +3787,12 @@ bool FuncDeclaration::isDllMain()
         linkage != LINKc && !isMember();
 }
 
-bool FuncDeclaration::isExport()
+bool FuncDeclaration::isExport() const
 {
     return protection.kind == PROTexport;
 }
 
-bool FuncDeclaration::isImportedSymbol()
+bool FuncDeclaration::isImportedSymbol() const
 {
     //printf("isImportedSymbol()\n");
     //printf("protection = %d\n", protection);
@@ -3861,7 +3861,7 @@ bool FuncDeclaration::isFinalFunc()
          ((cd = toParent()->isClassDeclaration()) != NULL && cd->storage_class & STCfinal));
 }
 
-bool FuncDeclaration::isCodeseg()
+bool FuncDeclaration::isCodeseg() const
 {
     return true;                // functions are always in the code segment
 }

@@ -506,6 +506,8 @@ finish_aggregate_type (unsigned structsize, unsigned alignsize,
 
 class TypeVisitor : public Visitor
 {
+  using Visitor::visit;
+
 public:
   TypeVisitor (void) {}
 

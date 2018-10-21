@@ -34,7 +34,7 @@ enum Sizeok
 {
     SIZEOKnone,         // size of aggregate is not yet able to compute
     SIZEOKfwd,          // size of aggregate is ready to compute
-    SIZEOKdone,         // size of aggregate is set correctly
+    SIZEOKdone          // size of aggregate is set correctly
 };
 
 enum Baseok
@@ -42,21 +42,21 @@ enum Baseok
     BASEOKnone,         // base classes not computed yet
     BASEOKin,           // in process of resolving base classes
     BASEOKdone,         // all base classes are resolved
-    BASEOKsemanticdone, // all base classes semantic done
+    BASEOKsemanticdone  // all base classes semantic done
 };
 
 enum StructPOD
 {
     ISPODno,            // struct is not POD
     ISPODyes,           // struct is POD
-    ISPODfwd,           // POD not yet computed
+    ISPODfwd            // POD not yet computed
 };
 
 enum Abstract
 {
     ABSfwdref = 0,      // whether an abstract class is not yet computed
     ABSyes,             // is abstract class
-    ABSno,              // is not abstract class
+    ABSno               // is not abstract class
 };
 
 FuncDeclaration *hasIdentityOpAssign(AggregateDeclaration *ad, Scope *sc);
@@ -132,7 +132,7 @@ public:
     bool isDeprecated();         // is aggregate deprecated?
     bool isNested();
     void makeNested();
-    bool isExport();
+    bool isExport() const;
     Dsymbol *searchCtor();
 
     Prot prot();
@@ -153,7 +153,8 @@ struct StructFlags
     typedef unsigned Type;
     enum Enum
     {
-        hasPointers = 0x1, // NB: should use noPointers as in ClassFlags
+        none = 0x0,
+        hasPointers = 0x1  // NB: should use noPointers as in ClassFlags
     };
 };
 
@@ -189,7 +190,7 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
     void semanticTypeInfoMembers();
-    Dsymbol *search(Loc, Identifier *ident, int flags = SearchLocalsOnly);
+    Dsymbol *search(const Loc &loc, Identifier *ident, int flags = SearchLocalsOnly);
     const char *kind();
     void finalizeSize();
     bool fit(Loc loc, Scope *sc, Expressions *elements, Type *stype);
@@ -243,7 +244,7 @@ struct ClassFlags
         hasTypeInfo = 0x20,
         isAbstract = 0x40,
         isCPPclass = 0x80,
-        hasDtor = 0x100,
+        hasDtor = 0x100
     };
 };
 
@@ -293,7 +294,7 @@ public:
     virtual bool isBaseOf(ClassDeclaration *cd, int *poffset);
 
     bool isBaseInfoComplete();
-    Dsymbol *search(Loc, Identifier *ident, int flags = SearchLocalsOnly);
+    Dsymbol *search(const Loc &loc, Identifier *ident, int flags = SearchLocalsOnly);
     ClassDeclaration *searchBase(Identifier *ident);
     void finalizeSize();
     bool isFuncHidden(FuncDeclaration *fd);

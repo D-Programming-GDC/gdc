@@ -83,7 +83,7 @@ enum tinfo_kind
   TK_SHARED_TYPE,		/* object.TypeInfo_Shared  */
   TK_INOUT_TYPE,		/* object.TypeInfo_Inout  */
   TK_CPPTI_TYPE,		/* object.__cpp_type_info_ptr  */
-  TK_END,
+  TK_END
 };
 
 /* An array of all internal TypeInfo derived types we need.
@@ -297,6 +297,8 @@ create_tinfo_types (Module *mod)
 
 class TypeInfoVisitor : public Visitor
 {
+  using Visitor::visit;
+
   tree type_;
   vec<constructor_elt, va_gc> *init_;
 
@@ -1225,6 +1227,8 @@ builtin_typeinfo_p (Type *type)
 
 class TypeInfoDeclVisitor : public Visitor
 {
+  using Visitor::visit;
+
 public:
   TypeInfoDeclVisitor (void) {}
 
@@ -1567,6 +1571,8 @@ create_typeinfo (Type *type, Module *mod)
 
 class SpeculativeTypeVisitor : public Visitor
 {
+  using Visitor::visit;
+
   bool result_;
 
 public:

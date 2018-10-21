@@ -64,7 +64,7 @@ enum libcall_type
   LCT_OBJECT,		    /* Object		    */
   LCT_CONST_TYPEINFO,	    /* const(TypeInfo)	    */
   LCT_CONST_CLASSINFO,	    /* const(ClassInfo)	    */
-  LCT_END,
+  LCT_END
 };
 
 /* An array of all types that are used by the runtime functions we need.  */

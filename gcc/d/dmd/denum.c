@@ -481,7 +481,7 @@ Prot EnumDeclaration::prot()
     return protection;
 }
 
-Dsymbol *EnumDeclaration::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *EnumDeclaration::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("%s.EnumDeclaration::search('%s')\n", toChars(), ident->toChars());
     if (_scope)

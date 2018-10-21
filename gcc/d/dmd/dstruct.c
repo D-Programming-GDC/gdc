@@ -539,7 +539,7 @@ bool AggregateDeclaration::isDeprecated()
     return isdeprecated;
 }
 
-bool AggregateDeclaration::isExport()
+bool AggregateDeclaration::isExport() const
 {
     return protection.kind == PROTexport;
 }
@@ -1216,7 +1216,7 @@ void StructDeclaration::semantic(Scope *sc)
     assert(type->ty != Tstruct || ((TypeStruct *)type)->sym == this);
 }
 
-Dsymbol *StructDeclaration::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *StructDeclaration::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("%s.StructDeclaration::search('%s', flags = x%x)\n", toChars(), ident->toChars(), flags);
 

@@ -119,6 +119,8 @@ gcc_attribute_p (Dsymbol *decl)
 
 class DeclVisitor : public Visitor
 {
+  using Visitor::visit;
+
 public:
   DeclVisitor (void) { }
 

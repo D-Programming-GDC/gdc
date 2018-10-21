@@ -912,7 +912,7 @@ int Module::needModuleInfo()
     return needmoduleinfo || global.params.cov;
 }
 
-Dsymbol *Module::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *Module::search(const Loc &loc, Identifier *ident, int flags)
 {
     /* Since modules can be circularly referenced,
      * need to stop infinite recursive searches.
@@ -1332,7 +1332,7 @@ DsymbolTable *Package::resolve(Identifiers *packages, Dsymbol **pparent, Package
     return dst;
 }
 
-Dsymbol *Package::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *Package::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("%s Package::search('%s', flags = x%x)\n", toChars(), ident->toChars(), flags);
     flags &= ~SearchLocalsOnly;  // searching an import is always transitive

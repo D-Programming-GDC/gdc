@@ -472,7 +472,7 @@ void Import::setScope(Scope *sc)
     }
 }
 
-Dsymbol *Import::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *Import::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("%s.Import::search(ident = '%s', flags = x%x)\n", toChars(), ident->toChars(), flags);
 

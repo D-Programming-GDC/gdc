@@ -287,14 +287,14 @@ enum LINK
     LINKwindows,
     LINKpascal,
     LINKobjc,
-    LINKsystem,
+    LINKsystem
 };
 
 enum CPPMANGLE
 {
     CPPMANGLEdefault,
     CPPMANGLEstruct,
-    CPPMANGLEclass,
+    CPPMANGLEclass
 };
 
 enum MATCH

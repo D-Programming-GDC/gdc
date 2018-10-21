@@ -73,7 +73,7 @@ enum level_kind
   level_switch,		/* The scope for a switch statement.  */
   level_loop,		/* A for, do-while, or unrolled-loop block.  */
   level_with,		/* The scope for a with statement.  */
-  level_function,	/* The block representing an entire function.  */
+  level_function 	/* The block representing an entire function.  */
 };
 
 /* List of codes for internally recognised compiler intrinsics.  */
@@ -93,7 +93,7 @@ enum intrinsic_code
 enum bc_kind
 {
   bc_break    = 0,
-  bc_continue = 1,
+  bc_continue = 1
 };
 
 /* The datatype used to implement D scope.  It is needed primarily to support
@@ -458,7 +458,7 @@ enum libcall_fn
 #include "runtime.def"
 
 #undef DEF_D_RUNTIME
-  LIBCALL_LAST,
+  LIBCALL_LAST
 };
 
 /* Gate for when the D frontend make an early call into the codegen pass, such

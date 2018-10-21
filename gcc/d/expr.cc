@@ -51,6 +51,8 @@ along with GCC; see the file COPYING3.  If not see
 
 class ExprVisitor : public Visitor
 {
+  using Visitor::visit;
+
   tree result_;
   bool constp_;
 

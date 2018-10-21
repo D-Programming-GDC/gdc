@@ -472,7 +472,7 @@ void Dsymbol::semantic3(Scope *)
  *  NULL if not found
  */
 
-Dsymbol *Dsymbol::search(Loc, Identifier *, int)
+Dsymbol *Dsymbol::search(const Loc &, Identifier *, int)
 {
     //printf("Dsymbol::search(this=%p,%s, ident='%s')\n", this, toChars(), ident->toChars());
     return NULL;
@@ -597,12 +597,12 @@ AggregateDeclaration *Dsymbol::isThis()
     return NULL;
 }
 
-bool Dsymbol::isExport()
+bool Dsymbol::isExport() const
 {
     return false;
 }
 
-bool Dsymbol::isImportedSymbol()
+bool Dsymbol::isImportedSymbol() const
 {
     return false;
 }
@@ -967,7 +967,7 @@ void ScopeDsymbol::semantic(Scope *)
  * Be very, very careful about slowing it down.
  */
 
-Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *ScopeDsymbol::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("%s->ScopeDsymbol::search(ident='%s', flags=x%x)\n", toChars(), ident->toChars(), flags);
     //if (strcmp(ident->toChars(),"c") == 0) *(char*)0=0;
@@ -1447,7 +1447,7 @@ WithScopeSymbol::WithScopeSymbol(WithStatement *withstate)
     this->withstate = withstate;
 }
 
-Dsymbol *WithScopeSymbol::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *WithScopeSymbol::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("WithScopeSymbol::search(%s)\n", ident->toChars());
     if (flags & SearchImportsOnly)
@@ -1512,7 +1512,7 @@ ArrayScopeSymbol::ArrayScopeSymbol(Scope *sc, TupleDeclaration *s)
     this->sc = sc;
 }
 
-Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int)
+Dsymbol *ArrayScopeSymbol::search(const Loc &loc, Identifier *ident, int)
 {
     //printf("ArrayScopeSymbol::search('%s', flags = %d)\n", ident->toChars(), flags);
     if (ident == Id::dollar)
