@@ -270,7 +270,7 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
     return true;
 
   /* Don't support if type is non-scalar, such as __vector(void[]).  */
-  if (!type->isscalar())
+  if (!type->isscalar ())
     return false;
 
   /* Don't support if expression cannot be represented.  */
@@ -284,7 +284,7 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
     case TOKmod:
     case TOKmodass:
       /* fmod() is lowered as a function call.  */
-      if (type->isfloating())
+      if (type->isfloating ())
 	return false;
       break;
 
@@ -330,7 +330,7 @@ Target::toCppMangle (Dsymbol *s)
 /* Return the symbol mangling of CD for C++ linkage.  */
 
 const char *
-Target::cppTypeInfoMangle(ClassDeclaration *cd)
+Target::cppTypeInfoMangle (ClassDeclaration *cd)
 {
   return cppTypeInfoMangleItanium (cd);
 }
