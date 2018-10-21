@@ -275,6 +275,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	    if (arg[0] == '\0' || arg[1] == '\0')
 	      continue;
 
+	    if (phobos_library == PHOBOS_DEFAULT)
+	      phobos_library = PHOBOS_LINK;
+
 	    /* Record that this is a D source file.  */
 	    const char *suffix = strrchr (arg, '.');
 	    if (suffix != NULL && strcmp (suffix, ".d") == 0)
@@ -284,12 +287,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 		args[i] |= DSOURCE;
 	      }
-
-	    /* If we don't know that this is an interface file, we might
-	       need to link against libphobos library.  */
-	    if (phobos_library == PHOBOS_DEFAULT
-		&& (suffix == NULL || strcmp (suffix, ".di") != 0))
-	      phobos_library = PHOBOS_LINK;
 
 	    /* If this is a C++ source file, we'll need to link
 	       against libstdc++ library.  */
@@ -360,6 +357,10 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
       generate_option_input_file (only_source_arg,
 				  &new_decoded_options[j++]);
     }
+
+  /* If no reason to link against libphobos library, then don't add it.  */
+  if (phobos_library == PHOBOS_DEFAULT)
+    phobos_library = PHOBOS_NOLINK;
 
   /* If we didn't see a -o option, add one.  This is because we need the
      driver to pass all .d files to the D compiler.  Without a -o option
