@@ -1,3 +1,8 @@
+2018-10-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* intrinsics.cc (maybe_set_intrinsic): Don't set built-in flag on
+	unsupported pow() overloads.
+
 2018-10-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::binop_assignment): Call stabilize_reference on
