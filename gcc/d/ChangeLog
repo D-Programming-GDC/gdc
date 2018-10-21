@@ -1,5 +1,9 @@
 2018-10-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_get_alias_set): Always return zero.
+
+2018-10-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* intrinsics.cc (maybe_set_intrinsic): Don't set built-in flag on
 	unsupported pow() overloads.
 

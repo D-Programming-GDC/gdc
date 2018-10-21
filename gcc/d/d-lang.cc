@@ -1558,21 +1558,8 @@ d_getdecls (void)
    Return -1 if we don't do anything special.  */
 
 static alias_set_type
-d_get_alias_set (tree t)
+d_get_alias_set (tree)
 {
-  /* Permit type-punning when accessing a union, provided the access
-     is directly through the union.  */
-  for (tree u = t; handled_component_p (u); u = TREE_OPERAND (u, 0))
-    {
-      if (TREE_CODE (u) == COMPONENT_REF
-	  && TREE_CODE (TREE_TYPE (TREE_OPERAND (u, 0))) == UNION_TYPE)
-	return 0;
-    }
-
-  /* That's all the expressions we handle.  */
-  if (!TYPE_P (t))
-    return get_alias_set (TREE_TYPE (t));
-
   /* For now in D, assume everything aliases everything else, until we define
      some solid rules backed by a specification.  There are also some parts
      of code generation routines that don't adhere to C alias rules, such as
