@@ -193,7 +193,7 @@ void test8()
 }
 
 /****************************************/
-// 4059
+// https://issues.dlang.org/show_bug.cgi?id=4059
 
 struct elem9 { }
 
@@ -260,7 +260,7 @@ void test13956()
 }
 
 /****************************************/
-// 5148
+// https://issues.dlang.org/show_bug.cgi?id=5148
 
 extern (C++)
 {
@@ -337,7 +337,7 @@ void testvalist()
 }
 
 /****************************************/
-// 12825
+// https://issues.dlang.org/show_bug.cgi?id=12825
 
 extern(C++) class C12825
 {
@@ -500,7 +500,7 @@ extern (C++, std)
 
     class exception { }
 
-    // 14956
+    // https://issues.dlang.org/show_bug.cgi?id=14956
     extern(C++, N14956)
     {
         struct S14956 { }
@@ -784,7 +784,7 @@ extern(C++, N13337.M13337)
 }
 
 /****************************************/
-// 14195
+// https://issues.dlang.org/show_bug.cgi?id=14195
 
 struct Delegate1(T) {}
 struct Delegate2(T1, T2) {}
@@ -810,7 +810,7 @@ void test14195()
 
 
 /****************************************/
-// 14200
+// https://issues.dlang.org/show_bug.cgi?id=14200
 
 template Tuple14200(T...)
 {
@@ -827,7 +827,7 @@ void test14200()
 }
 
 /****************************************/
-// 14956
+// https://issues.dlang.org/show_bug.cgi?id=14956
 
 extern(C++) void test14956(S14956 s);
 
@@ -1055,7 +1055,7 @@ void testeh3()
 }
 
 /****************************************/
-// 15576
+// https://issues.dlang.org/show_bug.cgi?id=15576
 
 extern (C++, ns15576)
 {
@@ -1073,7 +1073,7 @@ void test15576()
 }
 
 /****************************************/
-// 15579
+// https://issues.dlang.org/show_bug.cgi?id=15579
 
 extern (C++)
 {
@@ -1155,7 +1155,7 @@ void test15579()
 }
 
 /****************************************/
-// 15610
+// https://issues.dlang.org/show_bug.cgi?id=15610
 
 extern(C++) class Base2
 {
@@ -1181,7 +1181,7 @@ void test15610()
 }
 
 /******************************************/
-// 15455
+// https://issues.dlang.org/show_bug.cgi?id=15455
 
 struct X6
 {
@@ -1226,7 +1226,7 @@ void test15455()
 }
 
 /****************************************/
-// 15372
+// https://issues.dlang.org/show_bug.cgi?id=15372
 
 extern(C++) int foo15372(T)(int v);
 
@@ -1238,7 +1238,7 @@ void test15372()
 }
 
 /****************************************/
-// 15802
+// https://issues.dlang.org/show_bug.cgi?id=15802
 
 extern(C++) {
     template Foo15802(T) {
@@ -1254,7 +1254,8 @@ void test15802()
 }
 
 /****************************************/
-// 16536 - mangling mismatch on OSX
+// https://issues.dlang.org/show_bug.cgi?id=16536
+// mangling mismatch on OSX
 
 version(OSX) extern(C++) uint64_t pass16536(uint64_t);
 
@@ -1264,7 +1265,8 @@ void test16536()
 }
 
 /****************************************/
-// 15589 - extern(C++) virtual destructors are not put in vtbl[]
+// https://issues.dlang.org/show_bug.cgi?id=15589
+// extern(C++) virtual destructors are not put in vtbl[]
 
 extern(C++)
 {
