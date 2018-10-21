@@ -20,6 +20,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 
 #include "dmd/declaration.h"
+#include "dmd/identifier.h"
 #include "dmd/module.h"
 #include "dmd/mtype.h"
 #include "dmd/scope.h"

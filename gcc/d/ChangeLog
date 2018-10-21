@@ -5,6 +5,23 @@
 	* expr.cc (ExprVisitor::visit(StringExp)): Likewise.
 	* typeinfo.cc (TypeInfoVisitor::layout_string): Likewise.
 
+2018-09-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc: Include expression.h, identifier.h.
+	* d-codegen.cc: Include identifier.h.
+	* d-convert.cc: Include declaration.h.
+	* d-frontend.cc: Include identifier.h.
+	* d-lang.cc: Include declaration.h, expression.h, identifier.h.
+	(d_parse_file): Call moduleToBuffer to get string dump of contents.
+	* d-target.cc: Include declaration.h, expression.h, identifier.h.
+	* expr.cc: Include identifier.h.
+	* imports.cc: Include identifier.h.
+	* intrinsics.cc: Include identifier.h.
+	* modules.cc: Include identifier.h.
+	* toir.cc: Include expression.h, identifier.h.
+	* typeinfo.cc: Include expression.h, identifier.h.
+	* types.cc: Include expression.h, identifier.h.
+
 2018-09-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_INCLUDES): Rename dfrontend to dmd.

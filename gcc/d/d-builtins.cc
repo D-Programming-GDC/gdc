@@ -23,6 +23,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "dmd/aggregate.h"
 #include "dmd/cond.h"
 #include "dmd/declaration.h"
+#include "dmd/expression.h"
+#include "dmd/identifier.h"
 #include "dmd/module.h"
 #include "dmd/mtype.h"
 

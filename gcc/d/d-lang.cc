@@ -21,8 +21,12 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "dmd/aggregate.h"
 #include "dmd/cond.h"
+#include "dmd/declaration.h"
 #include "dmd/doc.h"
+#include "dmd/errors.h"
+#include "dmd/expression.h"
 #include "dmd/hdrgen.h"
+#include "dmd/identifier.h"
 #include "dmd/json.h"
 #include "dmd/mangle.h"
 #include "dmd/mars.h"
@@ -1285,10 +1289,7 @@ d_parse_file (void)
 	  OutBuffer buf;
 	  buf.doindent = 1;
 
-	  HdrGenState hgs;
-	  hgs.fullDump = true;
-
-	  toCBuffer (m, &buf, &hgs);
+	  moduleToBuffer (&buf, m);
 	  message ("%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
