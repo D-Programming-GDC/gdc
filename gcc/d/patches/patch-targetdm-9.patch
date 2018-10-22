@@ -331,7 +331,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/aarch64/aarch64-d.c
 @@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the AArch64 architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -413,7 +413,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/alpha/alpha-d.c
 @@ -0,0 +1,41 @@
 +/* Subroutines for the D front end on the Alpha architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -486,11 +486,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)					\
 +	  builtin_version ("CRuntime_Glibc");			\
 +	else if (OPTION_UCLIBC)					\
-+	  d_add_builtin_version ("CRuntime_UClibc");		\
++	  builtin_version ("CRuntime_UClibc");		\
 +	else if (OPTION_BIONIC)					\
-+	  d_add_builtin_version ("CRuntime_Bionic");		\
++	  builtin_version ("CRuntime_Bionic");		\
 +	else if (OPTION_MUSL)					\
-+	  d_add_builtin_version ("CRuntime_Musl");		\
++	  builtin_version ("CRuntime_Musl");		\
 +    } while (0)
 +
  #undef LIB_SPEC
@@ -511,7 +511,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/arm/arm-d.c
 @@ -0,0 +1,53 @@
 +/* Subroutines for the D front end on the ARM architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -616,7 +616,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/default-d.c
 @@ -0,0 +1,25 @@
 +/* Default D language target hooks initializer.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify it under
 +the terms of the GNU General Public License as published by the Free
@@ -644,7 +644,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/glibc-d.c
 @@ -0,0 +1,64 @@
 +/* Glibc support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify it under
 +the terms of the GNU General Public License as published by the Free
@@ -723,7 +723,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,44 @@
 +/* Subroutines for the D front end on the x86 architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -874,11 +874,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)					\
 +	  builtin_version ("CRuntime_Glibc");			\
 +	else if (OPTION_UCLIBC)					\
-+	  d_add_builtin_version ("CRuntime_UClibc");		\
++	  builtin_version ("CRuntime_UClibc");		\
 +	else if (OPTION_BIONIC)					\
-+	  d_add_builtin_version ("CRuntime_Bionic");		\
++	  builtin_version ("CRuntime_Bionic");		\
 +	else if (OPTION_MUSL)					\
-+	  d_add_builtin_version ("CRuntime_Musl");		\
++	  builtin_version ("CRuntime_Musl");		\
 +    } while (0)
 +
  /* Determine which dynamic linker to use depending on whether GLIBC or
@@ -900,7 +900,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/mips/mips-d.c
 @@ -0,0 +1,56 @@
 +/* Subroutines for the D front end on the MIPS architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -999,11 +999,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)				\
 +	  builtin_version ("CRuntime_Glibc");		\
 +	else if (OPTION_UCLIBC)				\
-+	  d_add_builtin_version ("CRuntime_UClibc");	\
++	  builtin_version ("CRuntime_UClibc");	\
 +	else if (OPTION_BIONIC)				\
-+	  d_add_builtin_version ("CRuntime_Bionic");	\
++	  builtin_version ("CRuntime_Bionic");	\
 +	else if (OPTION_MUSL)				\
-+	  d_add_builtin_version ("CRuntime_Musl");	\
++	  builtin_version ("CRuntime_Musl");	\
 +    } while (0)
 +
  #undef	CPP_OS_DEFAULT_SPEC
@@ -1021,11 +1021,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)				\
 +	  builtin_version ("CRuntime_Glibc");		\
 +	else if (OPTION_UCLIBC)				\
-+	  d_add_builtin_version ("CRuntime_UClibc");	\
++	  builtin_version ("CRuntime_UClibc");	\
 +	else if (OPTION_BIONIC)				\
-+	  d_add_builtin_version ("CRuntime_Bionic");	\
++	  builtin_version ("CRuntime_Bionic");	\
 +	else if (OPTION_MUSL)				\
-+	  d_add_builtin_version ("CRuntime_Musl");	\
++	  builtin_version ("CRuntime_Musl");	\
 +    } while (0)
 +
  #undef  CPP_OS_DEFAULT_SPEC
@@ -1035,7 +1035,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/powerpcspe/powerpcspe-d.c
 @@ -0,0 +1,45 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1128,11 +1128,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)				\
 +	  builtin_version ("CRuntime_Glibc");		\
 +	else if (OPTION_UCLIBC)				\
-+	  d_add_builtin_version ("CRuntime_UClibc");	\
++	  builtin_version ("CRuntime_UClibc");	\
 +	else if (OPTION_BIONIC)				\
-+	  d_add_builtin_version ("CRuntime_Bionic");	\
++	  builtin_version ("CRuntime_Bionic");	\
 +	else if (OPTION_MUSL)				\
-+	  d_add_builtin_version ("CRuntime_Musl");	\
++	  builtin_version ("CRuntime_Musl");	\
 +    } while (0)
 +
  #undef	CPP_OS_DEFAULT_SPEC
@@ -1150,11 +1150,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)				\
 +	  builtin_version ("CRuntime_Glibc");		\
 +	else if (OPTION_UCLIBC)				\
-+	  d_add_builtin_version ("CRuntime_UClibc");	\
++	  builtin_version ("CRuntime_UClibc");	\
 +	else if (OPTION_BIONIC)				\
-+	  d_add_builtin_version ("CRuntime_Bionic");	\
++	  builtin_version ("CRuntime_Bionic");	\
 +	else if (OPTION_MUSL)				\
-+	  d_add_builtin_version ("CRuntime_Musl");	\
++	  builtin_version ("CRuntime_Musl");	\
 +    } while (0)
 +
  #undef  CPP_OS_DEFAULT_SPEC
@@ -1164,7 +1164,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/rs6000/rs6000-d.c
 @@ -0,0 +1,45 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1249,7 +1249,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/s390/s390-d.c
 @@ -0,0 +1,41 @@
 +/* Subroutines for the D front end on the IBM S/390 and zSeries architectures.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1327,7 +1327,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/sparc/sparc-d.c
 @@ -0,0 +1,48 @@
 +/* Subroutines for the D front end on the SPARC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
