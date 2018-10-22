@@ -331,7 +331,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/aarch64/aarch64-d.c
 @@ -0,0 +1,39 @@
 +/* Subroutines for the D front end on the AArch64 architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -423,7 +423,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/alpha/alpha-d.c
 @@ -0,0 +1,49 @@
 +/* Subroutines for the D front end on the Alpha architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -531,7 +531,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/arm/arm-d.c
 @@ -0,0 +1,71 @@
 +/* Subroutines for the D front end on the ARM architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -656,7 +656,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/default-d.c
 @@ -0,0 +1,25 @@
 +/* Default D language target hooks initializer.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify it under
 +the terms of the GNU General Public License as published by the Free
@@ -774,7 +774,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,55 @@
 +/* Subroutines for the D front end on the x86 architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -964,7 +964,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/mips/mips-d.c
 @@ -0,0 +1,69 @@
 +/* Subroutines for the D front end on the MIPS architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1114,7 +1114,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/powerpcspe/powerpcspe-d.c
 @@ -0,0 +1,58 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1258,7 +1258,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/rs6000/rs6000-d.c
 @@ -0,0 +1,58 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1358,7 +1358,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/s390/s390-d.c
 @@ -0,0 +1,54 @@
 +/* Subroutines for the D front end on the IBM S/390 and zSeries architectures.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1451,7 +1451,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/sparc/sparc-d.c
 @@ -0,0 +1,56 @@
 +/* Subroutines for the D front end on the SPARC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
