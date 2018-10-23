@@ -27,7 +27,7 @@ module gcc.unwind.arm;
 
 import gcc.config;
 
-version(ARM):
+version (ARM):
 static if (GNU_ARM_EABI_Unwinder):
 
 public import gcc.unwind.arm_common;

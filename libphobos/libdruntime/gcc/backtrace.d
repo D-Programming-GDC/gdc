@@ -467,7 +467,7 @@ private:
 
         for (auto i = 0; i < data.numframes; i++)
         {
-            static if( __traits(compiles, Dl_info))
+            static if ( __traits(compiles, Dl_info))
             {
                 Dl_info funcInfo;
 

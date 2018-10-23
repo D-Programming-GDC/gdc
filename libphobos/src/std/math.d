@@ -142,12 +142,12 @@ static import core.stdc.math;
 static import core.stdc.fenv;
 import std.traits; // CommonType, isFloatingPoint, isIntegral, isSigned, isUnsigned, Largest, Unqual
 
-version(LDC)
+version (LDC)
 {
     import ldc.intrinsics;
 }
 
-version(DigitalMars)
+version (DigitalMars)
 {
     version = INLINE_YL2X;        // x87 has opcodes for these
 }
@@ -161,11 +161,11 @@ version (MIPS64)    version = MIPS_Any;
 version (AArch64)   version = ARM_Any;
 version (ARM)       version = ARM_Any;
 
-version(D_InlineAsm_X86)
+version (D_InlineAsm_X86)
 {
     version = InlineAsm_X86_Any;
 }
-else version(D_InlineAsm_X86_64)
+else version (D_InlineAsm_X86_64)
 {
     version = InlineAsm_X86_Any;
 }
@@ -183,7 +183,7 @@ else
     private alias haveSSE = core.cpuid.sse;
 }
 
-version(unittest)
+version (unittest)
 {
     import core.stdc.stdio; // : sprintf;
 
@@ -220,7 +220,7 @@ version(unittest)
 
         int ix;
         int iy;
-        version(CRuntime_Microsoft)
+        version (CRuntime_Microsoft)
             alias real_t = double;
         else
             alias real_t = real;
@@ -237,7 +237,7 @@ version(unittest)
 
 package:
 // The following IEEE 'real' formats are currently supported.
-version(LittleEndian)
+version (LittleEndian)
 {
     static assert(real.mant_dig == 53 || real.mant_dig == 64
                || real.mant_dig == 113,
@@ -284,7 +284,7 @@ template floatTraits(T)
         enum uint EXPMASK_INT = 0x7F80_0000;
         enum uint MANTISSAMASK_INT = 0x007F_FFFF;
         enum realFormat = RealFormat.ieeeSingle;
-        version(LittleEndian)
+        version (LittleEndian)
         {
             enum EXPPOS_SHORT = 1;
             enum SIGNPOS_BYTE = 3;
@@ -306,7 +306,7 @@ template floatTraits(T)
             enum uint EXPMASK_INT = 0x7FF0_0000;
             enum uint MANTISSAMASK_INT = 0x000F_FFFF; // for the MSB only
             enum realFormat = RealFormat.ieeeDouble;
-            version(LittleEndian)
+            version (LittleEndian)
             {
                 enum EXPPOS_SHORT = 3;
                 enum SIGNPOS_BYTE = 7;
@@ -324,7 +324,7 @@ template floatTraits(T)
             enum ushort EXPSHIFT = 0;
             enum ushort EXPBIAS = 0x3FFE;
             enum realFormat = RealFormat.ieeeExtended53;
-            version(LittleEndian)
+            version (LittleEndian)
             {
                 enum EXPPOS_SHORT = 4;
                 enum SIGNPOS_BYTE = 9;
@@ -345,7 +345,7 @@ template floatTraits(T)
         enum ushort EXPSHIFT = 0;
         enum ushort EXPBIAS = 0x3FFE;
         enum realFormat = RealFormat.ieeeExtended;
-        version(LittleEndian)
+        version (LittleEndian)
         {
             enum EXPPOS_SHORT = 4;
             enum SIGNPOS_BYTE = 9;
@@ -363,7 +363,7 @@ template floatTraits(T)
         enum ushort EXPSHIFT = 0;
         enum ushort EXPBIAS = 0x3FFE;
         enum realFormat = RealFormat.ieeeQuadruple;
-        version(LittleEndian)
+        version (LittleEndian)
         {
             enum EXPPOS_SHORT = 7;
             enum SIGNPOS_BYTE = 15;
@@ -381,7 +381,7 @@ template floatTraits(T)
         enum ushort EXPSHIFT = 4;
         enum realFormat = RealFormat.ibmExtended;
         // the exponent byte is not unique
-        version(LittleEndian)
+        version (LittleEndian)
         {
             enum EXPPOS_SHORT = 7; // [3] is also an exp short
             enum SIGNPOS_BYTE = 15;
@@ -397,7 +397,7 @@ template floatTraits(T)
 }
 
 // These apply to all floating-point types
-version(LittleEndian)
+version (LittleEndian)
 {
     enum MANTISSA_LSB = 0;
     enum MANTISSA_MSB = 1;
@@ -785,7 +785,7 @@ real cos(ireal y) @safe pure nothrow @nogc
 
 real tan(real x) @trusted pure nothrow @nogc
 {
-    version(D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
     asm pure nothrow @nogc
     {
@@ -822,7 +822,7 @@ Clear1: asm pure nothrow @nogc{
 
 Lret: {}
     }
-    else version(D_InlineAsm_X86_64)
+    else version (D_InlineAsm_X86_64)
     {
         version (Win64)
         {
@@ -1094,7 +1094,7 @@ float asin(float x) @safe pure nothrow @nogc  { return asin(cast(real) x); }
  */
 real atan(real x) @safe pure nothrow @nogc
 {
-    version(InlineAsm_X86_Any)
+    version (InlineAsm_X86_Any)
     {
         return atan2(x, 1.0L);
     }
@@ -1221,7 +1221,7 @@ float atan(float x)  @safe pure nothrow @nogc { return atan(cast(real) x); }
  */
 real atan2(real y, real x) @trusted pure nothrow @nogc
 {
-    version(InlineAsm_X86_Any)
+    version (InlineAsm_X86_Any)
     {
         version (Win64)
         {
@@ -1680,14 +1680,14 @@ creal sqrt(creal z) @nogc @safe pure nothrow
  */
 real exp(real x) @trusted pure nothrow @nogc
 {
-    version(D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         //  e^^x = 2^^(LOG2E*x)
         // (This is valid because the overflow & underflow limits for exp
         // and exp2 are so similar).
         return exp2(LOG2E*x);
     }
-    else version(D_InlineAsm_X86_64)
+    else version (D_InlineAsm_X86_64)
     {
         //  e^^x = 2^^(LOG2E*x)
         // (This is valid because the overflow & underflow limits for exp
@@ -1841,7 +1841,7 @@ float exp(float x)  @safe pure nothrow @nogc   { return exp(cast(real) x); }
  */
 real expm1(real x) @trusted pure nothrow @nogc
 {
-    version(D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         enum PARAMSIZE = (real.sizeof+3)&(0xFFFF_FFFC); // always a multiple of 4
         asm pure nothrow @nogc
@@ -1913,7 +1913,7 @@ L_largenegative:
             ret PARAMSIZE;
         }
     }
-    else version(D_InlineAsm_X86_64)
+    else version (D_InlineAsm_X86_64)
     {
         asm pure nothrow @nogc
         {
@@ -2110,7 +2110,7 @@ L_largenegative:
 pragma(inline, true)
 real exp2(real x) @nogc @trusted pure nothrow
 {
-    version(InlineAsm_X86_Any)
+    version (InlineAsm_X86_Any)
     {
         if (!__ctfe)
             return exp2Asm(x);
@@ -2123,10 +2123,10 @@ real exp2(real x) @nogc @trusted pure nothrow
     }
 }
 
-version(InlineAsm_X86_Any)
+version (InlineAsm_X86_Any)
 private real exp2Asm(real x) @nogc @trusted pure nothrow
 {
-    version(D_InlineAsm_X86)
+    version (D_InlineAsm_X86)
     {
         enum PARAMSIZE = (real.sizeof+3)&(0xFFFF_FFFC); // always a multiple of 4
 
@@ -2212,7 +2212,7 @@ L_was_nan:
             ret PARAMSIZE;
         }
     }
-    else version(D_InlineAsm_X86_64)
+    else version (D_InlineAsm_X86_64)
     {
         asm pure nothrow @nogc
         {
@@ -2404,7 +2404,7 @@ private real exp2Impl(real x) @nogc @trusted pure nothrow
 
 @safe unittest
 {
-    version(CRuntime_Microsoft) {} else // aexp2/exp2f/exp2l not implemented
+    version (CRuntime_Microsoft) {} else // aexp2/exp2f/exp2l not implemented
     {
         assert( core.stdc.math.exp2f(0.0f) == 1 );
         assert( core.stdc.math.exp2 (0.0)  == 1 );
@@ -2541,7 +2541,7 @@ private real exp2Impl(real x) @nogc @trusted pure nothrow
  */
 creal expi(real y) @trusted pure nothrow @nogc
 {
-    version(InlineAsm_X86_Any)
+    version (InlineAsm_X86_Any)
     {
         version (Win64)
         {
@@ -3521,7 +3521,7 @@ real log10(real x) @safe pure nothrow @nogc
  */
 real log1p(real x) @safe pure nothrow @nogc
 {
-    version(INLINE_YL2X)
+    version (INLINE_YL2X)
     {
         // On x87, yl2xp1 is valid if and only if -0.5 <= lg(x) <= 0.5,
         //    ie if -0.29 <= x <= 0.414
@@ -3733,7 +3733,7 @@ real modf(real x, ref real i) @trusted nothrow @nogc
  */
 real scalbn(real x, int n) @trusted nothrow @nogc
 {
-    version(InlineAsm_X86_Any)
+    version (InlineAsm_X86_Any)
     {
         // scalbnl is not supported on DMD-Windows, so use asm pure nothrow @nogc.
         version (Win64)
@@ -3947,7 +3947,7 @@ real ceil(real x) @trusted pure nothrow @nogc
             ret                         ;
         }
     }
-    else version(CRuntime_Microsoft)
+    else version (CRuntime_Microsoft)
     {
         short cw;
         asm pure nothrow @nogc
@@ -4075,7 +4075,7 @@ real floor(real x) @trusted pure nothrow @nogc
             ret                         ;
         }
     }
-    else version(CRuntime_Microsoft)
+    else version (CRuntime_Microsoft)
     {
         short cw;
         asm pure nothrow @nogc
@@ -4308,7 +4308,7 @@ float rint(float x) @safe pure nothrow @nogc { return rint(cast(real) x); }
  */
 long lrint(real x) @trusted pure nothrow @nogc
 {
-    version(InlineAsm_X86_Any)
+    version (InlineAsm_X86_Any)
     {
         version (Win64)
         {
@@ -4539,7 +4539,7 @@ long lround(real x) @trusted nothrow @nogc
         assert(0, "lround not implemented");
 }
 
-version(Posix)
+version (Posix)
 {
     @safe nothrow @nogc unittest
     {
@@ -4575,7 +4575,7 @@ real trunc(real x) @trusted nothrow @nogc
             ret                         ;
         }
     }
-    else version(CRuntime_Microsoft)
+    else version (CRuntime_Microsoft)
     {
         short cw;
         asm pure nothrow @nogc
@@ -4728,7 +4728,7 @@ private:
                 assert(0, "Not yet supported");
         }
         else
-        version(InlineAsm_X86_Any)
+        version (InlineAsm_X86_Any)
         {
             ushort sw;
             asm pure nothrow @nogc { fstsw sw; }
@@ -4802,7 +4802,7 @@ private:
                 assert(0, "Not yet supported");
         }
         else
-        version(InlineAsm_X86_Any)
+        version (InlineAsm_X86_Any)
         {
             asm pure nothrow @nogc
             {
@@ -4955,23 +4955,23 @@ else
     }
 }
 
-version(X86_Any)
+version (X86_Any)
 {
     version = IeeeFlagsSupport;
 }
-version(X86_Any)
+version (X86_Any)
 {
     version = IeeeFlagsSupport;
 }
-else version(PPC_Any)
+else version (PPC_Any)
 {
     version = IeeeFlagsSupport;
 }
-else version(MIPS_Any)
+else version (MIPS_Any)
 {
     version = IeeeFlagsSupport;
 }
-else version(ARM_Any)
+else version (ARM_Any)
 {
     version = IeeeFlagsSupport;
 }
@@ -5038,7 +5038,7 @@ struct FloatingPointControl
 {
     alias RoundingMode = uint; ///
 
-    version(StdDdoc)
+    version (StdDdoc)
     {
         enum : RoundingMode
         {
@@ -5095,7 +5095,7 @@ struct FloatingPointControl
 
     alias ExceptionMask = uint; ///
 
-    version(StdDdoc)
+    version (StdDdoc)
     {
         enum : ExceptionMask
         {
@@ -5214,13 +5214,13 @@ public:
     /// Returns: true if the current FPU supports exception trapping
     @property static bool hasExceptionTraps() @safe nothrow @nogc
     {
-        version(X86_Any)
+        version (X86_Any)
             return true;
-        else version(PPC_Any)
+        else version (PPC_Any)
             return true;
-        else version(MIPS_Any)
+        else version (MIPS_Any)
             return true;
-        else version(ARM_Any)
+        else version (ARM_Any)
         {
             auto oldState = getControlState();
             // If exceptions are not supported, we set the bit but read it back as zero
@@ -5239,7 +5239,7 @@ public:
     {
         assert(hasExceptionTraps);
         initialize();
-        version(X86_Any)
+        version (X86_Any)
             setControlState(getControlState() & ~(exceptions & allExceptions));
         else
             setControlState(getControlState() | (exceptions & allExceptions));
@@ -5250,7 +5250,7 @@ public:
     {
         assert(hasExceptionTraps);
         initialize();
-        version(X86_Any)
+        version (X86_Any)
             setControlState(getControlState() | (exceptions & allExceptions));
         else
             setControlState(getControlState() & ~(exceptions & allExceptions));
@@ -5260,7 +5260,7 @@ public:
     @property static ExceptionMask enabledExceptions() @nogc
     {
         assert(hasExceptionTraps);
-        version(X86_Any)
+        version (X86_Any)
             return (getControlState() & allExceptions) ^ allExceptions;
         else
             return (getControlState() & allExceptions);
@@ -5279,15 +5279,15 @@ private:
 
     bool initialized = false;
 
-    version(ARM_Any)
+    version (ARM_Any)
     {
         alias ControlState = uint;
     }
-    else version(PPC_Any)
+    else version (PPC_Any)
     {
         alias ControlState = uint;
     }
-    else version(MIPS_Any)
+    else version (MIPS_Any)
     {
         alias ControlState = uint;
     }
@@ -5482,7 +5482,7 @@ private:
 {
     // GCC floating point emulation doesn't allow changing
     // rounding modes, getting error bits etc
-    version(GNU) version(D_SoftFloat)
+    version (GNU) version (D_SoftFloat)
         return;
 
     void ensureDefaults()
@@ -5498,7 +5498,7 @@ private:
     }
     ensureDefaults();
 
-    version(D_HardFloat)
+    version (D_HardFloat)
     {
         {
             FloatingPointControl ctrl;
@@ -6137,7 +6137,7 @@ real NaN(ulong payload) @trusted pure nothrow @nogc
         {
             v <<= 1; // there's no implicit bit
 
-            version(LittleEndian)
+            version (LittleEndian)
             {
                 *cast(ulong*)(6+cast(ubyte*)(&x)) = v;
             }
@@ -6189,7 +6189,7 @@ ulong getNaNPayload(real x) @trusted pure nothrow @nogc
     }
     else static if (F.realFormat == RealFormat.ieeeQuadruple)
     {
-        version(LittleEndian)
+        version (LittleEndian)
         {
             ulong m = *cast(ulong*)(6+cast(ubyte*)(&x));
         }
@@ -6660,11 +6660,11 @@ if (isFloatingPoint!(F) && isIntegral!(G))
 
     assert(pow(x, neg1) == 1 / x);
 
-    version(X86_64)
+    version (X86_64)
     {
         pragma(msg, "test disabled on x86_64, see bug 5628");
     }
-    else version(ARM)
+    else version (ARM)
     {
         pragma(msg, "test disabled on ARM, see bug 5628");
     }
@@ -6972,7 +6972,7 @@ if (isFloatingPoint!(F) && isFloatingPoint!(G))
             }
             x = -x;
         }
-        version(INLINE_YL2X)
+        version (INLINE_YL2X)
         {
             // If x > 0, x ^^ y == 2 ^^ ( y * log2(x) )
             // TODO: This is not accurate in practice. A fast and accurate
@@ -6998,7 +6998,7 @@ if (isFloatingPoint!(F) && isFloatingPoint!(G))
 @safe pure nothrow @nogc unittest
 {
     // Test all the special values.  These unittests can be run on Windows
-    // by temporarily changing the version(linux) to version(all).
+    // by temporarily changing the version (linux) to version (all).
     immutable float zero = 0;
     immutable real one = 1;
     immutable double two = 2;
@@ -7025,8 +7025,8 @@ if (isFloatingPoint!(F) && isFloatingPoint!(G))
     assert(isIdentical(pow(rninf, -2.0), +0.0));
 
     // @@@BUG@@@ somewhere
-    version(OSX) {} else assert(isNaN(pow(one, dinf)));
-    version(OSX) {} else assert(isNaN(pow(-one, dinf)));
+    version (OSX) {} else assert(isNaN(pow(one, dinf)));
+    version (OSX) {} else assert(isNaN(pow(-one, dinf)));
     assert(isNaN(pow(-0.2, PI)));
     // boundary cases. Note that epsilon == 2^^-n for some n,
     // so 1/epsilon == 2^^n is always even.
@@ -7889,7 +7889,7 @@ if (isFloatingPoint!T)
                 var.bytes[F.SIGNPOS_BYTE] |= 0x80;
             }
 
-        version(LittleEndian)
+        version (LittleEndian)
         {
             if (vars[0].bits.rem < vars[1].bits.rem)
                 return -1;

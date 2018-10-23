@@ -11,8 +11,7 @@ module core.sys.windows.wininet;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "wininet");
+pragma(lib, "wininet");
 
 // FIXME: check types and grouping of constants
 
