@@ -98,7 +98,7 @@ class ExprVisitor : public Visitor
   }
 
   /* Build an expression of code CODE, data type TYPE, and operands ARG0 and
-     ARG1.  Perform relevant conversions needs for correct code operations.  */
+     ARG1.  Perform relevant conversions needed for correct code operations.  */
 
   tree binary_op (tree_code code, tree type, tree arg0, tree arg1)
   {
@@ -120,14 +120,20 @@ class ExprVisitor : public Visitor
 
     if (POINTER_TYPE_P (t0) && POINTER_TYPE_P (t1))
       {
-	/* Need to convert pointers to integers because tree-vrp asserts
-	   against (ptr MINUS ptr).  */
-	tree ptrtype = lang_hooks.types.type_for_mode (ptr_mode,
-						       TYPE_UNSIGNED (type));
-	arg0 = d_convert (ptrtype, arg0);
-	arg1 = d_convert (ptrtype, arg1);
+	gcc_assert (code == MINUS_EXPR);
+	tree ptrtype = lang_hooks.types.type_for_mode (ptr_mode, 0);
 
-	ret = fold_build2 (code, ptrtype, arg0, arg1);
+	/* POINTER_DIFF_EXPR requires a signed integer type of the same size as
+	   pointers.  If some platform cannot provide that, or has a larger
+	   ptrdiff_type to support differences larger than half the address
+	   space, cast the pointers to some larger integer type and do the
+	   computations in that type.  */
+	if (TYPE_PRECISION (ptrtype) > TYPE_PRECISION (t0))
+	  ret = fold_build2 (MINUS_EXPR, ptrtype,
+			     d_convert (ptrtype, arg0),
+			     d_convert (ptrtype, arg1));
+	else
+	  ret = fold_build2 (POINTER_DIFF_EXPR, ptrtype, arg0, arg1);
       }
     else if (INTEGRAL_TYPE_P (type) && (TYPE_UNSIGNED (type) != unsignedp))
       {
@@ -179,10 +185,17 @@ class ExprVisitor : public Visitor
     tree lhs = build_expr (e1b);
     tree lexpr = stabilize_expr (&lhs);
 
-    /* The LHS expression could be an assignment, to which it's operation gets
+    /* The LHS expression could be an assignment, to which its operation gets
        lost during gimplification.  */
     if (TREE_CODE (lhs) == MODIFY_EXPR)
       {
+	/* If LHS has side effects, call stabilize_reference on it, so it can
+	   be evaluated multiple times.  */
+	if (TREE_SIDE_EFFECTS (TREE_OPERAND (lhs, 0)))
+	  lhs = build_assign (MODIFY_EXPR,
+			      stabilize_reference (TREE_OPERAND (lhs, 0)),
+			      TREE_OPERAND (lhs, 1));
+
 	lexpr = compound_expr (lexpr, lhs);
 	lhs = TREE_OPERAND (lhs, 0);
       }
@@ -264,7 +277,7 @@ public:
       }
     else if (tb1->isfloating () && tb1->ty != Tvector)
       {
-	/* For floating point values, identity is defined as the bits in the
+	/* For floating-point values, identity is defined as the bits in the
 	   operands being identical.  */
 	tree t1 = d_save_expr (build_expr (e->e1));
 	tree t2 = d_save_expr (build_expr (e->e2));
@@ -504,8 +517,8 @@ public:
     if ((tb1->ty == Tsarray || tb1->ty == Tarray)
 	&& (tb2->ty == Tsarray || tb2->ty == Tarray))
       {
-	::error ("cannot handle comparison of type `%s == %s`",
-		 tb1->toChars (), tb2->toChars ());
+	error ("cannot handle comparison of type %<%s == %s%>",
+	       tb1->toChars (), tb2->toChars ());
 	gcc_unreachable ();
       }
 
@@ -540,7 +553,7 @@ public:
 
 	/* Invert condition for logical or if expression.  */
 	if (e->op == TOKoror)
-	  t1 = build1 (TRUTH_NOT_EXPR, bool_type_node, t1);
+	  t1 = build1 (TRUTH_NOT_EXPR, d_bool_type, t1);
 
 	this->result_ = build_condition (build_ctype (e->type),
 					 t1, t2, void_node);
@@ -627,48 +640,6 @@ public:
 				     build_expr (e->e1), build_expr (e->e2));
   }
 
-  /* Build a power expression, which raises its left operand to the power of
-     its right operand.   */
-
-  void visit (PowExp *e)
-  {
-    /* Result type determines what version of pow() we call.  */
-    tree powtype = build_ctype (e->type->toBasetype ());
-
-    /* If type is int, implicitly convert to double.  This allows backend
-       to fold the call into a constant return value.  */
-    if (e->type->isintegral ())
-      powtype = double_type_node;
-
-    /* Lookup compatible builtin.  */
-    tree powfn = NULL_TREE;
-    if (TYPE_MAIN_VARIANT (powtype) == double_type_node)
-      powfn = builtin_decl_explicit (BUILT_IN_POW);
-    else if (TYPE_MAIN_VARIANT (powtype) == float_type_node)
-      powfn = builtin_decl_explicit (BUILT_IN_POWF);
-    else if (TYPE_MAIN_VARIANT (powtype) == long_double_type_node)
-      powfn = builtin_decl_explicit (BUILT_IN_POWL);
-
-    if (powfn == NULL_TREE)
-      {
-	Type *tb1 = e->e1->type->toBasetype ();
-
-	if (tb1->ty == Tarray || tb1->ty == Tsarray)
-	  error ("Array operation %s not implemented", e->toChars ());
-	else
-	  error ("%s ^^ %s is not supported",
-		 e->e1->type->toChars (), e->e2->type->toChars ());
-
-	this->result_ = error_mark_node;
-	return;
-      }
-
-    tree t1 = d_convert (powtype, build_expr (e->e1));
-    tree t2 = d_convert (powtype, build_expr (e->e2));
-
-    this->result_ = d_convert (build_ctype (e->type),
-			       build_call_expr (powfn, 2, t1, t2));
-  }
 
   /* Build a concat expression, which concatenates two or more arrays of the
      same type, producing a dynamic array with the result.  If one operand
@@ -756,7 +727,7 @@ public:
     this->result_ = result;
   }
 
-  /* Build a assignment operator expression.  The right operand is implicitly
+  /* Build an assignment operator expression.  The right operand is implicitly
      converted to the type of the left operand, and assigned to it.  */
 
   void visit (BinAssignExp *e)
@@ -1259,7 +1230,7 @@ public:
 	if (tb1->ty != Tpointer && !e->indexIsInBounds)
 	  index = build_bounds_condition (e->e2->loc, index, length, false);
 
-	/* Index the .ptr  */
+	/* Index the .ptr.  */
 	ptr = void_okay_p (ptr);
 	this->result_ = indirect_ref (TREE_TYPE (TREE_TYPE (ptr)),
 				      build_array_index (ptr, index));
@@ -1287,7 +1258,7 @@ public:
     else
       {
 	/* Static arrays have already been handled by the front-end.  */
-	error ("unexpected type for array length: %s", e->type->toChars ());
+	error ("unexpected type for array length: %qs", e->type->toChars ());
 	this->result_ = error_mark_node;
       }
   }
@@ -1399,7 +1370,7 @@ public:
 
     if (lwr_tree)
       {
-	/* Enforces lwr <= upr. No need to check lwr <= length as
+	/* Enforces lwr <= upr.  No need to check lwr <= length as
 	   we've already ensured that upr <= length.  */
 	if (!e->lowerIsLessThanUpper)
 	  {
@@ -1516,7 +1487,7 @@ public:
       }
     else
       {
-	error ("don't know how to delete %s", e->e1->toChars ());
+	error ("don't know how to delete %qs", e->e1->toChars ());
 	this->result_ = error_mark_node;
       }
   }
@@ -1540,7 +1511,7 @@ public:
       }
     else
       {
-	error ("%s is not an associative array", e->e1->toChars ());
+	error ("%qs is not an associative array", e->e1->toChars ());
 	this->result_ = error_mark_node;
       }
   }
@@ -1551,7 +1522,7 @@ public:
   {
     tree result = convert_for_condition (build_expr (e->e1), e->e1->type);
     /* Need to convert to boolean type or this will fail.  */
-    result = fold_build1 (TRUTH_NOT_EXPR, bool_type_node, result);
+    result = fold_build1 (TRUTH_NOT_EXPR, d_bool_type, result);
 
     this->result_ = d_convert (build_ctype (e->type), result);
   }
@@ -1810,7 +1781,8 @@ public:
 	  }
 	else if (fd->needThis ())
 	  {
-	    e1b->error ("need 'this' to access member %s", fd->toChars ());
+	    error_at (make_location_t (e1b->loc),
+		      "need %<this%> to access member %qs", fd->toChars ());
 	    /* Continue compiling...  */
 	    object = null_pointer_node;
 	  }
@@ -1890,7 +1862,7 @@ public:
 
 	object = build_expr (e->e1);
 
-	/* Want reference to `this' object.     */
+	/* Want reference to `this' object.  */
 	if (e->e1->type->ty != Tclass && e->e1->type->ty != Tpointer)
 	  object = build_address (object);
 
@@ -1948,7 +1920,7 @@ public:
       }
     else
       {
-	error ("%s is not a field, but a %s",
+	error ("%qs is not a field, but a %qs",
 	       e->var->toChars (), e->var->kind ());
 	this->result_ = error_mark_node;
       }
@@ -2034,7 +2006,7 @@ public:
     tree condition = convert_for_condition (arg, e->e1->type);
 
     /* We expect the condition to always be true, as what happens if an assert
-       contract is false is undefined behaviour.  */
+       contract is false is undefined behavior.  */
     tree fn = builtin_decl_explicit (BUILT_IN_EXPECT);
     tree arg_types = TYPE_ARG_TYPES (TREE_TYPE (fn));
     tree pred_type = TREE_VALUE (arg_types);
@@ -2066,7 +2038,7 @@ public:
   }
 
   /* Build a typeid expression.  Returns an instance of class TypeInfo
-     corresponding to . */
+     corresponding to.  */
 
   void visit (TypeidExp *e)
   {
@@ -2183,13 +2155,13 @@ public:
   {
     if (e->var->needThis ())
       {
-	error ("need 'this' to access member %s", e->var->ident->toChars ());
+	error ("need %<this%> to access member %qs", e->var->ident->toChars ());
 	this->result_ = error_mark_node;
 	return;
       }
     else if (e->var->ident == Identifier::idPool ("__ctfe"))
       {
-	/* __ctfe is always false at runtime.  */
+	/* __ctfe is always false at run-time.  */
 	this->result_ = integer_zero_node;
 	return;
       }
@@ -2219,7 +2191,8 @@ public:
 	    && e->type->toBasetype ()->ty != Tsarray && var->_init)
 	  {
 	    if (var->inuse)
-	      e->error ("recursive reference %s", e->toChars ());
+	      error_at (make_location_t (e->loc), "recursive reference %qs",
+			e->toChars ());
 	    else
 	      {
 		var->inuse++;
@@ -2230,7 +2203,8 @@ public:
 	else if (sd && sd->dsym)
 	  init = layout_struct_initializer (sd->dsym);
 	else
-	  e->error ("non-constant expression %s", e->toChars ());
+	  error_at (make_location_t (e->loc), "non-constant expression %qs",
+		    e->toChars ());
 
 	if (init != NULL_TREE)
 	  this->result_ = init;
@@ -2551,7 +2525,7 @@ public:
     this->result_ = build_integer_cst (e->value, ctype);
   }
 
-  /* Build a floating point literal.  */
+  /* Build a floating-point literal.  */
 
   void visit (RealExp *e)
   {
@@ -2655,7 +2629,7 @@ public:
     this->result_ = result;
   }
 
-  /* Build an array literal.   The common type of the all elements is taken to
+  /* Build an array literal.  The common type of the all elements is taken to
      be the type of the array element, and all elements are implicitly
      converted to that type.  */
 
@@ -2697,7 +2671,7 @@ public:
 	Expression *expr = e->getElement (i);
 	tree value = build_expr (expr, this->constp_);
 
-	/* Only append non-zero values, the backend will zero out the rest
+	/* Only append nonzero values, the backend will zero out the rest
 	   of the constructor as we don't set CONSTRUCTOR_NO_CLEARING.  */
 	if (!initializer_zerop (value))
 	  {
@@ -2762,7 +2736,7 @@ public:
 	tree result = build_call_expr (tmemcpy, 3, mem,
 				       build_address (ctor), size);
 
-	/* Return the array pointed to by MEM.   */
+	/* Return the array pointed to by MEM.  */
 	result = compound_expr (result, mem);
 
 	if (tb->ty == Tarray)
@@ -2848,7 +2822,7 @@ public:
       }
 
     /* Building sinit trees are delayed until after frontend semantic
-       processing has complete.  Build the static initialiser now.  */
+       processing has complete.  Build the static initializer now.  */
     if (e->useStaticInit && !this->constp_)
       {
 	this->result_ = aggregate_initializer_decl (e->sd);
@@ -3057,13 +3031,15 @@ public:
 
   void visit (ScopeExp *e)
   {
-    e->error ("%s is not an expression", e->toChars ());
+    error_at (make_location_t (e->loc), "%qs is not an expression",
+	      e->toChars ());
     this->result_ = error_mark_node;
   }
 
   void visit (TypeExp *e)
   {
-    e->error ("type %s is not an expression", e->toChars ());
+    error_at (make_location_t (e->loc), "type %qs is not an expression",
+	      e->toChars ());
     this->result_ = error_mark_node;
   }
 };
@@ -3079,7 +3055,7 @@ build_expr (Expression *e, bool const_p)
   ExprVisitor v = ExprVisitor (const_p);
   location_t saved_location = input_location;
 
-  input_location = get_linemap (e->loc);
+  input_location = make_location_t (e->loc);
   e->accept (&v);
   tree expr = v.result ();
   input_location = saved_location;
@@ -3087,7 +3063,8 @@ build_expr (Expression *e, bool const_p)
   /* Check if initializer expression is valid constant.  */
   if (const_p && !initializer_constant_valid_p (expr, TREE_TYPE (expr)))
     {
-      e->error ("non-constant expression %s", e->toChars ());
+      error_at (make_location_t (e->loc), "non-constant expression %qs",
+		e->toChars ());
       return error_mark_node;
     }
 
@@ -3121,7 +3098,7 @@ build_return_dtor (Expression *e, Type *type, TypeFunction *tf)
   size_t saved_vars = vec_safe_length (d_function_chain->vars_in_scope);
   tree result = build_expr (e);
 
-  /* Convert for initialising the DECL_RESULT.  */
+  /* Convert for initializing the DECL_RESULT.  */
   result = convert_expr (result, e->type, type);
 
   /* If we are returning a reference, take the address.  */

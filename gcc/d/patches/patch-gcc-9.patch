@@ -243,3 +243,14 @@ relevant documentation about the GDC front end.
    /* Next come the entries for C.  */
    {".c", "@c", 0, 0, 1},
    {"@c",
+--- a/gcc/testsuite/gcc.misc-tests/help.exp
++++ b/gcc/testsuite/gcc.misc-tests/help.exp
+@@ -115,7 +115,7 @@ check_for_options c "--help=joined,undoc
+ # subsystem.  Do this one help class at a time to make it easier to
+ # find the source a failure.
+ 
+-foreach cls { "ada" "c" "c++" "fortran" "go" \
++foreach cls { "ada" "c" "c++" "d" "fortran" "go" \
+ 		    "optimizers" "param" "target" "warnings" } {
+ 
+     check_for_options c "--help=$cls" "" "^ +-.*\[^:.\]$" ""

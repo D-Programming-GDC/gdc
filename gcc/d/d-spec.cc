@@ -23,9 +23,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "tm.h"
 #include "opts.h"
 
-/* This bit is set if the arguments is a D source file. */
+/* This bit is set if the arguments is a D source file.  */
 #define DSOURCE		(1<<1)
-/* this bit is set if they did `-lstdc++'.  */
+/* This bit is set if they did `-lstdc++'.  */
 #define WITHLIBCXX	(1<<2)
 /* Skip this option.  */
 #define SKIPOPT		(1<<3)
@@ -51,16 +51,25 @@ along with GCC; see the file COPYING3.  If not see
 #define LIBDRUNTIME_PROFILE LIBDRUNTIME
 #endif
 
-/* What do with libgphobos:
-   -1 means we should not link in libgphobos
-   0  means we should link in libgphobos if it is needed
-   1  means libgphobos is needed and should be linked in.
-   2  means libgphobos is needed and should be linked statically.
-   3  means libgphobos is needed and should be linked dynamically. */
-static int library = 0;
+/* What do with libgphobos.  */
+enum phobos_action
+{
+  /* libgphobos should not be linked in.  */
+  PHOBOS_NOLINK = -1,
+  /* libgphobos should be linked in if it is needed.  */
+  PHOBOS_DEFAULT = 0,
+  /* libgphobos is needed and should be linked in.  */
+  PHOBOS_LINK,
+  /* libgphobos is needed and should be linked statically.  */
+  PHOBOS_STATIC,
+  /* libgphobos is needed and should be linked dynamically.  */
+  PHOBOS_DYNAMIC,
+};
+
+static phobos_action phobos_library = PHOBOS_DEFAULT;
 
 /* If true, use the standard D runtime library when linking with
-   standard libraries. */
+   standard libraries.  */
 static bool need_phobos = true;
 
 void
@@ -73,7 +82,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* If nonzero, the user gave us the `-p' or `-pg' flag.  */
   int saw_profile_flag = 0;
 
-  /* If true, the user gave `-g'.  Used by -debuglib */
+  /* If true, the user gave `-g'.  Used by -debuglib.  */
   bool saw_debug_flag = false;
 
   /* The new argument list will be contained in this.  */
@@ -85,16 +94,16 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* Whether we need the C++ STD library.  */
   bool need_stdcxx = false;
 
-  /* True if we saw -static. */
+  /* True if we saw -static.  */
   bool static_link = false;
 
   /* True if we should add -shared-libgcc to the command-line.  */
   bool shared_libgcc = true;
 
-  /* What default library to use instead of phobos */
+  /* What default library to use instead of phobos.  */
   const char *defaultlib = NULL;
 
-  /* What debug library to use instead of phobos */
+  /* What debug library to use instead of phobos.  */
   const char *debuglib = NULL;
 
   /* The total number of arguments with the new stuff.  */
@@ -137,7 +146,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	{
 	case OPT_nostdlib:
 	case OPT_nodefaultlibs:
-	  library = -1;
+	  phobos_library = PHOBOS_NOLINK;
 	  break;
 
 	case OPT_nophoboslib:
@@ -176,9 +185,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	      args[i] |= WITHLIBCXX;
 	      need_stdcxx = false;
 	    }
-	  else
-	    /* Unrecognized libraries (e.g. -ltango) may require libphobos.  */
-	    library = (library == 0) ? 1 : library;
+	  /* Unrecognized libraries (e.g. -ltango) may require libphobos.  */
+	  else if (phobos_library == PHOBOS_DEFAULT)
+	    phobos_library = PHOBOS_LINK;
 	  break;
 
 	case OPT_pg:
@@ -193,21 +202,20 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	case OPT_v:
 	  /* If they only gave us `-v', don't try to link in libphobos.  */
 	  if (argc == 2)
-	    library = 0;
+	    phobos_library = PHOBOS_NOLINK;
 	  break;
 
 	case OPT_x:
-	  if (library == 0
-	      && (strcmp (arg, "d") == 0))
-	    library = 1;
+	  if (phobos_library == PHOBOS_DEFAULT && (strcmp (arg, "d") == 0))
+	    phobos_library = PHOBOS_LINK;
 	  break;
 
 	case OPT_Xlinker:
 	case OPT_Wl_:
 	  /* Arguments that go directly to the linker might be .o files
 	     or something, and so might cause libphobos to be needed.  */
-	  if (library == 0)
-	    library = 1;
+	  if (phobos_library == PHOBOS_DEFAULT)
+	    phobos_library = PHOBOS_LINK;
 	  break;
 
 	case OPT_c:
@@ -218,12 +226,12 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  /* Don't specify libaries if we won't link, since that would
 	     cause a warning.  */
 	  saw_opt_c = true;
-	  library = -1;
+	  phobos_library = PHOBOS_NOLINK;
 	  break;
 
 	case OPT_S:
 	  saw_opt_S = true;
-	  library = -1;
+	  phobos_library = PHOBOS_NOLINK;
 	  break;
 
 	case OPT_o:
@@ -239,12 +247,14 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_static_libphobos:
-	  library = library >= 0 ? 2 : library;
+	  if (phobos_library != PHOBOS_NOLINK)
+	    phobos_library = PHOBOS_STATIC;
 	  args[i] |= SKIPOPT;
 	  break;
 
 	case OPT_shared_libphobos:
-	  library = library >= 0 ? 3 : library;
+	  if (phobos_library != PHOBOS_NOLINK)
+	    phobos_library = PHOBOS_DYNAMIC;
 	  args[i] |= SKIPOPT;
 	  break;
 
@@ -254,45 +264,40 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 	  if (arg != NULL)
 	    {
-	      int len = strlen (only_source_option);
-	      if (len <= 2 || only_source_option[len-1] != 'd'
-		  || only_source_option[len-2] != '.')
+	      const char *suffix = strrchr (only_source_option, '.');
+	      if (suffix == NULL || strcmp (suffix, ".d") != 0)
 		only_source_option = concat (only_source_option, ".d", NULL);
 	    }
 	  break;
 
 	case OPT_SPECIAL_input_file:
-	    {
-	      if (arg[0] == '\0' || arg[1] == '\0')
-		continue;
+	  {
+	    if (arg[0] == '\0' || arg[1] == '\0')
+	      continue;
 
-	      /* Record that this is a D source file.  */
-	      int len = strlen (arg);
-	      if (len <= 2 || strcmp (arg + len - 2, ".d") == 0)
-		{
-		  if (first_d_file == NULL)
-		    first_d_file = arg;
+	    if (phobos_library == PHOBOS_DEFAULT)
+	      phobos_library = PHOBOS_LINK;
 
-		  args[i] |= DSOURCE;
-		}
+	    /* Record that this is a D source file.  */
+	    const char *suffix = strrchr (arg, '.');
+	    if (suffix != NULL && strcmp (suffix, ".d") == 0)
+	      {
+		if (first_d_file == NULL)
+		  first_d_file = arg;
 
-	      /* If we don't know that this is a interface file, we might
-		 need to link against libphobos library.  */
-	      if (library == 0)
-		{
-		  if (len <= 3 || strcmp (arg + len - 3, ".di") != 0)
-		    library = 1;
-		}
+		args[i] |= DSOURCE;
+	      }
 
-	      /* If this is a C++ source file, we'll need to link
-		 against libstdc++ library.  */
-	      if ((len <= 3 || strcmp (arg + len - 3, ".cc") == 0)
-		  || (len <= 4 || strcmp (arg + len - 4, ".cpp") == 0)
-		  || (len <= 4 || strcmp (arg + len - 4, ".c++") == 0))
-		need_stdcxx = true;
+	    /* If this is a C++ source file, we'll need to link
+	       against libstdc++ library.  */
+	    if (suffix != NULL
+		&& (strcmp (suffix, ".cc") == 0
+		    || (strcmp (suffix, ".cpp") == 0)
+		    || (strcmp (suffix, ".c++") == 0)))
+	      need_stdcxx = true;
 
-	      break;
-	    }
+	    break;
+	  }
 	}
     }
 
@@ -306,7 +311,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
      - needstdcxx might add `-lstdcxx'
      - libphobos adds `-Bstatic -lphobos -ldruntime -Bdynamic'
      - only_source adds 1 more arg, also maybe add `-o'.  */
-  num_args = argc + need_stdcxx + shared_libgcc + (library > 0) * 4 + 2;
+  num_args = argc + need_stdcxx + shared_libgcc + need_phobos * 4 + 2;
   new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 
   i = 0;
@@ -326,7 +331,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
       new_decoded_options[j] = decoded_options[i];
 
-      if (!saw_libcxx && (args[i] & WITHLIBCXX) && library > 0)
+      if (!saw_libcxx && (args[i] & WITHLIBCXX))
 	{
 	  --j;
 	  saw_libcxx = &decoded_options[i];
@@ -353,9 +358,13 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 				  &new_decoded_options[j++]);
     }
 
-  /* If we didn't see a -o option, add one.  This is because we need
-     the driver to pass all .d files to cc1d.  Without a -o option the
-     driver will invoke cc1d separately for each input file.  */
+  /* If no reason to link against libphobos library, then don't add it.  */
+  if (phobos_library == PHOBOS_DEFAULT)
+    phobos_library = PHOBOS_NOLINK;
+
+  /* If we didn't see a -o option, add one.  This is because we need the
+     driver to pass all .d files to the D compiler.  Without a -o option
+     the driver will invoke the compiler separately for each input file.  */
   if (first_d_file != NULL && !saw_opt_o)
     {
       if (saw_opt_c || saw_opt_S)
@@ -394,20 +403,20 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
     }
 
   /* Add `-lgphobos' if we haven't already done so.  */
-  if (library > 0 && need_phobos)
+  if (phobos_library != PHOBOS_NOLINK && need_phobos)
     {
       /* Default to static linking.  */
-      if (library == 1)
-        library = 2;
+      if (phobos_library != PHOBOS_DYNAMIC)
+	phobos_library = PHOBOS_STATIC;
 
 #ifdef HAVE_LD_STATIC_DYNAMIC
-      if (library == 3 && static_link)
+      if (phobos_library == PHOBOS_DYNAMIC && static_link)
 	{
 	  generate_option (OPT_Wl_, LD_DYNAMIC_OPTION, 1, CL_DRIVER,
 			   &new_decoded_options[j]);
 	  j++;
 	}
-      else if (library == 2 && !static_link)
+      else if (phobos_library == PHOBOS_STATIC && !static_link)
 	{
 	  generate_option (OPT_Wl_, LD_STATIC_OPTION, 1, CL_DRIVER,
 			   &new_decoded_options[j]);
@@ -427,13 +436,13 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
       j++;
 
 #ifdef HAVE_LD_STATIC_DYNAMIC
-      if (library == 3 && static_link)
+      if (phobos_library == PHOBOS_DYNAMIC && static_link)
 	{
 	  generate_option (OPT_Wl_, LD_STATIC_OPTION, 1, CL_DRIVER,
 			   &new_decoded_options[j]);
 	  j++;
 	}
-      else if (library == 2 && !static_link)
+      else if (phobos_library == PHOBOS_STATIC && !static_link)
 	{
 	  generate_option (OPT_Wl_, LD_DYNAMIC_OPTION, 1, CL_DRIVER,
 			   &new_decoded_options[j]);
@@ -456,7 +465,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
   if (saw_libcxx)
     new_decoded_options[j++] = *saw_libcxx;
-  else if (library > 0 && need_stdcxx)
+  else if (need_stdcxx)
     {
       generate_option (OPT_l,
 		       (saw_profile_flag
@@ -479,9 +488,10 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 /* Called before linking.  Returns 0 on success and -1 on failure.  */
 
-int lang_specific_pre_link (void)
+int
+lang_specific_pre_link (void)
 {
-  if (library > 0 && need_phobos)
+  if (phobos_library != PHOBOS_NOLINK && need_phobos)
     do_spec ("%:include(libgphobos.spec)");
 
   return 0;

@@ -1,4 +1,4 @@
-/* d-frontend.cc -- D frontend interface to the gcc backend.
+/* d-frontend.cc -- D frontend interface to the gcc back-end.
    Copyright (C) 2013-2018 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
@@ -110,7 +110,7 @@ Port::memicmp (const char *s1, const char *s2, size_t n)
   return result;
 }
 
-/* Convert all characters in S to upper case.  */
+/* Convert all characters in S to uppercase.  */
 
 char *
 Port::strupr (char *s)
@@ -126,7 +126,7 @@ Port::strupr (char *s)
   return t;
 }
 
-/* Return true a if the real_t value from string BUFFER overflows
+/* Return true if the real_t value from string BUFFER overflows
    as a result of rounding down to float mode.  */
 
 bool
@@ -139,7 +139,7 @@ Port::isFloat32LiteralOutOfRange (const char *buffer)
   return r == Target::RealProperties::infinity;
 }
 
-/* Return true a if the real_t value from string BUFFER overflows
+/* Return true if the real_t value from string BUFFER overflows
    as a result of rounding down to double mode.  */
 
 bool
@@ -172,19 +172,6 @@ Port::readwordBE (void *buffer)
   return ((unsigned) p[0] << 8) | (unsigned) p[1];
 }
 
-/* Write a little-endian 32-bit VALUE to BUFFER.  */
-
-void
-Port::writelongLE (unsigned value, void *buffer)
-{
-    unsigned char *p = (unsigned char*) buffer;
-
-    p[0] = (unsigned) value;
-    p[1] = (unsigned) value >> 8;
-    p[2] = (unsigned) value >> 16;
-    p[3] = (unsigned) value >> 24;
-}
-
 /* Fetch a little-endian 32-bit value from BUFFER.  */
 
 unsigned
@@ -193,22 +180,9 @@ Port::readlongLE (void *buffer)
   unsigned char *p = (unsigned char*) buffer;
 
   return (((unsigned) p[3] << 24)
-          | ((unsigned) p[2] << 16)
-          | ((unsigned) p[1] << 8)
-          | (unsigned) p[0]);
-}
-
-/* Write a big-endian 32-bit VALUE to BUFFER.  */
-
-void
-Port::writelongBE (unsigned value, void *buffer)
-{
-    unsigned char *p = (unsigned char*) buffer;
-
-    p[0] = (unsigned) value >> 24;
-    p[1] = (unsigned) value >> 16;
-    p[2] = (unsigned) value >> 8;
-    p[3] = (unsigned) value;
+	  | ((unsigned) p[2] << 16)
+	  | ((unsigned) p[1] << 8)
+	  | (unsigned) p[0]);
 }
 
 /* Fetch a big-endian 32-bit value from BUFFER.  */
@@ -219,9 +193,9 @@ Port::readlongBE (void *buffer)
   unsigned char *p = (unsigned char*) buffer;
 
   return (((unsigned) p[0] << 24)
-          | ((unsigned) p[1] << 16)
-          | ((unsigned) p[2] << 8)
-          | (unsigned) p[3]);
+	  | ((unsigned) p[1] << 16)
+	  | ((unsigned) p[2] << 8)
+	  | (unsigned) p[3]);
 }
 
 /* Write an SZ-byte sized VALUE to BUFFER, ignoring endian-ness.  */
@@ -367,7 +341,7 @@ CTFloat::sprint (char *buffer, char fmt, real_t r)
 size_t
 CTFloat::hash (real_t r)
 {
-    return real_hash (&r.rv ());
+  return real_hash (&r.rv ());
 }
 
 /* Implements the Compiler interface used by the frontend.  */
@@ -529,7 +503,7 @@ Compiler::onImport (Module *)
   return false;
 }
 
-/* Implements backend-specific interfaces used by the frontend.  */
+/* Implements back-end specific interfaces used by the frontend.  */
 
 /* Determine if function FD is a builtin one that we can evaluate in CTFE.  */
 
@@ -559,7 +533,7 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
 
   TypeFunction *tf = (TypeFunction *) fd->type;
   Expression *e = NULL;
-  input_location = get_linemap (loc);
+  input_location = make_location_t (loc);
 
   tree result = d_build_call (tf, decl, NULL, arguments);
   result = fold (result);
@@ -580,14 +554,15 @@ getTypeInfoType (Loc loc, Type *type, Scope *sc)
   if (!global.params.useTypeInfo)
     {
       /* Even when compiling without RTTI we should still be able to evaluate
-	 TypeInfo at compile-time, just not at runtime.  */
+	 TypeInfo at compile-time, just not at run-time.  */
       if (!sc || !(sc->flags & SCOPEctfe))
 	{
 	  static int warned = 0;
 
 	  if (!warned)
 	    {
-	      error (loc, "`object.TypeInfo` cannot be used with -fno-rtti");
+	      error_at (make_location_t (loc),
+			"%<object.TypeInfo%> cannot be used with -fno-rtti");
 	      warned = 1;
 	    }
 	}
@@ -601,8 +576,9 @@ getTypeInfoType (Loc loc, Type *type, Scope *sc)
 
       if (!loc.equals (warnloc))
 	{
-	  error (loc, "`object.TypeInfo` could not be found, "
-		      "but is implicitly used");
+	  error_at (make_location_t (loc),
+		    "%<object.TypeInfo%> could not be found, "
+		    "but is implicitly used");
 	  warnloc = loc;
 	}
     }

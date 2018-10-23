@@ -90,7 +90,7 @@ pop_label (Statement * const &s, d_label_entry *ent, tree block)
 /* The D front-end does not use the 'binding level' system for a symbol table,
    however it has been the goto structure for tracking code flow.
    Primarily it is only needed to get debugging information for local variables
-   and otherwise support the backend.  */
+   and otherwise support the back-end.  */
 
 void
 push_binding_level (level_kind kind)
@@ -130,7 +130,7 @@ pop_binding_level (void)
   else
     {
       /* Any uses of undefined labels, and any defined labels, now operate
-         under constraints of next binding contour.  */
+	 under constraints of next binding contour.  */
       if (d_function_chain && d_function_chain->labels)
 	{
 	  language_function *f = d_function_chain;
@@ -163,8 +163,8 @@ pop_stmt_list (void)
   tree t = d_function_chain->stmt_list->pop ();
 
   /* If the statement list is completely empty, just return it.  This is just
-     as good small as build_empty_stmt, with the advantage that statement
-     lists are merged when they appended to one another.  So using the
+     as good as build_empty_stmt, with the advantage that statement lists
+     are merged when they are appended to one another.  So using the
      STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P statements.  */
   if (TREE_SIDE_EFFECTS (t))
     {
@@ -254,14 +254,14 @@ public:
   void build_stmt (Statement *s)
   {
     location_t saved_location = input_location;
-    input_location = get_linemap (s->loc);
+    input_location = make_location_t (s->loc);
     s->accept (this);
     input_location = saved_location;
   }
 
   /* Start a new scope for a KIND statement.
      Each user-declared variable will have a binding contour that begins
-     where the variable is declared and ends at it's containing scope.  */
+     where the variable is declared and ends at its containing scope.  */
 
   void start_scope (level_kind kind)
   {
@@ -367,9 +367,9 @@ public:
       }
 
     if (ent->in_try_scope)
-      from->error ("cannot goto into try block");
+      error_at (make_location_t (from->loc), "cannot goto into try block");
     else if (ent->in_catch_scope)
-      from->error ("cannot goto into catch block");
+      error_at (make_location_t (from->loc), "cannot goto into catch block");
   }
 
   /* Check that a previously seen jump to a newly defined label is valid.
@@ -385,21 +385,26 @@ public:
 
 	if (b->kind == level_try || b->kind == level_catch)
 	  {
+	    location_t location;
+
 	    if (s->isLabelStatement ())
 	      {
+		location = make_location_t (fwdref->statement->loc);
 		if (b->kind == level_try)
-		  fwdref->statement->error ("cannot goto into try block");
+		  error_at (location, "cannot goto into try block");
 		else
-		  fwdref->statement->error ("cannot goto into catch block");
+		  error_at (location, "cannot goto into catch block");
 	      }
 	    else if (s->isCaseStatement ())
 	      {
-		s->error ("case cannot be in different "
+		location = make_location_t (s->loc);
+		error_at (location, "case cannot be in different "
 			  "try block level from switch");
 	      }
 	    else if (s->isDefaultStatement ())
 	      {
-		s->error ("default cannot be in different "
+		location = make_location_t (s->loc);
+		error_at (location, "default cannot be in different "
 			  "try block level from switch");
 	      }
 	    else
@@ -433,7 +438,7 @@ public:
     else
       {
 	tree name = ident ? get_identifier (ident->toChars ()) : NULL_TREE;
-	tree decl = build_decl (get_linemap (s->loc), LABEL_DECL,
+	tree decl = build_decl (make_location_t (s->loc), LABEL_DECL,
 				name, void_type_node);
 	DECL_CONTEXT (decl) = current_function_decl;
 	DECL_MODE (decl) = VOIDmode;
@@ -467,7 +472,7 @@ public:
 	TREE_VEC_ELT (vec, bc_break) = ent->label;
 
 	/* Build the continue label.  */
-	tree label = build_decl (get_linemap (s->loc), LABEL_DECL,
+	tree label = build_decl (make_location_t (s->loc), LABEL_DECL,
 				 NULL_TREE, void_type_node);
 	DECL_CONTEXT (label) = current_function_decl;
 	DECL_MODE (label) = VOIDmode;
@@ -529,7 +534,7 @@ public:
   }
 
   /* The frontend lowers `scope (exit/failure/success)' statements as
-     try/catch/finally. At this point, this statement is just an empty
+     try/catch/finally.  At this point, this statement is just an empty
      placeholder.  Maybe the frontend shouldn't leak these.  */
 
   void visit (OnScopeStatement *)
@@ -765,8 +770,8 @@ public:
        It is not lowered during codegen.  */
     if (!condtype->isscalar ())
       {
-	::error ("cannot handle switch condition of type %s",
-		 condtype->toChars ());
+	error ("cannot handle switch condition of type %s",
+	       condtype->toChars ());
 	gcc_unreachable ();
       }
 
@@ -945,7 +950,7 @@ public:
       }
     else
       {
-	/* Convert for initialising the DECL_RESULT.  */
+	/* Convert for initializing the DECL_RESULT.  */
 	tree expr = build_return_dtor (s->exp, type, tf);
 	add_stmt (expr);
       }
@@ -1050,7 +1055,7 @@ public:
 
   /* Implements 'throw Object'.  Frontend already checks that the object
      thrown is a class type, but does not check if it is derived from
-     Object.  Foreign objects are not currently supported in runtime.  */
+     Object.  Foreign objects are not currently supported at run-time.  */
 
   void visit (ThrowStatement *s)
   {
@@ -1063,16 +1068,16 @@ public:
 	static int warned = 0;
 	if (!warned)
 	  {
-	    s->error ("exception handling disabled, "
+	    error_at (make_location_t (s->loc), "exception handling disabled, "
 		      "use -fexceptions to enable");
 	    warned = 1;
 	  }
       }
 
     if (cd->isCPPclass () || (id != NULL && id->isCPPclass ()))
-      s->error ("cannot throw C++ classes");
+      error_at (make_location_t (s->loc), "cannot throw C++ classes");
     else if (cd->com || (id != NULL && id->com))
-      s->error ("cannot throw COM objects");
+      error_at (make_location_t (s->loc), "cannot throw COM objects");
     else
       arg = build_nop (build_ctype (get_object_type ()), arg);
 
@@ -1155,14 +1160,14 @@ public:
 
     tree catches = pop_stmt_list ();
 
-    /* Backend expects all catches in a TRY_CATCH_EXPR to be enclosed in a
-       statement list, however pop_stmt_list may optimise away the list
+    /* Back-end expects all catches in a TRY_CATCH_EXPR to be enclosed in a
+       statement list, however pop_stmt_list may optimize away the list
        if there is only a single catch to push.  */
     if (TREE_CODE (catches) != STATEMENT_LIST)
       {
-        tree stmt_list = alloc_stmt_list ();
-        append_to_statement_list_force (catches, &stmt_list);
-        catches = stmt_list;
+	tree stmt_list = alloc_stmt_list ();
+	append_to_statement_list_force (catches, &stmt_list);
+	catches = stmt_list;
       }
 
     add_stmt (build2 (TRY_CATCH_EXPR, void_type_node, trybody, catches));
@@ -1199,7 +1204,7 @@ public:
     gcc_unreachable ();
   }
 
-  /* D Inline Assembler is not implemented, as would require a writing
+  /* D Inline Assembler is not implemented, as it would require writing
      an assembly parser for each supported target.  Instead we leverage
      GCC extended assembler using the GccAsmStatement class.  */
 
@@ -1264,7 +1269,7 @@ public:
       }
 
     /* Collect all goto labels, these should have been already checked
-       by the front-end, so pass down the label symbol to the backend.  */
+       by the front-end, so pass down the label symbol to the back-end.  */
     if (s->labels)
       {
 	for (size_t i = 0; i < s->labels->dim; i++)
@@ -1342,7 +1347,7 @@ public:
 
     tree exp = build5 (ASM_EXPR, void_type_node, string,
 		       outputs, inputs, clobbers, labels);
-    SET_EXPR_LOCATION (exp, get_linemap (s->loc));
+    SET_EXPR_LOCATION (exp, make_location_t (s->loc));
 
     /* If the extended syntax was not used, mark the ASM_EXPR.  */
     if (s->args == NULL && s->clobbers == NULL)
@@ -1379,7 +1384,7 @@ build_function_body (FuncDeclaration *fd)
 {
   IRVisitor v = IRVisitor (fd);
   location_t saved_location = input_location;
-  input_location = get_linemap (fd->loc);
+  input_location = make_location_t (fd->loc);
   v.build_stmt (fd->fbody);
   input_location = saved_location;
 }

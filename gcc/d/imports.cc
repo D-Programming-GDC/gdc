@@ -34,7 +34,7 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Implements the visitor interface to build debug trees for all
    module and import declarations, where ISYM holds the cached
-   backend representation to be returned.  */
+   back-end representation to be returned.  */
 class ImportVisitor : public Visitor
 {
   using Visitor::visit;
@@ -53,7 +53,9 @@ class ImportVisitor : public Visitor
   }
 
 public:
-  ImportVisitor (void) {}
+  ImportVisitor (void)
+  {
+  }
 
   /* This should be overridden by each symbol class.  */
   void visit (Dsymbol *)
@@ -68,7 +70,7 @@ public:
     Loc loc = (m->md != NULL) ? m->md->loc
       : Loc (m->srcfile->toChars (), 1, 0);
 
-    m->isym = build_decl (get_linemap (loc), NAMESPACE_DECL,
+    m->isym = build_decl (make_location_t (loc), NAMESPACE_DECL,
 			  get_identifier (m->toPrettyChars ()),
 			  void_type_node);
     d_keep (m->isym);
@@ -195,7 +197,7 @@ build_import_decl (Dsymbol *d)
       location_t saved_location = input_location;
       ImportVisitor v;
 
-      input_location = get_linemap (d->loc);
+      input_location = make_location_t (d->loc);
       d->accept (&v);
       input_location = saved_location;
     }

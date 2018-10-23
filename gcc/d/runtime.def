@@ -18,7 +18,7 @@ along with GCC; see the file COPYING3.  If not see
 /* D runtime library functions.  */
 
 /* DEF_D_RUNTIME (CODE, NAME, FLAGS)
-   CODE	    The enum code used to refer this function.
+   CODE	    The enum code used to refer to this function.
    NAME	    The name of this function as a string.
    FLAGS    ECF flags to describe attributes of the function.
 
@@ -67,7 +67,7 @@ DEF_D_RUNTIME (INTERFACE_CAST, "_d_interface_cast", RT(OBJECT),
 	       P2(OBJECT, CLASSINFO), 0)
 
 /* Used when calling new on a pointer.  The `i' variant is for when the
-   initialiser is non-zero.  */
+   initializer is nonzero.  */
 DEF_D_RUNTIME (NEWITEMT, "_d_newitemT", RT(VOIDPTR), P1(CONST_TYPEINFO), 0)
 DEF_D_RUNTIME (NEWITEMIT, "_d_newitemiT", RT(VOIDPTR), P1(CONST_TYPEINFO), 0)
 
@@ -77,7 +77,7 @@ DEF_D_RUNTIME (DELSTRUCT, "_d_delstruct", RT(VOID),
 	       P2(POINTER_VOIDPTR, TYPEINFO), 0)
 
 /* Used when calling new on an array.  The `i' variant is for when the
-   initialiser is non-zero, and the `m' variant is when initialising a
+   initializer is nonzero, and the `m' variant is when initializing a
    multi-dimensional array.  */
 DEF_D_RUNTIME (NEWARRAYT, "_d_newarrayT", RT(ARRAY_VOID),
 	       P2(CONST_TYPEINFO, SIZE_T), 0)
@@ -107,7 +107,7 @@ DEF_D_RUNTIME (ARRAYCAST, "_d_arraycast", RT(ARRAY_VOID),
 	       P3(SIZE_T, SIZE_T, ARRAY_VOID), 0)
 
 /* Used for (array.length = n) expressions.  The `i' variant is for when the
-   initialiser is non-zero.  */
+   initializer is nonzero.  */
 DEF_D_RUNTIME (ARRAYSETLENGTHT, "_d_arraysetlengthT", RT(ARRAY_VOID),
 	       P3(CONST_TYPEINFO, SIZE_T, ARRAYPTR_VOID), 0)
 DEF_D_RUNTIME (ARRAYSETLENGTHIT, "_d_arraysetlengthiT", RT(ARRAY_VOID),

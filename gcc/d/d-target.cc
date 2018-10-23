@@ -41,7 +41,7 @@ along with GCC; see the file COPYING3.  If not see
 /* Implements the Target interface defined by the front end.
    Used for retrieving target-specific information.  */
 
-/* Floating point constants for for .max, .min, and other properties.  */
+/* Floating-point constants for for .max, .min, and other properties.  */
 template <typename T> real_t Target::FPTypeProperties<T>::max;
 template <typename T> real_t Target::FPTypeProperties<T>::min_normal;
 template <typename T> real_t Target::FPTypeProperties<T>::nan;
@@ -56,7 +56,7 @@ template <typename T> d_int64 Target::FPTypeProperties<T>::max_10_exp;
 template <typename T> d_int64 Target::FPTypeProperties<T>::min_10_exp;
 
 
-/* Initialize the floating point constants for TYPE.  */
+/* Initialize the floating-point constants for TYPE.  */
 
 template <typename T>
 static void
@@ -65,7 +65,7 @@ define_float_constants (tree type)
   const double log10_2 = 0.30102999566398119521;
   char buf[128];
 
-  /* Get backend real mode format.  */
+  /* Get back-end real mode format.  */
   const machine_mode mode = TYPE_MODE (type);
   const real_format *fmt = REAL_MODE_FORMAT (mode);
 
@@ -119,14 +119,14 @@ define_float_constants (tree type)
 void
 Target::_init (void)
 {
-  /* Map D frontend type and sizes to GCC backend types.  */
+  /* Map D frontend type and sizes to GCC back-end types.  */
   Target::ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
   Target::realsize = int_size_in_bytes (long_double_type_node);
   Target::realpad = (Target::realsize -
 		     (TYPE_PRECISION (long_double_type_node) / BITS_PER_UNIT));
   Target::realalignsize = TYPE_ALIGN_UNIT (long_double_type_node);
 
-  /* Size of runtime TypeInfo object.  */
+  /* Size of run-time TypeInfo object.  */
   Target::classinfosize = 19 * Target::ptrsize;
 
   /* Allow data sizes up to half of the address space.  */
@@ -158,7 +158,7 @@ Target::_init (void)
   Target::cppExceptions = true;
   Target::twoDtorInVtable = true;
 
-  /* Initialize all compile-time properties for floating point types.
+  /* Initialize all compile-time properties for floating-point types.
      Should ensure that our real_t type is able to represent real_value.  */
   gcc_assert (sizeof (real_t) >= sizeof (real_value));
 
@@ -166,7 +166,7 @@ Target::_init (void)
   define_float_constants <Target::DoubleProperties> (double_type_node);
   define_float_constants <Target::RealProperties> (long_double_type_node);
 
-  /* Commonly used floating point constants.  */
+  /* Commonly used floating-point constants.  */
   const machine_mode mode = TYPE_MODE (long_double_type_node);
   real_convert (&CTFloat::zero.rv (), mode, &dconst0);
   real_convert (&CTFloat::one.rv (), mode, &dconst1);
@@ -243,7 +243,7 @@ Target::isVectorTypeSupported (int sz, Type *type)
   if (!type->isTypeBasic ())
     return 3;
 
-  /* If there is no hardware support, check if we an safely emulate it.  */
+  /* If there is no hardware support, check if we can safely emulate it.  */
   tree ctype = build_ctype (type);
   machine_mode mode = TYPE_MODE (ctype);
 
@@ -306,7 +306,7 @@ Target::isVectorOpSupported (Type *type, TOK op, Type *)
   return true;
 }
 
-/* Return the symbol mangling of S for C++ linkage. */
+/* Return the symbol mangling of S for C++ linkage.  */
 
 const char *
 Target::toCppMangle (Dsymbol *s)
@@ -328,13 +328,13 @@ Target::cppTypeInfoMangle (ClassDeclaration *cd)
 const char *
 Target::cppTypeMangle (Type *type)
 {
-    if (type->isTypeBasic () || type->ty == Tvector || type->ty == Tstruct)
+  if (type->isTypeBasic () || type->ty == Tvector || type->ty == Tstruct)
     {
-        tree ctype = build_ctype (type);
-        return targetm.mangle_type (ctype);
+      tree ctype = build_ctype (type);
+      return targetm.mangle_type (ctype);
     }
 
-    return NULL;
+  return NULL;
 }
 
 /* Return the type that will really be used for passing the given parameter
@@ -343,29 +343,29 @@ Target::cppTypeMangle (Type *type)
 Type *
 Target::cppParameterType (Parameter *arg)
 {
-    Type *t = arg->type->merge2 ();
-    if (arg->storageClass & (STCout | STCref))
-      t = t->referenceTo ();
-    else if (arg->storageClass & STClazy)
-      {
-	/* Mangle as delegate.  */
-	Type *td = TypeFunction::create (NULL, t, 0, LINKd);
-	td = TypeDelegate::create (td);
-	t = t->merge2 ();
-      }
+  Type *t = arg->type->merge2 ();
+  if (arg->storageClass & (STCout | STCref))
+    t = t->referenceTo ();
+  else if (arg->storageClass & STClazy)
+    {
+      /* Mangle as delegate.  */
+      Type *td = TypeFunction::create (NULL, t, 0, LINKd);
+      td = TypeDelegate::create (td);
+      t = t->merge2 ();
+    }
 
-    /* Could be a va_list, which we mangle as a pointer.  */
-    if (t->ty == Tsarray && Type::tvalist->ty == Tsarray)
-      {
-	Type *tb = t->toBasetype ()->mutableOf ();
-	if (tb == Type::tvalist)
-	  {
-	    tb = t->nextOf ()->pointerTo ();
-	    t = tb->castMod (t->mod);
-	  }
-      }
+  /* Could be a va_list, which we mangle as a pointer.  */
+  if (t->ty == Tsarray && Type::tvalist->ty == Tsarray)
+    {
+      Type *tb = t->toBasetype ()->mutableOf ();
+      if (tb == Type::tvalist)
+	{
+	  tb = t->nextOf ()->pointerTo ();
+	  t = tb->castMod (t->mod);
+	}
+    }
 
-    return t;
+  return t;
 }
 
 /* Return the default system linkage for the target.  */
@@ -382,7 +382,7 @@ Target::systemLinkage (void)
 bool
 Target::isReturnOnStack (TypeFunction *, bool)
 {
-  /* Need the backend type to determine this, but this is called from the
+  /* Need the back-end type to determine this, but this is called from the
      frontend before semantic processing is finished.  An accurate value
      is not currently needed anyway.  */
   return true;
