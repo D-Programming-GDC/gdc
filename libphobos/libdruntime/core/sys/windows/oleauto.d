@@ -8,8 +8,7 @@
  */
 module core.sys.windows.oleauto;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "oleaut32");
+pragma(lib, "oleaut32");
 
 import core.sys.windows.oaidl;
 private import core.sys.windows.basetyps, core.sys.windows.unknwn, core.sys.windows.windef, core.sys.windows.wtypes;

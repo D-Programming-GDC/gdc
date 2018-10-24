@@ -92,7 +92,7 @@ The following OS versions are implemented:
  # Target specific, Fortran specific object file
  FORTRAN_TARGET_OBJS=@fortran_target_objs@
  
-@@ -1785,6 +1793,7 @@ bconfig.h: cs-bconfig.h ; @true
+@@ -1786,6 +1794,7 @@ bconfig.h: cs-bconfig.h ; @true
  tconfig.h: cs-tconfig.h ; @true
  tm.h: cs-tm.h ; @true
  tm_p.h: cs-tm_p.h ; @true
@@ -100,7 +100,7 @@ The following OS versions are implemented:
  
  cs-config.h: Makefile
  	TARGET_CPU_DEFAULT="" \
-@@ -1811,6 +1820,11 @@ cs-tm_p.h: Makefile
+@@ -1812,6 +1821,11 @@ cs-tm_p.h: Makefile
  	HEADERS="$(tm_p_include_list)" DEFINES="" \
  	$(SHELL) $(srcdir)/mkconfig.sh tm_p.h
  
@@ -112,7 +112,7 @@ The following OS versions are implemented:
  # Don't automatically run autoconf, since configure.ac might be accidentally
  # newer than configure.  Also, this writes into the source directory which
  # might be on a read-only file system.  If configured for maintainer mode
-@@ -2177,6 +2191,12 @@ default-c.o: config/default-c.c
+@@ -2178,6 +2192,12 @@ default-c.o: config/default-c.c
  CFLAGS-prefix.o += -DPREFIX=\"$(prefix)\" -DBASEVER=$(BASEVER_s)
  prefix.o: $(BASEVER)
  
@@ -125,7 +125,7 @@ The following OS versions are implemented:
  # Language-independent files.
  
  DRIVER_DEFINES = \
-@@ -2473,6 +2493,15 @@ s-common-target-hooks-def-h: build/genho
+@@ -2474,6 +2494,15 @@ s-common-target-hooks-def-h: build/genho
  					     common/common-target-hooks-def.h
  	$(STAMP) s-common-target-hooks-def-h
  
@@ -141,7 +141,7 @@ The following OS versions are implemented:
  # check if someone mistakenly only changed tm.texi.
  # We use a different pathname here to avoid a circular dependency.
  s-tm-texi: $(srcdir)/doc/../doc/tm.texi
-@@ -2496,6 +2525,7 @@ s-tm-texi: build/genhooks$(build_exeext)
+@@ -2497,6 +2526,7 @@ s-tm-texi: build/genhooks$(build_exeext)
  	  && ( test $(srcdir)/doc/tm.texi -nt $(srcdir)/target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/c-family/c-target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/common/common-target.def \
@@ -149,7 +149,7 @@ The following OS versions are implemented:
  	  ); then \
  	  echo >&2 ; \
  	  echo You should edit $(srcdir)/doc/tm.texi.in rather than $(srcdir)/doc/tm.texi . >&2 ; \
-@@ -2633,14 +2663,15 @@ s-gtype: build/gengtype$(build_exeext) $
+@@ -2634,14 +2664,15 @@ s-gtype: build/gengtype$(build_exeext) $
                      -r gtype.state
  	$(STAMP) s-gtype
  
@@ -167,7 +167,7 @@ The following OS versions are implemented:
         cfn-operators.pd
  
  #
-@@ -2784,7 +2815,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
+@@ -2785,7 +2816,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE
    $(CORETYPES_H) $(GTM_H) errors.h $(READ_MD_H) $(GENSUPPORT_H)		\
    $(HASH_TABLE_H) inchash.h
  build/genhooks.o : genhooks.c $(TARGET_DEF) $(C_TARGET_DEF)		\
@@ -267,7 +267,7 @@ The following OS versions are implemented:
  	extra_headers="loongson.h msa.h"
  	extra_objs="frame-header-opt.o"
  	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
-@@ -505,6 +522,7 @@ sparc*-*-*)
+@@ -506,6 +523,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -275,7 +275,7 @@ The following OS versions are implemented:
  	extra_headers="visintrin.h"
  	;;
  spu*-*-*)
-@@ -512,6 +530,7 @@ spu*-*-*)
+@@ -513,6 +531,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -283,7 +283,7 @@ The following OS versions are implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
-@@ -541,10 +560,13 @@ tilepro*-*-*)
+@@ -542,10 +561,13 @@ tilepro*-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -297,7 +297,7 @@ The following OS versions are implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -814,8 +836,10 @@ case ${target} in
+@@ -809,8 +831,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -319,7 +319,7 @@ The following OS versions are implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4845,6 +4873,7 @@ case ${target} in
+@@ -4857,6 +4885,7 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -331,7 +331,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/aarch64/aarch64-d.c
 @@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the AArch64 architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -374,7 +374,7 @@ The following OS versions are implemented:
  /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -618,6 +618,9 @@ enum aarch64_parse_opt_result aarch64_pa
+@@ -620,6 +620,9 @@ enum aarch64_parse_opt_result aarch64_pa
  std::string aarch64_get_extension_string_for_isa_flags (unsigned long,
  							unsigned long);
  
@@ -413,7 +413,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/alpha/alpha-d.c
 @@ -0,0 +1,41 @@
 +/* Subroutines for the D front end on the Alpha architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -486,11 +486,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)					\
 +	  builtin_version ("CRuntime_Glibc");			\
 +	else if (OPTION_UCLIBC)					\
-+	  d_add_builtin_version ("CRuntime_UClibc");		\
++	  builtin_version ("CRuntime_UClibc");		\
 +	else if (OPTION_BIONIC)					\
-+	  d_add_builtin_version ("CRuntime_Bionic");		\
++	  builtin_version ("CRuntime_Bionic");		\
 +	else if (OPTION_MUSL)					\
-+	  d_add_builtin_version ("CRuntime_Musl");		\
++	  builtin_version ("CRuntime_Musl");		\
 +    } while (0)
 +
  #undef LIB_SPEC
@@ -511,7 +511,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/arm/arm-d.c
 @@ -0,0 +1,53 @@
 +/* Subroutines for the D front end on the ARM architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -616,7 +616,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/default-d.c
 @@ -0,0 +1,25 @@
 +/* Default D language target hooks initializer.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify it under
 +the terms of the GNU General Public License as published by the Free
@@ -644,7 +644,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/glibc-d.c
 @@ -0,0 +1,64 @@
 +/* Glibc support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify it under
 +the terms of the GNU General Public License as published by the Free
@@ -723,7 +723,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,44 @@
 +/* Subroutines for the D front end on the x86 architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -780,7 +780,7 @@ The following OS versions are implemented:
  extern void i386_pe_declare_function_type (FILE *, const char *, int);
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -710,6 +710,9 @@ extern const char *host_detect_local_cpu
+@@ -718,6 +718,9 @@ extern const char *host_detect_local_cpu
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
@@ -874,11 +874,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)					\
 +	  builtin_version ("CRuntime_Glibc");			\
 +	else if (OPTION_UCLIBC)					\
-+	  d_add_builtin_version ("CRuntime_UClibc");		\
++	  builtin_version ("CRuntime_UClibc");		\
 +	else if (OPTION_BIONIC)					\
-+	  d_add_builtin_version ("CRuntime_Bionic");		\
++	  builtin_version ("CRuntime_Bionic");		\
 +	else if (OPTION_MUSL)					\
-+	  d_add_builtin_version ("CRuntime_Musl");		\
++	  builtin_version ("CRuntime_Musl");		\
 +    } while (0)
 +
  /* Determine which dynamic linker to use depending on whether GLIBC or
@@ -900,7 +900,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/mips/mips-d.c
 @@ -0,0 +1,56 @@
 +/* Subroutines for the D front end on the MIPS architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -999,11 +999,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)				\
 +	  builtin_version ("CRuntime_Glibc");		\
 +	else if (OPTION_UCLIBC)				\
-+	  d_add_builtin_version ("CRuntime_UClibc");	\
++	  builtin_version ("CRuntime_UClibc");	\
 +	else if (OPTION_BIONIC)				\
-+	  d_add_builtin_version ("CRuntime_Bionic");	\
++	  builtin_version ("CRuntime_Bionic");	\
 +	else if (OPTION_MUSL)				\
-+	  d_add_builtin_version ("CRuntime_Musl");	\
++	  builtin_version ("CRuntime_Musl");	\
 +    } while (0)
 +
  #undef	CPP_OS_DEFAULT_SPEC
@@ -1021,11 +1021,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)				\
 +	  builtin_version ("CRuntime_Glibc");		\
 +	else if (OPTION_UCLIBC)				\
-+	  d_add_builtin_version ("CRuntime_UClibc");	\
++	  builtin_version ("CRuntime_UClibc");	\
 +	else if (OPTION_BIONIC)				\
-+	  d_add_builtin_version ("CRuntime_Bionic");	\
++	  builtin_version ("CRuntime_Bionic");	\
 +	else if (OPTION_MUSL)				\
-+	  d_add_builtin_version ("CRuntime_Musl");	\
++	  builtin_version ("CRuntime_Musl");	\
 +    } while (0)
 +
  #undef  CPP_OS_DEFAULT_SPEC
@@ -1035,7 +1035,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/powerpcspe/powerpcspe-d.c
 @@ -0,0 +1,45 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1093,7 +1093,7 @@ The following OS versions are implemented:
  #endif
 --- a/gcc/config/powerpcspe/powerpcspe.h
 +++ b/gcc/config/powerpcspe/powerpcspe.h
-@@ -822,6 +822,9 @@ extern unsigned char rs6000_recip_bits[]
+@@ -702,6 +702,9 @@ extern unsigned char rs6000_recip_bits[]
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1128,11 +1128,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)				\
 +	  builtin_version ("CRuntime_Glibc");		\
 +	else if (OPTION_UCLIBC)				\
-+	  d_add_builtin_version ("CRuntime_UClibc");	\
++	  builtin_version ("CRuntime_UClibc");	\
 +	else if (OPTION_BIONIC)				\
-+	  d_add_builtin_version ("CRuntime_Bionic");	\
++	  builtin_version ("CRuntime_Bionic");	\
 +	else if (OPTION_MUSL)				\
-+	  d_add_builtin_version ("CRuntime_Musl");	\
++	  builtin_version ("CRuntime_Musl");	\
 +    } while (0)
 +
  #undef	CPP_OS_DEFAULT_SPEC
@@ -1150,11 +1150,11 @@ The following OS versions are implemented:
 +	if (OPTION_GLIBC)				\
 +	  builtin_version ("CRuntime_Glibc");		\
 +	else if (OPTION_UCLIBC)				\
-+	  d_add_builtin_version ("CRuntime_UClibc");	\
++	  builtin_version ("CRuntime_UClibc");	\
 +	else if (OPTION_BIONIC)				\
-+	  d_add_builtin_version ("CRuntime_Bionic");	\
++	  builtin_version ("CRuntime_Bionic");	\
 +	else if (OPTION_MUSL)				\
-+	  d_add_builtin_version ("CRuntime_Musl");	\
++	  builtin_version ("CRuntime_Musl");	\
 +    } while (0)
 +
  #undef  CPP_OS_DEFAULT_SPEC
@@ -1164,7 +1164,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/rs6000/rs6000-d.c
 @@ -0,0 +1,45 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1222,7 +1222,7 @@ The following OS versions are implemented:
  #endif
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -743,6 +743,9 @@ extern unsigned char rs6000_recip_bits[]
+@@ -613,6 +613,9 @@ extern unsigned char rs6000_recip_bits[]
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1249,7 +1249,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/s390/s390-d.c
 @@ -0,0 +1,41 @@
 +/* Subroutines for the D front end on the IBM S/390 and zSeries architectures.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1327,7 +1327,7 @@ The following OS versions are implemented:
 +++ b/gcc/config/sparc/sparc-d.c
 @@ -0,0 +1,48 @@
 +/* Subroutines for the D front end on the SPARC architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
++   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
 +it under the terms of the GNU General Public License as published by
@@ -1376,7 +1376,7 @@ The following OS versions are implemented:
 +}
 --- a/gcc/config/sparc/sparc-protos.h
 +++ b/gcc/config/sparc/sparc-protos.h
-@@ -110,4 +110,7 @@ unsigned int sparc_regmode_natural_size
+@@ -111,4 +111,7 @@ unsigned int sparc_regmode_natural_size
  
  extern rtl_opt_pass *make_pass_work_around_errata (gcc::context *);
  
@@ -1435,7 +1435,7 @@ The following OS versions are implemented:
  tm_p_include_list
  tm_p_file_list
  tm_defines
-@@ -11822,6 +11825,7 @@ fi
+@@ -11857,6 +11860,7 @@ fi
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -1443,7 +1443,7 @@ The following OS versions are implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -12191,6 +12195,21 @@ for f in $tm_p_file; do
+@@ -12240,6 +12244,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -1465,25 +1465,25 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -18460,7 +18479,7 @@ else
+@@ -18509,7 +18528,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18463 "configure"
-+#line 18482 "configure"
+-#line 18512 "configure"
++#line 18531 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18566,7 +18585,7 @@ else
+@@ -18615,7 +18634,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18569 "configure"
-+#line 18588 "configure"
+-#line 18618 "configure"
++#line 18637 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -29774,6 +29793,9 @@ fi
+@@ -29417,6 +29436,9 @@ fi
  
  
  
@@ -1495,7 +1495,7 @@ The following OS versions are implemented:
  
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
-@@ -1729,6 +1729,7 @@ AC_SUBST(build_subdir)
+@@ -1752,6 +1752,7 @@ AC_SUBST(build_subdir)
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -1503,7 +1503,7 @@ The following OS versions are implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -1951,6 +1952,21 @@ for f in $tm_p_file; do
+@@ -1984,6 +1985,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -1525,7 +1525,7 @@ The following OS versions are implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -6416,6 +6432,8 @@ AC_SUBST(tm_include_list)
+@@ -6314,6 +6330,8 @@ AC_SUBST(tm_include_list)
  AC_SUBST(tm_defines)
  AC_SUBST(tm_p_file_list)
  AC_SUBST(tm_p_include_list)
@@ -1534,7 +1534,7 @@ The following OS versions are implemented:
  AC_SUBST(xm_file_list)
  AC_SUBST(xm_include_list)
  AC_SUBST(xm_defines)
-@@ -6423,6 +6441,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -6321,6 +6339,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)
@@ -1567,7 +1567,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10659,6 +10668,22 @@ unloaded. The default is to return false
+@@ -10667,6 +10676,29 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1576,15 +1576,22 @@ The following OS versions are implemented:
 +@cindex parameters, d abi
 +
 +@deftypefn {D Target Hook} void TARGET_D_CPU_VERSIONS (void)
-+Declare all environmental version identifiers relating to the target CPU using the function @code{builtin_version}, which takes a string representing the name of the version.  Version identifiers predefined by this hook apply to all modules and being compiled and imported.
++Declare all environmental version identifiers relating to the target CPU
++using the function @code{builtin_version}, which takes a string representing
++the name of the version.  Version identifiers predefined by this hook apply
++to all modules that are being compiled and imported.
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} void TARGET_D_OS_VERSIONS (void)
-+Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions relating to the target operating system.
++Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions
++relating to the target operating system.
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} unsigned TARGET_D_CRITSEC_SIZE (void)
-+Returns the size of the data structure used by the targeted operating system for critical sections and monitors.  For example, on Microsoft Windows this would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that implement pthreads would return @code{sizeof(pthread_mutex_t)}.
++Returns the size of the data structure used by the target operating system
++for critical sections and monitors.  For example, on Microsoft Windows this
++would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that
++implement pthreads would return @code{sizeof(pthread_mutex_t)}.
 +@end deftypefn
 +
  @node Named Address Spaces
@@ -1615,7 +1622,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7308,6 +7317,16 @@ floating-point support; they are not inc
+@@ -7310,6 +7319,16 @@ floating-point support; they are not inc
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  

@@ -113,7 +113,7 @@ bool Declaration::isThreadlocal()
     return false;
 }
 
-bool Declaration::isCodeseg()
+bool Declaration::isCodeseg() const
 {
     return false;
 }
@@ -157,7 +157,7 @@ int Declaration::checkModify(Loc loc, Scope *sc, Type *, Expression *e1, int fla
     return 1;
 }
 
-Dsymbol *Declaration::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *Declaration::search(const Loc &loc, Identifier *ident, int flags)
 {
     Dsymbol *s = Dsymbol::search(loc, ident, flags);
     if (!s && type)
@@ -1842,12 +1842,12 @@ bool VarDeclaration::needThis()
     return isField();
 }
 
-bool VarDeclaration::isExport()
+bool VarDeclaration::isExport() const
 {
     return protection.kind == PROTexport;
 }
 
-bool VarDeclaration::isImportedSymbol()
+bool VarDeclaration::isImportedSymbol() const
 {
     if (protection.kind == PROTexport && !_init &&
         (storage_class & STCstatic || parent->isModule()))

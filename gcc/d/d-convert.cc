@@ -20,6 +20,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 
 #include "dmd/aggregate.h"
+#include "dmd/declaration.h"
 #include "dmd/expression.h"
 #include "dmd/mtype.h"
 
@@ -82,9 +83,19 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
 	op1 = convert (result_type, op1);
     }
 
-  return fold_build2 (code, bool_type_node, op0, op1);
+  return fold_build2 (code, d_bool_type, op0, op1);
 }
 
+/* Return whether EXPR is a declaration whose address can never be NULL.  */
+
+bool
+decl_with_nonnull_addr_p (const_tree expr)
+{
+  return (DECL_P (expr)
+	  && (TREE_CODE (expr) == PARM_DECL
+	      || TREE_CODE (expr) == LABEL_DECL
+	      || !DECL_WEAK (expr)));
+}
 
 /* Convert EXPR to be a truth-value, validating its type for this purpose.  */
 
@@ -95,9 +106,9 @@ d_truthvalue_conversion (tree expr)
     {
     case EQ_EXPR:   case NE_EXPR:   case LE_EXPR:
     case GE_EXPR:   case LT_EXPR:   case GT_EXPR:
-      if (TREE_TYPE (expr) == bool_type_node)
+      if (TREE_TYPE (expr) == d_bool_type)
 	return expr;
-      return build2 (TREE_CODE (expr), bool_type_node,
+      return build2 (TREE_CODE (expr), d_bool_type,
 		     TREE_OPERAND (expr, 0), TREE_OPERAND (expr, 1));
 
     case TRUTH_ANDIF_EXPR:
@@ -105,16 +116,16 @@ d_truthvalue_conversion (tree expr)
     case TRUTH_AND_EXPR:
     case TRUTH_OR_EXPR:
     case TRUTH_XOR_EXPR:
-      if (TREE_TYPE (expr) == bool_type_node)
+      if (TREE_TYPE (expr) == d_bool_type)
 	return expr;
-      return build2 (TREE_CODE (expr), bool_type_node,
+      return build2 (TREE_CODE (expr), d_bool_type,
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
 
     case TRUTH_NOT_EXPR:
-      if (TREE_TYPE (expr) == bool_type_node)
+      if (TREE_TYPE (expr) == d_bool_type)
 	return expr;
-      return build1 (TREE_CODE (expr), bool_type_node,
+      return build1 (TREE_CODE (expr), d_bool_type,
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
 
     case ERROR_MARK:
@@ -132,11 +143,13 @@ d_truthvalue_conversion (tree expr)
     case ADDR_EXPR:
       /* If we are taking the address of a decl that can never be null,
 	 then the return result is always true.  */
-      if (DECL_P (TREE_OPERAND (expr, 0))
-	  && (TREE_CODE (TREE_OPERAND (expr, 0)) == PARM_DECL
-	      || TREE_CODE (TREE_OPERAND (expr, 0)) == LABEL_DECL
-	      || !DECL_WEAK (TREE_OPERAND (expr, 0))))
-	return boolean_true_node;
+      if (decl_with_nonnull_addr_p (TREE_OPERAND (expr, 0)))
+	{
+	  warning (OPT_Waddress,
+		   "the address of %qD will always evaluate as %<true%>",
+		   TREE_OPERAND (expr, 0));
+	  return boolean_true_node;
+	}
       break;
 
     case COMPLEX_EXPR:
@@ -157,7 +170,7 @@ d_truthvalue_conversion (tree expr)
 	 we can't ignore them if their second arg has side-effects.  */
       if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1)))
 	{
-	  return build2 (COMPOUND_EXPR, bool_type_node, TREE_OPERAND (expr, 1),
+	  return build2 (COMPOUND_EXPR, d_bool_type, TREE_OPERAND (expr, 1),
 			 d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
 	}
       else
@@ -165,7 +178,7 @@ d_truthvalue_conversion (tree expr)
 
     case COND_EXPR:
       /* Distribute the conversion into the arms of a COND_EXPR.  */
-      return fold_build3 (COND_EXPR, bool_type_node, TREE_OPERAND (expr, 0),
+      return fold_build3 (COND_EXPR, d_bool_type, TREE_OPERAND (expr, 0),
 			  d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
 			  d_truthvalue_conversion (TREE_OPERAND (expr, 2)));
 
@@ -191,11 +204,10 @@ d_truthvalue_conversion (tree expr)
   if (TREE_CODE (TREE_TYPE (expr)) == COMPLEX_TYPE)
     {
       tree t = save_expr (expr);
-      tree type = TREE_TYPE (TREE_TYPE (expr));
       return d_build_truthvalue_op ((TREE_SIDE_EFFECTS (expr)
 				     ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-			d_truthvalue_conversion (build1 (REALPART_EXPR, type, t)),
-			d_truthvalue_conversion (build1 (IMAGPART_EXPR, type, t)));
+			d_truthvalue_conversion (real_part (t)),
+			d_truthvalue_conversion (imaginary_part (t)));
     }
   else
     return d_build_truthvalue_op (NE_EXPR, expr,
@@ -272,53 +284,40 @@ convert (tree type, tree expr)
 	  return fold_convert (type, ret);
 	}
 
-      ret = convert_to_integer (type, e);
-      goto maybe_fold;
+      return fold (convert_to_integer (type, e));
 
     case BOOLEAN_TYPE:
       return fold_convert (type, d_truthvalue_conversion (expr));
 
     case POINTER_TYPE:
     case REFERENCE_TYPE:
-      ret = convert_to_pointer (type, e);
-      goto maybe_fold;
+      return fold (convert_to_pointer (type, e));
 
     case REAL_TYPE:
       if (TREE_CODE (etype) == COMPLEX_TYPE && TYPE_IMAGINARY_FLOAT (type))
 	e = build1 (IMAGPART_EXPR, TREE_TYPE (etype), e);
 
-      ret = convert_to_real (type, e);
-      goto maybe_fold;
+      return fold (convert_to_real (type, e));
 
     case COMPLEX_TYPE:
       if (TREE_CODE (etype) == REAL_TYPE && TYPE_IMAGINARY_FLOAT (etype))
-	ret = build2 (COMPLEX_EXPR, type,
-		      build_zero_cst (TREE_TYPE (type)),
-		      convert (TREE_TYPE (type), expr));
-      else
-	ret = convert_to_complex (type, e);
-      goto maybe_fold;
+	return fold_build2 (COMPLEX_EXPR, type,
+			    build_zero_cst (TREE_TYPE (type)),
+			    convert (TREE_TYPE (type), expr));
+
+      return fold (convert_to_complex (type, e));
 
     case VECTOR_TYPE:
-      ret = convert_to_vector (type, e);
-      goto maybe_fold;
+      return fold (convert_to_vector (type, e));
 
     case RECORD_TYPE:
     case UNION_TYPE:
       if (lang_hooks.types_compatible_p (type, TREE_TYPE (expr)))
-	{
-	  ret = build1 (VIEW_CONVERT_EXPR, type, expr);
-	  goto maybe_fold;
-	}
+	return fold_build1 (VIEW_CONVERT_EXPR, type, expr);
       break;
 
     default:
       break;
-
-    maybe_fold:
-      if (!TREE_CONSTANT (ret))
-	ret = fold (ret);
-      return ret;
     }
 
   error ("conversion to non-scalar type requested");
@@ -411,7 +410,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	  if (cdto->isBaseOf (cdfrom, &offset) && offset != OFFSET_RUNTIME)
 	    {
 	      /* Casting up the inheritance tree: Don't do anything special.
-		 Cast to an implemented interface: Handle at compile time.  */
+		 Cast to an implemented interface: Handle at compile-time.  */
 	      if (offset)
 		{
 		  /* Forward references should not leak from the frontend.  */
@@ -438,7 +437,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 		break;
 
 	      /* Casting from a C++ interface to a class/non-C++ interface
-		 always results in null as there is no runtime information,
+		 always results in null as there is no run-time information,
 		 and no way one can derive from the other.  */
 	      warning (OPT_Wcast_result, "cast to %qs will produce null result",
 		       totype->toChars ());
@@ -451,7 +450,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	      break;
 	    }
 
-	  /* The offset can only be determined at runtime, do dynamic cast.  */
+	  /* The offset can only be determined at run-time, do dynamic cast.  */
 	  libcall_fn libcall = cdfrom->isInterfaceDeclaration ()
 	    ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST;
 
@@ -532,7 +531,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	}
       else if (tbtype->ty == Tsarray)
 	{
-	  /* Strings are treated as dynamic arrays D2.  */
+	  /* Strings are treated as dynamic arrays in D2.  */
 	  if (ebtype->isString () && tbtype->isString ())
 	    return indirect_ref (build_ctype (totype), d_array_ptr (exp));
 	}
@@ -600,15 +599,14 @@ convert_expr (tree exp, Type *etype, Type *totype)
       break;
     }
 
-  return result ? result :
-    convert (build_ctype (totype), exp);
+  return result ? result : convert (build_ctype (totype), exp);
 }
 
 
-/* Apply semantics of assignment to a values of type TOTYPE to EXPR
+/* Apply semantics of assignment to a value of type TOTYPE to EXPR
    (e.g., pointer = array -> pointer = &array[0])
 
-   Return a TREE representation of EXPR implictly converted to TOTYPE
+   Return a TREE representation of EXPR implicitly converted to TOTYPE
    for use in assignment expressions MODIFY_EXPR, INIT_EXPR.  */
 
 tree

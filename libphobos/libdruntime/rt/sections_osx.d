@@ -12,7 +12,7 @@
 
 module rt.sections_osx;
 
-version(OSX):
+version (OSX):
 
 // debug = PRINTF;
 import core.stdc.stdio;

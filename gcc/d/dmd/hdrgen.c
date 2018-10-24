@@ -73,6 +73,19 @@ void genhdrfile(Module *m)
     writeFile(m->loc, m->hdrfile);
 }
 
+/**
+ * Dumps the full contents of module `m` to `buf`.
+ * Params:
+ *   buf = buffer to write to.
+ *   m = module to visit all members of.
+ */
+void moduleToBuffer(OutBuffer *buf, Module *m)
+{
+    HdrGenState hgs;
+    hgs.fullDump = true;
+    toCBuffer(m, buf, &hgs);
+}
+
 class PrettyPrintVisitor : public Visitor
 {
 public:

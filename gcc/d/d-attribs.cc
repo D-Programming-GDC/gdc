@@ -70,7 +70,6 @@ static tree d_handle_weak_attribute (tree *, tree, tree, int, bool *) ;
 /* Define attributes that are mutually exclusive with one another.  */
 static const struct attribute_spec::exclusions attr_noreturn_exclusions[] =
 {
-  ATTR_EXCL ("noreturn", true, true, true),
   ATTR_EXCL ("const", true, true, true),
   ATTR_EXCL ("malloc", true, true, true),
   ATTR_EXCL ("pure", true, true, true),
@@ -105,13 +104,13 @@ static const struct attribute_spec::exclusions attr_noinline_exclusions[] =
 };
 
 /* Helper to define an attribute.  */
-#define ATTR_SPEC(name, min_len, max_len, decl_req, type_req, fn_type_req,  \
-		  affects_type_identity, handler, exclude)		    \
-  { name, min_len, max_len, decl_req, type_req, fn_type_req,		    \
+#define ATTR_SPEC(name, min_len, max_len, decl_req, type_req, fn_type_req, \
+		  affects_type_identity, handler, exclude)		   \
+  { name, min_len, max_len, decl_req, type_req, fn_type_req,		   \
     affects_type_identity, handler, exclude }
 
 /* Table of machine-independent attributes.
-   For internal use (marking of builtins) only.  */
+   For internal use (marking of built-ins) only.  */
 const attribute_spec d_langhook_common_attribute_table[] =
 {
   ATTR_SPEC ("noreturn", 0, 0, true, false, false, false,
@@ -226,7 +225,7 @@ uda_attribute_p (const char *name)
 
    User Defined Attributes (UDA) are compile time expressions that can be
    attached to a declaration.  These attributes can then be queried, extracted,
-   and manipulated at compile time. There is no runtime component to them.
+   and manipulated at compile-time.  There is no run-time component to them.
 
    Expand and merge all UDAs found in the EATTRS list that are of type
    `gcc.attribute.Attribute'.  This symbol is internally recognized by the
@@ -253,16 +252,16 @@ build_attributes (Expressions *eattrs)
       /* Attribute symbol must come from the `gcc.attribute' module.  */
       Dsymbol *mod = (Dsymbol*) sym->getModule ();
       if (!(strcmp (mod->toChars (), "attribute") == 0
-          && mod->parent != NULL
-          && strcmp (mod->parent->toChars (), "gcc") == 0
-          && !mod->parent->parent))
-        continue;
+	    && mod->parent != NULL
+	    && strcmp (mod->parent->toChars (), "gcc") == 0
+	    && !mod->parent->parent))
+	continue;
 
       /* Get the result of the attribute if it hasn't already been folded.  */
       if (attr->op == TOKcall)
 	attr = attr->ctfeInterpret ();
 
-      /* Should now have a struct `Attribute("attrib", "value", ... )'
+      /* Should now have a struct `Attribute("attrib", "value", ...)'
 	 initializer list.  */
       gcc_assert (attr->op == TOKstructliteral);
       Expressions *elems = ((StructLiteralExp*) attr)->elements;
@@ -270,7 +269,7 @@ build_attributes (Expressions *eattrs)
 
       if (e0->op != TOKstring)
 	{
-	  error ("expected string attribute, not %qs", e0->toChars());
+	  error ("expected string attribute, not %qs", e0->toChars ());
 	  return error_mark_node;
 	}
 
@@ -286,7 +285,7 @@ build_attributes (Expressions *eattrs)
       const char *name = (const char *)(se->len ? se->string : "");
       if (!uda_attribute_p (name))
 	{
-	  warning_at (get_linemap (e0->loc), OPT_Wattributes,
+	  warning_at (make_location_t (e0->loc), OPT_Wattributes,
 		      "unknown attribute %qs", name);
 	  return error_mark_node;
 	}
@@ -308,10 +307,10 @@ build_attributes (Expressions *eattrs)
 	    t = build_expr (e);
 
 	  args = chainon (args, build_tree_list (0, t));
-        }
+	}
 
       tree list = build_tree_list (get_identifier (name), args);
-      attribs =  chainon (attribs, list);
+      attribs = chainon (attribs, list);
     }
 
   return attribs;
@@ -375,7 +374,6 @@ handle_const_attribute (tree *node, tree ARG_UNUSED (name),
 {
   tree type = TREE_TYPE (*node);
 
-  /* See FIXME comment on noreturn in c_common_attribute_table.  */
   if (TREE_CODE (*node) == FUNCTION_DECL)
     TREE_READONLY (*node) = 1;
   else if (TREE_CODE (type) == POINTER_TYPE
@@ -398,12 +396,9 @@ handle_malloc_attribute (tree *node, tree ARG_UNUSED (name),
 			 tree ARG_UNUSED (args), int ARG_UNUSED (flags),
 			 bool * ARG_UNUSED (no_add_attrs))
 {
-  if (TREE_CODE (*node) == FUNCTION_DECL
-      && POINTER_TYPE_P (TREE_TYPE (TREE_TYPE (*node))))
-    DECL_IS_MALLOC (*node) = 1;
-  else
-    gcc_unreachable ();
-
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL
+	      && POINTER_TYPE_P (TREE_TYPE (TREE_TYPE (*node))));
+  DECL_IS_MALLOC (*node) = 1;
   return NULL_TREE;
 }
 
@@ -415,11 +410,8 @@ handle_pure_attribute (tree *node, tree ARG_UNUSED (name),
 		       tree ARG_UNUSED (args), int ARG_UNUSED (flags),
 		       bool * ARG_UNUSED (no_add_attrs))
 {
-  if (TREE_CODE (*node) == FUNCTION_DECL)
-    DECL_PURE_P (*node) = 1;
-  else
-    gcc_unreachable ();
-
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
+  DECL_PURE_P (*node) = 1;
   return NULL_TREE;
 }
 
@@ -509,11 +501,8 @@ handle_nothrow_attribute (tree *node, tree ARG_UNUSED (name),
 			  tree ARG_UNUSED (args), int ARG_UNUSED (flags),
 			  bool * ARG_UNUSED (no_add_attrs))
 {
-  if (TREE_CODE (*node) == FUNCTION_DECL)
-    TREE_NOTHROW (*node) = 1;
-  else
-    gcc_unreachable ();
-
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
+  TREE_NOTHROW (*node) = 1;
   return NULL_TREE;
 }
 
@@ -821,9 +810,9 @@ d_handle_alias_attribute (tree *node, tree ARG_UNUSED (name),
 
 static tree
 d_handle_weak_attribute (tree *node, tree name,
-		         tree ARG_UNUSED (args),
-		         int ARG_UNUSED (flags),
-		         bool * ARG_UNUSED (no_add_attrs))
+			 tree ARG_UNUSED (args),
+			 int ARG_UNUSED (flags),
+			 bool * ARG_UNUSED (no_add_attrs))
 {
   if (TREE_CODE (*node) == FUNCTION_DECL
       && DECL_DECLARED_INLINE_P (*node))

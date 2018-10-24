@@ -45,6 +45,8 @@ void argExpTypesToCBuffer(OutBuffer *buf, Expressions *arguments);
 
 void arrayObjectsToBuffer(OutBuffer *buf, Objects *objects);
 
+void moduleToBuffer(OutBuffer *buf, Module *m);
+
 const char *parametersTypeToChars(Parameters *parameters, int varargs);
 
 bool stcToBuffer(OutBuffer *buf, StorageClass stc);

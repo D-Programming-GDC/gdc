@@ -64,7 +64,7 @@ enum libcall_type
   LCT_OBJECT,		    /* Object		    */
   LCT_CONST_TYPEINFO,	    /* const(TypeInfo)	    */
   LCT_CONST_CLASSINFO,	    /* const(ClassInfo)	    */
-  LCT_END,
+  LCT_END
 };
 
 /* An array of all types that are used by the runtime functions we need.  */
@@ -264,7 +264,7 @@ build_libcall_decl (const char *name, libcall_type return_type,
 /* Return or create the runtime library function declaration for LIBCALL.
    Library functions are generated as needed.  This could probably be changed in
    the future to be done in the compiler init stage, like GCC builtin trees are,
-   however we depend on runtime initialization of types whose definitions are
+   however we depend on run-time initialization of types whose definitions are
    in the library such as `Object' or `TypeInfo'.  */
 
 static tree
@@ -292,7 +292,7 @@ get_libcall (libcall_fn libcall)
 }
 
 /* Generate a call to LIBCALL, returning the result as TYPE.  NARGS is the
-   number of call arguments, the expressions of wwhich are provided in `...'.
+   number of call arguments, the expressions of which are provided in `...'.
    This does not perform conversions or promotions on the arguments.  */
 
 tree

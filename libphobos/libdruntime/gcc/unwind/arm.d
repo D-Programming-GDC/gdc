@@ -1,5 +1,5 @@
 // Exception handling and frame unwind runtime interface routines.
-// Copyright (C) 2011-2017 Free Software Foundation, Inc.
+// Copyright (C) 2011-2018 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -27,7 +27,7 @@ module gcc.unwind.arm;
 
 import gcc.config;
 
-version(ARM):
+version (ARM):
 static if (GNU_ARM_EABI_Unwinder):
 
 public import gcc.unwind.arm_common;

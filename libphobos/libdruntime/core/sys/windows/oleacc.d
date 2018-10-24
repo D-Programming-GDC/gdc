@@ -10,8 +10,7 @@ module core.sys.windows.oleacc;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "oleacc");
+pragma(lib, "oleacc");
 
 private import core.sys.windows.basetyps, core.sys.windows.oaidl, core.sys.windows.unknwn, core.sys.windows.wtypes,
   core.sys.windows.windef;
@@ -206,7 +205,7 @@ extern (Windows) {
     HRESULT WindowFromAccessibleObject(IAccessible, HWND*);
 }
 
-version(Unicode) {
+version (Unicode) {
     alias CreateStdAccessibleProxyW CreateStdAccessibleProxy;
     alias GetRoleTextW GetRoleText;
     alias GetStateTextW GetStateText;

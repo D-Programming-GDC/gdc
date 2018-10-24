@@ -296,8 +296,6 @@ Statement *gccAsmSemantic(GccAsmStatement *s, Scope *sc)
     s->stc = sc->stc;
 
     // Fold the instruction template string.
-    if (s->insn->op == TOKmixin)
-        s->insn = ((CompileExp *)s->insn)->e1;
     s->insn = semantic(s->insn, sc);
     s->insn = s->insn->ctfeInterpret();
 

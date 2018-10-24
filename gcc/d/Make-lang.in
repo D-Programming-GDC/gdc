@@ -26,7 +26,7 @@ D_TARGET_INSTALL_NAME = $(target_noncanonical)-$(shell echo gdc|sed '$(program_t
 D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos\"
 
 # The name for selecting d in LANGUAGES.
-d: cc1d$(exeext)
+d: d21$(exeext)
 
 # Tell GNU make to ignore these if they exist.
 .PHONY: d
@@ -145,7 +145,7 @@ D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_GENERATED_OBJS) $(D_OBJS) $(D_TARGET_OBJS)
 
 d_OBJS = $(D_ALL_OBJS) d/d-spec.o
 
-cc1d$(exeext): $(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBDEPS)
+d21$(exeext): $(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBDEPS)
 	+$(LLINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 		$(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBS) $(BACKENDLIBS)
 
@@ -217,7 +217,7 @@ check_gdc_parallelize = 10
 d.install-common: installdirs
 	-rm -f $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	$(INSTALL_PROGRAM) gdc$(exeext) $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-if test -f cc1d$(exeext); then \
+	-if test -f d21$(exeext); then \
 	  if test -f gdc-cross$(exeext); then \
 	    :; \
 	  else \
@@ -277,7 +277,7 @@ d.mostlyclean:
 	-rm -f d/*$(objext)
 	-rm -f d/*$(coverageexts)
 	-rm -f $(D_GENERATED_SRCS)
-	-rm -f d/gdc$(exeext) gdc-cross$(exeext) d/cc1d$(exeext)
+	-rm -f d/gdc$(exeext) gdc-cross$(exeext) d/d21$(exeext)
 d.clean:
 d.distclean:
 d.maintainer-clean:

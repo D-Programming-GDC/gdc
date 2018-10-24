@@ -10,8 +10,7 @@ module core.sys.windows.ras;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "rasapi32");
+pragma(lib, "rasapi32");
 
 private import core.sys.windows.basetyps, core.sys.windows.lmcons, core.sys.windows.w32api, core.sys.windows.windef;
 
@@ -872,7 +871,7 @@ extern (Windows) { /* WINAPI */
     DWORD RasValidateEntryNameA(LPCSTR, LPCSTR);
     DWORD RasValidateEntryNameW(LPCWSTR, LPCWSTR);
 
-//static if(_WIN32_WINNT >= 0x401) {
+//static if (_WIN32_WINNT >= 0x401) {
     alias BOOL function(LPSTR, LPSTR, LPRASADPARAMS, LPDWORD) RASADFUNCA;
     alias BOOL function(LPWSTR, LPWSTR, LPRASADPARAMS, LPDWORD) RASADFUNCW;
 
@@ -932,7 +931,7 @@ static if (_WIN32_WINNT >= 0x500) {
 
 
 /* UNICODE defines for functions */
-version(Unicode) {
+version (Unicode) {
     alias RasDialW RasDial;
     alias RasEnumConnectionsW RasEnumConnections;
     alias RasEnumEntriesW RasEnumEntries;

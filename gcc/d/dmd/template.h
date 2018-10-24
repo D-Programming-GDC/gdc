@@ -167,6 +167,7 @@ public:
  */
 class TemplateTypeParameter : public TemplateParameter
 {
+    using TemplateParameter::matchArg;
 public:
     Type *specType;     // type parameter: if !=NULL, this is the type specialization
     Type *defaultType;
@@ -206,6 +207,7 @@ public:
  */
 class TemplateValueParameter : public TemplateParameter
 {
+    using TemplateParameter::matchArg;
 public:
     Type *valType;
     Expression *specValue;
@@ -233,6 +235,7 @@ public:
  */
 class TemplateAliasParameter : public TemplateParameter
 {
+    using TemplateParameter::matchArg;
 public:
     Type *specType;
     RootObject *specAlias;

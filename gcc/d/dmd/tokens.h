@@ -184,6 +184,12 @@ enum TOK
 
 #define TOKwild TOKinout
 
+// Token has an anonymous struct, which is not strict ISO C++.
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 struct Token
 {
     Token *next;
@@ -224,3 +230,7 @@ struct Token
     const char *toChars() const;
     static const char *toChars(TOK);
 };
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

@@ -21,8 +21,7 @@ Copyright @copyright{} @value{copyrights-d} Free Software Foundation, Inc.
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
 any later version published by the Free Software Foundation; with no
-Invariant Sections, the Front-Cover Texts being (a) (see below), and
-with the Back-Cover Texts being (b) (see below).
+Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
 A copy of the license is included in the
 @c man end
 section entitled ``GNU Free Documentation License''.
@@ -31,19 +30,6 @@ section entitled ``GNU Free Documentation License''.
 man page gfdl(7).
 @c man end
 @end ignore
-
-@c man begin COPYRIGHT
-
-(a) The FSF's Front-Cover Text is:
-
-     A GNU Manual
-
-(b) The FSF's Back-Cover Text is:
-
-     You have freedom to copy and modify this GNU Manual, like GNU
-     software.  Copies published by the Free Software Foundation raise
-     funds for GNU development.
-@c man end
 @end copying
 
 @ifinfo
@@ -120,22 +106,22 @@ and the Info entries for @file{gdc} and @file{gcc}.
 
 @c man begin DESCRIPTION gdc
 
-The @command{gdc} command is a frontend to @command{gcc} and supports many
-of the same options.  @xref{Option Summary, , Option Summary, gcc,
-Using the GNU Compiler Collection (GCC)}.  This manual only documents
-the options specific to @command{gdc}.
+The @command{gdc} command is the GNU compiler for the D language and
+supports many of the same options as @command{gcc}.  @xref{Option Summary, ,
+Option Summary, gcc, Using the GNU Compiler Collection (GCC)}.
+This manual only documents the options specific to @command{gdc}.
 
 @c man end
 
 @menu
 * Input and Output files::  Controlling the kind of output:
                             an executable, object files, assembler files,
-* Runtime Options::         Options controlling runtime behaviour
+* Runtime Options::         Options controlling runtime behavior
 * Directory Options::       Where to find module files
 * Code Generation::         Options controlling the output of gdc
 * Warnings::                Options controlling warnings specific to gdc
-* Linking::                 Options influceing the linking step
-* Developer Options::       Options you won't use
+* Linking::                 Options influencing the linking step
+* Developer Options::       Options useful for developers of gdc
 @end menu
 
 @c man begin OPTIONS
@@ -158,8 +144,8 @@ D interface files.
 @end table
 
 You can specify more than one input file on the @command{gdc} command line,
-in which case they will all be compiled.  If you specify a
-@code{-o @var{file}} option, all the input files will be compiled together,
+each being compiled separately in the compilation process.  If you specify a
+@code{-o @var{file}} option, all the input files are compiled together,
 producing a single output file, named @var{file}.  This is allowed even
 when using @code{-S} or @code{-c}.
 
@@ -203,10 +189,10 @@ Turn off code generation for @code{assert} contracts.
 @cindex @option{-fbounds-check}
 @cindex @option{-fno-bounds-check}
 Turns off array bounds checking for all functions, which can improve
-performance for code that uses array extensively.  Note that this
+performance for code that uses arrays extensively.  Note that this
 can result in unpredictable behavior if the code in question actually
 does violate array bounds constraints.  It is safe to use this option
-if you are sure that your code will never throw a @code{RangeError}.
+if you are sure that your code never throws a @code{RangeError}.
 
 @item -fbounds-check=@var{value}
 @cindex @option{-fbounds-check=}
@@ -216,22 +202,19 @@ are supported:
 
 @table @samp
 @item on
-@cindex @option{-fbounds-check=on}
 Turns on array bounds checking for all functions.
 @item safeonly
-@cindex @option{-fbounds-check=safeonly}
 Turns on array bounds checking only for @code{@@safe} functions.
 @item off
-@cindex @option{-fbounds-check=off}
 Turns off array bounds checking completely.
 @end table
 
 @item -fno-builtin
 @cindex @option{-fbuiltin}
 @cindex @option{-fno-builtin}
-Don't recognize built-in functions that do not begin with
-@samp{__builtin_} as prefix.  By default, the compiler will recognize
-when a function in the @code{core.stdc} package is a built-in function.
+Don't recognize built-in functions unless they begin with the prefix
+@samp{__builtin_}.  By default, the compiler will recognize when a
+function in the @code{core.stdc} package is a built-in function.
 
 @item -fdebug
 @item -fdebug=@var{value}
@@ -244,11 +227,9 @@ by any of the following values:
 
 @table @samp
 @item level
-@cindex @option{-fdebug=level}
 Sets the debug level to @var{level}, any @code{debug} code <= @var{level}
 is compiled into the program.
 @item ident
-@cindex @option{-fdebug=ident}
 Turns on compilation of any @code{debug} code identified by @var{ident}.
 @end table
 
@@ -262,8 +243,8 @@ Turns off code generation for class @code{invariant} contracts.
 @cindex @option{-fno-moduleinfo}
 Turns off generation of the @code{ModuleInfo} and related functions
 that would become unreferenced without it, which may allow linking
-to programs not written in D.  Functions that will not be generated
-include module constructor and destructors (@code{static this} and
+to programs not written in D.  Functions that are not be generated
+include module constructors and destructors (@code{static this} and
 @code{static ~this}), @code{unittest} code, and @code{DSO} registry
 functions for dynamically linked code.
 
@@ -289,7 +270,7 @@ Turns off code generation for precondition @code{in} contracts.
 Turns on compiling in release mode, which means not emitting runtime
 checks for contracts and asserts.  Array bounds checking is not done
 for @code{@@system} and @code{@@trusted} functions, and assertion
-failures are undefined behaviour.
+failures are undefined behavior.
 
 This is equivalent to compiling with the following options:
 
@@ -301,11 +282,10 @@ gdc -fno-assert -fbounds-check=safe -fno-invariants \
 @item -fno-switch-errors
 @cindex @option{-fswitch-errors}
 @cindex @option{-fno-switch-errors}
-This option controls what code should be generated when no case is
-matched in a @code{final switch} statement.  The default run time
-behavior is that a @code{SwitchError} will be thrown.  Turning off
-@option{-fswitch-errors} means that instead the execution of the
-program is immediately halted.
+This option controls what code is generated when no case is matched
+in a @code{final switch} statement.  The default run time behavior
+is to throw a @code{SwitchError}.  Turning off @option{-fswitch-errors}
+means that instead the execution of the program is immediately halted.
 
 @item -funittest
 @cindex @option{-funittest}
@@ -320,11 +300,9 @@ identified by any of the following values:
 
 @table @samp
 @item level
-@cindex @option{-fversion=level}
 Sets the version level to @var{level}, any @code{version} code >= @var{level}
 is compiled into the program.
 @item ident
-@cindex @option{-fversion=ident}
 Turns on compilation of @code{version} code identified by @var{ident}.
 @end table
 
@@ -333,8 +311,8 @@ Turns on compilation of @code{version} code identified by @var{ident}.
 @cindex @option{-fno-weak}
 Turns off emission of instantiated declarations that can be defined in multiple
 objects as weak or one-only symbols.  The default is to emit all public symbols
-as weak, unless there lacks target support.  Disabling this options means that
-common symbols are instead put in COMDAT or become private.
+as weak, unless the target lacks support for weak symbols.  Disabling this
+option means that common symbols are instead put in COMDAT or become private.
 
 @end table
 
@@ -377,7 +355,7 @@ This option manipulates file paths of imported modules, such that if an
 imported module matches all or the leftmost part of @var{module}, the file
 path in @var{spec} is used as the location to search for D sources.
 This is used when the source file path and names are not the same as the
-package and module hierachy.  Consider the following examples:
+package and module hierarchy.  Consider the following examples:
 
 @example
 gdc test.d -fmodule-file=A.B=foo.d -fmodule-file=C=bar
@@ -425,13 +403,12 @@ In addition to the many @command{gcc} options controlling code generation,
 @item -H
 @cindex @option{-H}
 Generates D interface files for all modules being compiled.  The compiler
-determines the output @var{file} based on the name of the input file,
-removes any directory components and suffix, and applies the @file{.di}
-suffix.
+determines the output file based on the name of the input file, removes
+any directory components and suffix, and applies the @file{.di} suffix.
 
 @item -Hd @var{dir}
 @cindex @option{-Hd}
-Same as @option{-H}, but writes interface files to @var{dir} directory.
+Same as @option{-H}, but writes interface files to directory @var{dir}.
 This option can be used with @option{-Hf @var{file}} to independently set the
 output file and directory path.
 
@@ -484,8 +461,8 @@ Same as @option{-MT}, but it quotes any characters which are special to
 @item -MD
 @cindex @option{-MD}
 This option is equivalent to @option{-M -MF @var{file}}.  The driver
-determines @var{file} based on the name of the input file, removes any
-directory components and suffix, and applies a @file{.deps} suffix.
+determines @var{file} by removing any directory components and suffix
+from the input file, and then adding a @file{.deps} suffix.
 
 @item -MMD
 @cindex @option{-MMD}
@@ -495,9 +472,9 @@ library package directories.
 @item -X
 @cindex @option{-X}
 Output information describing the contents of all source files being
-compiled in JSON format to a file.  The driver determines @var{file} based
-on the name of the input file, removes any directory components and suffix,
-and applies a @file{.json} suffix.
+compiled in JSON format to a file.  The driver determines @var{file} by
+removing any directory components and suffix from the input file, and then
+adding a @file{.json} suffix.
 
 @item -Xf @var{file}
 @cindex @option{-Xf}
@@ -506,13 +483,13 @@ Same as @option{-X}, but writes all JSON contents to the specified
 
 @item -fdoc
 @cindex @option{-fdoc}
-Generates @code{Ddoc} documentation and writes to a file.  The compiler
-determines @var{file} based on the name of the input file, removes any
-directory components and suffix, and applies a @file{.html} suffix.
+Generates @code{Ddoc} documentation and writes it to a file.  The compiler
+determines @var{file} by removing any directory components and suffix
+from the input file, and then adding a @file{.html} suffix.
 
 @item -fdoc-dir=@var{dir}
 @cindex @option{-fdoc-dir}
-Same as @option{-fdoc}, but writes documentation to @var{dir} directory.
+Same as @option{-fdoc}, but writes documentation to directory @var{dir}.
 This option can be used with @option{-fdoc-file=@var{file}} to
 independently set the output file and directory path.
 
@@ -549,7 +526,7 @@ specified, they do not prevent compilation of the program.
 @cindex @option{-Wno-all}
 Turns on all warnings messages.  Warnings are not a defined part of
 the D language, and all constructs for which this may generate a
-warning message are legal code.
+warning message are valid code.
 
 @item -Walloca
 @cindex @option{-Walloca}
@@ -585,7 +562,7 @@ Turns all warnings into errors.
 @item -Wspeculative
 @cindex @option{-Wspeculative}
 @cindex @option{-Wno-speculative}
-Report on all error messages from speculative compiles, such as
+List all error messages from speculative compiles, such as
 @code{__traits(compiles, ...)}.  This option does not report
 messages as warnings, and these messages therefore never become
 errors when the @option{-Werror} option is also used.
@@ -602,7 +579,7 @@ rules disallow templates, and this may be used to enforce that rule.
 Warn when a @code{pragma()} is encountered that is not understood by
 @command{gdc}.  This differs from @option{-fignore-unknown-pragmas}
 where a pragma that is part of the D language, but not implemented by
-the compiler, will not get reported.
+the compiler, won't get reported.
 
 @item -fignore-unknown-pragmas
 @cindex @option{-fignore-unknown-pragmas}
@@ -620,8 +597,9 @@ number of error messages produced.
 @cindex @option{-fsyntax-only}
 @cindex @option{-fno-syntax-only}
 Check the code for syntax errors, but do not actually compile it.  This
-only suppresses the generation of the object code, and can be used in
-conjunction with @option{-fdoc} or @option{-H} options.
+can be used in conjunction with @option{-fdoc} or @option{-H} to generate
+files for each module present on the command-line, but no other output
+file.
 
 @item -ftransition=@var{id}
 @cindex @option{-ftransition}
@@ -630,36 +608,28 @@ Report additional information about D language changes identified by
 
 @table @samp
 @item all
-@cindex @option{-ftransition=all}
 List information on all language changes.
 @item checkimports
-@cindex @option{-ftransition=checkimports}
 Give deprecation messages about @option{-ftransition=import} anomalies.
 @item complex
-@cindex @option{-ftransition=complex}
 List all usages of complex or imaginary types.
 @item dip1000
-@cindex @option{-ftransition=dip1000}
 Implements @uref{http://wiki.dlang.org/DIP1000} (experimental).
 @item dip25
-@cindex @option{-ftransition=dip25}
 Implements @uref{http://wiki.dlang.org/DIP25} (experimental).
 @item field
-@cindex @option{-ftransition=field}
 List all non-mutable fields which occupy an object instance.
 @item import
-@cindex @option{-ftransition=import}
 Tells the compiler to revert to using an old lookup behavior for resolving
-unqualified symbol names, where this was done in a single pass, ignoring any
-protection attributes.  The default name lookup strategy is to use two passes,
-the first ignoring imported declarations, and the second only looking at imports.
-The protection (@code{private}, @code{package}, @code{protected}) of symbols is
-also enforced to resolve any conflicts between private and public symbols.
+unqualified symbol names, where this was done in a single pass, ignoring
+any protection attributes.  The default name lookup strategy is to use two
+passes, the first ignoring imported declarations, and the second only
+looking at imports.  The protection (@code{private}, @code{package},
+@code{protected}) of symbols is also enforced to resolve any conflicts
+between private and public symbols.
 @item nogc
-@cindex @option{-ftransition=nogc}
 List all hidden GC allocations.
 @item tls
-@cindex @option{-ftransition=tls}
 List all variables going into thread local storage.
 @end table
 
@@ -671,7 +641,7 @@ List all variables going into thread local storage.
 @cindex linking, static
 
 These options come into play when the compiler links object files into an
-executable output file. They are meaningless if the compiler is not doing
+executable output file.  They are meaningless if the compiler is not doing
 a link step.
 
 @table @gcctabopt
@@ -700,14 +670,14 @@ used normally, unless @option{-nostdlib} or @option{-nodefaultlibs} is used.
 @cindex @option{-shared-libphobos}
 On systems that provide @file{libgphobos} and @file{libgdruntime} as a
 shared and a static library, this option forces the use of the shared
-version. If no shared version was built when the compiler was configured,
+version.  If no shared version was built when the compiler was configured,
 this option has no effect.
 
 @item -static-libphobos
 @cindex @option{-static-libphobos}
 On systems that provide @file{libgphobos} and @file{libgdruntime} as a
 shared and a static library, this option forces the use of the static
-version. If no static version was built when the compiler was configured,
+version.  If no static version was built when the compiler was configured,
 this option has no effect.
 
 @end table
@@ -725,9 +695,8 @@ interest to developers or language tooling.
 
 @item -fdump-d-original
 @cindex @option{-fdump-d-original}
-Dump the front-end AST after after parsing and running semantic on
-the source program.  Only really useful for debugging the compiler
-itself.
+Output the internal front-end AST after the @code{semantic3} stage.
+This option is only useful for debugging the GNU D compiler itself.
 
 @item -v
 @cindex @option{-v}

@@ -115,7 +115,7 @@ enum OwnedBy
 {
     OWNEDcode,      // normal code expression in AST
     OWNEDctfe,      // value expression for CTFE
-    OWNEDcache,     // constant value cached for CTFE
+    OWNEDcache      // constant value cached for CTFE
 };
 
 #define WANTvalue   0   // default
@@ -1111,7 +1111,7 @@ public:
 enum MemorySet
 {
     blockAssign     = 1,    // setting the contents of an array
-    referenceInit   = 2,    // setting the reference of STCref variable
+    referenceInit   = 2     // setting the reference of STCref variable
 };
 
 class AssignExp : public BinExp

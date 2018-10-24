@@ -25,8 +25,7 @@ class C304
 C304 c304;
 
 /******************************************/
-
-// Bug 61
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=61
 
 struct S61a
 {
@@ -53,8 +52,7 @@ struct S61b
 }
 
 /******************************************/
-
-// Bug 88
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=88
 
 extern(C) int test88a();
 
@@ -64,8 +62,7 @@ void test88()
 }
 
 /******************************************/
-
-// Bug 252
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=252
 
 class C252
 {

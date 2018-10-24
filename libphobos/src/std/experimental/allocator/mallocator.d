@@ -113,7 +113,7 @@ version (Windows)
 {
     // DMD Win 32 bit, DigitalMars C standard library misses the _aligned_xxx
     // functions family (snn.lib)
-    version(CRuntime_DigitalMars)
+    version (CRuntime_DigitalMars)
     {
         // Helper to cast the infos written before the aligned pointer
         // this header keeps track of the size (required to realloc) and of
@@ -226,7 +226,7 @@ struct AlignedMallocator
     $(HTTP msdn.microsoft.com/en-us/library/8z34s9c6(v=vs.80).aspx,
     $(D __aligned_malloc)) on Windows.
     */
-    version(Posix)
+    version (Posix)
     @trusted @nogc nothrow
     void[] alignedAllocate(size_t bytes, uint a) shared
     {
@@ -248,7 +248,7 @@ struct AlignedMallocator
         else
             return result[0 .. bytes];
     }
-    else version(Windows)
+    else version (Windows)
     @trusted @nogc nothrow
     void[] alignedAllocate(size_t bytes, uint a) shared
     {
@@ -336,11 +336,11 @@ struct AlignedMallocator
     //...
 }
 
-version(unittest) version(CRuntime_DigitalMars)
+version (unittest) version (CRuntime_DigitalMars)
 @nogc nothrow
 size_t addr(ref void* ptr) { return cast(size_t) ptr; }
 
-version(CRuntime_DigitalMars)
+version (CRuntime_DigitalMars)
 @nogc nothrow
 @system unittest
 {

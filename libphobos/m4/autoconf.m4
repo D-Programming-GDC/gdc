@@ -9,9 +9,6 @@
 
 # AC_LANG(D)
 # -----------
-# (we have to use GDC as variable prefix as our GCC patches set GDC
-#  GDC_FOR_BUILD etc. If we ever want to support other D compilers all
-#  names need to be changed to DC)
 AC_LANG_DEFINE([D], [d], [GDC], [],
 [ac_ext=d
 ac_compile='$GDC -c $GDCFLAGS conftest.$ac_ext >&AS_MESSAGE_LOG_FD'

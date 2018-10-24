@@ -1,7 +1,7 @@
 module ltotests_1;
 
 /******************************************/
-// Bug 88
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=88
 
 extern(C) int test88a()
 {

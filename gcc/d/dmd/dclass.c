@@ -951,7 +951,7 @@ bool ClassDeclaration::isBaseInfoComplete()
     return baseok >= BASEOKdone;
 }
 
-Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
+Dsymbol *ClassDeclaration::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("%s.ClassDeclaration::search('%s', flags=x%x)\n", toChars(), ident->toChars(), flags);
 

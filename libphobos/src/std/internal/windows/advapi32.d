@@ -10,11 +10,11 @@
  */
 module std.internal.windows.advapi32;
 
-version(Windows):
+version (Windows):
 
 import core.sys.windows.windows;
 
-version(GNU) {}
+version (GNU) {}
 else pragma(lib, "advapi32.lib");
 
 immutable bool isWow64;
