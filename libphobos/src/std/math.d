@@ -154,6 +154,8 @@ version (MIPS32)    version = MIPS_Any;
 version (MIPS64)    version = MIPS_Any;
 version (AArch64)   version = ARM_Any;
 version (ARM)       version = ARM_Any;
+version (SPARC)     version = SPARC_Any;
+version (SPARC64)   version = SPARC_Any;
 
 version (D_InlineAsm_X86)
 {
@@ -6066,7 +6068,7 @@ nothrow @nogc:
                                  | inexactException,
         }
     }
-    else version (SPARC64)
+    else version (SPARC_Any)
     {
         enum : ExceptionMask
         {
@@ -6208,7 +6210,7 @@ private:
     {
         alias ControlState = uint;
     }
-    else version (SPARC64)
+    else version (SPARC_Any)
     {
         alias ControlState = ulong;
     }

@@ -236,7 +236,7 @@ DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
 	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
 	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
 	core/sys/freebsd/sys/mman.d core/sys/freebsd/sys/mount.d \
-	core/sys/freebsd/time.d
+	core/sys/freebsd/time.d core/sys/freebsd/unistd.d
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
@@ -279,18 +279,19 @@ DRUNTIME_DSOURCES_POSIX = core/sys/posix/aio.d \
 	core/sys/posix/netinet/in_.d core/sys/posix/netinet/tcp.d \
 	core/sys/posix/poll.d core/sys/posix/pthread.d core/sys/posix/pwd.d \
 	core/sys/posix/sched.d core/sys/posix/semaphore.d \
-	core/sys/posix/setjmp.d core/sys/posix/signal.d core/sys/posix/stdio.d \
-	core/sys/posix/stdlib.d core/sys/posix/sys/filio.d \
-	core/sys/posix/sys/ioccom.d core/sys/posix/sys/ioctl.d \
-	core/sys/posix/sys/ipc.d core/sys/posix/sys/mman.d \
-	core/sys/posix/sys/msg.d core/sys/posix/sys/resource.d \
-	core/sys/posix/sys/select.d core/sys/posix/sys/shm.d \
-	core/sys/posix/sys/socket.d core/sys/posix/sys/stat.d \
-	core/sys/posix/sys/statvfs.d core/sys/posix/sys/time.d \
-	core/sys/posix/sys/ttycom.d core/sys/posix/sys/types.d \
-	core/sys/posix/sys/uio.d core/sys/posix/sys/un.d \
-	core/sys/posix/sys/utsname.d core/sys/posix/sys/wait.d \
-	core/sys/posix/syslog.d core/sys/posix/termios.d core/sys/posix/time.d \
+	core/sys/posix/setjmp.d core/sys/posix/signal.d core/sys/posix/spawn.d \
+	core/sys/posix/stdio.d core/sys/posix/stdlib.d \
+	core/sys/posix/sys/filio.d core/sys/posix/sys/ioccom.d \
+	core/sys/posix/sys/ioctl.d core/sys/posix/sys/ipc.d \
+	core/sys/posix/sys/mman.d core/sys/posix/sys/msg.d \
+	core/sys/posix/sys/resource.d core/sys/posix/sys/select.d \
+	core/sys/posix/sys/shm.d core/sys/posix/sys/socket.d \
+	core/sys/posix/sys/stat.d core/sys/posix/sys/statvfs.d \
+	core/sys/posix/sys/time.d core/sys/posix/sys/ttycom.d \
+	core/sys/posix/sys/types.d core/sys/posix/sys/uio.d \
+	core/sys/posix/sys/un.d core/sys/posix/sys/utsname.d \
+	core/sys/posix/sys/wait.d core/sys/posix/syslog.d \
+	core/sys/posix/termios.d core/sys/posix/time.d \
 	core/sys/posix/ucontext.d core/sys/posix/unistd.d \
 	core/sys/posix/utime.d
 

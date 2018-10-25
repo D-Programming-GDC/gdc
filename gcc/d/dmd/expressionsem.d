@@ -2189,12 +2189,16 @@ private Module loadStdMath()
         auto a = new Identifiers();
         a.push(Id.std);
         auto s = new Import(Loc.initial, a, Id.math, null, false);
+        // Module.load will call fatal() if there's no std.math available.
+        // Gag the error here, pushing the error handling to the caller.
+        uint errors = global.startGagging();
         s.load(null);
         if (s.mod)
         {
             s.mod.importAll(null);
             s.mod.dsymbolSemantic(null);
         }
+        global.endGagging(errors);
         impStdMath = s;
     }
     return impStdMath.mod;
@@ -2353,19 +2357,29 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
 
         if (hasThis(sc))
         {
-            AggregateDeclaration ad = sc.getStructClassScope();
-            if (ad && ad.aliasthis)
+            for (AggregateDeclaration ad = sc.getStructClassScope(); ad;)
             {
-                Expression e;
-                e = new ThisExp(exp.loc);
-                e = new DotIdExp(exp.loc, e, ad.aliasthis.ident);
-                e = new DotIdExp(exp.loc, e, exp.ident);
-                e = e.trySemantic(sc);
-                if (e)
+                if (ad.aliasthis)
                 {
-                    result = e;
-                    return;
+                    Expression e;
+                    e = new ThisExp(exp.loc);
+                    e = new DotIdExp(exp.loc, e, ad.aliasthis.ident);
+                    e = new DotIdExp(exp.loc, e, exp.ident);
+                    e = e.trySemantic(sc);
+                    if (e)
+                    {
+                        result = e;
+                        return;
+                    }
                 }
+
+                auto cd = ad.isClassDeclaration();
+                if (cd && cd.baseClass && cd.baseClass != ClassDeclaration.object)
+                {
+                    ad = cd.baseClass;
+                    continue;
+                }
+                break;
             }
         }
 
@@ -9464,17 +9478,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         Module mmath = loadStdMath();
         if (!mmath)
         {
-            //error("requires std.math for ^^ operators");
-            //fatal();
-            // Leave handling of PowExp to the backend, or throw
-            // an error gracefully if no backend support exists.
-            if (Expression ex = typeCombine(exp, sc))
-            {
-                result = ex;
-                return;
-            }
-            result = exp;
-            return;
+            e.error("`%s` requires `std.math` for `^^` operators", e.toChars());
+            return setError();
         }
         e = new ScopeExp(exp.loc, mmath);
 

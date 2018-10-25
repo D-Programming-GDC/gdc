@@ -212,20 +212,20 @@ am__objects_5 = core/sys/posix/aio.lo core/sys/posix/arpa/inet.lo \
 	core/sys/posix/pthread.lo core/sys/posix/pwd.lo \
 	core/sys/posix/sched.lo core/sys/posix/semaphore.lo \
 	core/sys/posix/setjmp.lo core/sys/posix/signal.lo \
-	core/sys/posix/stdio.lo core/sys/posix/stdlib.lo \
-	core/sys/posix/sys/filio.lo core/sys/posix/sys/ioccom.lo \
-	core/sys/posix/sys/ioctl.lo core/sys/posix/sys/ipc.lo \
-	core/sys/posix/sys/mman.lo core/sys/posix/sys/msg.lo \
-	core/sys/posix/sys/resource.lo core/sys/posix/sys/select.lo \
-	core/sys/posix/sys/shm.lo core/sys/posix/sys/socket.lo \
-	core/sys/posix/sys/stat.lo core/sys/posix/sys/statvfs.lo \
-	core/sys/posix/sys/time.lo core/sys/posix/sys/ttycom.lo \
-	core/sys/posix/sys/types.lo core/sys/posix/sys/uio.lo \
-	core/sys/posix/sys/un.lo core/sys/posix/sys/utsname.lo \
-	core/sys/posix/sys/wait.lo core/sys/posix/syslog.lo \
-	core/sys/posix/termios.lo core/sys/posix/time.lo \
-	core/sys/posix/ucontext.lo core/sys/posix/unistd.lo \
-	core/sys/posix/utime.lo
+	core/sys/posix/spawn.lo core/sys/posix/stdio.lo \
+	core/sys/posix/stdlib.lo core/sys/posix/sys/filio.lo \
+	core/sys/posix/sys/ioccom.lo core/sys/posix/sys/ioctl.lo \
+	core/sys/posix/sys/ipc.lo core/sys/posix/sys/mman.lo \
+	core/sys/posix/sys/msg.lo core/sys/posix/sys/resource.lo \
+	core/sys/posix/sys/select.lo core/sys/posix/sys/shm.lo \
+	core/sys/posix/sys/socket.lo core/sys/posix/sys/stat.lo \
+	core/sys/posix/sys/statvfs.lo core/sys/posix/sys/time.lo \
+	core/sys/posix/sys/ttycom.lo core/sys/posix/sys/types.lo \
+	core/sys/posix/sys/uio.lo core/sys/posix/sys/un.lo \
+	core/sys/posix/sys/utsname.lo core/sys/posix/sys/wait.lo \
+	core/sys/posix/syslog.lo core/sys/posix/termios.lo \
+	core/sys/posix/time.lo core/sys/posix/ucontext.lo \
+	core/sys/posix/unistd.lo core/sys/posix/utime.lo
 @DRUNTIME_OS_UNIX_TRUE@am__objects_6 = $(am__objects_5)
 am__objects_7 = core/sys/darwin/dlfcn.lo core/sys/darwin/execinfo.lo \
 	core/sys/darwin/mach/dyld.lo core/sys/darwin/mach/getsect.lo \
@@ -255,7 +255,7 @@ am__objects_12 = core/sys/freebsd/dlfcn.lo \
 	core/sys/freebsd/sys/elf_common.lo \
 	core/sys/freebsd/sys/event.lo core/sys/freebsd/sys/link_elf.lo \
 	core/sys/freebsd/sys/mman.lo core/sys/freebsd/sys/mount.lo \
-	core/sys/freebsd/time.lo
+	core/sys/freebsd/time.lo core/sys/freebsd/unistd.lo
 @DRUNTIME_OS_FREEBSD_TRUE@am__objects_13 = $(am__objects_12)
 am__objects_14 = core/sys/openbsd/dlfcn.lo
 @DRUNTIME_OS_OPENBSD_TRUE@am__objects_15 = $(am__objects_14)
@@ -784,7 +784,7 @@ DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
 	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
 	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
 	core/sys/freebsd/sys/mman.d core/sys/freebsd/sys/mount.d \
-	core/sys/freebsd/time.d
+	core/sys/freebsd/time.d core/sys/freebsd/unistd.d
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
@@ -826,18 +826,19 @@ DRUNTIME_DSOURCES_POSIX = core/sys/posix/aio.d \
 	core/sys/posix/netinet/in_.d core/sys/posix/netinet/tcp.d \
 	core/sys/posix/poll.d core/sys/posix/pthread.d core/sys/posix/pwd.d \
 	core/sys/posix/sched.d core/sys/posix/semaphore.d \
-	core/sys/posix/setjmp.d core/sys/posix/signal.d core/sys/posix/stdio.d \
-	core/sys/posix/stdlib.d core/sys/posix/sys/filio.d \
-	core/sys/posix/sys/ioccom.d core/sys/posix/sys/ioctl.d \
-	core/sys/posix/sys/ipc.d core/sys/posix/sys/mman.d \
-	core/sys/posix/sys/msg.d core/sys/posix/sys/resource.d \
-	core/sys/posix/sys/select.d core/sys/posix/sys/shm.d \
-	core/sys/posix/sys/socket.d core/sys/posix/sys/stat.d \
-	core/sys/posix/sys/statvfs.d core/sys/posix/sys/time.d \
-	core/sys/posix/sys/ttycom.d core/sys/posix/sys/types.d \
-	core/sys/posix/sys/uio.d core/sys/posix/sys/un.d \
-	core/sys/posix/sys/utsname.d core/sys/posix/sys/wait.d \
-	core/sys/posix/syslog.d core/sys/posix/termios.d core/sys/posix/time.d \
+	core/sys/posix/setjmp.d core/sys/posix/signal.d core/sys/posix/spawn.d \
+	core/sys/posix/stdio.d core/sys/posix/stdlib.d \
+	core/sys/posix/sys/filio.d core/sys/posix/sys/ioccom.d \
+	core/sys/posix/sys/ioctl.d core/sys/posix/sys/ipc.d \
+	core/sys/posix/sys/mman.d core/sys/posix/sys/msg.d \
+	core/sys/posix/sys/resource.d core/sys/posix/sys/select.d \
+	core/sys/posix/sys/shm.d core/sys/posix/sys/socket.d \
+	core/sys/posix/sys/stat.d core/sys/posix/sys/statvfs.d \
+	core/sys/posix/sys/time.d core/sys/posix/sys/ttycom.d \
+	core/sys/posix/sys/types.d core/sys/posix/sys/uio.d \
+	core/sys/posix/sys/un.d core/sys/posix/sys/utsname.d \
+	core/sys/posix/sys/wait.d core/sys/posix/syslog.d \
+	core/sys/posix/termios.d core/sys/posix/time.d \
 	core/sys/posix/ucontext.d core/sys/posix/unistd.d \
 	core/sys/posix/utime.d
 
@@ -1232,6 +1233,7 @@ core/sys/posix/sched.lo: core/sys/posix/$(am__dirstamp)
 core/sys/posix/semaphore.lo: core/sys/posix/$(am__dirstamp)
 core/sys/posix/setjmp.lo: core/sys/posix/$(am__dirstamp)
 core/sys/posix/signal.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/spawn.lo: core/sys/posix/$(am__dirstamp)
 core/sys/posix/stdio.lo: core/sys/posix/$(am__dirstamp)
 core/sys/posix/stdlib.lo: core/sys/posix/$(am__dirstamp)
 core/sys/posix/sys/$(am__dirstamp):
@@ -1346,6 +1348,7 @@ core/sys/freebsd/sys/link_elf.lo:  \
 core/sys/freebsd/sys/mman.lo: core/sys/freebsd/sys/$(am__dirstamp)
 core/sys/freebsd/sys/mount.lo: core/sys/freebsd/sys/$(am__dirstamp)
 core/sys/freebsd/time.lo: core/sys/freebsd/$(am__dirstamp)
+core/sys/freebsd/unistd.lo: core/sys/freebsd/$(am__dirstamp)
 core/sys/openbsd/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/openbsd
 	@: > core/sys/openbsd/$(am__dirstamp)
@@ -1844,6 +1847,8 @@ mostlyclean-compile:
 	-rm -f core/sys/freebsd/sys/mount.lo
 	-rm -f core/sys/freebsd/time.$(OBJEXT)
 	-rm -f core/sys/freebsd/time.lo
+	-rm -f core/sys/freebsd/unistd.$(OBJEXT)
+	-rm -f core/sys/freebsd/unistd.lo
 	-rm -f core/sys/linux/config.$(OBJEXT)
 	-rm -f core/sys/linux/config.lo
 	-rm -f core/sys/linux/dlfcn.$(OBJEXT)
@@ -1974,6 +1979,8 @@ mostlyclean-compile:
 	-rm -f core/sys/posix/setjmp.lo
 	-rm -f core/sys/posix/signal.$(OBJEXT)
 	-rm -f core/sys/posix/signal.lo
+	-rm -f core/sys/posix/spawn.$(OBJEXT)
+	-rm -f core/sys/posix/spawn.lo
 	-rm -f core/sys/posix/stdio.$(OBJEXT)
 	-rm -f core/sys/posix/stdio.lo
 	-rm -f core/sys/posix/stdlib.$(OBJEXT)
