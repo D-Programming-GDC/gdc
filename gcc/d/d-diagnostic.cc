@@ -231,7 +231,7 @@ warning (const Loc& loc, const char *format, ...)
 void ATTRIBUTE_GCC_DIAG(2,0)
 vwarning (const Loc& loc, const char *format, va_list ap)
 {
-  if (global.params.warnings && !global.gag)
+  if (!global.gag && global.params.warnings != DIAGNOSTICoff)
     {
       /* Warnings don't count if not treated as errors.  */
       if (global.params.warnings == DIAGNOSTICerror)
@@ -256,7 +256,7 @@ warningSupplemental (const Loc& loc, const char *format, ...)
 void ATTRIBUTE_GCC_DIAG(2,0)
 vwarningSupplemental (const Loc& loc, const char *format, va_list ap)
 {
-  if (!global.params.warnings || global.gag)
+  if (global.params.warnings == DIAGNOSTICoff || global.gag)
     return;
 
   d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, false);
