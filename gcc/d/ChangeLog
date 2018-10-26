@@ -1,6 +1,7 @@
 2018-10-26  Eugene Wissner  <belka@caraus.de>
 
 	* Make-lang.in (selftest-d): New.
+	* d-diagnostic.cc (vwarning): Fix warning emitting.
 
 2018-10-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
