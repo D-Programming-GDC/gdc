@@ -16,7 +16,7 @@ This implements building of self hosted D compiler in GCC back end.
  
 --- a/gcc/configure
 +++ b/gcc/configure
-@@ -806,6 +806,8 @@ EGREP
+@@ -807,6 +807,8 @@ EGREP
  GREP
  CXXCPP
  PICFLAG_FOR_TARGET
@@ -25,7 +25,7 @@ This implements building of self hosted D compiler in GCC back end.
  GNATMAKE
  GNATBIND
  ac_ct_CXX
-@@ -5021,6 +5023,106 @@ else
+@@ -5022,6 +5024,106 @@ else
  fi
  
  
@@ -132,21 +132,21 @@ This implements building of self hosted D compiler in GCC back end.
  # Do configure tests with the C++ compiler, since that's what we build with.
  ac_ext=cpp
  ac_cpp='$CXXCPP $CPPFLAGS'
-@@ -18509,7 +18611,7 @@ else
+@@ -18510,7 +18612,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18512 "configure"
-+#line 18614 "configure"
+-#line 18513 "configure"
++#line 18615 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18615,7 +18717,7 @@ else
+@@ -18616,7 +18718,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18618 "configure"
-+#line 18720 "configure"
+-#line 18619 "configure"
++#line 18721 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
