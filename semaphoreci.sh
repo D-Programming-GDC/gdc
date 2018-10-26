@@ -119,10 +119,9 @@ alltests() {
 testsuite() {
     ## Run just the compiler testsuite.
     cd ${SEMAPHORE_PROJECT_DIR}/build
-    make -j$(nproc) check-gcc-d
 
-    # Other tests that check parts of the compiler.
     make check-gcc RUNTESTFLAGS="help.exp"
+    make -j$(nproc) check-gcc-d
 
     ## Print out summaries of testsuite run after finishing.
     # Just omit testsuite PASSes from the summary file.
