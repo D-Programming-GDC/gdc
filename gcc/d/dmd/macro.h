@@ -8,8 +8,7 @@
  * https://github.com/D-Programming-Language/dmd/blob/master/src/macro.h
  */
 
-#ifndef DMD_MACRO_H
-#define DMD_MACRO_H 1
+#pragma once
 
 #include <stdio.h>
 #include <string.h>
@@ -41,5 +40,3 @@ struct Macro
     void expand(OutBuffer *buf, size_t start, size_t *pend,
         const utf8_t *arg, size_t arglen);
 };
-
-#endif

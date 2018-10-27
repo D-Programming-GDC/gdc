@@ -8,8 +8,7 @@
  * https://github.com/D-Programming-Language/dmd/blob/master/src/utf.h
  */
 
-#ifndef DMD_UTF_H
-#define DMD_UTF_H
+#pragma once
 
 #include <stdlib.h>
 
@@ -116,5 +115,3 @@ void utf_encode(int sz, void *s, dchar_t c);
 
 const char *utf_decodeChar(utf8_t const *s, size_t len, size_t *pidx, dchar_t *presult);
 const char *utf_decodeWchar(utf16_t const *s, size_t len, size_t *pidx, dchar_t *presult);
-
-#endif  // DMD_UTF_H
