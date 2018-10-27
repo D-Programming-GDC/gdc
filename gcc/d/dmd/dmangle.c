@@ -440,20 +440,6 @@ public:
 
         buf->writestring("_D");
         mangleDecl(d);
-
-    #ifdef DEBUG
-        assert(buf->data);
-        size_t len = buf->offset;
-        assert(len > 0);
-        for (size_t i = 0; i < len; i++)
-        {
-            assert(buf->data[i] == '_' ||
-                   buf->data[i] == '@' ||
-                   buf->data[i] == '?' ||
-                   buf->data[i] == '$' ||
-                   isalnum(buf->data[i]) || buf->data[i] & 0x80);
-        }
-    #endif
     }
 
     /******************************************************************************
@@ -599,13 +585,6 @@ public:
 
     void visit(TemplateInstance *ti)
     {
-    #if 0
-        printf("TemplateInstance::mangle() %p %s", ti, ti->toChars());
-        if (ti->parent)
-            printf("  parent = %s %s", ti->parent->kind(), ti->parent->toChars());
-        printf("\n");
-    #endif
-
         if (!ti->tempdecl)
             ti->error("is not defined");
         else
@@ -620,13 +599,6 @@ public:
 
     void visit(Dsymbol *s)
     {
-    #if 0
-        printf("Dsymbol::mangle() '%s'", s->toChars());
-        if (s->parent)
-            printf("  parent = %s %s", s->parent->kind(), s->parent->toChars());
-        printf("\n");
-    #endif
-
         mangleParent(s);
 
         const char *id = s->ident ? s->ident->toChars() : s->toChars();
@@ -853,10 +825,6 @@ public:
                 buf->writeByte('L');
                 break;
             default:
-    #ifdef DEBUG
-                printf("storageClass = x%llx\n", p->storageClass & (STCin | STCout | STCref | STClazy));
-                halt();
-    #endif
                 assert(0);
         }
         visitWithMask(p->type, 0);

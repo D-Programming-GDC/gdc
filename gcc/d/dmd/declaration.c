@@ -226,15 +226,7 @@ Type *TupleDeclaration::getType()
         {
             Type *t = (*types)[i];
             //printf("type = %s\n", t->toChars());
-#if 0
-            buf.printf("_%s_%d", ident->toChars(), i);
-            size_t len = buf.offset;
-            const char *name = (char *)buf.extractData();
-            Identifier *id = new Identifier(name, len);
-            Parameter *arg = new Parameter(STCin, t, id, NULL);
-#else
             Parameter *arg = new Parameter(0, t, NULL, NULL);
-#endif
             (*args)[i] = arg;
             if (!t->deco)
                 hasdeco = 0;
@@ -814,13 +806,6 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
 {
     //printf("VarDeclaration('%s')\n", id->toChars());
     assert(id);
-#ifdef DEBUG
-    if (!type && !init)
-    {
-        printf("VarDeclaration('%s')\n", id->toChars());
-        //*(char*)0=0;
-    }
-#endif
     assert(type || init);
     this->type = type;
     this->_init = init;
@@ -862,15 +847,6 @@ Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
 
 void VarDeclaration::semantic(Scope *sc)
 {
-#if 0
-    printf("VarDeclaration::semantic('%s', parent = '%s') sem = %d\n", toChars(), sc->parent ? sc->parent->toChars() : NULL, sem);
-    printf(" type = %s\n", type ? type->toChars() : "null");
-    printf(" stc = x%x\n", sc->stc);
-    printf(" storage_class = x%llx\n", storage_class);
-    printf("linkage = %d\n", sc->linkage);
-    //if (strcmp(toChars(), "mul") == 0) halt();
-#endif
-
 //    if (semanticRun > PASSinit)
 //      return;
 //    semanticRun = PASSsemantic;
@@ -1641,14 +1617,6 @@ void VarDeclaration::semantic2(Scope *sc)
     if (_init && !toParent()->isFuncDeclaration())
     {
         inuse++;
-#if 0
-        ExpInitializer *ei = _init->isExpInitializer();
-        if (ei)
-        {
-            ei->exp->print();
-            printf("type = %p\n", ei->exp->type);
-        }
-#endif
         // Bugzilla 14166: Don't run CTFE for the temporary variables inside typeof
         _init = ::semantic(_init, sc, type, sc->intypeof == 1 ? INITnointerpret : INITinterpret);
         inuse--;
@@ -2024,12 +1992,6 @@ bool VarDeclaration::canTakeAddressOf()
 
 bool VarDeclaration::isDataseg()
 {
-#if 0
-    printf("VarDeclaration::isDataseg(%p, '%s')\n", this, toChars());
-    printf("%llx, isModule: %p, isTemplateInstance: %p, isNspace: %p\n",
-           storage_class & (STCstatic | STCconst), parent->isModule(), parent->isTemplateInstance(), parent->isNspace());
-    printf("parent = '%s'\n", parent->toChars());
-#endif
     if (isdataseg == 0) // the value is not cached
     {
         isdataseg = 2; // The Variables does not go into the datasegment

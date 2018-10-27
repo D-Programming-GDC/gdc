@@ -123,13 +123,7 @@ Expression *expandVar(int result, VarDeclaration *v)
             }
             else
             {
-#if 1
                 goto L1;
-#else
-                // BUG: what if const is initialized in constructor?
-                e = v->type->defaultInit();
-                e->loc = e1->loc;
-#endif
             }
             if (e->type != v->type)
             {

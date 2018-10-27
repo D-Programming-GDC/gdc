@@ -869,13 +869,7 @@ public:
         {
             assert(t->basetype && t->basetype->ty == Tsarray);
             assert(((TypeSArray *)t->basetype)->dim);
-#if 0
-            buf->writestring("Dv");
-            buf->printf("%llu", ((TypeSArray *)t->basetype)->dim->toInteger()); // -- Gnu ABI v.4
-            buf->writeByte('_');
-#else
             buf->writestring("U8__vector"); //-- Gnu ABI v.3
-#endif
             t->basetype->nextOf()->accept(this);
         }
     }

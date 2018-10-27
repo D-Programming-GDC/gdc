@@ -173,20 +173,3 @@ void dmd_aaRehash(AA** paa)
         }
     }
 }
-
-
-#if UNITTEST
-
-void unittest_aa()
-{
-    AA* aa = NULL;
-    Value v = dmd_aaGetRvalue(aa, NULL);
-    assert(!v);
-    Value *pv = dmd_aaGet(&aa, NULL);
-    assert(pv);
-    *pv = (void *)3;
-    v = dmd_aaGetRvalue(aa, NULL);
-    assert(v == (void *)3);
-}
-
-#endif

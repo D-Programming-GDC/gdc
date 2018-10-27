@@ -1894,9 +1894,6 @@ Ldone:
             break;
 
         default:
-            #ifdef DEBUG
-                printf("%x\n",flags);
-            #endif
             assert(0);
     }
     t->uns64value = n;
@@ -1913,9 +1910,6 @@ Ldone:
 TOK Lexer::inreal(Token *t)
 {
     //printf("Lexer::inreal()\n");
-#ifdef DEBUG
-    assert(*p == '.' || isdigit(*p));
-#endif
     bool isWellformedString = true;
     stringbuffer.reset();
     const utf8_t *pstart = p;
@@ -2057,21 +2051,6 @@ TOK Lexer::inreal(Token *t)
         const char *suffix = (result == TOKfloat32v || result == TOKimaginary32v) ? "f" : "";
         error(scanloc, "number '%s%s' is not representable", (char *)stringbuffer.data, suffix);
     }
-#ifdef DEBUG
-    switch (result)
-    {
-        case TOKfloat32v:
-        case TOKfloat64v:
-        case TOKfloat80v:
-        case TOKimaginary32v:
-        case TOKimaginary64v:
-        case TOKimaginary80v:
-            break;
-
-        default:
-            assert(0);
-    }
-#endif
     return result;
 }
 

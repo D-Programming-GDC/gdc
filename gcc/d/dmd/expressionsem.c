@@ -117,8 +117,6 @@ static bool preFunctionParameters(Scope *sc, Expressions *exps)
     return err;
 }
 
-#define LOGSEMANTIC     0
-
 class ExpressionSemanticVisitor : public Visitor
 {
 public:
@@ -246,9 +244,6 @@ private:
 public:
     void visit(Expression *e)
     {
-#if LOGSEMANTIC
-        printf("Expression::semantic() %s\n", e->toChars());
-#endif
         if (e->type)
             e->type = e->type->semantic(e->loc, sc);
         else
@@ -286,9 +281,6 @@ public:
 
     void visit(IdentifierExp *exp)
     {
-#if LOGSEMANTIC
-        printf("IdentifierExp::semantic('%s')\n", exp->ident->toChars());
-#endif
         if (exp->type)   // This is used as the dummy expression
         {
             result = exp;
@@ -455,9 +447,6 @@ public:
 
     void visit(ThisExp *e)
     {
-#if LOGSEMANTIC
-        printf("ThisExp::semantic()\n");
-#endif
         if (e->type)
         {
             result = e;
@@ -516,9 +505,6 @@ public:
 
     void visit(SuperExp *e)
     {
-#if LOGSEMANTIC
-        printf("SuperExp::semantic('%s')\n", e->toChars());
-#endif
         if (e->type)
         {
             result = e;
@@ -599,9 +585,6 @@ public:
 
     void visit(NullExp *e)
     {
-#if LOGSEMANTIC
-        printf("NullExp::semantic('%s')\n", e->toChars());
-#endif
         // NULL is the same as (void *)0
         if (e->type)
         {
@@ -614,9 +597,6 @@ public:
 
     void visit(StringExp *e)
     {
-#if LOGSEMANTIC
-        printf("StringExp::semantic() %s\n", e->toChars());
-#endif
         if (e->type)
         {
             result = e;
@@ -696,9 +676,6 @@ public:
 
     void visit(ArrayLiteralExp *e)
     {
-#if LOGSEMANTIC
-        printf("ArrayLiteralExp::semantic('%s')\n", e->toChars());
-#endif
         if (e->type)
         {
             result = e;
@@ -741,9 +718,6 @@ public:
 
     void visit(AssocArrayLiteralExp *e)
     {
-#if LOGSEMANTIC
-        printf("AssocArrayLiteralExp::semantic('%s')\n", e->toChars());
-#endif
         if (e->type)
         {
             result = e;
@@ -783,9 +757,6 @@ public:
 
     void visit(StructLiteralExp *e)
     {
-#if LOGSEMANTIC
-        printf("StructLiteralExp::semantic('%s')\n", e->toChars());
-#endif
         if (e->type)
         {
             result = e;
@@ -862,9 +833,6 @@ public:
 
     void visit(ScopeExp *exp)
     {
-#if LOGSEMANTIC
-        printf("+ScopeExp::semantic(%p '%s')\n", exp, exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -1008,12 +976,6 @@ public:
 
     void visit(NewExp *exp)
     {
-#if LOGSEMANTIC
-        printf("NewExp::semantic() %s\n", exp->toChars());
-        if (exp->thisexp)
-            printf("\tthisexp = %s\n", exp->thisexp->toChars());
-        printf("\tnewtype: %s\n", exp->newtype->toChars());
-#endif
         if (exp->type)                   // if semantic() already run
         {
             result = exp;
@@ -1420,12 +1382,6 @@ public:
 
     void visit(NewAnonClassExp *e)
     {
-#if LOGSEMANTIC
-        printf("NewAnonClassExp::semantic() %s\n", e->toChars());
-        //printf("thisexp = %p\n", e->thisexp);
-        //printf("type: %s\n", e->type->toChars());
-#endif
-
         Expression *d = new DeclarationExp(e->loc, e->cd);
         sc = sc->push();            // just create new scope
         sc->flags &= ~SCOPEctfe;    // temporary stop CTFE
@@ -1446,9 +1402,6 @@ public:
 
     void visit(SymOffExp *e)
     {
-#if LOGSEMANTIC
-        printf("SymOffExp::semantic('%s')\n", e->toChars());
-#endif
         //var->semantic(sc);
         if (!e->type)
             e->type = e->var->type->pointerTo();
@@ -1467,9 +1420,6 @@ public:
 
     void visit(VarExp *e)
     {
-#if LOGSEMANTIC
-        printf("VarExp::semantic(%s)\n", e->toChars());
-#endif
         if (FuncDeclaration *fd = e->var->isFuncDeclaration())
         {
             //printf("L%d fd = %s\n", __LINE__, f->toChars());
@@ -1515,9 +1465,6 @@ public:
 
     void visit(TupleExp *exp)
     {
-#if LOGSEMANTIC
-        printf("+TupleExp::semantic(%s)\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -1555,10 +1502,6 @@ public:
 
     void visit(FuncExp *exp)
     {
-#if LOGSEMANTIC
-        printf("FuncExp::semantic(%s)\n", exp->toChars());
-        if (exp->fd->treq) printf("  treq = %s\n", exp->fd->treq->toChars());
-#endif
         Expression *e = exp;
 
         sc = sc->push();            // just create new scope
@@ -1725,10 +1668,6 @@ public:
             return;
         }
 
-#if LOGSEMANTIC
-        printf("DeclarationExp::semantic() %s\n", e->toChars());
-#endif
-
         unsigned olderrors = global.errors;
 
         /* This is here to support extern(linkage) declaration,
@@ -1828,9 +1767,6 @@ public:
 
     void visit(TypeidExp *exp)
     {
-#if LOGSEMANTIC
-        printf("TypeidExp::semantic() %s\n", exp->toChars());
-#endif
         Type *ta = isType(exp->obj);
         Expression *ea = isExpression(exp->obj);
         Dsymbol *sa = isDsymbol(exp->obj);
@@ -1901,9 +1837,6 @@ public:
 
     void visit(HaltExp *e)
     {
-#if LOGSEMANTIC
-        printf("HaltExp::semantic()\n");
-#endif
         e->type = Type::tvoid;
         result = e;
     }
@@ -2331,9 +2264,6 @@ public:
 
     void visit(CompileExp *exp)
     {
-#if LOGSEMANTIC
-        printf("CompileExp::semantic('%s')\n", exp->toChars());
-#endif
         sc = sc->startCTFE();
         exp->e1 = semantic(exp->e1, sc);
         exp->e1 = resolveProperties(sc, exp->e1);
@@ -2379,9 +2309,6 @@ public:
         const char *name;
         StringExp *se;
 
-#if LOGSEMANTIC
-        printf("ImportExp::semantic('%s')\n", e->toChars());
-#endif
         sc = sc->startCTFE();
         e->e1 = semantic(e->e1, sc);
         e->e1 = resolveProperties(sc, e->e1);
@@ -2458,9 +2385,6 @@ public:
 
     void visit(AssertExp *exp)
     {
-#if LOGSEMANTIC
-        printf("AssertExp::semantic('%s')\n", exp->toChars());
-#endif
         if (Expression *ex = unaSemantic(exp, sc))
         {
             result = ex;
@@ -2520,10 +2444,6 @@ public:
 
     void visit(DotIdExp *exp)
     {
-#if LOGSEMANTIC
-        printf("DotIdExp::semantic(this = %p, '%s')\n", exp, exp->toChars());
-        //printf("e1->op = %d, '%s'\n", e1->op, Token::toChars(e1->op));
-#endif
         Expression *e = semanticY(exp, sc, 1);
         if (e && isDotOpDispatch(e))
         {
@@ -2561,9 +2481,6 @@ public:
 
     void visit(DotVarExp *exp)
     {
-#if LOGSEMANTIC
-        printf("DotVarExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -2709,10 +2626,6 @@ public:
 
     void visit(DotTemplateInstanceExp *exp)
     {
-#if LOGSEMANTIC
-        printf("DotTemplateInstanceExp::semantic('%s')\n", exp->toChars());
-#endif
-
         // Indicate we need to resolve by UFCS.
         Expression *e = semanticY(exp, sc, 1);
         if (!e)
@@ -2722,9 +2635,6 @@ public:
 
     void visit(DelegateExp *e)
     {
-#if LOGSEMANTIC
-        printf("DelegateExp::semantic('%s')\n", e->toChars());
-#endif
         if (e->type)
         {
             result = e;
@@ -2762,9 +2672,6 @@ public:
 
     void visit(DotTypeExp *exp)
     {
-#if LOGSEMANTIC
-        printf("DotTypeExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -2783,9 +2690,6 @@ public:
 
     void visit(CallExp *exp)
     {
-#if LOGSEMANTIC
-        printf("CallExp::semantic() %s\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;            // semantic() already run
@@ -3660,9 +3564,6 @@ public:
 
     void visit(AddrExp *exp)
     {
-#if LOGSEMANTIC
-        printf("AddrExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -3927,9 +3828,6 @@ public:
 
     void visit(PtrExp *exp)
     {
-#if LOGSEMANTIC
-        printf("PtrExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -3972,9 +3870,6 @@ public:
 
     void visit(NegExp *exp)
     {
-#if LOGSEMANTIC
-        printf("NegExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -4016,9 +3911,6 @@ public:
 
     void visit(UAddExp *exp)
     {
-#if LOGSEMANTIC
-        printf("UAddExp::semantic('%s')\n", exp->toChars());
-#endif
         assert(!exp->type);
 
         Expression *e = exp->op_overload(sc);
@@ -4262,9 +4154,6 @@ public:
 
     void visit(CastExp *exp)
     {
-#if LOGSEMANTIC
-        printf("CastExp::semantic('%s')\n", exp->toChars());
-#endif
         //static int x; assert(++x < 10);
         if (exp->type)
         {
@@ -4402,9 +4291,6 @@ public:
 
     void visit(VectorExp *exp)
     {
-#if LOGSEMANTIC
-        printf("VectorExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -4446,9 +4332,6 @@ public:
 
     void visit(SliceExp *exp)
     {
-#if LOGSEMANTIC
-        printf("SliceExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -4743,9 +4626,6 @@ public:
 
     void visit(ArrayLengthExp *e)
     {
-#if LOGSEMANTIC
-        printf("ArrayLengthExp::semantic('%s')\n", e->toChars());
-#endif
         if (e->type)
         {
             result = e;
@@ -4765,9 +4645,6 @@ public:
 
     void visit(IntervalExp *e)
     {
-#if LOGSEMANTIC
-        printf("IntervalExp::semantic('%s')\n", e->toChars());
-#endif
         if (e->type)
         {
             result = e;
@@ -4802,9 +4679,6 @@ public:
 
     void visit(DelegatePtrExp *e)
     {
-#if LOGSEMANTIC
-        printf("DelegatePtrExp::semantic('%s')\n", e->toChars());
-#endif
         if (!e->type)
         {
             unaSemantic(e, sc);
@@ -4822,9 +4696,6 @@ public:
 
     void visit(DelegateFuncptrExp *e)
     {
-#if LOGSEMANTIC
-        printf("DelegateFuncptrExp::semantic('%s')\n", e->toChars());
-#endif
         if (!e->type)
         {
             unaSemantic(e, sc);
@@ -4842,9 +4713,6 @@ public:
 
     void visit(ArrayExp *exp)
     {
-#if LOGSEMANTIC
-        printf("ArrayExp::semantic('%s')\n", exp->toChars());
-#endif
         assert(!exp->type);
 
         Expression *e = exp->op_overload(sc);
@@ -4863,10 +4731,6 @@ public:
 
     void visit(DotExp *exp)
     {
-#if LOGSEMANTIC
-        printf("DotExp::semantic('%s')\n", exp->toChars());
-        if (exp->type) printf("\ttype = %s\n", exp->type->toChars());
-#endif
         exp->e1 = semantic(exp->e1, sc);
         exp->e2 = semantic(exp->e2, sc);
 
@@ -4927,9 +4791,6 @@ public:
 
     void visit(IndexExp *exp)
     {
-#if LOGSEMANTIC
-        printf("IndexExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -5135,9 +4996,6 @@ public:
 
     void visit(PostExp *exp)
     {
-#if LOGSEMANTIC
-        printf("PostExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -5251,9 +5109,6 @@ public:
 
     void visit(AssignExp *exp)
     {
-#if LOGSEMANTIC
-        printf("AssignExp::semantic('%s')\n", exp->toChars());
-#endif
         //printf("e1->op = %d, '%s'\n", exp->e1->op, Token::toChars(exp->e1->op));
         //printf("e2->op = %d, '%s'\n", exp->e2->op, Token::toChars(exp->e2->op));
         if (exp->type)
@@ -6453,9 +6308,6 @@ public:
 
     void visit(AddExp *exp)
     {
-#if LOGSEMANTIC
-        printf("AddExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -6557,9 +6409,6 @@ public:
 
     void visit(MinExp *exp)
     {
-#if LOGSEMANTIC
-        printf("MinExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -6725,11 +6574,6 @@ public:
          *      c ~ ' '
          *      ' ' ~ c;
          */
-
-#if 0
-        exp->e1->type->print();
-        exp->e2->type->print();
-#endif
         Type *tb1next = tb1->nextOf();
         Type *tb2next = tb2->nextOf();
 
@@ -6877,12 +6721,6 @@ public:
             if (exp->checkPostblit(sc, tbn))
                 return setError();
         }
-#if 0
-        exp->e1->type->print();
-        exp->e2->type->print();
-        exp->type->print();
-        print();
-#endif
         Type *t1 = exp->e1->type->toBasetype();
         Type *t2 = exp->e2->type->toBasetype();
         if ((t1->ty == Tarray || t1->ty == Tsarray) &&
@@ -6902,9 +6740,6 @@ public:
 
     void visit(MulExp *exp)
     {
-#if 0
-        printf("MulExp::semantic() %s\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -7796,9 +7631,6 @@ public:
 
     void visit(CmpExp *exp)
     {
-#if LOGSEMANTIC
-        printf("CmpExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -8098,9 +7930,6 @@ public:
 
     void visit(CondExp *exp)
     {
-#if LOGSEMANTIC
-        printf("CondExp::semantic('%s')\n", exp->toChars());
-#endif
         if (exp->type)
         {
             result = exp;
@@ -8205,11 +8034,6 @@ public:
             }
         }
         exp->type = exp->type->merge2();
-#if 0
-        printf("res: %s\n", exp->type->toChars());
-        printf("e1 : %s\n", exp->e1->type->toChars());
-        printf("e2 : %s\n", exp->e2->type->toChars());
-#endif
 
         /* Bugzilla 14696: If either e1 or e2 contain temporaries which need dtor,
          * make them conditional.
@@ -8294,9 +8118,6 @@ Expression *trySemantic(Expression *exp, Scope* sc)
  */
 Expression *unaSemantic(UnaExp *e, Scope *sc)
 {
-#if LOGSEMANTIC
-    printf("UnaExp::semantic('%s')\n", e->toChars());
-#endif
     Expression *e1x = semantic(e->e1, sc);
     if (e1x->op == TOKerror)
         return e1x;
@@ -8310,9 +8131,6 @@ Expression *unaSemantic(UnaExp *e, Scope *sc)
  */
 Expression *binSemantic(BinExp *e, Scope *sc)
 {
-#if LOGSEMANTIC
-    printf("BinExp::semantic('%s')\n", e->toChars());
-#endif
     Expression *e1x = semantic(e->e1, sc);
     Expression *e2x = semantic(e->e2, sc);
 
@@ -8688,9 +8506,6 @@ Expression *semanticY(DotIdExp *exp, Scope *sc, int flag)
             }
 
             // BUG: handle other cases like in IdentifierExp::semantic()
-#ifdef DEBUG
-            printf("s = '%s', kind = '%s'\n", s->toChars(), s->kind());
-#endif
             assert(0);
         }
         else if (exp->ident == Id::stringof)
@@ -8756,10 +8571,6 @@ Expression *semanticY(DotIdExp *exp, Scope *sc, int flag)
 // If flag == 1, stop "not a property" error and return NULL.
 Expression *semanticY(DotTemplateInstanceExp *exp, Scope *sc, int flag)
 {
-#if LOGSEMANTIC
-    printf("DotTemplateInstanceExpY::semantic('%s')\n", exp->toChars());
-#endif
-
     DotIdExp *die = new DotIdExp(exp->loc, exp->e1, exp->ti->name);
 
     Expression *e = semanticX(die, sc);

@@ -1257,11 +1257,6 @@ bool ScopeDsymbol::isforwardRef()
 
 void ScopeDsymbol::multiplyDefined(Loc loc, Dsymbol *s1, Dsymbol *s2)
 {
-#if 0
-    printf("ScopeDsymbol::multiplyDefined()\n");
-    printf("s1 = %p, '%s' kind = '%s', parent = %s\n", s1, s1->toChars(), s1->kind(), s1->parent ? s1->parent->toChars() : "");
-    printf("s2 = %p, '%s' kind = '%s', parent = %s\n", s2, s2->toChars(), s2->kind(), s2->parent ? s2->parent->toChars() : "");
-#endif
     if (loc.filename)
     {   ::error(loc, "%s at %s conflicts with %s at %s",
             s1->toPrettyChars(),
@@ -1415,23 +1410,6 @@ FuncDeclaration *ScopeDsymbol::findGetMembers()
     Dsymbol *s = search_function(this, Id::getmembers);
     FuncDeclaration *fdx = s ? s->isFuncDeclaration() : NULL;
 
-#if 0  // Finish
-    static TypeFunction *tfgetmembers;
-
-    if (!tfgetmembers)
-    {
-        Scope sc;
-        Parameters *parameters = new Parameters;
-        Parameters *p = new Parameter(STCin, Type::tchar->constOf()->arrayOf(), NULL, NULL);
-        parameters->push(p);
-
-        Type *tret = NULL;
-        tfgetmembers = new TypeFunction(parameters, tret, 0, LINKd);
-        tfgetmembers = (TypeFunction *)tfgetmembers->semantic(Loc(), &sc);
-    }
-    if (fdx)
-        fdx = fdx->overloadExactMatch(tfgetmembers);
-#endif
     if (fdx && fdx->isVirtual())
         fdx = NULL;
 

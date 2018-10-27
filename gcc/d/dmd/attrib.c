@@ -1081,7 +1081,6 @@ void PragmaDeclaration::semantic(Scope *sc)
             goto Ldecl;
         }
 
-#if 1
         /* Note: D language specification should not have any assumption about backend
          * implementation. Ideally pragma(mangle) can accept a string of any content.
          *
@@ -1120,7 +1119,6 @@ void PragmaDeclaration::semantic(Scope *sc)
                 break;
             }
         }
-#endif
     }
     else if (global.params.ignoreUnsupportedPragmas)
     {

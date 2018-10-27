@@ -31,18 +31,6 @@ Import::Import(Loc loc, Identifiers *packages, Identifier *id, Identifier *alias
     : Dsymbol(NULL)
 {
     assert(id);
-#if 0
-    printf("Import::Import(");
-    if (packages && packages->dim)
-    {
-        for (size_t i = 0; i < packages->dim; i++)
-        {
-            Identifier *id = (*packages)[i];
-            printf("%s.", id->toChars());
-        }
-    }
-    printf("%s)\n", id->toChars());
-#endif
     this->loc = loc;
     this->packages = packages;
     this->id = id;
@@ -112,15 +100,6 @@ void Import::load(Scope *sc)
 
     // See if existing module
     DsymbolTable *dst = Package::resolve(packages, NULL, &pkg);
-#if 0
-    if (pkg && pkg->isModule())
-    {
-        ::error(loc, "can only import from a module, not from a member of module %s. Did you mean `import %s : %s`?",
-             pkg->toChars(), pkg->toPrettyChars(), id->toChars());
-        mod = pkg->isModule(); // Error recovery - treat as import of that module
-        return;
-    }
-#endif
     Dsymbol *s = dst->lookup(id);
     if (s)
     {

@@ -51,9 +51,6 @@ Initializer *semantic(Initializer *init, Scope *sc, Type *t, NeedInterpret needI
 static Expression *interpret(UnionExp *pue, Expression *e, InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
 static Expression *interpret(UnionExp *pue, Statement *s, InterState *istate);
 
-#define LOG     0
-#define LOGASSIGN 0
-#define LOGCOMPILE 0
 #define SHOWPERFORMANCE 0
 
 // Maximum allowable recursive function calls in CTFE
@@ -399,26 +396,17 @@ public:
 
     void visit(Statement *)
     {
-    #if LOGCOMPILE
-        printf("%s Statement::ctfeCompile %s\n", s->loc.toChars(), s->toChars());
-    #endif
         assert(0);
     }
 
     void visit(ExpStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s ExpStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         if (s->exp)
             ccf->onExpression(s->exp);
     }
 
     void visit(CompoundStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s CompoundStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         for (size_t i = 0; i < s->statements->dim; i++)
         {
             Statement *sx = (*s->statements)[i];
@@ -429,9 +417,6 @@ public:
 
     void visit(UnrolledLoopStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s UnrolledLoopStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         for (size_t i = 0; i < s->statements->dim; i++)
         {
             Statement *sx = (*s->statements)[i];
@@ -442,10 +427,6 @@ public:
 
     void visit(IfStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s IfStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
-
         ccf->onExpression(s->condition);
         if (s->ifbody)
             ctfeCompile(s->ifbody);
@@ -455,27 +436,18 @@ public:
 
     void visit(ScopeStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s ScopeStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         if (s->statement)
             ctfeCompile(s->statement);
     }
 
     void visit(OnScopeStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s OnScopeStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         // rewritten to try/catch/finally
         assert(0);
     }
 
     void visit(DoStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s DoStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         ccf->onExpression(s->condition);
         if (s->_body)
             ctfeCompile(s->_body);
@@ -483,19 +455,12 @@ public:
 
     void visit(WhileStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s WhileStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         // rewritten to ForStatement
         assert(0);
     }
 
     void visit(ForStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s ForStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
-
         if (s->_init)
             ctfeCompile(s->_init);
         if (s->condition)
@@ -508,18 +473,12 @@ public:
 
     void visit(ForeachStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s ForeachStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         // rewritten for ForStatement
         assert(0);
     }
 
     void visit(SwitchStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s SwitchStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         ccf->onExpression(s->condition);
         // Note that the body contains the the Case and Default
         // statements, so we only need to compile the expressions
@@ -533,71 +492,44 @@ public:
 
     void visit(CaseStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s CaseStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         if (s->statement)
             ctfeCompile(s->statement);
     }
 
     void visit(DefaultStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s DefaultStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         if (s->statement)
             ctfeCompile(s->statement);
     }
 
     void visit(GotoDefaultStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s GotoDefaultStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
     }
 
     void visit(GotoCaseStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s GotoCaseStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
     }
 
     void visit(SwitchErrorStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s SwitchErrorStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
     }
 
     void visit(ReturnStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s ReturnStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         if (s->exp)
             ccf->onExpression(s->exp);
     }
 
     void visit(BreakStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s BreakStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
     }
 
     void visit(ContinueStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s ContinueStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
     }
 
     void visit(WithStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s WithStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         // If it is with(Enum) {...}, just execute the body.
         if (s->exp->op == TOKscope || s->exp->op == TOKtype)
         {
@@ -613,9 +545,6 @@ public:
 
     void visit(TryCatchStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s TryCatchStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         if (s->_body)
             ctfeCompile(s->_body);
         for (size_t i = 0; i < s->catches->dim; i++)
@@ -630,9 +559,6 @@ public:
 
     void visit(TryFinallyStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s TryFinallyStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         if (s->_body)
             ctfeCompile(s->_body);
         if (s->finalbody)
@@ -641,50 +567,32 @@ public:
 
     void visit(ThrowStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s ThrowStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         ccf->onExpression(s->exp);
     }
 
     void visit(GotoStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s GotoStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
     }
 
     void visit(LabelStatement *s)
     {
-    #if LOGCOMPILE
-        printf("%s LabelStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         if (s->statement)
             ctfeCompile(s->statement);
     }
 
     void visit(ImportStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s ImportStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         // Contains no variables or executable code
     }
 
     void visit(ForeachRangeStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s ForeachRangeStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         // rewritten for ForStatement
         assert(0);
     }
 
     void visit(AsmStatement *)
     {
-    #if LOGCOMPILE
-        printf("%s AsmStatement::ctfeCompile\n", s->loc.toChars());
-    #endif
         // we can't compile asm statements
     }
 
@@ -700,9 +608,6 @@ public:
  */
 void ctfeCompile(FuncDeclaration *fd)
 {
-#if LOGCOMPILE
-    printf("\n%s FuncDeclaration::ctfeCompile %s\n", fd->loc.toChars(), fd->toChars());
-#endif
     assert(!fd->ctfeCode);
     assert(!fd->semantic3Errors);
     assert(fd->semanticRun == PASSsemantic3done);
@@ -820,9 +725,6 @@ Expression *ctfeInterpretForPragmaMsg(Expression *e)
 
 static Expression *interpretFunction(FuncDeclaration *fd, InterState *istate, Expressions *arguments, Expression *thisarg)
 {
-#if LOG
-    printf("\n********\n%s FuncDeclaration::interpret(istate = %p) %s\n", fd->loc.toChars(), istate, fd->toChars());
-#endif
     if (fd->semanticRun == PASSsemantic3)
     {
         fd->error("circular dependency. Functions cannot be interpreted while being compiled");
@@ -941,9 +843,6 @@ static Expression *interpretFunction(FuncDeclaration *fd, InterState *istate, Ex
         Expression *earg = eargs[i];
         Parameter *fparam = Parameter::getNth(tf->parameters, i);
         VarDeclaration *v = (*fd->parameters)[i];
-#if LOG
-        printf("arg[%d] = %s\n", i, earg->toChars());
-#endif
         ctfeStack.push(v);
 
         if ((fparam->storageClass & (STCout | STCref)) &&
@@ -983,10 +882,6 @@ static Expression *interpretFunction(FuncDeclaration *fd, InterState *istate, Ex
             // Value parameters and non-trivial references
             setValueWithoutChecking(v, earg);
         }
-#if LOG || LOGASSIGN
-        printf("interpreted arg[%d] = %s\n", i, earg->toChars());
-        showCtfeExpr(earg);
-#endif
     }
 
     if (fd->vresult)
@@ -1009,12 +904,6 @@ static Expression *interpretFunction(FuncDeclaration *fd, InterState *istate, Ex
             break;
         }
         e = interpret(fd->fbody, &istatex);
-        if (CTFEExp::isCantExp(e))
-        {
-#if LOG
-            printf("function body failed to interpret\n");
-#endif
-        }
 
         if (istatex.start)
         {
@@ -1106,9 +995,6 @@ public:
 
     void visit(Statement *s)
     {
-    #if LOG
-        printf("%s Statement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1122,9 +1008,6 @@ public:
 
     void visit(ExpStatement *s)
     {
-    #if LOG
-        printf("%s ExpStatement::interpret(%s)\n", s->loc.toChars(), s->exp ? s->exp->toChars() : "");
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1139,9 +1022,6 @@ public:
 
     void visit(CompoundStatement *s)
     {
-    #if LOG
-        printf("%s CompoundStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
 
@@ -1153,16 +1033,10 @@ public:
             if (result)
                 break;
         }
-    #if LOG
-        printf("%s -CompoundStatement::interpret() %p\n", s->loc.toChars(), result);
-    #endif
     }
 
     void visit(UnrolledLoopStatement *s)
     {
-    #if LOG
-        printf("%s UnrolledLoopStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
 
@@ -1205,9 +1079,6 @@ public:
 
     void visit(IfStatement *s)
     {
-    #if LOG
-        printf("%s IfStatement::interpret(%s)\n", s->loc.toChars(), s->condition->toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
         if (istate->start)
@@ -1239,9 +1110,6 @@ public:
 
     void visit(ScopeStatement *s)
     {
-    #if LOG
-        printf("%s ScopeStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
 
@@ -1325,9 +1193,6 @@ public:
 
     void visit(ReturnStatement *s)
     {
-    #if LOG
-        printf("%s ReturnStatement::interpret(%s)\n", s->loc.toChars(), s->exp ? s->exp->toChars() : "");
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1376,10 +1241,6 @@ public:
 
         if (needToCopyLiteral(e))
             e = copyLiteral(e).copy();
-    #if LOGASSIGN
-        printf("RETURN %s\n", s->loc.toChars());
-        showCtfeExpr(e);
-    #endif
         result = e;
     }
 
@@ -1398,9 +1259,6 @@ public:
 
     void visit(BreakStatement *s)
     {
-    #if LOG
-        printf("%s BreakStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1414,9 +1272,6 @@ public:
 
     void visit(ContinueStatement *s)
     {
-    #if LOG
-        printf("%s ContinueStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1430,17 +1285,11 @@ public:
 
     void visit(WhileStatement *)
     {
-    #if LOG
-        printf("WhileStatement::interpret()\n");
-    #endif
         assert(0);                  // rewritten to ForStatement
     }
 
     void visit(DoStatement *s)
     {
-    #if LOG
-        printf("%s DoStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
 
@@ -1497,9 +1346,6 @@ public:
 
     void visit(ForStatement *s)
     {
-    #if LOG
-        printf("%s ForStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
 
@@ -1575,9 +1421,6 @@ public:
 
     void visit(SwitchStatement *s)
     {
-    #if LOG
-        printf("%s SwitchStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
         if (istate->start)
@@ -1650,9 +1493,6 @@ public:
 
     void visit(CaseStatement *s)
     {
-    #if LOG
-        printf("%s CaseStatement::interpret(%s) this = %p\n", s->loc.toChars(), s->exp->toChars(), s);
-    #endif
         if (istate->start == s)
             istate->start = NULL;
 
@@ -1661,9 +1501,6 @@ public:
 
     void visit(DefaultStatement *s)
     {
-    #if LOG
-        printf("%s DefaultStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
 
@@ -1672,9 +1509,6 @@ public:
 
     void visit(GotoStatement *s)
     {
-    #if LOG
-        printf("%s GotoStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1689,9 +1523,6 @@ public:
 
     void visit(GotoCaseStatement *s)
     {
-    #if LOG
-        printf("%s GotoCaseStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1706,9 +1537,6 @@ public:
 
     void visit(GotoDefaultStatement *s)
     {
-    #if LOG
-        printf("%s GotoDefaultStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1723,9 +1551,6 @@ public:
 
     void visit(LabelStatement *s)
     {
-    #if LOG
-        printf("%s LabelStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
 
@@ -1734,9 +1559,6 @@ public:
 
     void visit(TryCatchStatement *s)
     {
-    #if LOG
-        printf("%s TryCatchStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
         if (istate->start)
@@ -1808,9 +1630,6 @@ public:
 
     static ThrownExceptionExp *chainExceptions(ThrownExceptionExp *oldest, ThrownExceptionExp *newest)
     {
-    #if LOG
-        printf("Collided exceptions %s %s\n", oldest->thrown->toChars(), newest->thrown->toChars());
-    #endif
         // Little sanity check to make sure it's really a Throwable
         ClassReferenceExp *boss = oldest->thrown;
         assert((*boss->value->elements)[4]->type->ty == Tclass);    // Throwable.next
@@ -1833,9 +1652,6 @@ public:
 
     void visit(TryFinallyStatement *s)
     {
-    #if LOG
-        printf("%s TryFinallyStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
         if (istate->start)
@@ -1895,9 +1711,6 @@ public:
 
     void visit(ThrowStatement *s)
     {
-    #if LOG
-        printf("%s ThrowStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1920,9 +1733,6 @@ public:
 
     void visit(WithStatement *s)
     {
-    #if LOG
-        printf("%s WithStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start == s)
             istate->start = NULL;
         if (istate->start)
@@ -1973,9 +1783,6 @@ public:
 
     void visit(AsmStatement *s)
     {
-    #if LOG
-        printf("%s AsmStatement::interpret()\n", s->loc.toChars());
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -1989,9 +1796,6 @@ public:
 
     void visit(ImportStatement *s)
     {
-    #if LOG
-        printf("ImportStatement::interpret()\n");
-    #endif
         if (istate->start)
         {
             if (istate->start != s)
@@ -2004,20 +1808,12 @@ public:
 
     void visit(Expression *e)
     {
-    #if LOG
-        printf("%s Expression::interpret() '%s' %s\n", e->loc.toChars(), Token::toChars(e->op), e->toChars());
-        printf("type = %s\n", e->type->toChars());
-        e->print();
-    #endif
         e->error("cannot interpret %s at compile time", e->toChars());
         result = CTFEExp::cantexp;
     }
 
     void visit(ThisExp *e)
     {
-    #if LOG
-        printf("%s ThisExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         if (goal == ctfeNeedLvalue)
         {
             // We might end up here with istate being zero (see bugzilla 16382)
@@ -2049,17 +1845,11 @@ public:
 
     void visit(IntegerExp *e)
     {
-    #if LOG
-        printf("%s IntegerExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         result = e;
     }
 
     void visit(RealExp *e)
     {
-    #if LOG
-        printf("%s RealExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         result = e;
     }
 
@@ -2070,9 +1860,6 @@ public:
 
     void visit(StringExp *e)
     {
-    #if LOG
-        printf("%s StringExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         /* Attempts to modify string literals are prevented
          * in BinExp::interpretAssignCommon.
          */
@@ -2081,17 +1868,11 @@ public:
 
     void visit(FuncExp *e)
     {
-    #if LOG
-        printf("%s FuncExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         result = e;
     }
 
     void visit(SymOffExp *e)
     {
-    #if LOG
-        printf("%s SymOffExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         if (e->var->isFuncDeclaration() && e->offset == 0)
         {
             result = e;
@@ -2224,9 +2005,6 @@ public:
 
     void visit(AddrExp *e)
     {
-    #if LOG
-        printf("%s AddrExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         if (e->e1->op == TOKvar && ((VarExp *)e->e1)->var->isDataseg())
         {
             // Normally this is already done by optimize()
@@ -2248,9 +2026,6 @@ public:
 
     void visit(DelegateExp *e)
     {
-    #if LOG
-        printf("%s DelegateExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         // TODO: Really we should create a CTFE-only delegate expression
         // of a pointer and a funcptr.
 
@@ -2414,9 +2189,6 @@ public:
 
     void visit(VarExp *e)
     {
-    #if LOG
-        printf("%s VarExp::interpret() %s, goal = %d\n", e->loc.toChars(), e->toChars(), goal);
-    #endif
         if (e->var->isFuncDeclaration())
         {
             result = e;
@@ -2475,9 +2247,6 @@ public:
 
     void visit(DeclarationExp *e)
     {
-    #if LOG
-        printf("%s DeclarationExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         Dsymbol *s = e->declaration;
         if (VarDeclaration *v = s->isVarDeclaration())
         {
@@ -2588,16 +2357,10 @@ public:
 
         // Others should not contain executable code, so are trivial to evaluate
         result = NULL;
-    #if LOG
-        printf("-DeclarationExp::interpret(%s): %p\n", e->toChars(), result);
-    #endif
     }
 
     void visit(TypeidExp *e)
     {
-    #if LOG
-        printf("%s TypeidExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         if (isType(e->obj))
         {
             result = e;
@@ -2635,10 +2398,6 @@ public:
 
     void visit(TupleExp *e)
     {
-    #if LOG
-        printf("%s TupleExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
         if (exceptionOrCant(interpret(e->e0, istate, ctfeNeedNothing)))
             return;
 
@@ -2680,9 +2439,6 @@ public:
 
     void visit(ArrayLiteralExp *e)
     {
-    #if LOG
-        printf("%s ArrayLiteralExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         if (e->ownedByCtfe >= OWNEDctfe)    // We've already interpreted all the elements
         {
             result = e;
@@ -2759,9 +2515,6 @@ public:
 
     void visit(AssocArrayLiteralExp *e)
     {
-    #if LOG
-        printf("%s AssocArrayLiteralExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         if (e->ownedByCtfe >= OWNEDctfe)    // We've already interpreted all the elements
         {
             result = e;
@@ -2842,9 +2595,6 @@ public:
 
     void visit(StructLiteralExp *e)
     {
-    #if LOG
-        printf("%s StructLiteralExp::interpret() %s ownedByCtfe = %d\n", e->loc.toChars(), e->toChars(), e->ownedByCtfe);
-    #endif
         if (e->ownedByCtfe >= OWNEDctfe)
         {
             result = e;
@@ -2965,10 +2715,6 @@ public:
 
     void visit(NewExp *e)
     {
-    #if LOG
-        printf("%s NewExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
         if (e->allocator)
         {
             e->error("member allocators not supported by CTFE");
@@ -3130,9 +2876,6 @@ public:
 
     void visit(UnaExp *e)
     {
-    #if LOG
-        printf("%s UnaExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         UnionExp ue;
         Expression *e1 = interpret(&ue, e->e1, istate);
         if (exceptionOrCant(e1))
@@ -3150,9 +2893,6 @@ public:
 
     void visit(DotTypeExp *e)
     {
-    #if LOG
-        printf("%s DotTypeExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         UnionExp ue;
         Expression *e1 = interpret(&ue, e->e1, istate);
         if (exceptionOrCant(e1))
@@ -3188,9 +2928,6 @@ public:
 
     void interpretCommon(BinExp *e, fp_t fp)
     {
-    #if LOG
-        printf("%s BinExp::interpretCommon() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         if (e->e1->type->ty == Tpointer && e->e2->type->ty == Tpointer && e->op == TOKmin)
         {
             UnionExp ue1;
@@ -3268,9 +3005,6 @@ public:
 
     void interpretCompareCommon(BinExp *e, fp2_t fp)
     {
-    #if LOG
-        printf("%s BinExp::interpretCompareCommon() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         UnionExp ue1;
         UnionExp ue2;
         if (e->e1->type->ty == Tpointer && e->e2->type->ty == Tpointer)
@@ -3390,9 +3124,6 @@ public:
 
     void interpretAssignCommon(BinExp *e, fp_t fp, int post = 0)
     {
-    #if LOG
-        printf("%s BinExp::interpretAssignCommon() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         result = CTFEExp::cantexp;
         Expression *e1 = e->e1;
         if (!istate)
@@ -3799,11 +3530,6 @@ public:
         }
         if (exceptionOrCant(newval))
             return;
-
-    #if LOGASSIGN
-        printf("ASSIGN: %s=%s\n", e1->toChars(), newval->toChars());
-        showCtfeExpr(newval);
-    #endif
 
         /* Block assignment or element-wise assignment.
          */
@@ -4495,17 +4221,10 @@ public:
 
     void visit(PostExp *e)
     {
-    #if LOG
-        printf("%s PostExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         if (e->op == TOKplusplus)
             interpretAssignCommon(e, &Add, 1);
         else
             interpretAssignCommon(e, &Min, 1);
-    #if LOG
-        if (CTFEExp::isCantExp(result))
-            printf("PostExp::interpret() CANT\n");
-    #endif
     }
 
     /* Return 1 if e is a p1 > p2 or p1 >= p2 pointer comparison;
@@ -4696,10 +4415,6 @@ public:
 
     void visit(AndAndExp *e)
     {
-    #if LOG
-        printf("%s AndAndExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
         // Check for an insidePointer expression, evaluate it if so
         interpretFourPointerRelation(e);
         if (result)
@@ -4750,10 +4465,6 @@ public:
 
     void visit(OrOrExp *e)
     {
-    #if LOG
-        printf("%s OrOrExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
         // Check for an insidePointer expression, evaluate it if so
         interpretFourPointerRelation(e);
         if (result)
@@ -4853,10 +4564,6 @@ public:
 
     void visit(CallExp *e)
     {
-    #if LOG
-        printf("%s CallExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
         Expression *pthis = NULL;
         FuncDeclaration *fd = NULL;
 
@@ -5031,10 +4738,6 @@ public:
 
     void visit(CommaExp *e)
     {
-    #if LOG
-        printf("%s CommaExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
         CommaExp *firstComma = e;
         while (firstComma->e1->op == TOKcomma)
             firstComma = (CommaExp *)firstComma->e1;
@@ -5092,9 +4795,6 @@ public:
 
     void visit(CondExp *e)
     {
-    #if LOG
-        printf("%s CondExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         UnionExp uecond;
         Expression *econd;
         econd = interpret(&uecond, e->econd, istate);
@@ -5123,9 +4823,6 @@ public:
 
     void visit(ArrayLengthExp *e)
     {
-    #if LOG
-        printf("%s ArrayLengthExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         UnionExp ue1;
         Expression *e1 = interpret(&ue1, e->e1, istate);
         assert(e1);
@@ -5146,9 +4843,6 @@ public:
 
     void visit(DelegatePtrExp *e)
     {
-    #if LOG
-        printf("%s DelegatePtrExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         Expression *e1 = interpret(pue, e->e1, istate);
         assert(e1);
         if (exceptionOrCant(e1))
@@ -5159,9 +4853,6 @@ public:
 
     void visit(DelegateFuncptrExp *e)
     {
-    #if LOG
-        printf("%s DelegateFuncptrExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         Expression *e1 = interpret(pue, e->e1, istate);
         assert(e1);
         if (exceptionOrCant(e1))
@@ -5302,9 +4993,6 @@ public:
 
     void visit(IndexExp *e)
     {
-    #if LOG
-        printf("%s IndexExp::interpret() %s, goal = %d\n", e->loc.toChars(), e->toChars(), goal);
-    #endif
         if (e->e1->type->toBasetype()->ty == Tpointer)
         {
             Expression *agg;
@@ -5417,10 +5105,6 @@ public:
 
     void visit(SliceExp *e)
     {
-    #if LOG
-        printf("%s SliceExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
         if (e->e1->type->toBasetype()->ty == Tpointer)
         {
             // Slicing a pointer. Note that there is no $ in this case.
@@ -5587,9 +5271,6 @@ public:
 
     void visit(InExp *e)
     {
-    #if LOG
-        printf("%s InExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         Expression *e1 = interpret(e->e1, istate);
         if (exceptionOrCant(e1))
             return;
@@ -5630,9 +5311,6 @@ public:
 
     void visit(CatExp *e)
     {
-    #if LOG
-        printf("%s CatExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         Expression *e1 = interpret(e->e1, istate);
         if (exceptionOrCant(e1))
             return;
@@ -5669,9 +5347,6 @@ public:
 
     void visit(DeleteExp *e)
     {
-    #if LOG
-        printf("%s DeleteExp::interpret() %s\n", e->loc->toChars(), e->toChars());
-    #endif
         result = interpret(e->e1, istate);
         if (exceptionOrCant(result))
             return;
@@ -5787,9 +5462,6 @@ public:
 
     void visit(CastExp *e)
     {
-    #if LOG
-        printf("%s CastExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         Expression *e1 = interpret(e->e1, istate, goal);
         if (exceptionOrCant(e1))
             return;
@@ -6007,9 +5679,6 @@ public:
 
     void visit(AssertExp *e)
     {
-    #if LOG
-        printf("%s AssertExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         Expression *e1 = interpret(pue, e->e1, istate);
         if (exceptionOrCant(e1))
             return;
@@ -6043,10 +5712,6 @@ public:
 
     void visit(PtrExp *e)
     {
-    #if LOG
-        printf("%s PtrExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
-
         // Check for int<->float and long<->double casts.
         if (e->e1->op == TOKsymoff && ((SymOffExp *)e->e1)->offset == 0 && ((SymOffExp *)e->e1)->var->isVarDeclaration() && isFloatIntPaint(e->type, ((SymOffExp *)e->e1)->var->type))
         {
@@ -6128,19 +5793,10 @@ public:
         result = interpret(result, istate, goal);
         if (exceptionOrCant(result))
             return;
-
-    #if LOG
-        if (CTFEExp::isCantExp(result))
-            printf("PtrExp::interpret() %s = CTFEExp::cantexp\n", e->toChars());
-    #endif
     }
 
     void visit(DotVarExp *e)
     {
-    #if LOG
-        printf("%s DotVarExp::interpret() %s, goal = %d\n", e->loc.toChars(), e->toChars(), goal);
-    #endif
-
         Expression *ex = interpret(e->e1, istate);
         if (exceptionOrCant(ex))
             return;
@@ -6250,17 +5906,10 @@ public:
             result = createBlockDuplicatedArrayLiteral(ex->loc, v->type, ex, len);
             (*se->elements)[i] = result;
         }
-    #if LOG
-        if (CTFEExp::isCantExp(result))
-            printf("DotVarExp::interpret() %s = CTFEExp::cantexp\n", e->toChars());
-    #endif
     }
 
     void visit(RemoveExp *e)
     {
-    #if LOG
-        printf("%s RemoveExp::interpret() %s\n", e->loc.toChars(), e->toChars());
-    #endif
         Expression *agg = interpret(e->e1, istate);
         if (exceptionOrCant(agg))
             return;
@@ -6577,9 +6226,6 @@ Expression *interpret_length(InterState *istate, Expression *earg)
 
 Expression *interpret_keys(InterState *istate, Expression *earg, Type *returnType)
 {
-#if LOG
-    printf("interpret_keys()\n");
-#endif
     earg = interpret(earg, istate);
     if (exceptionOrCantInterpret(earg))
         return earg;
@@ -6597,9 +6243,6 @@ Expression *interpret_keys(InterState *istate, Expression *earg, Type *returnTyp
 
 Expression *interpret_values(InterState *istate, Expression *earg, Type *returnType)
 {
-#if LOG
-    printf("interpret_values()\n");
-#endif
     earg = interpret(earg, istate);
     if (exceptionOrCantInterpret(earg))
         return earg;
@@ -6618,9 +6261,6 @@ Expression *interpret_values(InterState *istate, Expression *earg, Type *returnT
 
 Expression *interpret_dup(InterState *istate, Expression *earg)
 {
-#if LOG
-    printf("interpret_dup()\n");
-#endif
     earg = interpret(earg, istate);
     if (exceptionOrCantInterpret(earg))
         return earg;
@@ -6715,9 +6355,6 @@ Type *returnedArrayType(FuncDeclaration *fd)
  */
 Expression *foreachApplyUtf(InterState *istate, Expression *str, Expression *deleg, bool rvs)
 {
-#if LOG
-    printf("foreachApplyUtf(%s, %s)\n", str->toChars(), deleg->toChars());
-#endif
     FuncDeclaration *fd = NULL;
     Expression *pthis = NULL;
     if (deleg->op == TOKdelegate)
@@ -7157,14 +6794,6 @@ void setValueWithoutChecking(VarDeclaration *vd, Expression *newval)
 
 void setValue(VarDeclaration *vd, Expression *newval)
 {
-#if 0
-    if (! ((vd->storage_class & (STCout | STCref))
-            ? isCtfeReferenceValid(newval)
-            : isCtfeValueValid(newval)) )
-    {
-        printf("[%s] vd = %s %s, newval = %s\n", vd->loc.toChars(), vd->type->toChars(), vd->toChars(), newval->toChars());
-    }
-#endif
     assert((vd->storage_class & (STCout | STCref))
             ? isCtfeReferenceValid(newval)
             : isCtfeValueValid(newval));

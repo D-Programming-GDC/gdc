@@ -228,11 +228,6 @@ size_t extractArgN(const utf8_t *p, size_t end, const utf8_t **pmarg, size_t *pm
 void Macro::expand(OutBuffer *buf, size_t start, size_t *pend,
         const utf8_t *arg, size_t arglen)
 {
-#if 0
-    printf("Macro::expand(buf[%d..%d], arg = '%.*s')\n", start, *pend, arglen, arg);
-    printf("Buf is: '%.*s'\n", *pend - start, buf->data + start);
-#endif
-
     // limit recursive expansion
     static int nest;
     static const int nestLimit = 1000;

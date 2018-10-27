@@ -855,10 +855,6 @@ Lancestorsdone:
     {
         // https://issues.dlang.org/show_bug.cgi?id=17492
         ClassDeclaration *cd = ((TypeClass *)type)->sym;
-#if 0
-        printf("this = %p %s\n", this, this->toPrettyChars());
-        printf("type = %d sym = %p, %s\n", type->ty, cd, cd->toPrettyChars());
-#endif
         error("already exists at %s. Perhaps in another function with the same name?", cd->loc.toChars());
     }
 
@@ -1732,13 +1728,6 @@ Lancestorsdone:
         type = Type::terror;
     }
 
-#if 0
-    if (type->ty == Tclass && ((TypeClass *)type)->sym != this)
-    {
-        printf("this = %p %s\n", this, this->toChars());
-        printf("type = %d sym = %p\n", type->ty, ((TypeClass *)type)->sym);
-      }
-#endif
     assert(type->ty != Tclass || ((TypeClass *)type)->sym == this);
 }
 

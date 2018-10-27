@@ -455,14 +455,6 @@ Statements *ExpStatement::flatten(Scope *sc)
             assert(tm->members);
 
             Statement *s = toStatement(tm);
-        #if 0
-            OutBuffer buf;
-            buf.doindent = 1;
-            HdrGenState hgs;
-            hgs.hdrgen = true;
-            toCBuffer(s, &buf, &hgs);
-            printf("tm ==> s = %s\n", buf.peekString());
-        #endif
             Statements *a = new Statements();
             a->push(s);
             return a;
