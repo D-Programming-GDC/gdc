@@ -28,11 +28,12 @@ AM_DFLAGS=$(phobos_compiler_pic_flag)
 ALL_DRUNTIME_INSTALL_DSOURCES = $(DRUNTIME_DSOURCES) \
 	$(DRUNTIME_DSOURCES_GC) $(DRUNTIME_DSOURCES_GCSTUB) \
 	$(DRUNTIME_DSOURCES_BIONIC) $(DRUNTIME_DSOURCES_DARWIN) \
-	$(DRUNTIME_DSOURCES_FREEBSD) $(DRUNTIME_DSOURCES_LINUX) \
-	$(DRUNTIME_DSOURCES_OPENBSD) $(DRUNTIME_DSOURCES_OSX) \
-	$(DRUNTIME_DSOURCES_POSIX) $(DRUNTIME_DSOURCES_SOLARIS) \
-	$(DRUNTIME_DSOURCES_WINDOWS) $(DRUNTIME_DSOURCES_GENERATED) \
-	$(DRUNTIME_DISOURCES) $(DRUNTIME_DSOURCES_STDCXX)
+	$(DRUNTIME_DSOURCES_DRAGONFLYBSD) $(DRUNTIME_DSOURCES_FREEBSD) \
+	$(DRUNTIME_DSOURCES_LINUX) $(DRUNTIME_DSOURCES_NETBSD) \
+	$(DRUNTIME_DSOURCES_OPENBSD) $(DRUNTIME_DSOURCES_POSIX) \
+	$(DRUNTIME_DSOURCES_SOLARIS) $(DRUNTIME_DSOURCES_WINDOWS) \
+	$(DRUNTIME_DSOURCES_GENERATED) $(DRUNTIME_DISOURCES) \
+	$(DRUNTIME_DSOURCES_STDCXX)
 
 # Setup source files depending on configure
 ALL_DRUNTIME_COMPILE_DSOURCES = $(DRUNTIME_DSOURCES)
@@ -47,14 +48,19 @@ if DRUNTIME_OS_UNIX
     ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_POSIX)
 endif
 if DRUNTIME_OS_DARWIN
-    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_DARWIN) \
-				     $(DRUNTIME_DSOURCES_OSX)
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_DARWIN)
+endif
+if DRUNTIME_OS_DRAGONFLYBSD
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_DRAGONFLYBSD)
 endif
 if DRUNTIME_OS_ANDROID
     ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_BIONIC)
 endif
 if DRUNTIME_OS_FREEBSD
     ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_FREEBSD)
+endif
+if DRUNTIME_OS_NETBSD
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_NETBSD)
 endif
 if DRUNTIME_OS_OPENBSD
     ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_OPENBSD)
@@ -167,13 +173,13 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/stdc/wctype.d core/sync/barrier.d core/sync/condition.d \
 	core/sync/config.d core/sync/exception.d core/sync/mutex.d \
 	core/sync/rwmutex.d core/sync/semaphore.d core/thread.d core/time.d \
-	core/vararg.d etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
-	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
-	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
-	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
-	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d \
-	rt/critical_.d rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d \
-	rt/memory.d rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
+	core/vararg.d gcc/attribute.d gcc/backtrace.d gcc/builtins.d gcc/deh.d \
+	gcc/unwind/arm.d gcc/unwind/arm_common.d gcc/unwind/c6x.d \
+	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
+	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
+	rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d rt/critical_.d \
+	rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d \
+	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
 	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx.d \
 	rt/sections_solaris.d rt/sections_win32.d rt/sections_win64.d \
 	rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_Acdouble.d \
@@ -258,14 +264,6 @@ DRUNTIME_DSOURCES_NETBSD = core/sys/netbsd/dlfcn.d \
 	core/sys/netbsd/time.d
 
 DRUNTIME_DSOURCES_OPENBSD = core/sys/openbsd/dlfcn.d
-
-DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
-	core/sys/osx/mach/dyld.d core/sys/osx/mach/getsect.d \
-	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
-	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
-	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
-	core/sys/osx/sys/cdefs.d core/sys/osx/sys/event.d \
-	core/sys/osx/sys/mman.d
 
 DRUNTIME_DSOURCES_POSIX = core/sys/posix/aio.d \
 	core/sys/posix/arpa/inet.d core/sys/posix/config.d \

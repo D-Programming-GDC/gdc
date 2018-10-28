@@ -45,9 +45,6 @@
 #include "hdrgen.h"
 #include "target.h"
 
-#define LOGDOTEXP       0       // log ::dotExp()
-#define LOGDEFAULTINIT  0       // log ::defaultInit()
-
 bool symbolIsVisible(Scope *sc, Dsymbol *s);
 typedef int (*ForeachDg)(void *ctx, size_t paramidx, Parameter *param);
 int Parameter_foreach(Parameters *parameters, ForeachDg dg, void *ctx, size_t *pn = NULL);
@@ -1662,10 +1659,6 @@ Type *Type::merge()
         if (sv->ptrvalue)
         {
             t = (Type *) sv->ptrvalue;
-#ifdef DEBUG
-            if (!t->deco)
-                printf("t = %s\n", t->toChars());
-#endif
             assert(t->deco);
             //printf("old value, deco = '%s' %p\n", t->deco, t->deco);
         }
@@ -1805,9 +1798,6 @@ void Type::checkDeprecated(Loc loc, Scope *sc)
 
 Expression *Type::defaultInit(Loc)
 {
-#if LOGDEFAULTINIT
-    printf("Type::defaultInit() '%s'\n", toChars());
-#endif
     return NULL;
 }
 
@@ -1817,9 +1807,6 @@ Expression *Type::defaultInit(Loc)
  */
 Expression *Type::defaultInitLiteral(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("Type::defaultInitLiteral() '%s'\n", toChars());
-#endif
     return defaultInit(loc);
 }
 
@@ -2077,9 +2064,6 @@ Expression *Type::getProperty(Loc loc, Identifier *ident, int flag)
 {
     Expression *e;
 
-#if LOGDOTEXP
-    printf("Type::getProperty(type = '%s', ident = '%s')\n", toChars(), ident->toChars());
-#endif
     if (ident == Id::__sizeof)
     {
         d_uns64 sz = size(loc);
@@ -2154,9 +2138,6 @@ Expression *Type::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
     VarDeclaration *v = NULL;
 
-#if LOGDOTEXP
-    printf("Type::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     Expression *ex = e;
     while (ex->op == TOKcomma)
         ex = ((CommaExp *)ex)->e2;
@@ -3427,9 +3408,6 @@ Lint:
 
 Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeBasic::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     Type *t;
 
     if (ident == Id::re)
@@ -3503,9 +3481,6 @@ Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
 
 Expression *TypeBasic::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeBasic::defaultInit() '%s'\n", toChars());
-#endif
     dinteger_t value = 0;
 
     switch (ty)
@@ -3791,9 +3766,6 @@ Expression *TypeVector::getProperty(Loc loc, Identifier *ident, int flag)
 
 Expression *TypeVector::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeVector::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     if (ident == Id::ptr && e->op == TOKcall)
     {
         /* The trouble with TOKcall is the return ABI for float[4] is different from
@@ -3903,10 +3875,6 @@ TypeArray::TypeArray(TY ty, Type *next)
 
 Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeArray::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
-
     e = Type::dotExp(sc, e, ident, flag);
 
     if (!(flag & 1) || e)
@@ -4234,9 +4202,6 @@ Lerror:
 
 Expression *TypeSArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeSArray::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     if (ident == Id::length)
     {
         Loc oldLoc = e->loc;
@@ -4342,9 +4307,6 @@ MATCH TypeSArray::implicitConvTo(Type *to)
 
 Expression *TypeSArray::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeSArray::defaultInit() '%s'\n", toChars());
-#endif
     if (next->ty == Tvoid)
         return tuns8->defaultInit(loc);
     else
@@ -4372,9 +4334,6 @@ bool TypeSArray::needsNested()
 
 Expression *TypeSArray::defaultInitLiteral(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeSArray::defaultInitLiteral() '%s'\n", toChars());
-#endif
     size_t d = (size_t)dim->toInteger();
     Expression *elementinit;
     if (next->ty == Tvoid)
@@ -4504,9 +4463,6 @@ void TypeDArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
 
 Expression *TypeDArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeDArray::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     if (e->op == TOKtype &&
         (ident == Id::length || ident == Id::ptr))
     {
@@ -4582,9 +4538,6 @@ MATCH TypeDArray::implicitConvTo(Type *to)
 
 Expression *TypeDArray::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeDArray::defaultInit() '%s'\n", toChars());
-#endif
     return new NullExp(loc, this);
 }
 
@@ -4686,16 +4639,6 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
     if (index->nextOf() && !index->nextOf()->isImmutable())
     {
         index = index->constOf()->mutableOf();
-#if 0
-printf("index is %p %s\n", index, index->toChars());
-index->check();
-printf("index->mod = x%x\n", index->mod);
-printf("index->ito = x%x\n", index->ito);
-if (index->ito) {
-printf("index->ito->mod = x%x\n", index->ito->mod);
-printf("index->ito->ito = x%x\n", index->ito->ito);
-}
-#endif
     }
 
     switch (index->toBasetype()->ty)
@@ -4805,7 +4748,6 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
 
         if (feq->vtblIndex < (int)cd->vtbl.dim && cd->vtbl[feq ->vtblIndex] == feq)
         {
-        #if 1
             if (fcmp->vtblIndex < (int)cd->vtbl.dim && cd->vtbl[fcmp->vtblIndex] != fcmp)
             {
                 const char *s = (index->toBasetype()->ty != Tclass) ? "bottom of " : "";
@@ -4813,7 +4755,6 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
                     s, cd->toChars());
                 errorSupplemental(loc, "Please override Object.opEquals and toHash.");
             }
-        #endif
         }
     }
     next = next->semantic(loc,sc)->merge2();
@@ -4869,9 +4810,6 @@ void TypeAArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
 
 Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeAArray::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     if (ident == Id::length)
     {
         static FuncDeclaration *fd_aaLen = NULL;
@@ -4896,9 +4834,6 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
 
 Expression *TypeAArray::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeAArray::defaultInit() '%s'\n", toChars());
-#endif
     return new NullExp(loc, this);
 }
 
@@ -5010,16 +4945,12 @@ Type *TypePointer::semantic(Loc loc, Scope *sc)
     {   transitive();
         return merge();
     }
-#if 0
-    return merge();
-#else
     deco = merge()->deco;
     /* Don't return merge(), because arg identifiers and default args
      * can be different
      * even though the types match
      */
     return this;
-#endif
 }
 
 
@@ -5115,9 +5046,6 @@ bool TypePointer::isscalar()
 
 Expression *TypePointer::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypePointer::defaultInit() '%s'\n", toChars());
-#endif
     return new NullExp(loc, this);
 }
 
@@ -5177,19 +5105,12 @@ d_uns64 TypeReference::size(Loc)
 
 Expression *TypeReference::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeReference::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
-
     // References just forward things along
     return next->dotExp(sc, e, ident, flag);
 }
 
 Expression *TypeReference::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeReference::defaultInit() '%s'\n", toChars());
-#endif
     return new NullExp(loc, this);
 }
 
@@ -5297,13 +5218,6 @@ Type *TypeFunction::syntaxCopy()
 
 int Type::covariant(Type *t, StorageClass *pstc, bool fix17349)
 {
-#if 0
-    printf("Type::covariant(t = %s) %s\n", t->toChars(), toChars());
-    printf("deco = %p, %p\n", deco, t->deco);
-//    printf("ty = %d\n", next->ty);
-    printf("mod = %x, %x\n", mod, t->mod);
-#endif
-
     if (pstc)
         *pstc = 0;
     StorageClass stc = 0;
@@ -5465,15 +5379,7 @@ Lcovariant:
      */
     if (!MODimplicitConv(t2->mod, t1->mod))
     {
-#if 0//stop attribute inference with const
-        // If adding 'const' will make it covariant
-        if (MODimplicitConv(t2->mod, MODmerge(t1->mod, MODconst)))
-            stc |= STCconst;
-        else
-            goto Lnotcovariant;
-#else
         goto Ldistinct;
-#endif
     }
 
     /* Can convert pure to impure, nothrow to throw, and nogc to gc
@@ -5573,23 +5479,6 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
         tf->isproperty = true;
 
     tf->linkage = sc->linkage;
-#if 0
-    /* If the parent is @safe, then this function defaults to safe
-     * too.
-     * If the parent's @safe-ty is inferred, then this function's @safe-ty needs
-     * to be inferred first.
-     */
-    if (tf->trust == TRUSTdefault)
-        for (Dsymbol *p = sc->func; p; p = p->toParent2())
-        {   FuncDeclaration *fd = p->isFuncDeclaration();
-            if (fd)
-            {
-                if (fd->isSafeBypassingInference())
-                    tf->trust = TRUSTsafe;              // default to @safe
-                break;
-            }
-        }
-#endif
     bool wildreturn = false;
     if (tf->next)
     {
@@ -6392,17 +6281,6 @@ StorageClass TypeFunction::parameterStorageClass(Parameter *p)
      * about escaping references.
      * Give up on it for now.
      */
-#if 0
-    Type *tret = nextOf()->toBasetype();
-    if (isref || tret->hasPointers())
-    {
-        /* The result has references, so p could be escaping
-         * that way.
-         */
-        stc |= STCreturn;
-    }
-#endif
-
     return stc;
 }
 
@@ -6546,16 +6424,12 @@ Type *TypeDelegate::semantic(Loc loc, Scope *sc)
      * be removed from next before the merge.
      */
 
-#if 0
-    return merge();
-#else
     /* Don't return merge(), because arg identifiers and default args
      * can be different
      * even though the types match
      */
     deco = merge()->deco;
     return this;
-#endif
 }
 
 Type *TypeDelegate::addStorageClass(StorageClass stc)
@@ -6621,9 +6495,6 @@ MATCH TypeDelegate::implicitConvTo(Type *to)
 
 Expression *TypeDelegate::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeDelegate::defaultInit() '%s'\n", toChars());
-#endif
     return new NullExp(loc, this);
 }
 
@@ -6639,9 +6510,6 @@ bool TypeDelegate::isBoolean()
 
 Expression *TypeDelegate::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeDelegate::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     if (ident == Id::ptr)
     {
         e = new DelegatePtrExp(e->loc, e);
@@ -6811,11 +6679,6 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
         Dsymbol *s, Dsymbol *,
         Expression **pe, Type **pt, Dsymbol **ps, bool intypeid)
 {
-#if 0
-    printf("TypeQualified::resolveHelper(sc = %p, idents = '%s')\n", sc, toChars());
-    if (scopesym)
-        printf("\tscopesym = '%s'\n", scopesym->toChars());
-#endif
     *pe = NULL;
     *pt = NULL;
     *ps = NULL;
@@ -6987,14 +6850,6 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
             *pe = ::semantic(*pe, sc);
             return;
         }
-#if 0
-        if (FuncDeclaration *fd = s->isFuncDeclaration())
-        {
-            *pe = new DsymbolExp(loc, fd);
-            return;
-        }
-#endif
-
 L1:
         Type *t = s->getType();
         if (!t)
@@ -7564,9 +7419,6 @@ Type *TypeEnum::toBasetype()
 
 Expression *TypeEnum::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
-#if LOGDOTEXP
-    printf("TypeEnum::dotExp(e = '%s', ident = '%s') '%s'\n", e->toChars(), ident->toChars(), toChars());
-#endif
     // Bugzilla 14010
     if (ident == Id::_mangleof)
         return getProperty(e->loc, ident, flag & 1);
@@ -7734,9 +7586,6 @@ MATCH TypeEnum::constConv(Type *to)
 
 Expression *TypeEnum::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeEnum::defaultInit() '%s'\n", toChars());
-#endif
     // Initialize to first member of enum
     Expression *e = sym->getDefaultValue(loc);
     e = e->copy();
@@ -7861,9 +7710,6 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
 {
     Dsymbol *s;
 
-#if LOGDOTEXP
-    printf("TypeStruct::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     assert(e->op != TOKdot);
 
     // Bugzilla 14010
@@ -8081,9 +7927,6 @@ structalign_t TypeStruct::alignment()
 
 Expression *TypeStruct::defaultInit(Loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeStruct::defaultInit() '%s'\n", toChars());
-#endif
     Declaration *d = new SymbolDeclaration(sym->loc, sym);
     assert(d);
     d->type = this;
@@ -8097,9 +7940,6 @@ Expression *TypeStruct::defaultInit(Loc)
  */
 Expression *TypeStruct::defaultInitLiteral(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeStruct::defaultInitLiteral() '%s'\n", toChars());
-#endif
     sym->size(loc);
     if (sym->sizeok != SIZEOKdone)
         return new ErrorExp();
@@ -8430,9 +8270,6 @@ static Dsymbol *searchSymClass(Scope *sc, Dsymbol *sym, Expression *e, Identifie
 Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
     Dsymbol *s;
-#if LOGDOTEXP
-    printf("TypeClass::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
-#endif
     assert(e->op != TOKdot);
 
     // Bugzilla 12543
@@ -8935,9 +8772,6 @@ Type *TypeClass::toHeadMutable()
 
 Expression *TypeClass::defaultInit(Loc loc)
 {
-#if LOGDEFAULTINIT
-    printf("TypeClass::defaultInit() '%s'\n", toChars());
-#endif
     return new NullExp(loc, this);
 }
 
@@ -8964,16 +8798,6 @@ TypeTuple::TypeTuple(Parameters *arguments)
     //printf("TypeTuple(this = %p)\n", this);
     this->arguments = arguments;
     //printf("TypeTuple() %p, %s\n", this, toChars());
-#ifdef DEBUG
-    if (arguments)
-    {
-        for (size_t i = 0; i < arguments->dim; i++)
-        {
-            Parameter *arg = (*arguments)[i];
-            assert(arg && arg->type);
-        }
-    }
-#endif
 }
 
 /****************
@@ -9079,30 +8903,10 @@ bool TypeTuple::equals(RootObject *o)
     return false;
 }
 
-#if 0
-Type *TypeTuple::makeConst()
-{
-    //printf("TypeTuple::makeConst() %s\n", toChars());
-    if (cto)
-        return cto;
-    TypeTuple *t = (TypeTuple *)Type::makeConst();
-    t->arguments = new Parameters();
-    t->arguments->setDim(arguments->dim);
-    for (size_t i = 0; i < arguments->dim; i++)
-    {   Parameter *arg = (*arguments)[i];
-        Parameter *narg = new Parameter(arg->storageClass, arg->type->constOf(), arg->ident, arg->defaultArg);
-        (*t->arguments)[i] = (Parameter *)narg;
-    }
-    return t;
-}
-#endif
-
 Expression *TypeTuple::getProperty(Loc loc, Identifier *ident, int flag)
-{   Expression *e;
+{
+    Expression *e;
 
-#if LOGDOTEXP
-    printf("TypeTuple::getProperty(type = '%s', ident = '%s')\n", toChars(), ident->toChars());
-#endif
     if (ident == Id::length)
     {
         e = new IntegerExp(loc, arguments->dim, Type::tsize_t);

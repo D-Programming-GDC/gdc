@@ -61,15 +61,6 @@ void EnumDeclaration::setScope(Scope *sc)
 
 void EnumDeclaration::addMember(Scope *sc, ScopeDsymbol *sds)
 {
-#if 0
-    printf("EnumDeclaration::addMember() %s\n", toChars());
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        EnumMember *em = (*members)[i]->isEnumMember();
-        printf("    member %s\n", em->toChars());
-    }
-#endif
-
     /* Anonymous enum members get added to enclosing scope.
      */
     ScopeDsymbol *scopesym = isAnonymous() ? sds : this;

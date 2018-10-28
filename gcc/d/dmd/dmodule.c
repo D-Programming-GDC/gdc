@@ -1109,13 +1109,6 @@ void Module::runDeferredSemantic3()
 int Module::imports(Module *m)
 {
     //printf("%s Module::imports(%s)\n", toChars(), m->toChars());
-#if 0
-    for (size_t i = 0; i < aimports.dim; i++)
-    {
-        Module *mi = (Module *)aimports.data[i];
-        printf("\t[%d] %s\n", i, mi->toChars());
-    }
-#endif
     for (size_t i = 0; i < aimports.dim; i++)
     {
         Module *mi = aimports[i];

@@ -10,10 +10,6 @@
 
 // Routines to emit header files
 
-#define TEST_EMIT_ALL  0        // For Testing
-
-#define LOG 0
-
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1386,10 +1382,6 @@ public:
 
     void visit(TemplateDeclaration *d)
     {
-    #if 0 // Should handle template functions for doc generation
-        if (onemember && onemember->isFuncDeclaration())
-            buf->writestring("foo ");
-    #endif
         if ((hgs->hdrgen || hgs->fullDump) && visitEponymousMember(d))
             return;
 
@@ -1665,9 +1657,6 @@ public:
         }
         else
         {
-    #ifdef DEBUG
-            printf("bad Object = %p\n", oarg);
-    #endif
             assert(0);
         }
     }
@@ -2189,10 +2178,6 @@ public:
      */
     void expToBuffer(Expression *e, PREC pr)
     {
-    #ifdef DEBUG
-        if (precedence[e->op] == PREC_zero)
-            printf("precedence not defined for token '%s'\n", Token::tochars[e->op]);
-    #endif
         assert(precedence[e->op] != PREC_zero);
         assert(pr != PREC_zero);
 
@@ -2328,9 +2313,6 @@ public:
                      */
                     if (!global.errors)
                     {
-    #ifdef DEBUG
-                        t->print();
-    #endif
                         assert(0);
                     }
                     break;

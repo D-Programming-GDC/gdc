@@ -92,6 +92,9 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
                ;;
       darwin*) druntime_target_os_parsed="darwin"
                ;;
+      dragonfly*)
+               druntime_target_os_parsed="dragonflybsd"
+               ;;
       freebsd*|k*bsd*-gnu)
                druntime_target_os_parsed="freebsd"
                ;;
@@ -107,15 +110,26 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
              ;;
       *solaris*) druntime_target_os_parsed="solaris"
   esac
-  AM_CONDITIONAL([DRUNTIME_OS_AIX], [test "$druntime_target_os_parsed" = "aix"])
-  AM_CONDITIONAL([DRUNTIME_OS_ANDROID], [test "$druntime_target_os_parsed" = "android"])
-  AM_CONDITIONAL([DRUNTIME_OS_DARWIN], [test "$druntime_target_os_parsed" = "darwin"])
-  AM_CONDITIONAL([DRUNTIME_OS_FREEBSD], [test "$druntime_target_os_parsed" = "freebsd"])
-  AM_CONDITIONAL([DRUNTIME_OS_NETBSD], [test "$druntime_target_os_parsed" = "netbsd"])
-  AM_CONDITIONAL([DRUNTIME_OS_OPENBSD], [test "$druntime_target_os_parsed" = "openbsd"])
-  AM_CONDITIONAL([DRUNTIME_OS_LINUX], [test "$druntime_target_os_parsed" = "linux"])
-  AM_CONDITIONAL([DRUNTIME_OS_MINGW], [test "$druntime_target_os_parsed" = "mingw"])
-  AM_CONDITIONAL([DRUNTIME_OS_SOLARIS], [test "$druntime_target_os_parsed" = "solaris"])
+  AM_CONDITIONAL([DRUNTIME_OS_AIX],
+                 [test "$druntime_target_os_parsed" = "aix"])
+  AM_CONDITIONAL([DRUNTIME_OS_ANDROID],
+                 [test "$druntime_target_os_parsed" = "android"])
+  AM_CONDITIONAL([DRUNTIME_OS_DARWIN],
+                 [test "$druntime_target_os_parsed" = "darwin"])
+  AM_CONDITIONAL([DRUNTIME_OS_DRAGONFLYBSD],
+                 [test "$druntime_target_os_parsed" = "dragonflybsd"])
+  AM_CONDITIONAL([DRUNTIME_OS_FREEBSD],
+                 [test "$druntime_target_os_parsed" = "freebsd"])
+  AM_CONDITIONAL([DRUNTIME_OS_NETBSD],
+                 [test "$druntime_target_os_parsed" = "netbsd"])
+  AM_CONDITIONAL([DRUNTIME_OS_OPENBSD],
+                 [test "$druntime_target_os_parsed" = "openbsd"])
+  AM_CONDITIONAL([DRUNTIME_OS_LINUX],
+                 [test "$druntime_target_os_parsed" = "linux"])
+  AM_CONDITIONAL([DRUNTIME_OS_MINGW],
+                 [test "$druntime_target_os_parsed" = "mingw"])
+  AM_CONDITIONAL([DRUNTIME_OS_SOLARIS],
+                 [test "$druntime_target_os_parsed" = "solaris"])
 ])
 
 

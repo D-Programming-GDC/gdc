@@ -43,13 +43,6 @@ void Token::free()
     freelist = this;
 }
 
-#ifdef DEBUG
-void Token::print()
-{
-    fprintf(stderr, "%s\n", toChars());
-}
-#endif
-
 const char *Token::toChars() const
 {
     static char buffer[3 + 3 * sizeof(floatvalue) + 1];

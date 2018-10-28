@@ -6,6 +6,8 @@
  * https://github.com/D-Programming-Language/dmd/blob/master/src/root/aav.h
  */
 
+#pragma once
+
 typedef void* Value;
 typedef void* Key;
 

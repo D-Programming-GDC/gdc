@@ -8,8 +8,7 @@
  * https://github.com/dlang/dmd/blob/master/src/intrange.h
  */
 
-#ifndef DMD_SXNUM_H
-#define DMD_SXNUM_H
+#pragma once
 
 #include "globals.h"   // for uinteger_t
 class Type;
@@ -148,5 +147,3 @@ struct IntRange
     void splitBySign(IntRange& negRange, bool& hasNegRange,
                      IntRange& nonNegRange, bool& hasNonNegRange) const;
 };
-
-#endif

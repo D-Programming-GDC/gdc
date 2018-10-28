@@ -324,13 +324,6 @@ Condition *StaticIfCondition::syntaxCopy()
 
 int StaticIfCondition::include(Scope *sc, ScopeDsymbol *sds)
 {
-#if 0
-    printf("StaticIfCondition::include(sc = %p, sds = %p) this=%p inc = %d\n", sc, sds, this, inc);
-    if (sds)
-    {
-        printf("\ts = '%s', kind = %s\n", sds->toChars(), sds->kind());
-    }
-#endif
     if (inc == 0)
     {
         if (exp->op == TOKerror || nest > 100)

@@ -1206,13 +1206,6 @@ void StructDeclaration::semantic(Scope *sc)
         deferred->semantic3(sc);
     }
 
-#if 0
-    if (type->ty == Tstruct && ((TypeStruct *)type)->sym != this)
-    {
-        printf("this = %p %s\n", this, this->toChars());
-        printf("type = %d sym = %p\n", type->ty, ((TypeStruct *)type)->sym);
-    }
-#endif
     assert(type->ty != Tstruct || ((TypeStruct *)type)->sym == this);
 }
 

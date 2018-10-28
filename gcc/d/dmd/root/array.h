@@ -168,9 +168,6 @@ struct Array
 
     TYPE& operator[] (d_size_t index)
     {
-#ifdef DEBUG
-        assert(index < dim);
-#endif
         return data[index];
     }
 

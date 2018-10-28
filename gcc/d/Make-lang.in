@@ -125,7 +125,6 @@ D_FRONTEND_OBJS = \
 	d/tokens.o \
 	d/traits.o \
 	d/typesem.o \
-	d/unittests.o \
 	d/utf.o \
 	d/utils.o
 
