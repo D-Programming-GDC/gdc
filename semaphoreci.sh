@@ -119,10 +119,13 @@ alltests() {
 testsuite() {
     ## Run just the compiler testsuite.
     cd ${SEMAPHORE_PROJECT_DIR}/build
+
+    make check-gcc RUNTESTFLAGS="help.exp"
     make -j$(nproc) check-gcc-d
 
     ## Print out summaries of testsuite run after finishing.
     # Just omit testsuite PASSes from the summary file.
+    grep -v "^PASS" ${SEMAPHORE_PROJECT_DIR}/build/gcc/testsuite/gcc/gcc.sum ||:
     grep -v "^PASS" ${SEMAPHORE_PROJECT_DIR}/build/gcc/testsuite/gdc*/gdc.sum ||:
 
     # Test for any failures and return false if any.

@@ -9,8 +9,7 @@
  */
 module core.sys.windows.ole;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "ole32");
+pragma(lib, "ole32");
 
 private import core.sys.windows.windef, core.sys.windows.wingdi, core.sys.windows.uuid;
 

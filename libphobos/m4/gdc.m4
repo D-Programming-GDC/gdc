@@ -14,6 +14,5 @@ AC_DEFUN([GDC_CHECK_COMPILE],
       [AC_MSG_RESULT([[yes]])],
       [AC_MSG_RESULT([[no]])
        AC_MSG_ERROR([[can't compile D sources!]])])
-    dnl fix vi syntax highlight bug. '
   AC_LANG_POP(D)
 ])

@@ -11,8 +11,7 @@ module core.sys.windows.secext;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "secur32");
+pragma(lib, "secur32");
 
 private import core.sys.windows.w32api, core.sys.windows.windef;
 

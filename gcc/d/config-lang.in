@@ -23,11 +23,11 @@
 
 language="d"
 
-compilers="cc1d\$(exeext)"
+compilers="d21\$(exeext)"
 
 target_libs="target-libphobos target-zlib target-libbacktrace"
 
-gtfiles="\$(srcdir)/d/d-tree.h \$(srcdir)/d/d-builtins.cc \$(srcdir)/d/d-lang.cc \$(srcdir)/d/typeinfo.cc"
+gtfiles="\$(srcdir)/d/d-tree.h \$(srcdir)/d/d-builtins.cc \$(srcdir)/d/d-lang.cc \$(srcdir)/d/modules.cc \$(srcdir)/d/typeinfo.cc"
 
 # Do not build by default.
 build_by_default="no"

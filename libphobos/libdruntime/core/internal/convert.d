@@ -11,19 +11,19 @@ module core.internal.convert;
 import core.internal.traits : Unqual;
 
 @trusted pure nothrow
-const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float) || is(Unqual!T == double) || is(Unqual!T == real) ||
+const(ubyte)[] toUbyte(T)(ref T val) if (is(Unqual!T == float) || is(Unqual!T == double) || is(Unqual!T == real) ||
                                         is(Unqual!T == ifloat) || is(Unqual!T == idouble) || is(Unqual!T == ireal))
 {
     static const(ubyte)[] reverse_(const(ubyte)[] arr)
     {
         ubyte[] buff = new ubyte[arr.length];
-        foreach(k, v; arr)
+        foreach (k, v; arr)
         {
             buff[$-k-1] = v;
         }
         return buff;
     }
-    if(__ctfe)
+    if (__ctfe)
     {
         auto parsed = parse(val);
 
@@ -35,7 +35,7 @@ const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float) || is(Unqual!T == 
         size_t off_bytes = 0;
         size_t off_bits  = 0;
 
-        for(; off_bytes < FloatTraits!T.MANTISSA/8; ++off_bytes)
+        for (; off_bytes < FloatTraits!T.MANTISSA/8; ++off_bytes)
         {
             buff[off_bytes] = cast(ubyte)mantissa;
             mantissa >>= 8;
@@ -43,7 +43,7 @@ const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float) || is(Unqual!T == 
         off_bits = FloatTraits!T.MANTISSA%8;
         buff[off_bytes] = cast(ubyte)mantissa;
 
-        for(size_t i=0; i<FloatTraits!T.EXPONENT/8; ++i)
+        for (size_t i=0; i<FloatTraits!T.EXPONENT/8; ++i)
         {
             ubyte cur_exp = cast(ubyte)exp;
             exp >>= 8;
@@ -58,7 +58,7 @@ const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float) || is(Unqual!T == 
         sign <<= 7;
         buff[off_bytes] |= sign;
 
-        version(LittleEndian)
+        version (LittleEndian)
         {
             return buff.dup;
         }
@@ -74,23 +74,23 @@ const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float) || is(Unqual!T == 
 }
 
 @safe pure nothrow
-private Float parse(bool is_denormalized = false, T)(T x) if(is(Unqual!T == ifloat) || is(Unqual!T == idouble) || is(Unqual!T == ireal))
+private Float parse(bool is_denormalized = false, T)(T x) if (is(Unqual!T == ifloat) || is(Unqual!T == idouble) || is(Unqual!T == ireal))
 {
     return parse(x.im);
 }
 
 @safe pure nothrow
-private Float parse(bool is_denormalized = false, T:real)(T x_) if(floatFormat!T != FloatFormat.Real80)
+private Float parse(bool is_denormalized = false, T:real)(T x_) if (floatFormat!T != FloatFormat.Real80)
 {
     Unqual!T x = x_;
     assert(floatFormat!T != FloatFormat.DoubleDouble && floatFormat!T != FloatFormat.Quadruple,
            "doubledouble and quadruple float formats are not supported in CTFE");
-    if(x is cast(T)0.0) return FloatTraits!T.ZERO;
-    if(x is cast(T)-0.0) return FloatTraits!T.NZERO;
-    if(x is T.nan) return FloatTraits!T.NAN;
-    if(x is -T.nan) return FloatTraits!T.NNAN;
-    if(x is T.infinity || x > T.max) return FloatTraits!T.INF;
-    if(x is -T.infinity || x < -T.max) return FloatTraits!T.NINF;
+    if (x is cast(T)0.0) return FloatTraits!T.ZERO;
+    if (x is cast(T)-0.0) return FloatTraits!T.NZERO;
+    if (x is T.nan) return FloatTraits!T.NAN;
+    if (x is -T.nan) return FloatTraits!T.NNAN;
+    if (x is T.infinity || x > T.max) return FloatTraits!T.INF;
+    if (x is -T.infinity || x < -T.max) return FloatTraits!T.NINF;
 
     uint sign = x < 0;
     x = sign ? -x : x;
@@ -98,9 +98,9 @@ private Float parse(bool is_denormalized = false, T:real)(T x_) if(floatFormat!T
     real x2 = x;
     uint exp = cast(uint)(e + (2^^(FloatTraits!T.EXPONENT-1) - 1));
 
-    if(!exp)
+    if (!exp)
     {
-        if(is_denormalized)
+        if (is_denormalized)
             return Float(0, 0, sign);
         else
             return Float(denormalizedMantissa(x), 0, sign);
@@ -108,7 +108,7 @@ private Float parse(bool is_denormalized = false, T:real)(T x_) if(floatFormat!T
 
     x2 /= binPow2(e);
 
-    static if(!is_denormalized)
+    static if (!is_denormalized)
         x2 -= 1.0;
 
     x2 *=  2UL<<(FloatTraits!T.MANTISSA);
@@ -117,31 +117,31 @@ private Float parse(bool is_denormalized = false, T:real)(T x_) if(floatFormat!T
 }
 
 @safe pure nothrow
-private Float parse(bool _ = false, T:real)(T x_) if(floatFormat!T == FloatFormat.Real80)
+private Float parse(bool _ = false, T:real)(T x_) if (floatFormat!T == FloatFormat.Real80)
 {
     Unqual!T x = x_;
     //HACK @@@3632@@@
 
-    if(x == 0.0L)
+    if (x == 0.0L)
     {
         real y = 1.0L/x;
-        if(y == real.infinity) // -0.0
+        if (y == real.infinity) // -0.0
             return FloatTraits!T.ZERO;
         else
             return FloatTraits!T.NZERO; //0.0
     }
 
-    if(x != x) //HACK: should be if(x is real.nan) and if(x is -real.nan)
+    if (x != x) //HACK: should be if (x is real.nan) and if (x is -real.nan)
     {
         auto y = cast(double)x;
-        if(y is double.nan)
+        if (y is double.nan)
             return FloatTraits!T.NAN;
         else
             return FloatTraits!T.NNAN;
     }
 
-    if(x == real.infinity) return FloatTraits!T.INF;
-    if(x == -real.infinity) return FloatTraits!T.NINF;
+    if (x == real.infinity) return FloatTraits!T.INF;
+    if (x == -real.infinity) return FloatTraits!T.NINF;
 
     enum EXPONENT_MED = (2^^(FloatTraits!T.EXPONENT-1) - 1);
     uint sign = x < 0;
@@ -149,7 +149,7 @@ private Float parse(bool _ = false, T:real)(T x_) if(floatFormat!T == FloatForma
 
     int e = binLog2(x);
     uint exp = cast(uint)(e + EXPONENT_MED);
-    if(!exp)
+    if (!exp)
     {
         return Float(denormalizedMantissa(x), 0, sign);
     }
@@ -167,7 +167,7 @@ private struct Float
     uint sign;
 }
 
-private template FloatTraits(T) if(floatFormat!T == FloatFormat.Float)
+private template FloatTraits(T) if (floatFormat!T == FloatFormat.Float)
 {
     enum EXPONENT = 8;
     enum MANTISSA = 23;
@@ -179,7 +179,7 @@ private template FloatTraits(T) if(floatFormat!T == FloatFormat.Float)
     enum NINF     = Float(0, 255, 1);
 }
 
-private template FloatTraits(T) if(floatFormat!T == FloatFormat.Double)
+private template FloatTraits(T) if (floatFormat!T == FloatFormat.Double)
 {
     enum EXPONENT = 11;
     enum MANTISSA = 52;
@@ -191,7 +191,7 @@ private template FloatTraits(T) if(floatFormat!T == FloatFormat.Double)
     enum NINF     = Float(0, 0x7ff, 1);
 }
 
-private template FloatTraits(T) if(floatFormat!T == FloatFormat.Real80)
+private template FloatTraits(T) if (floatFormat!T == FloatFormat.Real80)
 {
     enum EXPONENT = 15;
     enum MANTISSA = 64;
@@ -203,7 +203,7 @@ private template FloatTraits(T) if(floatFormat!T == FloatFormat.Real80)
     enum NINF     = Float(0x8000000000000000UL, 0x7fff, 1);
 }
 
-private template FloatTraits(T) if(floatFormat!T == FloatFormat.DoubleDouble) //Unsupported in CTFE
+private template FloatTraits(T) if (floatFormat!T == FloatFormat.DoubleDouble) //Unsupported in CTFE
 {
     enum EXPONENT = 11;
     enum MANTISSA = 106;
@@ -215,7 +215,7 @@ private template FloatTraits(T) if(floatFormat!T == FloatFormat.DoubleDouble) //
     enum NINF     = Float(0, 0x7ff, 1);
 }
 
-private template FloatTraits(T) if(floatFormat!T == FloatFormat.Quadruple) //Unsupported in CTFE
+private template FloatTraits(T) if (floatFormat!T == FloatFormat.Quadruple) //Unsupported in CTFE
 {
     enum EXPONENT = 15;
     enum MANTISSA = 112;
@@ -235,13 +235,13 @@ private real binPow2(int pow)
     {
         assert(pow > 0);
 
-        if(pow == 1) return 2.0L;
+        if (pow == 1) return 2.0L;
 
         int subpow = pow/2;
         real p = binPosPow2(subpow);
         real ret = p*p;
 
-        if(pow%2)
+        if (pow%2)
         {
             ret *= 2.0L;
         }
@@ -249,8 +249,8 @@ private real binPow2(int pow)
         return ret;
     }
 
-    if(!pow) return 1.0L;
-    if(pow > 0) return binPosPow2(pow);
+    if (!pow) return 1.0L;
+    if (pow > 0) return binPosPow2(pow);
     return 1.0L/binPosPow2(-pow);
 }
 
@@ -270,11 +270,11 @@ private uint binLog2(T)(T x)
     int min = -max+1;
     int med = (min + max) / 2;
 
-    if(x < T.min_normal) return -max;
+    if (x < T.min_normal) return -max;
 
-    while((max - min) > 1)
+    while ((max - min) > 1)
     {
-        if(binPow2(med) > x)
+        if (binPow2(med) > x)
         {
             max = med;
         }
@@ -285,13 +285,13 @@ private uint binLog2(T)(T x)
         med = (min + max) / 2;
     }
 
-    if(x < binPow2(max))
+    if (x < binPow2(max))
         return min;
     return max;
 }
 
 @safe pure nothrow
-private ulong denormalizedMantissa(T)(T x) if(floatFormat!T == FloatFormat.Real80)
+private ulong denormalizedMantissa(T)(T x) if (floatFormat!T == FloatFormat.Real80)
 {
     x *= 2.0L^^FloatTraits!T.MANTISSA;
     auto fl = parse(x);
@@ -300,7 +300,7 @@ private ulong denormalizedMantissa(T)(T x) if(floatFormat!T == FloatFormat.Real8
 }
 
 @safe pure nothrow
-private ulong denormalizedMantissa(T)(T x) if(floatFormat!T != FloatFormat.Real80)
+private ulong denormalizedMantissa(T)(T x) if (floatFormat!T != FloatFormat.Real80)
 {
     x *= 2.0L^^FloatTraits!T.MANTISSA;
     auto fl = parse!true(x);
@@ -308,7 +308,7 @@ private ulong denormalizedMantissa(T)(T x) if(floatFormat!T != FloatFormat.Real8
     return shiftrRound(mant);
 }
 
-version(unittest)
+version (unittest)
 {
     private const(ubyte)[] toUbyte2(T)(T val)
     {
@@ -457,17 +457,17 @@ private enum FloatFormat
     Quadruple
 }
 
-template floatFormat(T) if(is(T:real) || is(T:ireal))
+template floatFormat(T) if (is(T:real) || is(T:ireal))
 {
-    static if(T.mant_dig == 24)
+    static if (T.mant_dig == 24)
         enum floatFormat = FloatFormat.Float;
-    else static if(T.mant_dig == 53)
+    else static if (T.mant_dig == 53)
         enum floatFormat = FloatFormat.Double;
-    else static if(T.mant_dig == 64)
+    else static if (T.mant_dig == 64)
         enum floatFormat = FloatFormat.Real80;
-    else static if(T.mant_dig == 106)
+    else static if (T.mant_dig == 106)
         enum floatFormat = FloatFormat.DoubleDouble;
-    else static if(T.mant_dig == 113)
+    else static if (T.mant_dig == 113)
         enum floatFormat = FloatFormat.Quadruple;
     else
         static assert(0);
@@ -520,7 +520,7 @@ const(ubyte)[] toUbyte(T)(ref T val) if (__traits(isIntegral, T) && !is(T == enu
         for (size_t i = 0; i < T.sizeof; ++i)
         {
             size_t idx;
-            version(LittleEndian) idx = i;
+            version (LittleEndian) idx = i;
             else idx = T.sizeof-i-1;
             tmp[idx] = cast(ubyte)(val_&0xff);
             val_ >>= 8;
@@ -614,11 +614,11 @@ const(ubyte)[] toUbyte(T)(ref T val) if (is(T == struct) || is(T == union))
         foreach (key, cur; val.tupleof)
         {
             alias CUR_TYPE = typeof(cur);
-            static if(isNonReference!(CUR_TYPE)())
+            static if (isNonReference!(CUR_TYPE)())
             {
                 bytes[val.tupleof[key].offsetof .. val.tupleof[key].offsetof + cur.sizeof] = toUbyte(cur)[];
             }
-            else static if(is(typeof(val.tupleof[key] is null)))
+            else static if (is(typeof(val.tupleof[key] is null)))
             {
                 assert(val.tupleof[key] is null, "Unable to compute byte representation of non-null reference field at compile time");
                 //skip, because val bytes are zeros

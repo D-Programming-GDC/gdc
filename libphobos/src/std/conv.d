@@ -3135,7 +3135,7 @@ if (isInputRange!Source && isSomeChar!(ElementType!Source) && !is(Source == enum
 
     // min and max
     real r = to!real(to!string(real.min_normal));
-    version(NetBSD)
+    version (NetBSD)
     {
         // NetBSD notice
         // to!string returns 3.3621e-4932L. It is less than real.min_normal and it is subnormal value
@@ -4622,7 +4622,7 @@ if (!is(T == class))
     assert(u1.a == "hello");
 }
 
-version(unittest) private struct __conv_EmplaceTest
+version (unittest) private struct __conv_EmplaceTest
 {
     int i = 3;
     this(int i)
@@ -4643,7 +4643,7 @@ version(unittest) private struct __conv_EmplaceTest
     void opAssign();
 }
 
-version(unittest) private class __conv_EmplaceTestClass
+version (unittest) private class __conv_EmplaceTestClass
 {
     int i = 3;
     this(int i) @nogc @safe pure nothrow
@@ -5063,7 +5063,7 @@ version(unittest) private class __conv_EmplaceTestClass
         assert(s.i == 2);
     }
 }
-version(unittest)
+version (unittest)
 {
     //Ambiguity
     struct __std_conv_S

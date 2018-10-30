@@ -1480,16 +1480,6 @@ The following OS versions are implemented:
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -29705,6 +29724,9 @@ fi
- 
- 
- 
-+
-+
-+
- 
- 
- 
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
 @@ -1729,6 +1729,7 @@ AC_SUBST(build_subdir)
@@ -1564,7 +1554,7 @@ The following OS versions are implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10617,6 +10626,22 @@ unloaded. The default is to return false
+@@ -10617,6 +10626,29 @@ unloaded. The default is to return false
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -1573,15 +1563,22 @@ The following OS versions are implemented:
 +@cindex parameters, d abi
 +
 +@deftypefn {D Target Hook} void TARGET_D_CPU_VERSIONS (void)
-+Declare all environmental version identifiers relating to the target CPU using the function @code{builtin_version}, which takes a string representing the name of the version.  Version identifiers predefined by this hook apply to all modules and being compiled and imported.
++Declare all environmental version identifiers relating to the target CPU
++using the function @code{builtin_version}, which takes a string representing
++the name of the version.  Version identifiers predefined by this hook apply
++to all modules that are being compiled and imported.
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} void TARGET_D_OS_VERSIONS (void)
-+Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions relating to the target operating system.
++Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions
++relating to the target operating system.
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} unsigned TARGET_D_CRITSEC_SIZE (void)
-+Returns the size of the data structure used by the targeted operating system for critical sections and monitors.  For example, on Microsoft Windows this would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that implement pthreads would return @code{sizeof(pthread_mutex_t)}.
++Returns the size of the data structure used by the target operating system
++for critical sections and monitors.  For example, on Microsoft Windows this
++would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that
++implement pthreads would return @code{sizeof(pthread_mutex_t)}.
 +@end deftypefn
 +
  @node Named Address Spaces

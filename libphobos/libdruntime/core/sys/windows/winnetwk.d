@@ -11,8 +11,7 @@ module core.sys.windows.winnetwk;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "mpr");
+pragma(lib, "mpr");
 
 private import core.sys.windows.winbase, core.sys.windows.winerror, core.sys.windows.winnt;
 

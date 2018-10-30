@@ -589,7 +589,7 @@ that uncontrolled calls to $(D brk) and $(D sbrk) may affect the workings of $(D
 SbrkRegion) adversely.
 
 */
-version(Posix) struct SbrkRegion(uint minAlign = platformAlignment)
+version (Posix) struct SbrkRegion(uint minAlign = platformAlignment)
 {
     import core.sys.posix.pthread : pthread_mutex_init, pthread_mutex_destroy,
         pthread_mutex_t, pthread_mutex_lock, pthread_mutex_unlock,
@@ -753,7 +753,7 @@ version(Posix) struct SbrkRegion(uint minAlign = platformAlignment)
     }
 }
 
-version(Posix) @system unittest
+version (Posix) @system unittest
 {
     // Let's test the assumption that sbrk(n) returns the old address
     const p1 = sbrk(0);
@@ -765,7 +765,7 @@ version(Posix) @system unittest
     sbrk(-4096);
 }
 
-version(Posix) @system unittest
+version (Posix) @system unittest
 {
     import std.typecons : Ternary;
     alias alloc = SbrkRegion!(8).instance;
@@ -776,7 +776,7 @@ version(Posix) @system unittest
     assert(alloc.owns(a) == Ternary.yes);
     assert(alloc.owns(b) == Ternary.yes);
     // reducing the brk does not work on OSX
-    version(OSX) {} else
+    version (OSX) {} else
     {
         assert(alloc.deallocate(b));
         assert(alloc.deallocateAll);

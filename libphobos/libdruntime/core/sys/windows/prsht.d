@@ -11,8 +11,7 @@ module core.sys.windows.prsht;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "comctl32");
+pragma(lib, "comctl32");
 
 private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.winuser;
 

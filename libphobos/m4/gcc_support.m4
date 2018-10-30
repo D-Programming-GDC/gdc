@@ -17,7 +17,6 @@ AC_DEFUN([PHOBOS_ABS_SRCDIR], [
     AS_IF([[test -d "$phobos_cv_abs_srcdir"]],
       [],
       [AC_MSG_ERROR([[can't find absolute libphobos source path]])])
-      dnl fix vi syntax highlight bug. '
 ])
 
 

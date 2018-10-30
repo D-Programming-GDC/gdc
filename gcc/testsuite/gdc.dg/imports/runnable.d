@@ -3,8 +3,7 @@ module imports.runnable;
 private import runnable;
 
 /******************************************/
-
-// Bug 36
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=36
 
 void test36d_1()
 {
@@ -12,8 +11,7 @@ void test36d_1()
 }
 
 /******************************************/
-
-// Bug 253
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=253
 
 class B253 : A253
 {

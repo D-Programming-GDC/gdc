@@ -19,11 +19,13 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/attrib.h"
-#include "dfrontend/aggregate.h"
-#include "dfrontend/enum.h"
-#include "dfrontend/mtype.h"
-#include "dfrontend/target.h"
+#include "dmd/attrib.h"
+#include "dmd/aggregate.h"
+#include "dmd/enum.h"
+#include "dmd/expression.h"
+#include "dmd/identifier.h"
+#include "dmd/mtype.h"
+#include "dmd/target.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -111,7 +113,7 @@ get_object_type (void)
   if (ClassDeclaration::object)
     return ClassDeclaration::object->type;
 
-  ::error ("missing or corrupt object.d");
+  error ("missing or corrupt object.d");
   return Type::terror;
 }
 
@@ -235,7 +237,7 @@ fixup_anonymous_offset (tree fields, tree offset)
   while (fields != NULL_TREE)
     {
       /* Traverse all nested anonymous aggregates to update their offset.
-	 Set the anonymous decl offset to it's first member.  */
+	 Set the anonymous decl offset to its first member.  */
       tree ftype = TREE_TYPE (fields);
       if (TYPE_NAME (ftype) && anon_aggrname_p (TYPE_IDENTIFIER (ftype)))
 	{
@@ -295,7 +297,7 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 	      continue;
 	    }
 
-	  /* Insert the field declaration at it's given offset.  */
+	  /* Insert the field declaration at its given offset.  */
 	  if (var->isField ())
 	    {
 	      const char *ident = var->ident ? var->ident->toChars () : NULL;
@@ -304,7 +306,7 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 	      insert_aggregate_field (context, field, var->offset);
 
 	      /* Because the front-end shares field decls across classes, don't
-		 create the corresponding backend symbol unless we are adding
+		 create the corresponding back-end symbol unless we are adding
 		 it to the aggregate it is defined in.  */
 	      if (!inherited_p)
 		{
@@ -333,7 +335,7 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 	  d_keep (type);
 
 	  /* Build the type declaration.  */
-	  tree decl = build_decl (get_linemap (ad->loc),
+	  tree decl = build_decl (make_location_t (ad->loc),
 				  TYPE_DECL, ident, type);
 	  DECL_CONTEXT (decl) = context;
 	  DECL_ARTIFICIAL (decl) = 1;
@@ -480,7 +482,7 @@ finish_aggregate_type (unsigned structsize, unsigned alignsize,
   SET_TYPE_ALIGN (type, alignsize * BITS_PER_UNIT);
   TYPE_PACKED (type) = (alignsize == 1);
 
-  /* Set the backend type mode.  */
+  /* Set the back-end type mode.  */
   compute_record_mode (type);
 
   /* Fix up all variants of this aggregate type.  */
@@ -500,12 +502,16 @@ finish_aggregate_type (unsigned structsize, unsigned alignsize,
 
 /* Implements the visitor interface to build the GCC trees of all
    Type AST classes emitted from the D Front-end, where CTYPE holds
-   the cached backend representation to be returned.  */
+   the cached back-end representation to be returned.  */
 
 class TypeVisitor : public Visitor
 {
+  using Visitor::visit;
+
 public:
-  TypeVisitor (void) {}
+  TypeVisitor (void)
+  {
+  }
 
   /* This should be overridden by each type class.  */
 
@@ -537,19 +543,19 @@ public:
     /* [type/basic-data-types]
 
        void	no type.
-       bool	8 bit boolean value.
-       byte	8 bit signed value.
-       ubyte	8 bit unsigned value.
-       short	16 bit signed value.
-       ushort	16 bit unsigned value.
-       int	32 bit signed value.
-       uint	32 bit unsigned value.
-       long	64 bit signed value.
-       ulong	64 bit unsigned value.
-       cent	128 bit signed value.
-       ucent	128 bit unsigned value.
-       float	32 bit IEEE 754 floating point value.
-       double	64 bit IEEE 754 floating point value.
+       bool	8-bit boolean value.
+       byte	8-bit signed value.
+       ubyte	8-bit unsigned value.
+       short	16-bit signed value.
+       ushort	16-bit unsigned value.
+       int	32-bit signed value.
+       uint	32-bit unsigned value.
+       long	64-bit signed value.
+       ulong	64-bit unsigned value.
+       cent	128-bit signed value.
+       ucent	128-bit unsigned value.
+       float	32-bit IEEE 754 floating-point value.
+       double	64-bit IEEE 754 floating-point value.
        real	largest FP size implemented in hardware.
        ifloat	imaginary float.
        idouble	imaginary double.
@@ -564,17 +570,17 @@ public:
     switch (t->ty)
       {
       case Tvoid:	  t->ctype = void_type_node; break;
-      case Tbool:	  t->ctype = bool_type_node; break;
-      case Tint8:	  t->ctype = byte_type_node; break;
-      case Tuns8:	  t->ctype = ubyte_type_node; break;
-      case Tint16:	  t->ctype = short_type_node; break;
-      case Tuns16:	  t->ctype = ushort_type_node; break;
-      case Tint32:	  t->ctype = int_type_node; break;
-      case Tuns32:	  t->ctype = uint_type_node; break;
-      case Tint64:	  t->ctype = long_type_node; break;
-      case Tuns64:	  t->ctype = ulong_type_node; break;
-      case Tint128:	  t->ctype = cent_type_node; break;
-      case Tuns128:	  t->ctype = ucent_type_node; break;
+      case Tbool:	  t->ctype = d_bool_type; break;
+      case Tint8:	  t->ctype = d_byte_type; break;
+      case Tuns8:	  t->ctype = d_ubyte_type; break;
+      case Tint16:	  t->ctype = d_short_type; break;
+      case Tuns16:	  t->ctype = d_ushort_type; break;
+      case Tint32:	  t->ctype = d_int_type; break;
+      case Tuns32:	  t->ctype = d_uint_type; break;
+      case Tint64:	  t->ctype = d_long_type; break;
+      case Tuns64:	  t->ctype = d_ulong_type; break;
+      case Tint128:	  t->ctype = d_cent_type; break;
+      case Tuns128:	  t->ctype = d_ucent_type; break;
       case Tfloat32:	  t->ctype = float_type_node; break;
       case Tfloat64:	  t->ctype = double_type_node; break;
       case Tfloat80:	  t->ctype = long_double_type_node; break;
@@ -590,7 +596,7 @@ public:
       default:		  gcc_unreachable ();
       }
 
-    TYPE_NAME (t->ctype) = get_identifier (t->toChars());
+    TYPE_NAME (t->ctype) = get_identifier (t->toChars ());
   }
 
 
@@ -609,8 +615,8 @@ public:
   void visit (TypeDArray *t)
   {
     /* In [abi/arrays], dynamic array layout is:
-        .length	array dimension.
-        .ptr	pointer to array data.  */
+	.length	array dimension.
+	.ptr	pointer to array data.  */
     t->ctype = make_struct_type (t->toChars (), 2,
 				 get_identifier ("length"),
 				 build_ctype (Type::tsize_t),
@@ -622,7 +628,7 @@ public:
   }
 
   /* Build a static array type, distinguished from dynamic arrays by
-     having a length fixed at compile time, analogous to C arrays.  */
+     having a length fixed at compile-time, analogous to C arrays.  */
 
   void visit (TypeSArray *t)
   {
@@ -633,8 +639,8 @@ public:
       }
     else
       {
-	::error ("invalid expression for static array dimension: %s",
-		 t->dim->toChars ());
+	error ("invalid expression for static array dimension: %s",
+	       t->dim->toChars ());
 	gcc_unreachable ();
       }
   }
@@ -651,7 +657,7 @@ public:
       inner = build_ctype (Type::tuns8);
 
     t->ctype = build_vector_type (inner, nunits);
-    TYPE_NAME (t->ctype) = get_identifier (t->toChars());
+    TYPE_NAME (t->ctype) = get_identifier (t->toChars ());
     layout_type (t->ctype);
   }
 
@@ -753,8 +759,8 @@ public:
   void visit (TypeDelegate *t)
   {
     /* In [abi/delegates], delegate layout is:
-        .ptr	    context pointer.
-        .funcptr    pointer to function.  */
+	.ptr	    context pointer.
+	.funcptr    pointer to function.  */
     tree fntype = build_ctype (t->next);
     tree dgtype = build_vthis_function (void_type_node, fntype);
 
@@ -779,8 +785,8 @@ public:
 
   void visit (TypeEnum *t)
   {
-    tree basetype = (t->sym->memtype) ?
-      build_ctype (t->sym->memtype) : void_type_node;
+    tree basetype = (t->sym->memtype)
+      ? build_ctype (t->sym->memtype) : void_type_node;
 
     if (!INTEGRAL_TYPE_P (basetype) || TREE_CODE (basetype) == BOOLEAN_TYPE)
       {
@@ -812,7 +818,7 @@ public:
 	    for (size_t i = 0; i < t->sym->members->dim; i++)
 	      {
 		EnumMember *member = (*t->sym->members)[i]->isEnumMember ();
-		/* Templated functions can seep through to the backend
+		/* Templated functions can seep through to the back-end
 		   just ignore for now.  */
 		if (member == NULL)
 		  continue;
@@ -821,8 +827,8 @@ public:
 		tree value = build_integer_cst (member->value ()->toInteger (),
 						basetype);
 
-		/* Build a identifier for the enumeration constant.  */
-		tree decl = build_decl (get_linemap (member->loc),
+		/* Build an identifier for the enumeration constant.  */
+		tree decl = build_decl (make_location_t (member->loc),
 					CONST_DECL, ident, basetype);
 		DECL_CONTEXT (decl) = t->ctype;
 		TREE_CONSTANT (decl) = 1;
@@ -865,8 +871,8 @@ public:
 	   the context or laying out fields as those types may make
 	   recursive references to this type.  */
 	unsigned structsize = t->sym->structsize;
-	unsigned alignsize = (t->sym->alignment != STRUCTALIGN_DEFAULT) ?
-	  t->sym->alignment : t->sym->alignsize;
+	unsigned alignsize = (t->sym->alignment != STRUCTALIGN_DEFAULT)
+	  ? t->sym->alignment : t->sym->alignsize;
 
 	TYPE_SIZE (t->ctype) = bitsize_int (structsize * BITS_PER_UNIT);
 	TYPE_SIZE_UNIT (t->ctype) = size_int (structsize);
@@ -963,7 +969,7 @@ build_ctype (Type *t)
       TypeVisitor v;
 
       /* Strip const modifiers from type before building.  This is done
-	 to ensure that backend treats i.e: const (T) as a variant of T,
+	 to ensure that back-end treats e.g: const (T) as a variant of T,
 	 and not as two distinct types.  */
       if (t->isNaked ())
 	t->accept (&v);
