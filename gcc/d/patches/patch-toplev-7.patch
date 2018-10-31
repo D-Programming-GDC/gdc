@@ -69,20 +69,22 @@ This implements building of libphobos library in GCC.
  	AR="$(AR)"; export AR; \
  	AS="$(AS)"; export AS; \
  	CC_FOR_BUILD="$(CC_FOR_BUILD)"; export CC_FOR_BUILD; \
-@@ -256,6 +259,12 @@ POSTSTAGE1_HOST_EXPORTS = \
+@@ -256,6 +259,14 @@ POSTSTAGE1_HOST_EXPORTS = \
  	CC_FOR_BUILD="$$CC"; export CC_FOR_BUILD; \
  	$(POSTSTAGE1_CXX_EXPORT) \
  	$(LTO_EXPORTS) \
 +	GDC="$$r/$(HOST_SUBDIR)/prev-gcc/gdc$(exeext) -B$$r/$(HOST_SUBDIR)/prev-gcc/ \
 +	  -B$(build_tooldir)/bin/ $(GDC_FLAGS_FOR_TARGET) \
++	  -B$$r/prev-$(TARGET_SUBDIR)/libphobos/src \
 +	  -I$$r/prev-$(TARGET_SUBDIR)/libphobos/libdruntime -I$$s/libphobos/libdruntime \
-+	  -L$$r/prev-$(TARGET_SUBDIR)/libphobos/src/.libs"; \
++	  -L$$r/prev-$(TARGET_SUBDIR)/libphobos/src/.libs \
++	  -L$$r/prev-$(TARGET_SUBDIR)/libphobos/libdruntime/.libs"; \
 +	export GDC; \
 + 	GDC_FOR_BUILD="$$GDC"; export GDC_FOR_BUILD; \
  	GNATBIND="$$r/$(HOST_SUBDIR)/prev-gcc/gnatbind"; export GNATBIND; \
  	LDFLAGS="$(POSTSTAGE1_LDFLAGS) $(BOOT_LDFLAGS)"; export LDFLAGS; \
  	HOST_LIBS="$(POSTSTAGE1_LIBS)"; export HOST_LIBS;
-@@ -278,6 +287,7 @@ BASE_TARGET_EXPORTS = \
+@@ -278,6 +289,7 @@ BASE_TARGET_EXPORTS = \
  	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
  	GFORTRAN="$(GFORTRAN_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GFORTRAN; \
  	GOC="$(GOC_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GOC; \
@@ -90,7 +92,7 @@ This implements building of libphobos library in GCC.
  	DLLTOOL="$(DLLTOOL_FOR_TARGET)"; export DLLTOOL; \
  	LD="$(COMPILER_LD_FOR_TARGET)"; export LD; \
  	LDFLAGS="$(LDFLAGS_FOR_TARGET)"; export LDFLAGS; \
-@@ -342,6 +352,7 @@ CXX_FOR_BUILD = @CXX_FOR_BUILD@
+@@ -342,6 +354,7 @@ CXX_FOR_BUILD = @CXX_FOR_BUILD@
  DLLTOOL_FOR_BUILD = @DLLTOOL_FOR_BUILD@
  GFORTRAN_FOR_BUILD = @GFORTRAN_FOR_BUILD@
  GOC_FOR_BUILD = @GOC_FOR_BUILD@
@@ -864,20 +866,22 @@ This implements building of libphobos library in GCC.
  	AR="$(AR)"; export AR; \
  	AS="$(AS)"; export AS; \
  	CC_FOR_BUILD="$(CC_FOR_BUILD)"; export CC_FOR_BUILD; \
-@@ -259,6 +262,12 @@ POSTSTAGE1_HOST_EXPORTS = \
+@@ -259,6 +262,14 @@ POSTSTAGE1_HOST_EXPORTS = \
  	CC_FOR_BUILD="$$CC"; export CC_FOR_BUILD; \
  	$(POSTSTAGE1_CXX_EXPORT) \
  	$(LTO_EXPORTS) \
 +	GDC="$$r/$(HOST_SUBDIR)/prev-gcc/gdc$(exeext) -B$$r/$(HOST_SUBDIR)/prev-gcc/ \
 +	  -B$(build_tooldir)/bin/ $(GDC_FLAGS_FOR_TARGET) \
++	  -B$$r/prev-$(TARGET_SUBDIR)/libphobos/src \
 +	  -I$$r/prev-$(TARGET_SUBDIR)/libphobos/libdruntime -I$$s/libphobos/libdruntime \
-+	  -L$$r/prev-$(TARGET_SUBDIR)/libphobos/src/.libs"; \
++	  -L$$r/prev-$(TARGET_SUBDIR)/libphobos/src/.libs \
++	  -L$$r/prev-$(TARGET_SUBDIR)/libphobos/libdruntime/.libs"; \
 +	export GDC; \
 + 	GDC_FOR_BUILD="$$GDC"; export GDC_FOR_BUILD; \
  	GNATBIND="$$r/$(HOST_SUBDIR)/prev-gcc/gnatbind"; export GNATBIND; \
  	LDFLAGS="$(POSTSTAGE1_LDFLAGS) $(BOOT_LDFLAGS)"; export LDFLAGS; \
  	HOST_LIBS="$(POSTSTAGE1_LIBS)"; export HOST_LIBS;
-@@ -281,6 +290,7 @@ BASE_TARGET_EXPORTS = \
+@@ -281,6 +292,7 @@ BASE_TARGET_EXPORTS = \
  	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
  	GFORTRAN="$(GFORTRAN_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GFORTRAN; \
  	GOC="$(GOC_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GOC; \
@@ -885,7 +889,7 @@ This implements building of libphobos library in GCC.
  	DLLTOOL="$(DLLTOOL_FOR_TARGET)"; export DLLTOOL; \
  	LD="$(COMPILER_LD_FOR_TARGET)"; export LD; \
  	LDFLAGS="$(LDFLAGS_FOR_TARGET)"; export LDFLAGS; \
-@@ -345,6 +355,7 @@ CXX_FOR_BUILD = @CXX_FOR_BUILD@
+@@ -345,6 +357,7 @@ CXX_FOR_BUILD = @CXX_FOR_BUILD@
  DLLTOOL_FOR_BUILD = @DLLTOOL_FOR_BUILD@
  GFORTRAN_FOR_BUILD = @GFORTRAN_FOR_BUILD@
  GOC_FOR_BUILD = @GOC_FOR_BUILD@

@@ -8,8 +8,7 @@
  */
 module core.sys.windows.lmremutl;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "netapi32");
+pragma(lib, "netapi32");
 
 // D Conversion Note: DESC_CHAR is defined as TCHAR.
 

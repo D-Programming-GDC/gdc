@@ -16,11 +16,6 @@ You should have received a copy of the GNU General Public License
 along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-/* Used to represent a D inline assembly statement, an intermediate
-   representation of an ASM_EXPR.  Reserved for future use and
-   implementation yet to be defined.  */
-DEFTREECODE (IASM_EXPR, "iasm_expr", tcc_statement, 5)
-
 /* Logical shift done on an unsigned type.  If the first operand is
    signed, it will be converted to the unsigned equivalent.  The second
    operand is the number of bits to shift by; it need not be the same

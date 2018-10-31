@@ -5,8 +5,7 @@ module asantests;
 
 
 /******************************************/
-
-// Bug 272
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=272
 
 extern(C) void my_memcmp(const(void) *s1, const(void) *s2);
 

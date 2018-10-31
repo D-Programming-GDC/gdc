@@ -10,8 +10,7 @@ module core.sys.windows.commctrl;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "comctl32");
+pragma(lib, "comctl32");
 
 private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.winuser;
 private import core.sys.windows.winbase; // for SYSTEMTIME
@@ -838,7 +837,7 @@ enum {
     TTS_ALWAYSTIP = 1,
     TTS_NOPREFIX
 }
-static if(_WIN32_IE >= 0x500) {
+static if (_WIN32_IE >= 0x500) {
     enum {
         TTS_NOANIMATE = 0x10,
         TTS_NOFADE    = 0x20,
@@ -1042,7 +1041,7 @@ static if (_WIN32_IE >= 0x500) {
     SBT_RTLREADING = 1024
 }*/
 
-static if(_WIN32_IE >= 0x400) {
+static if (_WIN32_IE >= 0x400) {
     enum {
         SBT_TOOLTIPS         = 0x0800,
         SBN_SIMPLEMODECHANGE = SBN_FIRST
@@ -1330,7 +1329,7 @@ static if (_WIN32_IE >= 0x300) {
         LVSICF_NOSCROLL        = 0x00000002
     }
 
-    static if(_WIN32_IE >= 0x400) {
+    static if (_WIN32_IE >= 0x400) {
         enum {
             LVS_EX_FLATSB         = 0x00000100,
             LVS_EX_REGIONAL       = 0x00000200,
@@ -1341,7 +1340,7 @@ static if (_WIN32_IE >= 0x300) {
         }
     }
 
-    static if(_WIN32_IE >= 0x500) {
+    static if (_WIN32_IE >= 0x500) {
         enum {
             LVS_EX_LABELTIP     = 0x00004000,
             LVS_EX_BORDERSELECT = 0x00008000
@@ -1457,7 +1456,7 @@ enum LPSTR  LPSTR_TEXTCALLBACKA = cast(LPSTR) -1;
 
 enum I_IMAGECALLBACK = -1;
 
-static if(_WIN32_IE >= 0x400) {
+static if (_WIN32_IE >= 0x400) {
     enum {
         LVM_SETBKIMAGEA          = LVM_FIRST + 68,
         LVM_SETBKIMAGEW          = LVM_FIRST + 138,
@@ -1744,7 +1743,7 @@ enum {
 mixin DECLARE_HANDLE!("HTREEITEM");
 mixin DECLARE_HANDLE!("HIMAGELIST");
 
-version(Win64)
+version (Win64)
 {
 enum HTREEITEM
     TVI_ROOT  = cast(HTREEITEM) cast(ULONG_PTR)-0x10000,
@@ -1978,7 +1977,7 @@ static if (_WIN32_IE >= 0x300) {
     }
 }
 
-static if(_WIN32_IE >= 0x400) {
+static if (_WIN32_IE >= 0x400) {
     enum {
         TCS_FLATBUTTONS       = 0x0008,
         TCS_EX_FLATSEPARATORS = 0x00000001,
@@ -2590,7 +2589,7 @@ static if (_WIN32_WINNT >= 0x501) {
     alias NMBCHOTITEM* LPNMBCHOTITEM;
 }
 
-static if(_WIN32_WINNT >= 0x600) {
+static if (_WIN32_WINNT >= 0x600) {
     enum {
         BST_DROPDOWNPUSHED      = 0x0400,
 
@@ -2997,7 +2996,7 @@ struct TBBUTTON {
     int   idCommand;
     BYTE  fsState;
     BYTE  fsStyle;
-    version(Win64){
+    version (Win64){
         BYTE[6] bReserved;
     } else {
         BYTE[2] bReserved;

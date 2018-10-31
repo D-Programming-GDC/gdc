@@ -10,8 +10,7 @@ module core.sys.windows.shlwapi;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "shlwapi");
+pragma(lib, "shlwapi");
 
 /* Changes compared to MinGW:
 wnsprintf functions are not included.
@@ -458,7 +457,7 @@ IStream SHOpenRegStream2W(HKEY, LPCWSTR, LPCWSTR, DWORD);
 IStream SHOpenRegStreamA(HKEY, LPCSTR, LPCSTR, DWORD);
 IStream SHOpenRegStreamW(HKEY, LPCWSTR, LPCWSTR, DWORD);
 
-version(Unicode) {
+version (Unicode) {
 alias ChrCmpIW ChrCmpI;
 alias IntlStrEqNW IntlStrEqN;
 alias IntlStrEqNIW IntlStrEqNI;

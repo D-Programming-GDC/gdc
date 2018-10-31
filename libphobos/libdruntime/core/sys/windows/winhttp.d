@@ -8,8 +8,7 @@
  */
 module core.sys.windows.winhttp;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "winhttp");
+pragma(lib, "winhttp");
 // FIXME: Grouping of constants. Windows SDK doesn't make this entirely clear
 // FIXME: Verify WINHTTP_STATUS_CALLBACK function declaration works correctly
 
@@ -262,7 +261,7 @@ enum : DWORD {
     WINHTTP_OPTION_WEB_SOCKET_RECEIVE_BUFFER_SIZE = 122,
     WINHTTP_OPTION_WEB_SOCKET_SEND_BUFFER_SIZE    = 123,
 
-    //WINHTTP_LAST_OPTION => Moved outside of enum - static if() constraints within enums
+    //WINHTTP_LAST_OPTION => Moved outside of enum - static if () constraints within enums
 
     WINHTTP_OPTION_USERNAME                      = 0x1000,
     WINHTTP_OPTION_PASSWORD                      = 0x1001,

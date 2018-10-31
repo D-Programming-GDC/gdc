@@ -1,5 +1,5 @@
 // GNU D Compiler attribute support declarations.
-// Copyright (C) 2013-2017 Free Software Foundation, Inc.
+// Copyright (C) 2013-2018 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -27,7 +27,7 @@ private struct Attribute(A...)
     A args;
 }
 
-auto attribute(A...)(A args) if(A.length > 0 && is(A[0] == string))
+auto attribute(A...)(A args) if (A.length > 0 && is(A[0] == string))
 {
     return Attribute!A(args);
 }

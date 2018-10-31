@@ -9,8 +9,7 @@
  */
 module core.sys.windows.powrprof;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "powrprof");
+pragma(lib, "powrprof");
 
 private import core.sys.windows.windef;
 private import core.sys.windows.ntdef;

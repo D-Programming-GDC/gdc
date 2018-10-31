@@ -6,16 +6,11 @@
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winbase.d)
  */
-
-/* NOTE: This file has been patched from the original DMD distribution to
- * work with the GDC compiler.
- */
 module core.sys.windows.winbase;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "kernel32");
+pragma(lib, "kernel32");
 
 /**
 Translation Notes:
@@ -1643,7 +1638,7 @@ extern (Windows) nothrow @nogc {
     //--------------------------------------
     // These functions are problematic
 
-    version(UseNtoSKernel) {}else {
+    version (UseNtoSKernel) {}else {
         /* CAREFUL: These are exported from ntoskrnl.exe and declared in winddk.h
            as __fastcall functions, but are  exported from kernel32.dll as __stdcall */
         static if (_WIN32_WINNT >= 0x501) {
@@ -1670,28 +1665,11 @@ extern (Windows) nothrow @nogc {
     //--------------------------------------
     +/
 
-    version (MinGW)
-    {
-        LONG _InterlockedIncrement(LPLONG lpAddend);
-        LONG _InterlockedDecrement(LPLONG lpAddend);
-        LONG _InterlockedExchange(LPLONG Target, LONG Value);
-        LONG _InterlockedExchangeAdd(LPLONG Addend, LONG Value);
-        LONG _InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
-
-        alias InterlockedIncrement =  _InterlockedIncrement;
-        alias InterlockedDecrement = _InterlockedDecrement;
-        alias InterlockedExchange = _InterlockedExchange;
-        alias InterlockedExchangeAdd = _InterlockedExchangeAdd;
-        alias InterlockedCompareExchange = _InterlockedCompareExchange;
-    }
-    else
-    {
-        LONG InterlockedIncrement(LPLONG lpAddend);
-        LONG InterlockedDecrement(LPLONG lpAddend);
-        LONG InterlockedExchange(LPLONG Target, LONG Value);
-        LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
-        LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
-    }
+    LONG InterlockedIncrement(LPLONG lpAddend);
+    LONG InterlockedDecrement(LPLONG lpAddend);
+    LONG InterlockedExchange(LPLONG Target, LONG Value);
+    LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
+    LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
 
     ATOM AddAtomA(LPCSTR);
     ATOM AddAtomW(LPCWSTR);
@@ -1845,7 +1823,6 @@ WINBASEAPI DWORD WINAPI GetCurrentThreadId(void);
     BOOL GetDiskFreeSpaceExW(LPCWSTR, PULARGE_INTEGER, PULARGE_INTEGER, PULARGE_INTEGER);
     UINT GetDriveTypeA(LPCSTR);
     UINT GetDriveTypeW(LPCWSTR);
-    LPSTR GetEnvironmentStrings(); // ???
     LPSTR GetEnvironmentStringsA();
     LPWSTR GetEnvironmentStringsW();
     DWORD GetEnvironmentVariableA(LPCSTR, LPSTR, DWORD);
@@ -2724,6 +2701,7 @@ version (Unicode) {
     alias GetDiskFreeSpaceA GetDiskFreeSpace;
     alias GetDiskFreeSpaceExA GetDiskFreeSpaceEx;
     alias GetDriveTypeA GetDriveType;
+    alias GetEnvironmentStringsA GetEnvironmentStrings;
     alias GetEnvironmentVariableA GetEnvironmentVariable;
     alias GetFileAttributesA GetFileAttributes;
     alias GetFullPathNameA GetFullPathName;
