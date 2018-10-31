@@ -384,6 +384,10 @@ void test17()
             {
                 "vldr d0, %1; vstr d0, %0;" : "=m" (g) : "m" (f), : "d0";
             }
+            else version(AArch64) asm
+            {
+                "ldr d0, %1; str d0, %0;" : "=m" (g) : "m" (f), : "d0";
+            }
             else static assert(false, "ASM code not implemented for this architecture");
         }
         else
