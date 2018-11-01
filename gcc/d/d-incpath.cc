@@ -19,14 +19,14 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/globals.h"
+#include "dmd/globals.h"
 
 #include "d-system.h"
 #include "options.h"
 #include "cppdefault.h"
 
 /* Look for directories that start with the standard prefix.
-   "Translate" them, i.e. replace /usr/local/lib/gcc with
+   "Translate" them, i.e: replace /usr/local/lib/gcc with
    IPREFIX and search them first.  Based on incpath.c.  */
 
 static char *
@@ -172,7 +172,7 @@ add_import_paths (const char *iprefix, const char *imultilib, bool stdinc)
 	}
     }
 
-  /* Add import search paths  */
+  /* Add import search paths.  */
   if (global.params.imppath)
     {
       for (size_t i = 0; i < global.params.imppath->dim; i++)

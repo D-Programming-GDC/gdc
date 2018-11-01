@@ -19,8 +19,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/declaration.h"
-#include "dfrontend/module.h"
+#include "dmd/declaration.h"
+#include "dmd/identifier.h"
+#include "dmd/module.h"
 
 #include "d-system.h"
 
@@ -28,7 +29,7 @@ along with GCC; see the file COPYING3.  If not see
 
 
 /* D generates module information to inform the runtime library which modules
-   needs some kind of special handling.  All `static this()', `static ~this()',
+   need some kind of special handling.  All `static this()', `static ~this()',
    and `unittest' functions for a given module are aggregated into a single
    function - one for each kind - and a pointer to that function is inserted
    into the ModuleInfo instance for that module.
@@ -63,7 +64,7 @@ static tree stop_minfo_node;
 /* Record information about module initialization, termination,
    unit testing, and thread local storage in the compilation.  */
 
-struct module_info
+struct GTY(()) module_info
 {
   vec<tree, va_gc> *ctors;
   vec<tree, va_gc> *dtors;
@@ -92,7 +93,7 @@ enum module_info_flags
   MIunitTest	    = 0x200,
   MIimportedModules = 0x400,
   MIlocalClasses    = 0x800,
-  MIname	    = 0x1000,
+  MIname	    = 0x1000
 };
 
 /* The ModuleInfo information structure for the module currently being compiled.
@@ -106,8 +107,8 @@ static Module *current_module_decl;
 
 /* Static constructors and destructors (not D `static this').  */
 
-static vec<tree, va_gc> *static_ctor_list;
-static vec<tree, va_gc> *static_dtor_list;
+static GTY(()) vec<tree, va_gc> *static_ctor_list;
+static GTY(()) vec<tree, va_gc> *static_dtor_list;
 
 /* Returns an internal function identified by IDENT.  This is used
    by both module initialization and dso handlers.  */
@@ -204,8 +205,8 @@ get_moduleinfo_type (void)
   /* Layout of ModuleInfo is:
 	uint flags;
 	uint index;  */
-  tree fields = create_field_decl (uint_type_node, NULL, 1, 1);
-  DECL_CHAIN (fields) = create_field_decl (uint_type_node, NULL, 1, 1);
+  tree fields = create_field_decl (d_uint_type, NULL, 1, 1);
+  DECL_CHAIN (fields) = create_field_decl (d_uint_type, NULL, 1, 1);
 
   moduleinfo_type = make_node (RECORD_TYPE);
   finish_builtin_struct (moduleinfo_type, "ModuleInfo", fields, NULL_TREE);
@@ -398,7 +399,7 @@ register_moduleinfo (Module *decl, tree minfo)
   /* Build the initializer and emit.  Do not start section with a `.' character
      so that the linker will provide a __start_ and __stop_ symbol to indicate
      the start and end address of the section respectively.
-     https://sourceware.org/binutils/docs-2.26/ld/Orphan-Sections.html  */
+     https://sourceware.org/binutils/docs-2.26/ld/Orphan-Sections.html.  */
   DECL_INITIAL (mref) = build_address (minfo);
   DECL_EXTERNAL (mref) = 0;
   DECL_PRESERVE_P (mref) = 1;
@@ -487,7 +488,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
   if (decl->stest)
     layout_moduleinfo_field (ptr_type_node, type, offset);
 
-  /* Array of module imports is layed out as a length field, followed by
+  /* Array of module imports is laid out as a length field, followed by
      a static array of ModuleInfo pointers.  */
   size_t aimports_dim = decl->aimports.dim;
   for (size_t i = 0; i < decl->aimports.dim; i++)
@@ -504,7 +505,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
 			       type, offset);
     }
 
-  /* Array of local ClassInfo decls are layed out in the same way.  */
+  /* Array of local ClassInfo decls are laid out in the same way.  */
   ClassDeclarations aclasses;
   for (size_t i = 0; i < decl->members->dim; i++)
     {
@@ -586,10 +587,10 @@ layout_moduleinfo (Module *decl)
   vec<constructor_elt, va_gc> *minit = NULL;
 
   CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
-			  build_integer_cst (flags, uint_type_node));
+			  build_integer_cst (flags, d_uint_type));
 
   CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
-			  build_integer_cst (0, uint_type_node));
+			  build_integer_cst (0, d_uint_type));
 
   /* Order of appearance, depending on flags:
 	void function() tlsctor;
@@ -684,7 +685,7 @@ layout_moduleinfo (Module *decl)
   register_moduleinfo (decl, minfo);
 }
 
-/* Send the Module AST class DECL to GCC backend.  */
+/* Send the Module AST class DECL to GCC back-end.  */
 
 void
 build_module_tree (Module *decl)
@@ -708,7 +709,7 @@ build_module_tree (Module *decl)
 	}
     }
 
-  /* Default behaviour is to always generate module info because of templates.
+  /* Default behavior is to always generate module info because of templates.
      Can be switched off for not compiling against runtime library.  */
   if (!global.params.betterC
       && decl->ident != Identifier::idPool ("__entrypoint"))
@@ -814,7 +815,7 @@ d_finish_ctor_lists (void)
   /* If the target does not directly support static constructors,
      static_ctor_list contains a list of all static constructors defined
      so far.  This routine will create a function to call all of those
-     and is picked up by collect2. */
+     and is picked up by collect2.  */
   if (static_ctor_list)
     {
       tree decl = build_funcs_gates_fn (get_file_function_name ("I"),
@@ -859,3 +860,5 @@ d_finish_compilation (tree *vec, int len)
   // be emitted, output debug information for globals.
   emit_debug_global_declarations (vec, len);
 }
+
+#include "gt-d-modules.h"

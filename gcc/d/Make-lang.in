@@ -26,7 +26,7 @@ D_TARGET_INSTALL_NAME = $(target_noncanonical)-$(shell echo gdc|sed '$(program_t
 D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos\"
 
 # The name for selecting d in LANGUAGES.
-d: cc1d$(exeext)
+d: d21$(exeext)
 
 # Tell GNU make to ignore these if they exist.
 .PHONY: d
@@ -94,6 +94,8 @@ D_FRONTEND_OBJS = \
 	d/filename.o \
 	d/func.o \
 	d/hdrgen.o \
+	d/iasm.o \
+	d/iasmgcc.o \
 	d/identifier.o \
 	d/imphint.o \
 	d/init.o \
@@ -123,7 +125,6 @@ D_FRONTEND_OBJS = \
 	d/tokens.o \
 	d/traits.o \
 	d/typesem.o \
-	d/unittests.o \
 	d/utf.o \
 	d/utils.o
 
@@ -143,7 +144,7 @@ D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_GENERATED_OBJS) $(D_OBJS) $(D_TARGET_OBJS)
 
 d_OBJS = $(D_ALL_OBJS) d/d-spec.o
 
-cc1d$(exeext): $(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBDEPS)
+d21$(exeext): $(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBDEPS)
 	+$(LLINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 		$(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBS) $(BACKENDLIBS)
 
@@ -195,7 +196,7 @@ d.srcextra:
 
 d.tags: force
 	cd $(srcdir)/d; \
-	etags -o TAGS.sub *.c *.cc *.h dfrontend/*.h dfrontend/*.c; \
+	etags -o TAGS.sub *.c *.cc *.h dmd/*.c dmd/*.h dmd/root/*.h dmd/root/*.c; \
 	etags --include TAGS.sub --include ../TAGS.sub
 
 d.man: doc/gdc.1
@@ -210,12 +211,15 @@ lang_checks += check-gdc
 lang_checks_parallelized += check-gdc
 check_gdc_parallelize = 10
 
+# No D-specific selftests.
+selftest-d:
+
 # Install hooks.
 
 d.install-common: installdirs
 	-rm -f $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	$(INSTALL_PROGRAM) gdc$(exeext) $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-if test -f cc1d$(exeext); then \
+	-if test -f d21$(exeext); then \
 	  if test -f gdc-cross$(exeext); then \
 	    :; \
 	  else \
@@ -275,7 +279,7 @@ d.mostlyclean:
 	-rm -f d/*$(objext)
 	-rm -f d/*$(coverageexts)
 	-rm -f $(D_GENERATED_SRCS)
-	-rm -f d/gdc$(exeext) gdc-cross$(exeext) d/cc1d$(exeext)
+	-rm -f d/gdc$(exeext) gdc-cross$(exeext) d/d21$(exeext)
 d.clean:
 d.distclean:
 d.maintainer-clean:
@@ -297,13 +301,17 @@ d.stagefeedback: stagefeedback-start
 	-mv d/*$(objext) stagefeedback/d
 
 # Include the dfrontend and build directories for headers.
-D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
+D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dmd -Id
 
 CFLAGS-d/id.o += $(D_INCLUDES)
 CFLAGS-d/impcnvtab.o += $(D_INCLUDES)
 
 # Override build rules for D frontend.
-d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS)
+d/%.o: d/dmd/%.c $(D_GENERATED_SRCS)
+	$(DMD_COMPILE) $(D_INCLUDES) $<
+	$(POSTCOMPILE)
+
+d/%.o: d/dmd/root/%.c $(D_GENERATED_SRCS)
 	$(DMD_COMPILE) $(D_INCLUDES) $<
 	$(POSTCOMPILE)
 
@@ -324,6 +332,6 @@ d/id.h: d/id.c
 d/impcnvtab.c: d/impcvgen
 	cd d && ./impcvgen
 
-d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
+d/%.dmdgen.o: $(srcdir)/d/dmd/%.c
 	$(DMDGEN_COMPILE) $(D_INCLUDES) $<
 	$(POSTCOMPILE)

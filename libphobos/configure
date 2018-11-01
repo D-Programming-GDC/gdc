@@ -636,6 +636,8 @@ DRUNTIME_OS_NETBSD_FALSE
 DRUNTIME_OS_NETBSD_TRUE
 DRUNTIME_OS_FREEBSD_FALSE
 DRUNTIME_OS_FREEBSD_TRUE
+DRUNTIME_OS_DRAGONFLYBSD_FALSE
+DRUNTIME_OS_DRAGONFLYBSD_TRUE
 DRUNTIME_OS_DARWIN_FALSE
 DRUNTIME_OS_DARWIN_TRUE
 DRUNTIME_OS_ANDROID_FALSE
@@ -4557,7 +4559,7 @@ $as_echo "no" >&6; }
        as_fn_error "can't compile D sources!" "$LINENO" 5
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-      ac_ext=c
+  ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -13599,6 +13601,9 @@ fi
                ;;
       darwin*) druntime_target_os_parsed="darwin"
                ;;
+      dragonfly*)
+               druntime_target_os_parsed="dragonflybsd"
+               ;;
       freebsd*|k*bsd*-gnu)
                druntime_target_os_parsed="freebsd"
                ;;
@@ -13636,6 +13641,14 @@ fi
 else
   DRUNTIME_OS_DARWIN_TRUE='#'
   DRUNTIME_OS_DARWIN_FALSE=
+fi
+
+   if test "$druntime_target_os_parsed" = "dragonflybsd"; then
+  DRUNTIME_OS_DRAGONFLYBSD_TRUE=
+  DRUNTIME_OS_DRAGONFLYBSD_FALSE='#'
+else
+  DRUNTIME_OS_DRAGONFLYBSD_TRUE='#'
+  DRUNTIME_OS_DRAGONFLYBSD_FALSE=
 fi
 
    if test "$druntime_target_os_parsed" = "freebsd"; then
@@ -14698,6 +14711,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${DRUNTIME_OS_DARWIN_TRUE}" && test -z "${DRUNTIME_OS_DARWIN_FALSE}"; then
   as_fn_error "conditional \"DRUNTIME_OS_DARWIN\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${DRUNTIME_OS_DRAGONFLYBSD_TRUE}" && test -z "${DRUNTIME_OS_DRAGONFLYBSD_FALSE}"; then
+  as_fn_error "conditional \"DRUNTIME_OS_DRAGONFLYBSD\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${DRUNTIME_OS_FREEBSD_TRUE}" && test -z "${DRUNTIME_OS_FREEBSD_FALSE}"; then

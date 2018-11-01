@@ -10,8 +10,7 @@ module core.sys.windows.mmsystem;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "winmm");
+pragma(lib, "winmm");
 
 /*  The #defines MAKEFOURCC, mmioFOURCC, sndAlias are used to define
  *  compile-time constants, so they are implemented as templates.
@@ -2171,7 +2170,7 @@ struct MCI_OVLY_LOAD_PARMSW {
 }
 alias MCI_OVLY_LOAD_PARMSW* PMCI_OVLY_LOAD_PARMSW, LPMCI_OVLY_LOAD_PARMSW;
 
-version(Unicode) {
+version (Unicode) {
     alias WAVEOUTCAPSW WAVEOUTCAPS;
     alias WAVEINCAPSW WAVEINCAPS;
     alias MIDIOUTCAPSW MIDIOUTCAPS;

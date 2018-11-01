@@ -19,20 +19,21 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/ctfe.h"
-#include "dfrontend/declaration.h"
-#include "dfrontend/target.h"
-#include "dfrontend/template.h"
+#include "dmd/aggregate.h"
+#include "dmd/ctfe.h"
+#include "dmd/declaration.h"
+#include "dmd/identifier.h"
+#include "dmd/target.h"
+#include "dmd/template.h"
 
 #include "d-system.h"
 #include "d-tree.h"
 
 
-/* Return the GCC location for the D frontend location LOC.   */
+/* Return the GCC location for the D frontend location LOC.  */
 
 location_t
-get_linemap (const Loc& loc)
+make_location_t (const Loc& loc)
 {
   location_t gcc_location = input_location;
 
@@ -250,7 +251,9 @@ d_array_length (tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  /* Get the backend type for the array and pick out the array
+  gcc_assert (TYPE_DYNAMIC_ARRAY (TREE_TYPE (exp)));
+
+  /* Get the back-end type for the array and pick out the array
      length field (assumed to be the first field).  */
   tree len_field = TYPE_FIELDS (TREE_TYPE (exp));
   return component_ref (exp, len_field);
@@ -264,7 +267,9 @@ d_array_ptr (tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  /* Get the backend type for the array and pick out the array
+  gcc_assert (TYPE_DYNAMIC_ARRAY (TREE_TYPE (exp)));
+
+  /* Get the back-end type for the array and pick out the array
      data pointer field (assumed to be the second field).  */
   tree ptr_field = TREE_CHAIN (TYPE_FIELDS (TREE_TYPE (exp)));
   return component_ref (exp, ptr_field);
@@ -276,10 +281,10 @@ d_array_ptr (tree exp)
 tree
 d_array_value (tree type, tree len, tree data)
 {
-  /* TODO: Assert type is a D array.  */
   tree len_field, ptr_field;
   vec<constructor_elt, va_gc> *ce = NULL;
 
+  gcc_assert (TYPE_DYNAMIC_ARRAY (type));
   len_field = TYPE_FIELDS (type);
   ptr_field = TREE_CHAIN (len_field);
 
@@ -309,7 +314,7 @@ get_array_length (tree exp, Type *type)
       return d_array_length (exp);
 
     default:
-      error ("can't determine the length of a %s", type->toChars ());
+      error ("can't determine the length of a %qs", type->toChars ());
       return error_mark_node;
     }
 }
@@ -365,8 +370,9 @@ build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
 tree
 delegate_method (tree exp)
 {
-  /* Get the backend type for the array and pick out the array length
-     field (assumed to be the second field).  */
+  /* Get the back-end type for the delegate and pick out the funcptr field
+     (assumed to be the second field).  */
+  gcc_assert (TYPE_DELEGATE (TREE_TYPE (exp)));
   tree method_field = TREE_CHAIN (TYPE_FIELDS (TREE_TYPE (exp)));
   return component_ref (exp, method_field);
 }
@@ -376,8 +382,9 @@ delegate_method (tree exp)
 tree
 delegate_object (tree exp)
 {
-  /* Get the backend type for the array and pick out the array data
-     pointer field (assumed to be the first field).  */
+  /* Get the back-end type for the delegate and pick out the object field
+     (assumed to be the first field).  */
+  gcc_assert (TYPE_DELEGATE (TREE_TYPE (exp)));
   tree obj_field = TYPE_FIELDS (TREE_TYPE (exp));
   return component_ref (exp, obj_field);
 }
@@ -450,7 +457,7 @@ build_vindex_ref (tree object, tree fntype, size_t index)
   return build_memref (fntype, result, size_int (Target::ptrsize * index));
 }
 
-/* Return TRUE if EXP is a valid lvalue.  Lvalues references cannot be
+/* Return TRUE if EXP is a valid lvalue.  Lvalue references cannot be
    made into temporaries, otherwise any assignments will be lost.  */
 
 static bool
@@ -796,7 +803,7 @@ lower_struct_comparison (tree_code code, StructDeclaration *sd,
       return tmemcmp;
     }
 
-  /* Let backend take care of union comparisons.  */
+  /* Let back-end take care of union comparisons.  */
   if (sd->isUnionDeclaration ())
     {
       tmemcmp = build_call_expr (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
@@ -923,7 +930,7 @@ build_array_struct_comparison (tree_code code, StructDeclaration *sd,
 
   /* Build temporary for the result of the comparison.
      Initialize as either 0 or 1 depending on operation.  */
-  tree result = build_local_temp (bool_type_node);
+  tree result = build_local_temp (d_bool_type);
   tree init = build_boolop (code, integer_zero_node, integer_zero_node);
   add_stmt (build_assign (INIT_EXPR, result, init));
 
@@ -1062,7 +1069,7 @@ build_struct_literal (tree type, vec<constructor_elt, va_gc> *init)
 	  FOR_EACH_CONSTRUCTOR_ELT (init, idx, index, value)
 	    {
 	      /* If the index is NULL, then just assign it to the next field.
-		 This is expect of layout_typeinfo(), which generates a flat
+		 This comes from layout_typeinfo(), which generates a flat
 		 list of values that we must shape into the record type.  */
 	      if (index == field || index == NULL_TREE)
 		{
@@ -1148,108 +1155,6 @@ build_struct_literal (tree type, vec<constructor_elt, va_gc> *init)
     TREE_CONSTANT (ctor) = 1;
 
   return ctor;
-}
-
-/* Find the field inside aggregate TYPE identified by IDENT at field OFFSET.  */
-
-static tree
-find_aggregate_field (tree type, tree ident, tree offset)
-{
-  tree fields = TYPE_FIELDS (type);
-
-  for (tree field = fields; field != NULL_TREE; field = TREE_CHAIN (field))
-    {
-      if (DECL_NAME (field) == NULL_TREE
-	  && RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
-	  && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
-	{
-	  /* Search nesting anonymous structs and unions.  */
-	  tree vfield = find_aggregate_field (TREE_TYPE (field),
-					      ident, offset);
-	  if (vfield != NULL_TREE)
-	    return vfield;
-	}
-      else if (DECL_NAME (field) == ident
-	       && (offset == NULL_TREE
-		   || DECL_FIELD_OFFSET (field) == offset))
-	{
-	  /* Found matching field at offset.  */
-	  return field;
-	}
-    }
-
-  return NULL_TREE;
-}
-
-/* Return a constructor that matches the layout of the class expression EXP.  */
-
-tree
-build_class_instance (ClassReferenceExp *exp)
-{
-  ClassDeclaration *cd = exp->originalClass ();
-  tree type = TREE_TYPE (build_ctype (exp->value->stype));
-  vec<constructor_elt, va_gc> *ve = NULL;
-
-  /* The set base vtable field.  */
-  tree vptr = build_address (get_vtable_decl (cd));
-  CONSTRUCTOR_APPEND_ELT (ve, TYPE_FIELDS (type), vptr);
-
-  /* Go through the inheritance graph from top to bottom.  This will add all
-     values to the constructor out of order, however build_struct_literal
-     will re-order all values before returning the finished literal.  */
-  for (ClassDeclaration *bcd = cd; bcd != NULL; bcd = bcd->baseClass)
-    {
-      /* Anonymous vtable interface fields are layed out before the fields of
-	 each class.  The interface offset is used to determine where to put
-	 the classinfo offset reference.  */
-      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *bc = (*bcd->vtblInterfaces)[i];
-
-	  for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
-	    {
-	      gcc_assert (cd2 != NULL);
-
-	      unsigned csymoffset = base_vtable_offset (cd2, bc);
-	      if (csymoffset != (unsigned) ~0)
-		{
-		  tree csym = build_address (get_classinfo_decl (cd2));
-		  csym = build_offset (csym, size_int (csymoffset));
-
-		  tree field = find_aggregate_field (type, NULL_TREE,
-						     size_int (bc->offset));
-		  gcc_assert (field != NULL_TREE);
-
-		  CONSTRUCTOR_APPEND_ELT (ve, field, csym);
-		  break;
-		}
-	    }
-	}
-
-      /* Generate initial values of all fields owned by current class.
-	 Use both the name and offset to find the right field.  */
-      for (size_t i = 0; i < bcd->fields.dim; i++)
-	{
-	  VarDeclaration *vfield = bcd->fields[i];
-	  int index = exp->findFieldIndexByName (vfield);
-	  gcc_assert (index != -1);
-
-	  Expression *value = (*exp->value->elements)[index];
-	  if (!value)
-	    continue;
-
-	  /* Use find_aggregate_field to get the overridden field decl,
-	     instead of the field associated with the base class.  */
-	  tree field = get_symbol_decl (bcd->fields[i]);
-	  field = find_aggregate_field (type, DECL_NAME (field),
-					DECL_FIELD_OFFSET (field));
-	  gcc_assert (field != NULL_TREE);
-
-	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
-	}
-    }
-
-  return build_struct_literal (type, ve);
 }
 
 /* Given the TYPE of an anonymous field inside T, return the
@@ -1388,13 +1293,25 @@ build_vconvert (tree type, tree exp)
   return indirect_ref (type, build_address (exp));
 }
 
+/* Maybe warn about ARG being an address that can never be null.  */
+
+static void
+warn_for_null_address (tree arg)
+{
+  if (TREE_CODE (arg) == ADDR_EXPR
+      && decl_with_nonnull_addr_p (TREE_OPERAND (arg, 0)))
+    warning (OPT_Waddress,
+	     "the address of %qD will never be %<null%>",
+	     TREE_OPERAND (arg, 0));
+}
+
 /* Build a boolean ARG0 op ARG1 expression.  */
 
 tree
 build_boolop (tree_code code, tree arg0, tree arg1)
 {
   /* Aggregate comparisons may get lowered to a call to builtin memcmp,
-     so need to remove all side effects incase it's address is taken.  */
+     so need to remove all side effects incase its address is taken.  */
   if (AGGREGATE_TYPE_P (TREE_TYPE (arg0)))
     arg0 = d_save_expr (arg0);
   if (AGGREGATE_TYPE_P (TREE_TYPE (arg1)))
@@ -1414,7 +1331,16 @@ build_boolop (tree_code code, tree arg0, tree arg1)
 			      build_zero_cst (type));
     }
 
-  return fold_build2_loc (input_location, code, bool_type_node,
+  if (code == EQ_EXPR || code == NE_EXPR)
+    {
+      /* Check if comparing the address of a variable to null.  */
+      if (POINTER_TYPE_P (TREE_TYPE (arg0)) && integer_zerop (arg1))
+	warn_for_null_address (arg0);
+      if (POINTER_TYPE_P (TREE_TYPE (arg1)) && integer_zerop (arg0))
+	warn_for_null_address (arg1);
+    }
+
+  return fold_build2_loc (input_location, code, d_bool_type,
 			  arg0, d_convert (TREE_TYPE (arg0), arg1));
 }
 
@@ -1664,7 +1590,7 @@ build_array_set (tree ptr, tree length, tree value)
       value = t;
     }
 
-  /* Build loop to initialise { .length=length, .ptr=ptr } with value.  */
+  /* Build loop to initialize { .length=length, .ptr=ptr } with value.  */
   push_stmt_list ();
 
   /* Exit logic for the loop.
@@ -1761,7 +1687,7 @@ build_bounds_condition (const Loc& loc, tree index, tree len, bool inclusive)
      No need to check whether INDEX >= 0 as the front-end should
      have already taken care of implicit casts to unsigned.  */
   tree condition = fold_build2 (inclusive ? GT_EXPR : GE_EXPR,
-				bool_type_node, index, len);
+				d_bool_type, index, len);
   tree boundserr = d_assert_call (loc, LIBCALL_ARRAY_BOUNDS);
 
   return build_condition (TREE_TYPE (index), condition, boundserr, index);
@@ -1814,7 +1740,7 @@ create_temporary_var (tree type)
   return decl;
 }
 
-/* Return an undeclared local temporary OUT_VAR initialised
+/* Return an undeclared local temporary OUT_VAR initialized
    with result of expression EXP.  */
 
 tree
@@ -1936,8 +1862,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object,
       /* Front-end apparently doesn't check this.  */
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
-	  error ("need 'this' to access member %s",
-		 IDENTIFIER_POINTER (DECL_NAME (callable)));
+	  error ("need %<this%> to access member %qE", DECL_NAME (callable));
 	  return error_mark_node;
 	}
 
@@ -2143,7 +2068,7 @@ get_frame_for_symbol (Dsymbol *sym)
       if (!fd->fbody)
 	{
 	  /* Should instead error on line that references 'fd'.  */
-	  fd->error ("nested function missing body");
+	  error_at (make_location_t (fd->loc), "nested function missing body");
 	  return null_pointer_node;
 	}
 
@@ -2160,7 +2085,7 @@ get_frame_for_symbol (Dsymbol *sym)
     }
   else
     {
-      /* It's a class (or struct). NewExp codegen has already determined its
+      /* It's a class (or struct).  NewExp codegen has already determined its
 	 outer scope is not another class, so it must be a function.  */
       while (sym && !sym->isFuncDeclaration ())
 	sym = sym->toParent2 ();
@@ -2175,8 +2100,9 @@ get_frame_for_symbol (Dsymbol *sym)
       /* If no frame pointer for this function.  */
       if (!thisfd->vthis)
 	{
-	  sym->error ("is a nested function and cannot be accessed from %s",
-		      thisfd->toChars ());
+	  error_at (make_location_t (sym->loc),
+		    "is a nested function and cannot be accessed from %qs",
+		    thisfd->toChars ());
 	  return null_pointer_node;
 	}
 
@@ -2199,7 +2125,7 @@ get_frame_for_symbol (Dsymbol *sym)
 	      continue;
 	    }
 
-	  /* Check if enclosed by an aggregate. That means the current
+	  /* Check if enclosed by an aggregate.  That means the current
 	     function must be a member function of that aggregate.  */
 	  AggregateDeclaration *ad = dsym->isAggregateDeclaration ();
 
@@ -2213,8 +2139,9 @@ get_frame_for_symbol (Dsymbol *sym)
 	  if (!ad->isNested () || !ad->vthis)
 	    {
 	    Lnoframe:
-	      thisfd->error ("cannot get frame pointer to %s",
-			     sym->toPrettyChars ());
+	      error_at (make_location_t (thisfd->loc),
+			"cannot get frame pointer to %qs",
+			sym->toPrettyChars ());
 	      return null_pointer_node;
 	    }
 
@@ -2478,10 +2405,10 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
     {
       VarDeclaration *v = fd->closureVars[i];
       tree vsym = get_symbol_decl (v);
-      tree ident =  v->ident
+      tree ident = v->ident
 	? get_identifier (v->ident->toChars ()) : NULL_TREE;
 
-      tree field = build_decl (get_linemap (v->loc), FIELD_DECL, ident,
+      tree field = build_decl (make_location_t (v->loc), FIELD_DECL, ident,
 			       TREE_TYPE (vsym));
       SET_DECL_LANG_FRAME_FIELD (vsym, field);
       DECL_FIELD_CONTEXT (field) = frame_rec_type;
@@ -2501,7 +2428,8 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
 	  /* Because the value needs to survive the end of the scope.  */
 	  if ((v->edtor && (v->storage_class & STCparameter))
 	      || v->needsScopeDtor ())
-	    v->error ("has scoped destruction, cannot build closure");
+	    error_at (make_location_t (v->loc),
+		      "has scoped destruction, cannot build closure");
 	}
     }
 
@@ -2515,7 +2443,7 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
 
 /* Closures are implemented by taking the local variables that
    need to survive the scope of the function, and copying them
-   into a GC allocated chuck of memory. That chunk, called the
+   into a GC allocated chuck of memory.  That chunk, called the
    closure here, is inserted into the linked list of stack
    frames instead of the usual stack frame.
 
@@ -2614,9 +2542,9 @@ get_frameinfo (FuncDeclaration *fd)
     }
   else
     {
-      /* For nested functions, default to creating a frame.  Even if there is no
-	 fields to populate the frame, create it anyway, as this will be used as
-	 the record type instead of `void*` for the this parameter.  */
+      /* For nested functions, default to creating a frame.  Even if there are
+	 no fields to populate the frame, create it anyway, as this will be
+	 used as the record type instead of `void*` for the this parameter.  */
       if (fd->vthis && fd->vthis->type == Type::tvoidptr)
 	FRAMEINFO_CREATES_FRAME (ffi) = 1;
 
@@ -2718,7 +2646,8 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
     }
   else
     {
-      inner->error ("forward reference to frame of %s", outer->toChars ());
+      error_at (make_location_t (inner->loc),
+		"forward reference to frame of %qs", outer->toChars ());
       return null_pointer_node;
     }
 }

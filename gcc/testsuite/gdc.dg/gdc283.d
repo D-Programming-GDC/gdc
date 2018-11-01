@@ -1,3 +1,4 @@
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=283
 // { dg-do run { target hw } }
 
 struct Impl

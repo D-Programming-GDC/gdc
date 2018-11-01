@@ -11,8 +11,7 @@ module core.sys.windows.ddeml;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "user32");
+pragma(lib, "user32");
 
 private import core.sys.windows.basetsd, core.sys.windows.windef, core.sys.windows.winnt;
 

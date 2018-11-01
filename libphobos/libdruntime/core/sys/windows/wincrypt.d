@@ -9,8 +9,7 @@
  */
 module core.sys.windows.wincrypt;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "advapi32");
+pragma(lib, "advapi32");
 
 version (ANSI) {} else version = Unicode;
 
@@ -822,7 +821,7 @@ struct HMAC_INFO {
 }
 alias HMAC_INFO* PHMAC_INFO;
 
-extern (Windows) {
+extern (Windows) @nogc nothrow {
     BOOL CertCloseStore(HCERTSTORE, DWORD);
     BOOL CertGetCertificateChain(HCERTCHAINENGINE, PCCERT_CONTEXT, LPFILETIME,
       HCERTSTORE, PCERT_CHAIN_PARA, DWORD, LPVOID, PCCERT_CHAIN_CONTEXT*);
