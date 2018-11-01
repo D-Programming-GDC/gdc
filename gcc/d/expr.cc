@@ -120,20 +120,14 @@ class ExprVisitor : public Visitor
 
     if (POINTER_TYPE_P (t0) && POINTER_TYPE_P (t1))
       {
-	gcc_assert (code == MINUS_EXPR);
-	tree ptrtype = lang_hooks.types.type_for_mode (ptr_mode, 0);
+	/* Need to convert pointers to integers because tree-vrp asserts
+	   against (ptr MINUS ptr).  */
+	tree ptrtype = lang_hooks.types.type_for_mode (ptr_mode,
+						       TYPE_UNSIGNED (type));
+	arg0 = d_convert (ptrtype, arg0);
+	arg1 = d_convert (ptrtype, arg1);
 
-	/* POINTER_DIFF_EXPR requires a signed integer type of the same size as
-	   pointers.  If some platform cannot provide that, or has a larger
-	   ptrdiff_type to support differences larger than half the address
-	   space, cast the pointers to some larger integer type and do the
-	   computations in that type.  */
-	if (TYPE_PRECISION (ptrtype) > TYPE_PRECISION (t0))
-	  ret = fold_build2 (MINUS_EXPR, ptrtype,
-			     d_convert (ptrtype, arg0),
-			     d_convert (ptrtype, arg1));
-	else
-	  ret = fold_build2 (POINTER_DIFF_EXPR, ptrtype, arg0, arg1);
+	ret = fold_build2 (code, ptrtype, arg0, arg1);
       }
     else if (INTEGRAL_TYPE_P (type) && (TYPE_UNSIGNED (type) != unsignedp))
       {

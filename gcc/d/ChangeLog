@@ -127,10 +127,6 @@
 
 2018-10-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-	* expr.cc (ExprVisitor::binary_op): Use POINTER_DIFF_EXPR.
-
-2018-10-17  Iain Buclaw  <ibuclaw@gdcproject.org>
-
 	* intrinsics.cc (expand_intrinsic_bsf): Assert that built-in function
 	code is not END_BUILTINS.
 	(expand_intrinsic_bsr): Likewise.
