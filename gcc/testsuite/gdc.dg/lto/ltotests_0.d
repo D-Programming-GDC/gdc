@@ -29,8 +29,7 @@ C304 c304;
 +/
 
 /******************************************/
-
-// Bug 61
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=61
 
 struct S61a
 {
@@ -57,8 +56,7 @@ struct S61b
 }
 
 /******************************************/
-
-// Bug 88
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=88
 
 extern(C) int test88a();
 
@@ -69,9 +67,29 @@ void test88()
 
 /******************************************/
 
+// https://bugzilla.gdcproject.org/show_bug.cgi?id=252
+
+class C252
+{
+    struct S252
+    {
+        int i;
+        ubyte u;
+    }
+    S252 s;
+}
+
+void test252()
+{
+    C252 c = new C252();
+}
+
+/******************************************/
+
 void main(string[])
 {
     test88();
+    test252();
 
     printf("Success!\n");
 }

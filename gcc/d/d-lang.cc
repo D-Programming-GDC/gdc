@@ -19,13 +19,20 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
-#include "dfrontend/cond.h"
-#include "dfrontend/hdrgen.h"
-#include "dfrontend/json.h"
-#include "dfrontend/module.h"
-#include "dfrontend/mtype.h"
-#include "dfrontend/target.h"
+#include "dmd/aggregate.h"
+#include "dmd/cond.h"
+#include "dmd/declaration.h"
+#include "dmd/doc.h"
+#include "dmd/errors.h"
+#include "dmd/expression.h"
+#include "dmd/hdrgen.h"
+#include "dmd/identifier.h"
+#include "dmd/json.h"
+#include "dmd/mangle.h"
+#include "dmd/mars.h"
+#include "dmd/module.h"
+#include "dmd/mtype.h"
+#include "dmd/target.h"
 
 #include "opts.h"
 #include "alias.h"
@@ -46,7 +53,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "debug.h"
 
 #include "d-tree.h"
-#include "d-frontend.h"
 #include "id.h"
 
 
@@ -59,18 +65,18 @@ bool doing_semantic_analysis_p = false;
 /* Options handled by the compiler that are separate from the frontend.  */
 struct d_option_data
 {
-  const char *fonly;                /* -fonly=<arg>  */
-  const char *multilib;             /* -imultilib <dir>  */
-  const char *prefix;               /* -iprefix <dir>  */
+  const char *fonly;		    /* -fonly=<arg>  */
+  const char *multilib;		    /* -imultilib <dir>  */
+  const char *prefix;		    /* -iprefix <dir>  */
 
-  bool deps;                        /* -M  */
-  bool deps_skip_system;            /* -MM  */
-  const char *deps_filename;        /* -M[M]D  */
+  bool deps;			    /* -M  */
+  bool deps_skip_system;	    /* -MM  */
+  const char *deps_filename;	    /* -M[M]D  */
   const char *deps_filename_user;   /* -MF <arg>  */
-  OutBuffer *deps_target;           /* -M[QT] <arg> */
-  bool deps_phony;                  /* -MP  */
+  OutBuffer *deps_target;	    /* -M[QT] <arg> */
+  bool deps_phony;		    /* -MP  */
 
-  bool stdinc;                      /* -nostdinc  */
+  bool stdinc;			    /* -nostdinc  */
 }
 d_option;
 
@@ -115,25 +121,25 @@ deps_add_target (const char *target, bool quoted)
   for (const char *p = target; *p != '\0'; p++)
     {
       switch (*p)
-        {
-        case ' ':
-        case '\t':
-          for (const char *q = p - 1; target <= q && *q == '\\';  q--)
+	{
+	case ' ':
+	case '\t':
+	  for (const char *q = p - 1; target <= q && *q == '\\';  q--)
 	    d_option.deps_target->writeByte ('\\');
 	  d_option.deps_target->writeByte ('\\');
-          break;
+	  break;
 
-        case '$':
+	case '$':
 	  d_option.deps_target->writeByte ('$');
-          break;
+	  break;
 
-        case '#':
+	case '#':
 	  d_option.deps_target->writeByte ('\\');
-          break;
+	  break;
 
-        default:
-          break;
-        }
+	default:
+	  break;
+	}
 
       d_option.deps_target->writeByte (*p);
     }
@@ -145,15 +151,7 @@ deps_add_target (const char *target, bool quoted)
 static void
 deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 {
-  static StringTable *dependencies = NULL;
-
-  if (dependencies)
-    dependencies->reset ();
-  else
-    {
-      dependencies = new StringTable ();
-      dependencies->_init ();
-    }
+  hash_set <const char *> dependencies;
 
   Modules modlist;
   modlist.push (module);
@@ -183,67 +181,68 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 
   /* Write out all make dependencies.  */
   while (modlist.dim > 0)
-  {
-    Module *depmod = modlist.pop ();
+    {
+      Module *depmod = modlist.pop ();
 
-    str = depmod->srcfile->name->str;
-    size = strlen (str);
+      str = depmod->srcfile->name->str;
+      size = strlen (str);
 
-    /* Skip dependencies that have already been written.  */
-    if (!dependencies->insert (str, size, NULL))
-      continue;
+      /* Skip dependencies that have already been written.  */
+      if (dependencies.add (str))
+	continue;
 
-    column += size;
+      column += size;
 
-    if (colmax && column > colmax)
-      {
-	buffer->writestring (" \\\n ");
-	column = size + 1;
-      }
-    else
-      {
-	buffer->writestring (" ");
-	column++;
-      }
+      if (colmax && column > colmax)
+	{
+	  buffer->writestring (" \\\n ");
+	  column = size + 1;
+	}
+      else
+	{
+	  buffer->writestring (" ");
+	  column++;
+	}
 
-    buffer->writestring (str);
+      buffer->writestring (str);
 
-    /* Add to list of phony targets if is not being compile.  */
-    if (d_option.deps_phony && !depmod->isRoot ())
-      phonylist.push (depmod);
+      /* Add to list of phony targets if is not being compile.  */
+      if (d_option.deps_phony && !depmod->isRoot ())
+	phonylist.push (depmod);
 
-    /* Search all imports of the written dependency.  */
-    for (size_t i = 0; i < depmod->aimports.dim; i++)
-      {
-	Module *m = depmod->aimports[i];
+      /* Search all imports of the written dependency.  */
+      for (size_t i = 0; i < depmod->aimports.dim; i++)
+	{
+	  Module *m = depmod->aimports[i];
 
-	/* Ignore compiler-generated modules.  */
-	if ((m->ident == Identifier::idPool ("__entrypoint")
-	     || m->ident == Identifier::idPool ("__main"))
-	    && m->parent == NULL)
-	  continue;
+	  /* Ignore compiler-generated modules.  */
+	  if ((m->ident == Identifier::idPool ("__entrypoint")
+	       || m->ident == Identifier::idPool ("__main"))
+	      && m->parent == NULL)
+	    continue;
 
-	/* Don't search system installed modules, this includes
-	   object, core.*, std.*, and gcc.* packages.  */
-	if (d_option.deps_skip_system)
-	  {
-	    if (m->ident == Identifier::idPool ("object") && m->parent == NULL)
-	      continue;
+	  /* Don't search system installed modules, this includes
+	     object, core.*, std.*, and gcc.* packages.  */
+	  if (d_option.deps_skip_system)
+	    {
+	      if (m->ident == Identifier::idPool ("object")
+		  && m->parent == NULL)
+		continue;
 
-	    if (m->md && m->md->packages)
-	      {
-		Identifier *package = (*m->md->packages)[0];
+	      if (m->md && m->md->packages)
+		{
+		  Identifier *package = (*m->md->packages)[0];
 
-		if (package == Identifier::idPool ("core")
-		    || package == Identifier::idPool ("std")
-		    || package == Identifier::idPool ("gcc"))
-		  continue;
-	      }
-	  }
+		  if (package == Identifier::idPool ("core")
+		      || package == Identifier::idPool ("std")
+		      || package == Identifier::idPool ("gcc"))
+		    continue;
+		}
+	    }
 
-	modlist.push (m);
-      }
-  }
+	  modlist.push (m);
+	}
+    }
 
   buffer->writenl ();
 
@@ -268,8 +267,7 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   /* Set default values.  */
   global._init ();
 
-  global.compiler.vendor = lang_hooks.name;
-
+  global.vendor = lang_hooks.name;
   global.params.argv0 = xstrdup (decoded_options[0].arg);
   global.params.link = true;
   global.params.useAssert = true;
@@ -279,9 +277,7 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.useArrayBounds = BOUNDSCHECKdefault;
   global.params.useSwitchError = true;
   global.params.useInline = false;
-  global.params.warnings = 0;
   global.params.obj = true;
-  global.params.useDeprecated = 1;
   global.params.hdrStripPlainFunctions = true;
   global.params.betterC = false;
   global.params.allInst = false;
@@ -290,6 +286,10 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.libfiles = new Strings ();
   global.params.objfiles = new Strings ();
   global.params.ddocfiles = new Strings ();
+
+  /* Warnings and deprecations are disabled by default.  */
+  global.params.useDeprecated = DIAGNOSTICoff;
+  global.params.warnings = DIAGNOSTICoff;
 
   global.params.imppath = new Strings ();
   global.params.fileImppath = new Strings ();
@@ -351,7 +351,7 @@ d_init (void)
   Expression::_init ();
   Objc::_init ();
 
-  /* Backend init.  */
+  /* Back-end init.  */
   global_binding_level = ggc_cleared_alloc<binding_level> ();
   current_binding_level = global_binding_level;
 
@@ -386,7 +386,6 @@ d_init (void)
 static void
 d_init_ts (void)
 {
-  MARK_TS_TYPED (IASM_EXPR);
   MARK_TS_TYPED (FLOAT_MOD_EXPR);
   MARK_TS_TYPED (UNSIGNED_RSHIFT_EXPR);
 }
@@ -444,18 +443,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	  break;
 	}
 
-      error ("bad argument for -fdebug '%s'", arg);
-      break;
-
-    case OPT_fdeps:
-      global.params.moduleDeps = new OutBuffer;
-      break;
-
-    case OPT_fdeps_:
-      global.params.moduleDepsFile = arg;
-      if (!global.params.moduleDepsFile[0])
-	error ("bad argument for -fdeps");
-      global.params.moduleDeps = new OutBuffer;
+      error ("bad argument for -fdebug %qs", arg);
       break;
 
     case OPT_fdoc:
@@ -495,7 +483,7 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fmodule_file_:
       global.params.modFileAliasStrings->push (arg);
       if (!strchr (arg, '='))
-	error ("bad argument for -fmodule-file");
+	error ("bad argument for -fmodule-file %qs", arg);
       break;
 
     case OPT_fmoduleinfo:
@@ -512,10 +500,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fpreconditions:
       global.params.useIn = value;
-      break;
-
-    case OPT_fproperty:
-      global.params.enforcePropertySyntax = value;
       break;
 
     case OPT_frelease:
@@ -586,7 +570,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	  break;
 	}
 
-      error ("bad argument for -fversion '%s'", arg);
+      error ("bad argument for -fversion %qs", arg);
       break;
 
     case OPT_H:
@@ -621,7 +605,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_MM:
       d_option.deps_skip_system = true;
-      /* fall through */
+      /* Fall through.  */
 
     case OPT_M:
       d_option.deps = true;
@@ -629,7 +613,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_MMD:
       d_option.deps_skip_system = true;
-      /* fall through */
+      /* Fall through.  */
 
     case OPT_MD:
       d_option.deps = true;
@@ -663,16 +647,16 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_Wall:
       if (value)
-	global.params.warnings = 2;
+	global.params.warnings = DIAGNOSTICinform;
       break;
 
     case OPT_Wdeprecated:
-      global.params.useDeprecated = value ? 2 : 1;
+      global.params.useDeprecated = value ? DIAGNOSTICinform : DIAGNOSTICoff;
       break;
 
     case OPT_Werror:
       if (value)
-	global.params.warnings = 1;
+	global.params.warnings = DIAGNOSTICerror;
       break;
 
     case OPT_Wspeculative:
@@ -682,7 +666,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_Xf:
       global.params.jsonfilename = arg;
-      /* fall through */
+      /* Fall through.  */
 
     case OPT_X:
       global.params.doJsonGeneration = true;
@@ -742,8 +726,9 @@ d_post_options (const char ** fn)
     }
 
   /* Error about use of deprecated features.  */
-  if (global.params.useDeprecated == 2 && global.params.warnings == 1)
-    global.params.useDeprecated = 0;
+  if (global.params.useDeprecated == DIAGNOSTICinform
+      && global.params.warnings == DIAGNOSTICerror)
+    global.params.useDeprecated = DIAGNOSTICerror;
 
   /* Make -fmax-errors visible to frontend's diagnostic machinery.  */
   if (global_options_set.x_flag_max_errors)
@@ -839,19 +824,13 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p,
 	}
       else if (empty_modify_p (TREE_TYPE (op0), op1))
 	{
-	  /* Remove any copies of empty aggregates.  Also drop volatile
-	     loads on the RHS to avoid infinite recursion from
-	     gimplify_expr trying to load the value.  */
+	  /* Remove any copies of empty aggregates.  */
 	  gimplify_expr (&TREE_OPERAND (*expr_p, 0), pre_p, post_p,
 			 is_gimple_lvalue, fb_lvalue);
-	  if (TREE_SIDE_EFFECTS (op1))
-	    {
-	      if (TREE_THIS_VOLATILE (op1)
-		  && (REFERENCE_CLASS_P (op1) || DECL_P (op1)))
-		op1 = build_fold_addr_expr (op1);
 
-	      gimplify_and_add (op1, pre_p);
-	    }
+	  if (TREE_SIDE_EFFECTS (op1))
+	    gimplify_and_add (op1, pre_p);
+
 	  *expr_p = TREE_OPERAND (*expr_p, 0);
 	  ret = GS_OK;
 	}
@@ -928,7 +907,6 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p,
       break;
 
     case FLOAT_MOD_EXPR:
-    case IASM_EXPR:
       gcc_unreachable ();
 
     default:
@@ -1062,7 +1040,7 @@ d_parse_file (void)
 
       m->importedFrom = m;
       m->parse ();
-      Target::loadModule (m);
+      Compiler::loadModule (m);
 
       if (m->isDocFile)
 	{
@@ -1146,7 +1124,8 @@ d_parse_file (void)
       for (size_t i = 0; i < Module::deferred.dim; i++)
 	{
 	  Dsymbol *sd = Module::deferred[i];
-	  sd->error ("unable to resolve forward reference in definition");
+	  error_at (make_location_t (sd->loc),
+		    "unable to resolve forward reference in definition");
 	}
     }
 
@@ -1207,22 +1186,6 @@ d_parse_file (void)
       OutBuffer buf;
       mangleToBuffer (Module::rootModule, &buf);
       first_global_object_name = buf.extractString ();
-    }
-
-  /* Module dependencies (imports, file, version, debug, lib).  */
-  if (global.params.moduleDeps)
-    {
-      OutBuffer *buf = global.params.moduleDeps;
-
-      if (global.params.moduleDepsFile)
-	{
-	  File *fdeps = File::create (global.params.moduleDepsFile);
-	  fdeps->setbuffer ((void *) buf->data, buf->offset);
-	  fdeps->ref = 1;
-	  writeFile (Loc (), fdeps);
-	}
-      else
-	message ("%.*s", (int) buf->offset, (char *) buf->data);
     }
 
   /* Make dependencies.  */
@@ -1287,10 +1250,7 @@ d_parse_file (void)
 	  OutBuffer buf;
 	  buf.doindent = 1;
 
-	  HdrGenState hgs;
-	  hgs.fullDump = true;
-
-	  toCBuffer (m, &buf, &hgs);
+	  moduleToBuffer (&buf, m);
 	  message ("%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
@@ -1333,19 +1293,19 @@ static tree
 d_type_for_mode (machine_mode mode, int unsignedp)
 {
   if (mode == QImode)
-    return unsignedp ? ubyte_type_node : byte_type_node;
+    return unsignedp ? d_ubyte_type : d_byte_type;
 
   if (mode == HImode)
-    return unsignedp ? ushort_type_node : short_type_node;
+    return unsignedp ? d_ushort_type : d_short_type;
 
   if (mode == SImode)
-    return unsignedp ? uint_type_node : int_type_node;
+    return unsignedp ? d_uint_type : d_int_type;
 
   if (mode == DImode)
-    return unsignedp ? ulong_type_node : long_type_node;
+    return unsignedp ? d_ulong_type : d_long_type;
 
-  if (mode == TYPE_MODE (cent_type_node))
-    return unsignedp ? ucent_type_node : cent_type_node;
+  if (mode == TYPE_MODE (d_cent_type))
+    return unsignedp ? d_ucent_type : d_cent_type;
 
   if (mode == TYPE_MODE (float_type_node))
     return float_type_node;
@@ -1359,8 +1319,8 @@ d_type_for_mode (machine_mode mode, int unsignedp)
   if (mode == TYPE_MODE (build_pointer_type (char8_type_node)))
     return build_pointer_type (char8_type_node);
 
-  if (mode == TYPE_MODE (build_pointer_type (int_type_node)))
-    return build_pointer_type (int_type_node);
+  if (mode == TYPE_MODE (build_pointer_type (d_int_type)))
+    return build_pointer_type (d_int_type);
 
   if (COMPLEX_MODE_P (mode))
     {
@@ -1395,20 +1355,20 @@ d_type_for_mode (machine_mode mode, int unsignedp)
 static tree
 d_type_for_size (unsigned bits, int unsignedp)
 {
-  if (bits <= TYPE_PRECISION (byte_type_node))
-    return unsignedp ? ubyte_type_node : byte_type_node;
+  if (bits <= TYPE_PRECISION (d_byte_type))
+    return unsignedp ? d_ubyte_type : d_byte_type;
 
-  if (bits <= TYPE_PRECISION (short_type_node))
-    return unsignedp ? ushort_type_node : short_type_node;
+  if (bits <= TYPE_PRECISION (d_short_type))
+    return unsignedp ? d_ushort_type : d_short_type;
 
-  if (bits <= TYPE_PRECISION (int_type_node))
-    return unsignedp ? uint_type_node : int_type_node;
+  if (bits <= TYPE_PRECISION (d_int_type))
+    return unsignedp ? d_uint_type : d_int_type;
 
-  if (bits <= TYPE_PRECISION (long_type_node))
-    return unsignedp ? ulong_type_node : long_type_node;
+  if (bits <= TYPE_PRECISION (d_long_type))
+    return unsignedp ? d_ulong_type : d_long_type;
 
-  if (bits <= TYPE_PRECISION (cent_type_node))
-    return unsignedp ? ucent_type_node : cent_type_node;
+  if (bits <= TYPE_PRECISION (d_cent_type))
+    return unsignedp ? d_ucent_type : d_cent_type;
 
   return 0;
 }
@@ -1422,20 +1382,20 @@ d_signed_or_unsigned_type (int unsignedp, tree type)
   if (TYPE_UNSIGNED (type) == (unsigned) unsignedp)
     return type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (cent_type_node))
-    return unsignedp ? ucent_type_node : cent_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_cent_type))
+    return unsignedp ? d_ucent_type : d_cent_type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (long_type_node))
-    return unsignedp ? ulong_type_node : long_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_long_type))
+    return unsignedp ? d_ulong_type : d_long_type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (int_type_node))
-    return unsignedp ? uint_type_node : int_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_int_type))
+    return unsignedp ? d_uint_type : d_int_type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (short_type_node))
-    return unsignedp ? ushort_type_node : short_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_short_type))
+    return unsignedp ? d_ushort_type : d_short_type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (byte_type_node))
-    return unsignedp ? ubyte_type_node : byte_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (d_byte_type))
+    return unsignedp ? d_ubyte_type : d_byte_type;
 
   return signed_or_unsigned_type_for (unsignedp, type);
 }
@@ -1530,27 +1490,17 @@ d_getdecls (void)
 
 
 /* Implements the lang_hooks.get_alias_set routine for language D.
-   Get the alias set corresponding the type or expression T.
+   Get the alias set corresponding to type or expression T.
    Return -1 if we don't do anything special.  */
 
 static alias_set_type
-d_get_alias_set (tree t)
+d_get_alias_set (tree)
 {
-  /* Permit type-punning when accessing a union, provided the access
-     is directly through the union.  */
-  for (tree u = t; handled_component_p (u); u = TREE_OPERAND (u, 0))
-    {
-      if (TREE_CODE (u) == COMPONENT_REF
-	  && TREE_CODE (TREE_TYPE (TREE_OPERAND (u, 0))) == UNION_TYPE)
-	return 0;
-    }
-
-  /* That's all the expressions we handle.  */
-  if (!TYPE_P (t))
-    return get_alias_set (TREE_TYPE (t));
-
-  /* For now in D, assume everything aliases everything else,
-     until we define some solid rules.  */
+  /* For now in D, assume everything aliases everything else, until we define
+     some solid rules backed by a specification.  There are also some parts
+     of code generation routines that don't adhere to C alias rules, such as
+     build_vconvert.  In any case, a lot of user code already assumes there
+     is no strict aliasing and will break if we were to change that.  */
   return 0;
 }
 
@@ -1603,9 +1553,9 @@ d_finish_incomplete_decl (tree decl)
   if (VAR_P (decl))
     {
       /* D allows zero-length declarations.  Such a declaration ends up with
-	 DECL_SIZE (t) == NULL_TREE which is what the backend function
+	 DECL_SIZE (t) == NULL_TREE which is what the back-end function
 	 assembler_variable checks.  This could change in later versions, or
-	 maybe all of these variables should be aliased to one symbol. */
+	 maybe all of these variables should be aliased to one symbol.  */
       if (DECL_SIZE (decl) == 0)
 	{
 	  DECL_SIZE (decl) = bitsize_zero_node;
@@ -1703,7 +1653,7 @@ build_lang_type (Type *t)
 struct lang_decl *
 build_lang_decl (Declaration *d)
 {
-  /* For compiler generated runtime typeinfo, a lang_decl is allocated even if
+  /* For compiler generated run-time typeinfo, a lang_decl is allocated even if
      there's no associated frontend symbol to refer to (yet).  If the symbol
      appears later in the compilation, then the slot will be re-used.  */
   if (d == NULL)
@@ -1752,10 +1702,8 @@ static tree
 d_eh_personality (void)
 {
   if (!d_eh_personality_decl)
-    {
-      d_eh_personality_decl
-	= build_personality_function ("gdc");
-    }
+    d_eh_personality_decl = build_personality_function ("gdc");
+
   return d_eh_personality_decl;
 }
 
@@ -1823,7 +1771,7 @@ d_build_eh_runtime_type (tree type)
 #define LANG_HOOKS_POST_OPTIONS		    d_post_options
 #define LANG_HOOKS_PARSE_FILE		    d_parse_file
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE   d_langhook_common_attribute_table
-#define LANG_HOOKS_ATTRIBUTE_TABLE          d_langhook_attribute_table
+#define LANG_HOOKS_ATTRIBUTE_TABLE	    d_langhook_attribute_table
 #define LANG_HOOKS_GET_ALIAS_SET	    d_get_alias_set
 #define LANG_HOOKS_TYPES_COMPATIBLE_P	    d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION	    d_builtin_function

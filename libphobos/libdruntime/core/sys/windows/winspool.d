@@ -10,8 +10,7 @@ module core.sys.windows.winspool;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "winspool");
+pragma(lib, "winspool");
 
 private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.wingdi;
 private import core.sys.windows.winbase; // for SYSTEMTIME
@@ -799,7 +798,7 @@ BOOL StartPagePrinter(HANDLE);
 DWORD WaitForPrinterChange(HANDLE, DWORD);
 BOOL WritePrinter(HANDLE, PVOID, DWORD, PDWORD);
 
-version(Unicode) {
+version (Unicode) {
 
 alias JOB_INFO_1W JOB_INFO_1;
 alias JOB_INFO_2W JOB_INFO_2;

@@ -8,8 +8,7 @@
  */
 module core.sys.windows.lmapibuf;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "netapi32");
+pragma(lib, "netapi32");
 
 private import core.sys.windows.lmcons, core.sys.windows.windef;
 

@@ -8,14 +8,12 @@
  */
 module core.sys.windows.lmwksta;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "netapi32");
+pragma(lib, "netapi32");
 
 import core.sys.windows.lmuseflg;
 private import core.sys.windows.lmcons, core.sys.windows.windef;
 
-version (GNU) {}
-else pragma(lib, "Netapi32");
+pragma(lib, "Netapi32");
 
 enum {
     WKSTA_COMPUTERNAME_PARMNUM     = 1,

@@ -1,3 +1,5 @@
+// Requires TypeInfo based vararg support
+// { dg-skip-if "" { aarch64*-*-* } }
 // EXTRA_SOURCES: imports/argufile.d
 
 // NOTE: The bug only works when main.d and argufile.d are put in

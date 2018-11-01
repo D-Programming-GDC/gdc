@@ -68,14 +68,14 @@ import std.traits;
 
     // Generate a uniformly-distributed real in the range [0, 100)
     auto r = uniform(0.0L, 100.0L, rnd);
-    assert(r == 79.65429843861011285);
+    assert(r >= 0 && r < 100);
 
     // Generate a 32-bit random number
     auto u = uniform!uint(rnd);
     assert(u == 4083286876);
 }
 
-version(unittest)
+version (unittest)
 {
     static import std.meta;
     package alias PseudoRngTypes = std.meta.AliasSeq!(MinstdRand0, MinstdRand, Mt19937, Xorshift32, Xorshift64,
@@ -532,7 +532,7 @@ alias MinstdRand = LinearCongruentialEngine!(uint, 48_271, 0, 2_147_483_647);
         auto rnd2 = rnd1.save;
         assert(rnd1 == rnd2);
         // Enable next test when RNGs are reference types
-        version(none) { assert(rnd1 !is rnd2); }
+        version (none) { assert(rnd1 !is rnd2); }
         assert(rnd1.take(100).array() == rnd2.take(100).array());
     }
 }
@@ -961,7 +961,7 @@ alias Mt19937_64 = MersenneTwisterEngine!(ulong, 64, 312, 156, 31,
         auto gen2 = gen1.save;
         assert(gen1 == gen2);  // Danger, Will Robinson -- no opEquals for MT
         // Enable next test when RNGs are reference types
-        version(none) { assert(gen1 !is gen2); }
+        version (none) { assert(gen1 !is gen2); }
         assert(gen1.take(100).array() == gen2.take(100).array());
     }
 }
@@ -1262,7 +1262,7 @@ alias Xorshift    = Xorshift128;                            /// ditto
         auto rnd2 = rnd1.save;
         assert(rnd1 == rnd2);
         // Enable next test when RNGs are reference types
-        version(none) { assert(rnd1 !is rnd2); }
+        version (none) { assert(rnd1 !is rnd2); }
         assert(rnd1.take(100).array() == rnd2.take(100).array());
     }
 }

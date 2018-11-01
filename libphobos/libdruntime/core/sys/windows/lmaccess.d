@@ -8,8 +8,7 @@
  */
 module core.sys.windows.lmaccess;
 version (Windows):
-version (GNU) {}
-else pragma(lib, "netapi32");
+pragma(lib, "netapi32");
 
 /**
  Changes relative to MinGW:

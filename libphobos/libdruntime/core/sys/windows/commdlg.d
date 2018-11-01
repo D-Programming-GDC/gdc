@@ -10,8 +10,7 @@ module core.sys.windows.commdlg;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-version (GNU) {}
-else pragma(lib, "comdlg32");
+pragma(lib, "comdlg32");
 
 private import core.sys.windows.w32api;
 import core.sys.windows.windef, core.sys.windows.winuser;
@@ -38,7 +37,7 @@ enum : UINT {
     CDN_TYPECHANGE     = CDN_FIRST - 6,
 }
 
-//static if(_WIN32_WINNT >= 0x500) {
+//static if (_WIN32_WINNT >= 0x500) {
     enum : UINT {
         CDN_INCLUDEITEM    = CDN_FIRST - 7,
     }

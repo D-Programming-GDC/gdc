@@ -98,6 +98,10 @@ MQ
 D Joined Separate
 ; Documented in C
 
+Waddress
+D Warning Var(warn_address)
+; Documented in C
+
 Wall
 D
 ; Documented in C
@@ -197,14 +201,6 @@ fdebug=
 D Joined RejectNegative
 -fdebug=<level|ident>	Compile in debug code, code <= <level>, or code identified by <ident>.
 
-fdeps
-D
-This switch is deprecated; do not use.
-
-fdeps=
-D Joined RejectNegative
-This switch is deprecated; do not use.
-
 fdoc
 D
 Generate documentation.
@@ -229,18 +225,6 @@ fignore-unknown-pragmas
 D
 Ignore unsupported pragmas.
 
-fintfc
-D Alias(H)
-; Deprecated in favour of -H
-
-fintfc-dir=
-D Joined RejectNegative Alias(Hd)
-; Deprecated in favour of -Hd
-
-fintfc-file=
-D Joined RejectNegative Alias(Hf)
-; Deprecated in favour of -Hf
-
 finvariants
 D Var(flag_invariants)
 Generate code for class invariant contracts.
@@ -251,7 +235,7 @@ Generate a default D main() function when compiling.
 
 fmodule-file=
 D Joined RejectNegative
--fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>
+-fmodule-file=<package.module>=<filespec>	use <filespec> as source file for <package.module>.
 
 fmoduleinfo
 D
@@ -269,10 +253,6 @@ fpreconditions
 D Var(flag_preconditions)
 Generate code for precondition contracts.
 
-fproperty
-D
-This switch is deprecated; do not use.
-
 frelease
 D
 Compile release version.
@@ -283,11 +263,11 @@ Generate code for switches without a default case.
 
 ftransition=all
 D RejectNegative
-List information on all language changes
+List information on all language changes.
 
 ftransition=checkimports
 D RejectNegative
-Give deprecation messages about -ftransition=import anomalies
+Give deprecation messages about -ftransition=import anomalies.
 
 ftransition=complex
 D RejectNegative
@@ -295,11 +275,11 @@ List all usages of complex or imaginary types.
 
 ftransition=dip1000
 D RejectNegative
-Implement DIP1000: Scoped pointers (experimental)
+Implement DIP1000: Scoped pointers (experimental).
 
 ftransition=dip25
 D RejectNegative
-Implement DIP25: Sealed references (experimental)
+Implement DIP25: Sealed references (experimental).
 
 ftransition=field
 D RejectNegative
@@ -312,10 +292,6 @@ Revert to single phase name lookup.
 ftransition=nogc
 D RejectNegative
 List all hidden GC allocations.
-
-ftransition=safe
-D Alias(ftransition=dip1000)
-; Deprecated in favor of -ftransition=dip1000
 
 ftransition=tls
 D RejectNegative

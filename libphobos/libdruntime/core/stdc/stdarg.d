@@ -4,7 +4,7 @@
  * $(C_HEADER_DESCRIPTION pubs.opengroup.org/onlinepubs/009695399/basedefs/_stdarg.h.html, _stdarg.h)
  *
  * Copyright: Copyright Digital Mars 2000 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Hauke Duden
  * Standards: ISO/IEC 9899:1999 (E)
  * Source: $(DRUNTIMESRC core/stdc/_stdarg.d)
@@ -19,7 +19,7 @@ module core.stdc.stdarg;
 //@nogc:    // Not yet, need to make TypeInfo's member functions @nogc first
 nothrow:
 
-version( GNU )
+version (GNU)
 {
     import gcc.builtins;
     alias __builtin_va_list __gnuc_va_list;
@@ -54,7 +54,7 @@ version( GNU )
      * Retrieve and store through parmn the next value that is of TypeInfo ti.
      * Used when the static type is not known.
      */
-    version( X86 )
+    version (X86)
     {
         ///
         void va_arg()(ref va_list ap, TypeInfo ti, void* parmn)
@@ -65,7 +65,7 @@ version( GNU )
             parmn[0..tsize] = p[0..tsize];
         }
     }
-    else version( X86_64 )
+    else version (X86_64)
     {
         /// Layout of this struct must match __builtin_va_list for C ABI compatibility
         struct __va_list
@@ -189,7 +189,7 @@ version( GNU )
             }
         }
     }
-    else version( ARM )
+    else version (ARM)
     {
         ///
         void va_arg()(ref va_list ap, TypeInfo ti, void* parmn)
@@ -222,7 +222,7 @@ version( GNU )
     alias __builtin_va_copy va_copy;
 
 }
-else version( X86 )
+else version (X86)
 {
     /*********************
      * The argument pointer type.
