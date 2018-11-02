@@ -887,7 +887,7 @@ Lret: {}
                 -9.889929415807650724957118893791829849557E-1L
             ];
             static immutable real[7] Q = [
-                8.650244186622719093893836740197250197602E10L
+                8.650244186622719093893836740197250197602E10L,
                 -4.152206921457208101480801635640958361612E10L,
                 2.758476078803232151774723646710890525496E9L,
                 -5.733709132766856723608447733926138506824E7L,
@@ -3141,7 +3141,8 @@ float ldexp(float n, int exp) @safe pure nothrow @nogc { return ldexp(cast(real)
 
 @safe pure nothrow @nogc unittest
 {
-    static if (floatTraits!(real).realFormat == RealFormat.ieeeExtended)
+    static if (floatTraits!(real).realFormat == RealFormat.ieeeExtended ||
+               floatTraits!(real).realFormat == RealFormat.ieeeQuadruple)
     {
         assert(ldexp(1.0L, -16384) == 0x1p-16384L);
         assert(ldexp(1.0L, -16382) == 0x1p-16382L);
@@ -5337,6 +5338,7 @@ private:
             }
             else version (AArch64)
             {
+                ControlState cont;
                 asm pure nothrow @nogc
                 {
                     "mrs %0, FPCR;" : "=r" cont;

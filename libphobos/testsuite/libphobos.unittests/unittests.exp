@@ -14,9 +14,29 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
+load_gcc_lib target-supports-dg.exp
+
 # Immediately exit if we can't run target executables.
 if { ![isnative] } {
     return
+}
+
+set fd [open $srcdir/libphobos.unittests/skip_tests r]
+set skiplist [read $fd]
+close $fd
+
+proc unittest_check_skip { module } {
+    global skiplist
+    set row [lsearch -inline -index 0 -inline $skiplist $module]
+    if { $row eq "" } {
+        return ""
+    }
+
+    set selector [lindex $row 1]
+    if { [dg-process-target-1 "target \{$selector\}"] == "S" } {
+        return "S"
+    }
+    return ""
 }
 
 proc unittest_list_modules { prog } {
@@ -29,9 +49,13 @@ proc unittest_list_modules { prog } {
 # Runs all unittests for each module compiled into the test program.
 proc unittest_run_tests { name prog } {
     foreach module [unittest_list_modules $prog] {
-        set result [libphobos_load "$prog" "$module" ""]
-        set status [lindex $result 0]
-        $status "libphobos.unittests/$name/$module"
+        if { [unittest_check_skip $module] == "S" } {
+            unsupported "libphobos.unittests/$name/$module"
+        } else {
+            set result [libphobos_load "$prog" "$module" ""]
+            set status [lindex $result 0]
+            $status "libphobos.unittests/$name/$module"
+        }
     }
 }
 

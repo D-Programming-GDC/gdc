@@ -4241,14 +4241,7 @@ int bug3809()
 {
     version(GNU)
     {
-        version(X86)
-            asm { "nop"; }
-        else version(X86_64)
-            asm { "nop"; }
-        else version(ARM)
-            asm { "nop"; }
-        else
-            static assert(false, "ASM code not implemented for this architecture");
+        asm { ""; }
     }
     else
     {
@@ -5701,7 +5694,11 @@ void testreal_to_ulong()
     real adjust = 1.0L/real.epsilon;
     u = r2ulong(adjust);
     //writefln("%s %s", adjust, u);
-    static if(real.mant_dig == 64)
+    static if(real.mant_dig == 113)
+        assert(u == 18446744073709551615UL);
+    else static if(real.mant_dig == 106)
+        assert(u == 18446744073709551615UL);
+    else static if(real.mant_dig == 64)
         assert(u == 9223372036854775808UL);
     else static if(real.mant_dig == 53)
         assert(u == 4503599627370496UL);
