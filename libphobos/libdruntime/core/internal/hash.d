@@ -10,7 +10,7 @@
 module core.internal.hash;
 
 import core.internal.convert;
-import core.internal.traits : allSatisfy;
+import core.internal.traits : allSatisfy, Unconst;
 
 // If true ensure that positive zero and negative zero have the same hash.
 // Historically typeid(float).getHash did this but hashOf(float) did not.
@@ -129,7 +129,7 @@ private template canBitwiseHash(T)
     }
 }
 
-private template UnqualUnsigned(T) if (__traits(isIntegral, T))
+private template UnqualUnsigned(T) if (__traits(isIntegral, T) && !is(T == __vector))
 {
     static if (T.sizeof == ubyte.sizeof) alias UnqualUnsigned = ubyte;
     else static if (T.sizeof == ushort.sizeof) alias UnqualUnsigned = ushort;
@@ -342,7 +342,7 @@ if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStati
 //arithmetic type hash
 @trusted @nogc nothrow pure
 size_t hashOf(T)(scope const T val) if (!is(T == enum) && __traits(isArithmetic, T)
-    && __traits(isIntegral, T) && T.sizeof <= size_t.sizeof)
+    && __traits(isIntegral, T) && T.sizeof <= size_t.sizeof && !is(T == __vector))
 {
     return cast(UnqualUnsigned!T) val;
 }
@@ -350,7 +350,7 @@ size_t hashOf(T)(scope const T val) if (!is(T == enum) && __traits(isArithmetic,
 //arithmetic type hash
 @trusted @nogc nothrow pure
 size_t hashOf(T)(scope const T val, size_t seed) if (!is(T == enum) && __traits(isArithmetic, T)
-    && __traits(isIntegral, T) && T.sizeof <= size_t.sizeof)
+    && __traits(isIntegral, T) && T.sizeof <= size_t.sizeof && !is(T == __vector))
 {
     static if (size_t.sizeof < ulong.sizeof)
     {
@@ -381,7 +381,7 @@ size_t hashOf(T)(scope const T val, size_t seed) if (!is(T == enum) && __traits(
 //arithmetic type hash
 @trusted @nogc nothrow pure
 size_t hashOf(T)(scope const T val, size_t seed = 0) if (!is(T == enum) && __traits(isArithmetic, T)
-    && (!__traits(isIntegral, T) || T.sizeof > size_t.sizeof))
+    && (!__traits(isIntegral, T) || T.sizeof > size_t.sizeof) && !is(T == __vector))
 {
     static if (__traits(isFloating, val))
     {
@@ -420,6 +420,28 @@ size_t hashOf(T)(scope const T val, size_t seed = 0) if (!is(T == enum) && __tra
         static foreach (i; 0 .. T.sizeof / size_t.sizeof)
             seed = hashOf(cast(size_t) (val >>> (size_t.sizeof * 8 * i)), seed);
         return seed;
+    }
+}
+
+size_t hashOf(T)(scope const auto ref T val, size_t seed = 0) @safe @nogc nothrow pure
+if (is(T == __vector) && !is(T == enum))
+{
+    static if (__traits(isFloating, T) && (floatCoalesceZeroes || floatCoalesceNaNs))
+    {
+        if (__ctfe)
+        {
+            // Workaround for CTFE bug.
+            alias E = Unqual!(typeof(val[0]));
+            E[T.sizeof / E.sizeof] array;
+            foreach (i; 0 .. T.sizeof / E.sizeof)
+                array[i] = val[i];
+            return hashOf(array, seed);
+        }
+        return hashOf(val.array, seed);
+    }
+    else
+    {
+        return bytesHashAlignedBy!T(toUbyte(val), seed);
     }
 }
 
@@ -484,7 +506,7 @@ private enum _hashOfStruct =
 q{
     enum bool isChained = is(typeof(seed) : size_t);
     static if (!isChained) enum size_t seed = 0;
-    static if (hasCallableToHash!T) //CTFE depends on toHash()
+    static if (hasCallableToHash!(typeof(val))) //CTFE depends on toHash()
     {
         static if (isChained)
             return hashOf(cast(size_t) val.toHash(), seed);
@@ -495,7 +517,15 @@ q{
     {
         static if (__traits(hasMember, T, "toHash") && is(typeof(T.toHash) == function))
         {
-            pragma(msg, "Warning: struct "~__traits(identifier, T)~" has method toHash, however it cannot be called with "~T.stringof~" this.");
+            // TODO: in the future maybe this should be changed to a static
+            // assert(0), because if there's a `toHash` the programmer probably
+            // expected it to be called and a compilation failure here will
+            // expose a bug in his code.
+            //   In the future we also might want to disallow non-const toHash
+            // altogether.
+            pragma(msg, "Warning: struct "~__traits(identifier, T)
+                ~" has method toHash, however it cannot be called with "
+                ~typeof(val).stringof~" this.");
         }
 
         static if (T.tupleof.length == 0)
@@ -531,6 +561,7 @@ q{
 //struct or union hash
 size_t hashOf(T)(scope const auto ref T val, size_t seed = 0)
 if (!is(T == enum) && (is(T == struct) || is(T == union))
+    && !is(T == const) && !is(T == immutable)
     && canBitwiseHash!T)
 {
     mixin(_hashOfStruct);
@@ -548,6 +579,15 @@ if (!is(T == enum) && (is(T == struct) || is(T == union))
 size_t hashOf(T)(auto ref T val, size_t seed)
 if (!is(T == enum) && (is(T == struct) || is(T == union))
     && !canBitwiseHash!T)
+{
+    mixin(_hashOfStruct);
+}
+
+//struct or union hash - https://issues.dlang.org/show_bug.cgi?id=19332 (support might be removed in future)
+size_t hashOf(T)(scope auto ref T val, size_t seed = 0)
+if (!is(T == enum) && (is(T == struct) || is(T == union))
+    && (is(T == const) || is(T == immutable))
+    && canBitwiseHash!T && !canBitwiseHash!(Unconst!T))
 {
     mixin(_hashOfStruct);
 }

@@ -1153,6 +1153,13 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
 
         bool errors = false;
 
+        if (mtype.inuse > 500)
+        {
+            mtype.inuse = 0;
+            .error(loc, "recursive type");
+            return error();
+        }
+
         /* Copy in order to not mess up original.
          * This can produce redundant copies if inferring return type,
          * as semantic() will get called again on this.
@@ -1257,10 +1264,9 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
             for (size_t i = 0; i < dim; i++)
             {
                 Parameter fparam = Parameter.getNth(tf.parameters, i);
-                tf.inuse++;
+                mtype.inuse++;
                 fparam.type = fparam.type.typeSemantic(loc, argsc);
-                if (tf.inuse == 1)
-                    tf.inuse--;
+                mtype.inuse--;
                 if (fparam.type.ty == Terror)
                 {
                     errors = true;
@@ -1499,13 +1505,6 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
             errors = true;
         }
         tf.iswild = wildparams;
-
-        if (tf.inuse)
-        {
-            .error(loc, "recursive type");
-            tf.inuse = 0;
-            errors = true;
-        }
 
         if (tf.isproperty && (tf.varargs || Parameter.dim(tf.parameters) > 2))
         {
@@ -3436,16 +3435,12 @@ private extern(C++) final class DotExpVisitor : Visitor
 
             /* See if we should forward to the alias this.
              */
-            if (sym.aliasthis)
+            auto alias_e = resolveAliasThis(sc, e, gagError);
+            if (alias_e && alias_e != e)
             {
                 /* Rewrite e.ident as:
                  *  e.aliasthis.ident
                  */
-                auto alias_e = resolveAliasThis(sc, e, gagError);
-
-                if (!alias_e)
-                    return returnExp(null);
-
                 auto die = new DotIdExp(e.loc, alias_e, ident);
 
                 auto errors = gagError ? 0 : global.startGagging();
