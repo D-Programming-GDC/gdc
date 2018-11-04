@@ -180,9 +180,9 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d rt/critical_.d \
 	rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d \
 	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
-	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx.d \
-	rt/sections_solaris.d rt/sections_win32.d rt/sections_win64.d \
-	rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_Acdouble.d \
+	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx_x86.d \
+	rt/sections_osx_x86_64.d rt/sections_solaris.d rt/sections_win32.d \
+	rt/sections_win64.d rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_Acdouble.d \
 	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
 	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
 	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \

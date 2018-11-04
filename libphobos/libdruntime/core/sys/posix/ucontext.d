@@ -937,7 +937,17 @@ else version (Solaris)
 {
     alias uint[4] upad128_t;
 
-    version (X86_64)
+    version (SPARC64)
+    {
+        enum _NGREG = 21;
+        alias long greg_t;
+    }
+    else version (SPARC)
+    {
+        enum _NGREG = 19;
+        alias int greg_t;
+    }
+    else version (X86_64)
     {
         enum _NGREG = 28;
         alias long greg_t;
@@ -950,7 +960,76 @@ else version (Solaris)
 
     alias greg_t[_NGREG] gregset_t;
 
-    version (X86_64)
+    version (SPARC64)
+    {
+        private
+        {
+            struct _fpq
+            {
+                uint *fpq_addr;
+                uint fpq_instr;
+            }
+
+            struct fq
+            {
+                union
+                {
+                    double whole;
+                    _fpq fpq;
+                }
+            }
+        }
+
+        struct fpregset_t
+        {
+            union
+            {
+                uint[32]   fpu_regs;
+                double[32] fpu_dregs;
+                real[16]   fpu_qregs;
+            }
+            fq    *fpu_q;
+            ulong fpu_fsr;
+            ubyte fpu_qcnt;
+            ubyte fpu_q_entrysize;
+            ubyte fpu_en;
+        }
+    }
+    else version (SPARC)
+    {
+        private
+        {
+            struct _fpq
+            {
+                uint *fpq_addr;
+                uint fpq_instr;
+            }
+
+            struct fq
+            {
+                union
+                {
+                    double whole;
+                    _fpq fpq;
+                }
+            }
+        }
+
+        struct fpregset_t
+        {
+            union
+            {
+                uint[32]   fpu_regs;
+                double[16] fpu_dregs;
+            };
+            fq    *fpu_q;
+            uint  fpu_fsr;
+            ubyte fpu_qcnt;
+            ubyte fpu_q_entrysize;
+            ubyte fpu_en;
+        }
+    }
+    else version (X86_64)
     {
         union _u_st
         {

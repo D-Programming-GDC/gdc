@@ -63,6 +63,19 @@ version (CRuntime_Glibc)
         }
     }
 }
+else version (OSX)
+{
+    struct aiocb
+    {
+        int aio_filedes;
+        off_t aio_offset;
+        void* aio_buf;   // volatile
+        size_t aio_nbytes;
+        int reqprio;
+        sigevent aio_sigevent;
+        int aio_lio_opcode;
+    }
+}
 else version (FreeBSD)
 {
     struct __aiocb_private
@@ -123,15 +136,62 @@ else version (DragonFlyBSD)
 
     version = BSD_Posix;
 }
+else version (Solaris)
+{
+    struct aio_result_t
+    {
+        ssize_t aio_return;
+        int aio_errno;
+    }
+
+    struct aiocb
+    {
+        int aio_fildes;
+        void* aio_buf;   // volatile
+        size_t aio_nbytes;
+        off_t aio_offset;
+        int aio_reqprio;
+        sigevent aio_sigevent;
+        int aio_lio_opcode;
+        aio_result_t aio_result;
+        byte aio_state;
+        byte aio_returned;
+        byte[2] aio__pad1;
+        int aio_flags;
+    }
+
+    version = BSD_Posix;
+}
 else
     static assert(false, "Unsupported platform");
 
 /* Return values of cancelation function.  */
-enum
+version (CRuntime_Glibc)
 {
-    AIO_CANCELED,
-    AIO_NOTCANCELED,
-    AIO_ALLDONE
+    enum
+    {
+        AIO_CANCELED,
+        AIO_NOTCANCELED,
+        AIO_ALLDONE
+    }
+}
+else version (OSX)
+{
+    enum
+    {
+        AIO_ALLDONE = 0x1,
+        AIO_CANCELED = 0x2,
+        AIO_NOTCANCELED = 0x4,
+    }
+}
+else version (BSD_Posix)
+{
+    enum
+    {
+        AIO_CANCELED,
+        AIO_NOTCANCELED,
+        AIO_ALLDONE
+    }
 }
 
 /* Operation codes for `aio_lio_opcode'.  */
@@ -142,6 +202,15 @@ version (CRuntime_Glibc)
         LIO_READ,
         LIO_WRITE,
         LIO_NOP
+    }
+}
+else version (OSX)
+{
+    enum
+    {
+        LIO_NOP = 0x0,
+        LIO_READ = 0x1,
+        LIO_WRITE = 0x2,
     }
 }
 else version (BSD_Posix)
@@ -161,6 +230,14 @@ version (CRuntime_Glibc)
     {
         LIO_WAIT,
         LIO_NOWAIT
+    }
+}
+else version (OSX)
+{
+    enum
+    {
+        LIO_NOWAIT = 0x1,
+        LIO_WAIT = 0x2,
     }
 }
 else version (BSD_Posix)
