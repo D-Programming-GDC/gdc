@@ -42,6 +42,20 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 
+/* Helper function for floating point identity comparison. Compare
+   only well-defined bits, ignore padding (e.g. for X86 80bit real).  */
+
+static tree build_float_identity (tree_code code, tree t1, tree t2)
+{
+  /* For floating-point values, identity is defined as the bits in the
+     operands being identical.  */
+  tree tmemcmp = builtin_decl_explicit (BUILT_IN_MEMCMP);
+  tree size = size_int (TYPE_PRECISION (TREE_TYPE (t1)) / BITS_PER_UNIT);
+
+  tree result = build_call_expr (tmemcmp, 3, build_address (t1),
+				 build_address (t2), size);
+  return build_boolop (code, result, integer_zero_node);
+}
 
 /* Implements the visitor interface to build the GCC trees of all Expression
    AST classes emitted from the D Front-end.
@@ -275,19 +289,23 @@ public:
 	this->result_ = d_convert (build_ctype (e->type),
 				   build_boolop (code, t1, t2));
       }
+    else if (tb1->iscomplex () && tb1->ty != Tvector)
+      {
+	tree e1 = d_save_expr (build_expr (e->e1));
+	tree e2 = d_save_expr (build_expr (e->e2));
+	tree req = build_float_identity (code, real_part (e1), real_part (e2));
+	tree ieq = build_float_identity (code, imaginary_part (e1), imaginary_part (e2));
+
+	if (code == EQ_EXPR)
+	  this->result_ = build_boolop (TRUTH_ANDIF_EXPR, req, ieq);
+	else
+	  this->result_ = build_boolop (TRUTH_ORIF_EXPR, req, ieq);
+      }
     else if (tb1->isfloating () && tb1->ty != Tvector)
       {
-	/* For floating-point values, identity is defined as the bits in the
-	   operands being identical.  */
-	tree t1 = d_save_expr (build_expr (e->e1));
-	tree t2 = d_save_expr (build_expr (e->e2));
-
-	tree tmemcmp = builtin_decl_explicit (BUILT_IN_MEMCMP);
-	tree size = size_int (TYPE_PRECISION (TREE_TYPE (t1)) / BITS_PER_UNIT);
-
-	tree result = build_call_expr (tmemcmp, 3, build_address (t1),
-				       build_address (t2), size);
-	this->result_ = build_boolop (code, result, integer_zero_node);
+	tree e1 = d_save_expr (build_expr (e->e1));
+	tree e2 = d_save_expr (build_expr (e->e2));
+	this->result_ = build_float_identity (code, e1, e2);
       }
     else if (tb1->ty == Tstruct)
       {
