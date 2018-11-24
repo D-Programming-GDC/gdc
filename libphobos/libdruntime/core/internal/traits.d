@@ -128,6 +128,25 @@ template dtorIsNothrow(T)
     enum dtorIsNothrow = is(typeof(function{T t=void;}) : void function() nothrow);
 }
 
+// taken from std.meta.allSatisfy
+template allSatisfy(alias F, T...)
+{
+    static if (T.length == 0)
+    {
+        enum allSatisfy = true;
+    }
+    else static if (T.length == 1)
+    {
+        enum allSatisfy = F!(T[0]);
+    }
+    else
+    {
+        enum allSatisfy =
+            allSatisfy!(F, T[ 0  .. $/2]) &&
+            allSatisfy!(F, T[$/2 ..  $ ]);
+    }
+}
+
 template anySatisfy(alias F, T...)
 {
     static if (T.length == 0)
