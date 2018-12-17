@@ -10,6 +10,23 @@ Documentation on GDC is available from [the wiki][wiki]. Any bugs or issues foun
 
 Work is currently under way to merge GDC into a future release of GCC. Assistance of any sort during this time would be invaluably appreciated. Feel free to contact via [email][email] or join in at #d.gdc on FreeNode.
 
+### Checking out GCC
+
+The GCC submodule was initially created using the following command.
+```
+git submodule add --depth 1 -b master https://github.com/gcc-mirror/gcc.git gcc
+```
+
+For newly cloned repositories, this command below obtains GCC sources.  If it fails, then increase depth until it succeeds.
+```
+git submodule update --init --depth 50 gcc
+```
+
+To update to latest GCC trunk, use the following command.
+```
+git submodule update --remote --depth 1 gcc
+```
+
 ### Building
 
 The master branch of this project closely follows [GCC development branch][gcc-devel], which if you intend to use GDC for production applications, is likely not the version of GCC you want to build against.  For versions of GDC compatible with GCC releases, checkout one of the following branches:

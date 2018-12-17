@@ -1,0 +1,4 @@
+[submodule "gcc"]
+	path = gcc
+	url = https://github.com/gcc-mirror/gcc.git
+	branch = master
