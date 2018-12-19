@@ -177,7 +177,7 @@ version (StaticallyHaveSSE)
 {
     private enum bool haveSSE = true;
 }
-else
+else version (X86)
 {
     static import core.cpuid;
     private alias haveSSE = core.cpuid.sse;
@@ -4454,6 +4454,7 @@ long lrint(real x) @trusted pure nothrow @nogc
             const j = sign ? -OF : OF;
             x = (j + x) - j;
 
+            const exp = (vu[F.EXPPOS_SHORT] & F.EXPMASK) - (F.EXPBIAS + 1);
             const implicitOne = 1UL << 48;
             auto vl = cast(ulong*)(&x);
             vl[MANTISSA_MSB] &= implicitOne - 1;
@@ -4461,7 +4462,6 @@ long lrint(real x) @trusted pure nothrow @nogc
 
             long result;
 
-            const exp = (vu[F.EXPPOS_SHORT] & F.EXPMASK) - (F.EXPBIAS + 1);
             if (exp < 0)
                 result = 0;
             else if (exp <= 48)
@@ -6669,6 +6669,10 @@ if (isFloatingPoint!(F) && isIntegral!(G))
     else version (ARM)
     {
         pragma(msg, "test disabled on ARM, see bug 5628");
+    }
+    else version (GNU)
+    {
+        pragma(msg, "test disabled on GNU, see bug 5628");
     }
     else
     {

@@ -21,9 +21,7 @@
  *  enter `C++, mangling` as the keywords.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
+#include "root/dsystem.h"
 
 #include "mars.h"
 #include "dsymbol.h"
@@ -47,9 +45,9 @@ class CppMangleVisitor : public Visitor
 {
     Objects components;         // array of components available for substitution
     OutBuffer *buf;             // append the mangling to buf[]
+  public:
     Loc loc;                    // location for use in error messages
 
-    public:
     // Write <seq-id> to buf
     void write_seq_id(size_t i)
     {
@@ -953,15 +951,6 @@ public:
     {
         if (t->isImmutable() || t->isShared())
             return error(t);
-
-        /* __c_long and __c_ulong get special mangling
-         */
-        Identifier *id = t->sym->ident;
-        //printf("struct id = '%s'\n", id->toChars());
-        if (id == Id::__c_long)
-            return writeBasicType(t, 0, 'l');
-        else if (id == Id::__c_ulong)
-            return writeBasicType(t, 0, 'm');
 
         //printf("TypeStruct %s\n", t->toChars());
         doSymbol(t);

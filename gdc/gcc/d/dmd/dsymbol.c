@@ -8,11 +8,7 @@
  * https://github.com/D-Programming-Language/dmd/blob/master/src/dsymbol.c
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
-#include <limits.h>
-
+#include "root/dsystem.h"
 #include "root/rmem.h"
 #include "root/speller.h"
 #include "root/aav.h"
@@ -241,9 +237,7 @@ const char *Dsymbol::toPrettyChars(bool QualifyTypes)
         ++complength;
 
     // Allocate temporary array comp[]
-    const char **comp = (const char **)malloc(complength * sizeof(char**));
-    if (!comp)
-        Mem::error();
+    const char **comp = (const char **)mem.xmalloc(complength * sizeof(char**));
 
     // Fill in comp[] and compute length of final result
     size_t length = 0;
@@ -293,7 +287,7 @@ const char *Dsymbol::locToChars()
     return getLoc().toChars();
 }
 
-const char *Dsymbol::kind()
+const char *Dsymbol::kind() const
 {
     return "symbol";
 }
@@ -921,7 +915,7 @@ void OverloadSet::push(Dsymbol *s)
     a.push(s);
 }
 
-const char *OverloadSet::kind()
+const char *OverloadSet::kind() const
 {
     return "overloadset";
 }
@@ -1197,12 +1191,12 @@ void ScopeDsymbol::importScope(Dsymbol *s, Prot protection)
 
 static void bitArraySet(BitArray *array, size_t idx)
 {
-    array->ptr[idx / (sizeof(size_t) * CHAR_BIT)] |= 1 << (idx & (sizeof(size_t) * CHAR_BIT - 1));
+    array->ptr[idx / (sizeof(size_t) * CHAR_BIT)] |= 1ULL << (idx & (sizeof(size_t) * CHAR_BIT - 1));
 }
 
 static bool bitArrayGet(BitArray *array, size_t idx)
 {
-    return (array->ptr[idx / (sizeof(size_t) * CHAR_BIT)] & (1 << (idx & (sizeof(size_t) * CHAR_BIT - 1)))) != 0;
+    return (array->ptr[idx / (sizeof(size_t) * CHAR_BIT)] & (1ULL << (idx & (sizeof(size_t) * CHAR_BIT - 1)))) != 0;
 }
 
 static void bitArrayLength(BitArray *array, size_t len)
@@ -1273,7 +1267,7 @@ void ScopeDsymbol::multiplyDefined(Loc loc, Dsymbol *s1, Dsymbol *s2)
     }
 }
 
-const char *ScopeDsymbol::kind()
+const char *ScopeDsymbol::kind() const
 {
     return "ScopeDsymbol";
 }

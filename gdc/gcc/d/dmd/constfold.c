@@ -8,12 +8,11 @@
  * https://github.com/D-Programming-Language/dmd/blob/master/src/constfold.c
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <string.h>                     // mem{cpy|set|cmp}()
+#include "root/dsystem.h"               // mem{cpy|set|cmp}()
+
+#ifndef IN_GCC
 #include <math.h>
-#include <new>
+#endif
 
 #include "root/rmem.h"
 #include "root/root.h"
@@ -447,13 +446,13 @@ UnionExp Div(Loc loc, Type *type, Expression *e1, Expression *e2)
         if (n2 == -1 && !type->isunsigned())
         {
             // Check for int.min / -1
-            if ((dinteger_t)n1 == 0xFFFFFFFF80000000UL && type->toBasetype()->ty != Tint64)
+            if ((dinteger_t)n1 == 0xFFFFFFFF80000000ULL && type->toBasetype()->ty != Tint64)
             {
                 e2->error("integer overflow: int.min / -1");
                 new(&ue) ErrorExp();
                 return ue;
             }
-            else if ((dinteger_t)n1 == 0x8000000000000000L) // long.min / -1
+            else if ((dinteger_t)n1 == 0x8000000000000000LL) // long.min / -1
             {
                 e2->error("integer overflow: long.min / -1");
                 new(&ue) ErrorExp();
@@ -481,13 +480,21 @@ UnionExp Mod(Loc loc, Type *type, Expression *e1, Expression *e2)
         {
             real_t r2 = e2->toReal();
 
+#ifdef IN_GCC
             c = complex_t(e1->toReal() % r2, e1->toImaginary() % r2);
+#else
+            c = complex_t(::fmodl(e1->toReal(), r2), ::fmodl(e1->toImaginary(), r2));
+#endif
         }
         else if (e2->type->isimaginary())
         {
             real_t i2 = e2->toImaginary();
 
+#ifdef IN_GCC
             c = complex_t(e1->toReal() % i2, e1->toImaginary() % i2);
+#else
+            c = complex_t(::fmodl(e1->toReal(), i2), ::fmodl(e1->toImaginary(), i2));
+#endif
         }
         else
             assert(0);
