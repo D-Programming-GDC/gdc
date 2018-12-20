@@ -1,0 +1,13 @@
+diff --git a/gcc/config/pa/pa-linux.h b/gcc/config/pa/pa-linux.h
+index a4ad2dda1..1a9f2e6cc 100644
+--- a/gcc/config/pa/pa-linux.h
++++ b/gcc/config/pa/pa-linux.h
+@@ -27,6 +27,8 @@ along with GCC; see the file COPYING3.  If not see
+     }						\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_CRITSEC_SIZE 48
++
+ #undef CPP_SPEC
+ #define CPP_SPEC "%{posix:-D_POSIX_SOURCE} %{pthread:-D_REENTRANT}"
+ 

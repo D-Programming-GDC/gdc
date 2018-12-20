@@ -1,0 +1,2 @@
+Create a patch file named gcc.patch to apply extra D language support patches
+to the GCC back end.
