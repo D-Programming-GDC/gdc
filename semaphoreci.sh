@@ -5,48 +5,9 @@
 # - SEMAPHORE_CACHE_DIR
 # See https://semaphoreci.com/docs/available-environment-variables.html
 
-## Find out which branch we are building.
-GCC_VERSION=$(cat gcc.version)
-
-if [ "${GCC_VERSION:0:5}" = "gcc-9" ]; then
-    GCC_TARBALL="snapshots/${GCC_VERSION:4}/${GCC_VERSION}.tar.xz"
-    GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.18.tar.bz2"
-    PATCH_VERSION="9"
-    HOST_PACKAGE="7"
-elif [ "${GCC_VERSION:0:5}" = "gcc-8" ]; then
-    GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.xz"
-    GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.18.tar.bz2"
-    PATCH_VERSION="8"
-    HOST_PACKAGE="7"
-elif [ "${GCC_VERSION:0:5}" = "gcc-7" ]; then
-    GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.xz"
-    GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.16.1.tar.bz2"
-    PATCH_VERSION="7"
-    HOST_PACKAGE="7"
-elif [ "${GCC_VERSION:0:5}" = "gcc-6" ]; then
-    GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.xz"
-    GCC_PREREQS="gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz isl-0.15.tar.bz2"
-    PATCH_VERSION="6"
-    HOST_PACKAGE="5"
-elif [ "${GCC_VERSION:0:5}" = "gcc-5" ]; then
-    GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.xz"
-    GCC_PREREQS="gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz isl-0.14.tar.bz2"
-    PATCH_VERSION="5"
-    HOST_PACKAGE="5"
-elif [ "${GCC_VERSION:0:7}" = "gcc-4.9" ]; then
-    GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.bz2"
-    GCC_PREREQS="gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz isl-0.12.2.tar.bz2 cloog-0.18.1.tar.gz"
-    PATCH_VERSION="4.9"
-    HOST_PACKAGE="4.9"
-elif [ "${GCC_VERSION:0:7}" = "gcc-4.8" ]; then
-    GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.bz2"
-    GCC_PREREQS="gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz"
-    PATCH_VERSION="4.8"
-    HOST_PACKAGE="4.8"
-else
-    echo "This version of GCC ($GCC_VERSION) is not supported."
-    exit 1
-fi
+## Top-level build system configration.
+GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.18.tar.bz2"
+HOST_PACKAGE="7"
 
 export CC="gcc-${HOST_PACKAGE}"
 export CXX="g++-${HOST_PACKAGE}"
@@ -59,21 +20,26 @@ setup() {
     sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     sudo apt-get update -qq
     sudo apt-get install -qq gcc-${HOST_PACKAGE} g++-${HOST_PACKAGE} gdc-${HOST_PACKAGE} \
-        autogen autoconf2.64 automake1.11 bison dejagnu flex patch || exit 1
+        autogen autoconf automake bison dejagnu flex rsync patch || exit 1
 
-    ## Download and extract GCC sources.
-    # Makes use of local cache to save downloading on every build run.
-    if [ ! -e ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} ]; then
-        curl "ftp://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/${GCC_TARBALL}" \
-            --create-dirs -o ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} || exit 1
-    fi
+    ## Download the GCC sources - last 350 commits should be plenty if kept in sync regularly.
+    git submodule update --init --depth 350 gcc
 
-    tar --strip-components=1 -xf ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL}
+    ## Sync local GDC sources with upstream GCC.
+    rsync -avc --delete ${SEMAPHORE_PROJECT_DIR}/gdc/gcc/d/ ${SEMAPHORE_PROJECT_DIR}/gcc/gcc/d
+    rsync -avc --delete ${SEMAPHORE_PROJECT_DIR}/gdc/libphobos/ ${SEMAPHORE_PROJECT_DIR}/gcc/libphobos
+    rsync -avc --delete ${SEMAPHORE_PROJECT_DIR}/gdc/gcc/testsuite/gdc.dg/ ${SEMAPHORE_PROJECT_DIR}/gcc/gcc/testsuite/gdc.dg
+    rsync -avc --delete ${SEMAPHORE_PROJECT_DIR}/gdc/gcc/testsuite/gdc.test/ ${SEMAPHORE_PROJECT_DIR}/gcc/gcc/testsuite/gdc.test
+    cp -av ${SEMAPHORE_PROJECT_DIR}/gdc/gcc/testsuite/lib/gdc.exp ${SEMAPHORE_PROJECT_DIR}/gcc/gcc/testsuite/lib/gdc.exp
+    cp -av ${SEMAPHORE_PROJECT_DIR}/gdc/gcc/testsuite/lib/gdc-dg.exp ${SEMAPHORE_PROJECT_DIR}/gcc/gcc/testsuite/lib/gdc-dg.exp
 
     ## Apply GDC patches to GCC.
-    for PATCH in toplev toplev-ddmd gcc gcc-ddmd targetdm; do
-        patch -p1 -i ./gcc/d/patches/patch-${PATCH}-${PATCH_VERSION}.patch || exit 1
-    done
+    if test -f ${SEMAPHORE_PROJECT_DIR}/patches/gcc.patch; then
+        patch -d ${SEMAPHORE_PROJECT_DIR}/gcc -p1 -i ${SEMAPHORE_PROJECT_DIR}/patches/gcc.patch || exit 1
+    fi
+    if test -f ${SEMAPHORE_PROJECT_DIR}/patches/ddmd.patch; then
+        patch -d ${SEMAPHORE_PROJECT_DIR}/gcc -p1 -i ${SEMAPHORE_PROJECT_DIR}/patches/ddmd.patch || exit 1
+    fi
 
     ## And download GCC prerequisites.
     # Makes use of local cache to save downloading on every build run.
@@ -82,8 +48,8 @@ setup() {
             curl "ftp://gcc.gnu.org/pub/gcc/infrastructure/${PREREQ}" \
                 --create-dirs -o ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ} || exit 1
         fi
-        tar -xf ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ}
-        ln -s "${PREREQ%.tar*}" "${PREREQ%-*}"
+        tar -C ${SEMAPHORE_PROJECT_DIR}/gcc -xf ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ}
+        ln -s "${SEMAPHORE_PROJECT_DIR}/gcc/${PREREQ%.tar*}" "${SEMAPHORE_PROJECT_DIR}/gcc/${PREREQ%-*}"
     done
 
     ## Create the build directory.
@@ -92,7 +58,7 @@ setup() {
     cd ${SEMAPHORE_PROJECT_DIR}/build
 
     ## Configure GCC to build a D compiler.
-    ${SEMAPHORE_PROJECT_DIR}/configure --enable-languages=c++,d,lto --enable-checking \
+    ${SEMAPHORE_PROJECT_DIR}/gcc/configure --enable-languages=c++,d,lto --enable-checking \
         --enable-link-mutex --disable-bootstrap --disable-libgomp --disable-libmudflap \
         --disable-libquadmath --disable-multilib --with-bugurl="http://bugzilla.gdcproject.org"
 }
