@@ -1,3 +1,4 @@
+// { dg-options "-Wno-psabi" }
 // { dg-do run { target hw } }
 import core.simd;
 import core.stdc.string;
@@ -755,7 +756,7 @@ void test7411()
 }
 
 /*****************************************/
-// 7951
+// https://issues.dlang.org/show_bug.cgi?id=7951
 
 float[4] test7951()
 {
@@ -1020,7 +1021,7 @@ float bug8060(float x) {
 
 /*****************************************/
 /+
-// 9200
+// https://issues.dlang.org/show_bug.cgi?id=9200
 
 void bar9200(double[2] a)
 {
@@ -1044,8 +1045,8 @@ void test9200()
 +/
 
 /*****************************************/
-
-// 9304 and 9322
+// https://issues.dlang.org/show_bug.cgi?id=9304
+// https://issues.dlang.org/show_bug.cgi?id=9322
 
 float4 foo9304(float4 a)
 {
@@ -1122,7 +1123,7 @@ void test9449_2()
 }
 
 /*****************************************/
-// 13841
+// https://issues.dlang.org/show_bug.cgi?id=13841
 
 void test13841()
 {
@@ -1148,7 +1149,7 @@ void test13841()
 }
 
 /*****************************************/
-// 12776
+// https://issues.dlang.org/show_bug.cgi?id=12776
 
 void test12776()
 {
@@ -1186,7 +1187,7 @@ void test13988()
 }
 
 /*****************************************/
-// 15123
+// https://issues.dlang.org/show_bug.cgi?id=15123
 
 void test15123()
 {
@@ -1219,7 +1220,6 @@ void test13927(ulong2 a)
 }
 
 /*****************************************/
-
 // https://issues.dlang.org/show_bug.cgi?id=16488
 
 void foo_byte16(byte t, byte s)

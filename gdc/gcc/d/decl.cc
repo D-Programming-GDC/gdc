@@ -1517,16 +1517,6 @@ get_decl_tree (Declaration *decl)
   return t;
 }
 
-/* Update the TLS model on variable DECL, typically after the linkage
-   has been modified.  */
-
-static void
-reset_decl_tls_model (tree decl)
-{
-  if (DECL_THREAD_LOCAL_P (decl))
-    set_decl_tls_model (decl, decl_default_tls_model (decl));
-}
-
 /* Finish up a variable declaration and compile it all the way to
    the assembler language output.  */
 
@@ -1538,7 +1528,11 @@ d_finish_decl (tree decl)
   /* We are sending this symbol to object file, can't be extern.  */
   TREE_STATIC (decl) = 1;
   DECL_EXTERNAL (decl) = 0;
-  reset_decl_tls_model (decl);
+
+  /* Update the TLS model as the linkage has been modified.  */
+  if (DECL_THREAD_LOCAL_P (decl))
+    set_decl_tls_model (decl, decl_default_tls_model (decl));
+
   relayout_decl (decl);
 
   if (flag_checking && DECL_INITIAL (decl))

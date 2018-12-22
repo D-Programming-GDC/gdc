@@ -1,5 +1,5 @@
 // DISABLED: win32 win64 osx32
-// EXTRA_CPP_SOURCES: cpp_stdlib.cpp
+// EXTRA_CPP_SOURCES: extra-files/cpp_stdlib.cpp
 // CXXFLAGS: -std=c++11
 import core.stdc.stdio;
 

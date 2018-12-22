@@ -29,11 +29,11 @@ ALL_DRUNTIME_INSTALL_DSOURCES = $(DRUNTIME_DSOURCES) \
 	$(DRUNTIME_DSOURCES_GC) $(DRUNTIME_DSOURCES_GCSTUB) \
 	$(DRUNTIME_DSOURCES_BIONIC) $(DRUNTIME_DSOURCES_DARWIN) \
 	$(DRUNTIME_DSOURCES_DRAGONFLYBSD) $(DRUNTIME_DSOURCES_FREEBSD) \
-	$(DRUNTIME_DSOURCES_LINUX) $(DRUNTIME_DSOURCES_OPENBSD) \
-	$(DRUNTIME_DSOURCES_OSX) $(DRUNTIME_DSOURCES_POSIX) \
+	$(DRUNTIME_DSOURCES_LINUX) $(DRUNTIME_DSOURCES_NETBSD) \
+	$(DRUNTIME_DSOURCES_OPENBSD) $(DRUNTIME_DSOURCES_POSIX) \
 	$(DRUNTIME_DSOURCES_SOLARIS) $(DRUNTIME_DSOURCES_WINDOWS) \
-	$(DRUNTIME_DSOURCES_GENERATED) $(DRUNTIME_DSOURCES_STDCXX) \
-	$(DRUNTIME_DISOURCES)
+	$(DRUNTIME_DSOURCES_GENERATED) $(DRUNTIME_DISOURCES) \
+	$(DRUNTIME_DSOURCES_STDCXX)
 
 # Setup source files depending on configure
 ALL_DRUNTIME_COMPILE_DSOURCES = $(DRUNTIME_DSOURCES)
@@ -48,14 +48,19 @@ if DRUNTIME_OS_UNIX
     ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_POSIX)
 endif
 if DRUNTIME_OS_DARWIN
-    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_DARWIN) \
-				     $(DRUNTIME_DSOURCES_OSX)
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_DARWIN)
+endif
+if DRUNTIME_OS_DRAGONFLYBSD
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_DRAGONFLYBSD)
 endif
 if DRUNTIME_OS_ANDROID
     ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_BIONIC)
 endif
 if DRUNTIME_OS_FREEBSD
     ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_FREEBSD)
+endif
+if DRUNTIME_OS_NETBSD
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_NETBSD)
 endif
 if DRUNTIME_OS_OPENBSD
     ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_OPENBSD)
@@ -102,7 +107,7 @@ endif
 toolexeclib_LTLIBRARIES = libgdruntime.la
 libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
 libgdruntime_la_LIBTOOLFLAGS =
-libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(DRUNTIME_SOVERSION)
+libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(libtool_VERSION)
 libgdruntime_la_LIBADD = $(LIBATOMIC) $(LIBBACKTRACE)
 
 # For static unittest, link objects directly
@@ -261,14 +266,6 @@ DRUNTIME_DSOURCES_NETBSD = core/sys/netbsd/dlfcn.d \
 	core/sys/netbsd/time.d
 
 DRUNTIME_DSOURCES_OPENBSD = core/sys/openbsd/dlfcn.d
-
-DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
-	core/sys/osx/mach/dyld.d core/sys/osx/mach/getsect.d \
-	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
-	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
-	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
-	core/sys/osx/sys/cdefs.d core/sys/osx/sys/event.d \
-	core/sys/osx/sys/mman.d
 
 DRUNTIME_DSOURCES_POSIX = core/sys/posix/aio.d \
 	core/sys/posix/arpa/inet.d core/sys/posix/config.d \
