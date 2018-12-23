@@ -36,22 +36,6 @@ index 1ab65ac8e..26daf76e5 100644
  	export GDC; \
  	GDC_FOR_BUILD="$$GDC"; export GDC_FOR_BUILD; \
  	GNATBIND="$$r/$(HOST_SUBDIR)/prev-gcc/gnatbind"; export GNATBIND; \
-diff --git a/gcc/config/aarch64/aarch64-d.c b/gcc/config/aarch64/aarch64-d.c
-index 1394f1fb7..a8ce6577b 100644
---- a/gcc/config/aarch64/aarch64-d.c
-+++ b/gcc/config/aarch64/aarch64-d.c
-@@ -29,3 +29,11 @@ aarch64_d_target_versions (void)
-   d_add_builtin_version ("AArch64");
-   d_add_builtin_version ("D_HardFloat");
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for AArch64 targets.  */
-+
-+const char *
-+aarch64_d_float_abi_type (void)
-+{
-+  return "hard";
-+}
 diff --git a/gcc/config/aarch64/aarch64-protos.h b/gcc/config/aarch64/aarch64-protos.h
 index 4ed886bd2..0be905898 100644
 --- a/gcc/config/aarch64/aarch64-protos.h
@@ -79,55 +63,6 @@ index 0c833a8fd..63e940477 100644
  
  
  
-diff --git a/gcc/config/arm/arm-d.c b/gcc/config/arm/arm-d.c
-index dbcf07efb..46ded68da 100644
---- a/gcc/config/arm/arm-d.c
-+++ b/gcc/config/arm/arm-d.c
-@@ -36,18 +36,36 @@ arm_d_target_versions (void)
-       d_add_builtin_version ("ARM_Thumb");
-     }
- 
--  if (TARGET_HARD_FLOAT_ABI)
-+  if (arm_float_abi == ARM_FLOAT_ABI_HARD)
-     d_add_builtin_version ("ARM_HardFloat");
--  else
--    {
--      if (TARGET_SOFT_FLOAT)
--	d_add_builtin_version ("ARM_SoftFloat");
--      else if (TARGET_HARD_FLOAT)
--	d_add_builtin_version ("ARM_SoftFP");
--    }
-+  else if (arm_float_abi == ARM_FLOAT_ABI_SOFT)
-+    d_add_builtin_version ("ARM_SoftFloat");
-+  else if (arm_float_abi == ARM_FLOAT_ABI_SOFTFP)
-+    d_add_builtin_version ("ARM_SoftFP");
- 
-   if (TARGET_SOFT_FLOAT)
-     d_add_builtin_version ("D_SoftFloat");
-   else if (TARGET_HARD_FLOAT)
-     d_add_builtin_version ("D_HardFloat");
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for ARM targets.  */
-+
-+const char *
-+arm_d_float_abi_type (void)
-+{
-+  switch (arm_float_abi)
-+    {
-+    case ARM_FLOAT_ABI_HARD:
-+      return "hard";
-+
-+    case ARM_FLOAT_ABI_SOFT:
-+      return "soft";
-+
-+    case ARM_FLOAT_ABI_SOFTFP:
-+      return "softfp";
-+
-+    default:
-+      return NULL;
-+    }
-+}
 diff --git a/gcc/config/arm/arm-protos.h b/gcc/config/arm/arm-protos.h
 index 00f5f16ed..dffff3944 100644
 --- a/gcc/config/arm/arm-protos.h
@@ -155,51 +90,6 @@ index ab63fc579..6234e01bc 100644
  
  #include "config/arm/arm-opts.h"
  
-diff --git a/gcc/config/glibc-d.c b/gcc/config/glibc-d.c
-index b73ee01f2..13d00d4b8 100644
---- a/gcc/config/glibc-d.c
-+++ b/gcc/config/glibc-d.c
-@@ -55,10 +55,21 @@ glibc_d_critsec_size (void)
- #endif
- }
- 
-+/* Implement TARGET_D_OBJECT_FORMAT for Glibc targets.  */
-+
-+const char *
-+glibc_d_object_format (void)
-+{
-+  return "elf";
-+}
-+
- #undef TARGET_D_OS_VERSIONS
- #define TARGET_D_OS_VERSIONS glibc_d_os_builtins
- 
- #undef TARGET_D_CRITSEC_SIZE
- #define TARGET_D_CRITSEC_SIZE glibc_d_critsec_size
- 
-+#undef TARGET_D_OBJECT_FORMAT
-+#define TARGET_D_OBJECT_FORMAT glibc_d_object_format
-+
- struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
-diff --git a/gcc/config/i386/i386-d.c b/gcc/config/i386/i386-d.c
-index 34304b84a..62fe54ac5 100644
---- a/gcc/config/i386/i386-d.c
-+++ b/gcc/config/i386/i386-d.c
-@@ -42,3 +42,14 @@ ix86_d_target_versions (void)
-   else
-     d_add_builtin_version ("D_SoftFloat");
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for x86 targets.  */
-+
-+const char *
-+ix86_d_float_abi_type (void)
-+{
-+  if (! (TARGET_80387 || TARGET_FLOAT_RETURNS_IN_80387))
-+    return "soft";
-+
-+  return "hard";
-+}
 diff --git a/gcc/config/i386/i386-protos.h b/gcc/config/i386/i386-protos.h
 index ae118079b..cf0230ba1 100644
 --- a/gcc/config/i386/i386-protos.h
@@ -227,27 +117,6 @@ index 64fc5d405..5c1455a8b 100644
  
  #ifndef CC1_SPEC
  #define CC1_SPEC "%(cc1_cpu) "
-diff --git a/gcc/config/mips/mips-d.c b/gcc/config/mips/mips-d.c
-index 8f0d96794..03ebe4d29 100644
---- a/gcc/config/mips/mips-d.c
-+++ b/gcc/config/mips/mips-d.c
-@@ -54,3 +54,16 @@ mips_d_target_versions (void)
-       d_add_builtin_version ("D_SoftFloat");
-     }
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for MIPS targets.  */
-+
-+const char *
-+mips_d_float_abi_type (void)
-+{
-+  if (TARGET_HARD_FLOAT_ABI)
-+    return "hard";
-+  else if (TARGET_SOFT_FLOAT_ABI)
-+    return "soft";
-+
-+  return NULL;
-+}
 diff --git a/gcc/config/mips/mips-protos.h b/gcc/config/mips/mips-protos.h
 index 7cde24240..0dd524297 100644
 --- a/gcc/config/mips/mips-protos.h
@@ -274,25 +143,6 @@ index d2205f089..b7bb3cf42 100644
  
  /* Default target_flags if no switches are specified  */
  
-diff --git a/gcc/config/pa/pa-d.c b/gcc/config/pa/pa-d.c
-index 249fd4d44..22955d6bc 100644
---- a/gcc/config/pa/pa-d.c
-+++ b/gcc/config/pa/pa-d.c
-@@ -37,3 +37,14 @@ pa_d_target_versions (void)
-   else
-     d_add_builtin_version ("D_HardFloat");
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for HPPA targets.  */
-+
-+const char *
-+pa_d_float_abi_type (void)
-+{
-+  if (TARGET_DISABLE_FPREGS || TARGET_SOFT_FLOAT)
-+    return "soft";
-+
-+  return "hard";
-+}
 diff --git a/gcc/config/pa/pa-linux.h b/gcc/config/pa/pa-linux.h
 index a4ad2dda1..1a9f2e6cc 100644
 --- a/gcc/config/pa/pa-linux.h
@@ -327,38 +177,6 @@ index 1a6253f22..3dc888d6e 100644
 +/* Target hooks for D language.  */
  #define TARGET_D_CPU_VERSIONS pa_d_target_versions
 +#define TARGET_D_FLOAT_ABI_TYPE pa_d_float_abi_type
-diff --git a/gcc/config/riscv/riscv-d.c b/gcc/config/riscv/riscv-d.c
-index 9cad9dd8f..6c2037496 100644
---- a/gcc/config/riscv/riscv-d.c
-+++ b/gcc/config/riscv/riscv-d.c
-@@ -37,3 +37,27 @@ riscv_d_target_versions (void)
-   else
-     d_add_builtin_version ("D_SoftFloat");
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for RISC-V targets.  */
-+
-+const char *
-+riscv_d_float_abi_type (void)
-+{
-+  switch (riscv_abi)
-+    {
-+    case ABI_ILP32E:
-+    case ABI_ILP32:
-+    case ABI_LP64:
-+      return "soft";
-+
-+    case ABI_ILP32F:
-+    case ABI_LP64F:
-+      return "single";
-+
-+    case ABI_ILP32D:
-+    case ABI_LP64D:
-+      return "double";
-+    }
-+
-+  return NULL;
-+}
 diff --git a/gcc/config/riscv/riscv-protos.h b/gcc/config/riscv/riscv-protos.h
 index 5dce9c433..2a76c3386 100644
 --- a/gcc/config/riscv/riscv-protos.h
@@ -386,27 +204,6 @@ index 13e15cc85..f0c8c4d85 100644
  
  /* Default target_flags if no switches are specified  */
  
-diff --git a/gcc/config/rs6000/rs6000-d.c b/gcc/config/rs6000/rs6000-d.c
-index 84eb4e93d..cdfa0610c 100644
---- a/gcc/config/rs6000/rs6000-d.c
-+++ b/gcc/config/rs6000/rs6000-d.c
-@@ -43,3 +43,16 @@ rs6000_d_target_versions (void)
-       d_add_builtin_version ("D_SoftFloat");
-     }
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for PowerPC targets.  */
-+
-+const char *
-+rs6000_d_float_abi_type (void)
-+{
-+  if (TARGET_HARD_FLOAT)
-+    return "hard";
-+  else if (TARGET_SOFT_FLOAT)
-+    return "soft";
-+
-+  return NULL;
-+}
 diff --git a/gcc/config/rs6000/rs6000-protos.h b/gcc/config/rs6000/rs6000-protos.h
 index 5ac864e83..585fda196 100644
 --- a/gcc/config/rs6000/rs6000-protos.h
@@ -434,27 +231,6 @@ index 2a62679bd..7ce32b27e 100644
  
  /* This is used by rs6000_cpu_cpp_builtins to indicate the byte order
     we're compiling for.  Some configurations may need to override it.  */
-diff --git a/gcc/config/s390/s390-d.c b/gcc/config/s390/s390-d.c
-index 1ea0a9d33..8d8d65f13 100644
---- a/gcc/config/s390/s390-d.c
-+++ b/gcc/config/s390/s390-d.c
-@@ -39,3 +39,16 @@ s390_d_target_versions (void)
-   else if (TARGET_HARD_FLOAT)
-     d_add_builtin_version ("D_HardFloat");
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for S/390 and zSeries targets.  */
-+
-+const char *
-+s390_d_float_abi_type (void)
-+{
-+  if (TARGET_HARD_FLOAT)
-+    return "hard";
-+  else if (TARGET_SOFT_FLOAT)
-+    return "soft";
-+
-+  return NULL;
-+}
 diff --git a/gcc/config/s390/s390-protos.h b/gcc/config/s390/s390-protos.h
 index 96fa705f8..274a53cbf 100644
 --- a/gcc/config/s390/s390-protos.h
@@ -482,22 +258,6 @@ index 3cfd3452d..0ca532c65 100644
  
  #ifdef DEFAULT_TARGET_64BIT
  #define TARGET_DEFAULT     (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP	\
-diff --git a/gcc/config/sparc/sparc-d.c b/gcc/config/sparc/sparc-d.c
-index 19fe5be6d..9a2a0d43b 100644
---- a/gcc/config/sparc/sparc-d.c
-+++ b/gcc/config/sparc/sparc-d.c
-@@ -46,3 +46,11 @@ sparc_d_target_versions (void)
-       d_add_builtin_version ("SPARC_SoftFloat");
-     }
- }
-+
-+/* Implement TARGET_D_FLOAT_ABI_TYPE for SPARC targets.  */
-+
-+const char *
-+sparc_d_float_abi_type (void)
-+{
-+  return (TARGET_FPU) ? "hard" : "soft";
-+}
 diff --git a/gcc/config/sparc/sparc-protos.h b/gcc/config/sparc/sparc-protos.h
 index 59c9b2a90..3ad54d912 100644
 --- a/gcc/config/sparc/sparc-protos.h

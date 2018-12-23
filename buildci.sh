@@ -187,6 +187,7 @@ configure() {
 
     ## Sync local GDC sources with upstream GCC.
     rsync -avc --delete ${project_dir}/gdc/gcc/d/ ${project_dir}/gcc/gcc/d
+    rsync -avc          ${project_dir}/gdc/gcc/config/ ${project_dir}/gcc/gcc/config
     rsync -avc --delete ${project_dir}/gdc/libphobos/ ${project_dir}/gcc/libphobos
     rsync -avc --delete ${project_dir}/gdc/gcc/testsuite/gdc.dg/ ${project_dir}/gcc/gcc/testsuite/gdc.dg
     rsync -avc --delete ${project_dir}/gdc/gcc/testsuite/gdc.test/ ${project_dir}/gcc/gcc/testsuite/gdc.test
