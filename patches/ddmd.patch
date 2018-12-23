@@ -1,9 +1,8 @@
-This implements building of self hosted D compiler in GCC.
----
-
+diff --git a/Makefile.def b/Makefile.def
+index 1aab271d8..31a14567f 100644
 --- a/Makefile.def
 +++ b/Makefile.def
-@@ -147,13 +147,14 @@ target_modules = { module= liboffloadmic
+@@ -147,13 +147,14 @@ target_modules = { module= liboffloadmic;
  target_modules = { module= libssp; lib_path=.libs; };
  target_modules = { module= newlib; };
  target_modules = { module= libgcc; bootstrap=true; no_check=true; };
@@ -28,9 +27,11 @@ This implements building of self hosted D compiler in GCC.
  
  // These are (some of) the make targets to be done in each subdirectory.
  // Not all; these are the ones which don't have special options.
+diff --git a/Makefile.in b/Makefile.in
+index 24f6deaf6..567d415d7 100644
 --- a/Makefile.in
 +++ b/Makefile.in
-@@ -1195,13 +1195,17 @@ all-target: maybe-all-target-newlib
+@@ -1201,13 +1201,17 @@ all-target: maybe-all-target-newlib
  @if target-libgcc-no-bootstrap
  all-target: maybe-all-target-libgcc
  @endif target-libgcc-no-bootstrap
@@ -48,7 +49,7 @@ This implements building of self hosted D compiler in GCC.
  all-target: maybe-all-target-libtermcap
  all-target: maybe-all-target-winsup
  all-target: maybe-all-target-libgloss
-@@ -1213,7 +1217,9 @@ all-target: maybe-all-target-libada
+@@ -1219,7 +1223,9 @@ all-target: maybe-all-target-libada
  all-target: maybe-all-target-libgomp
  @endif target-libgomp-no-bootstrap
  all-target: maybe-all-target-libitm
@@ -58,7 +59,7 @@ This implements building of self hosted D compiler in GCC.
  
  # Do a target for all the subdirectories.  A ``make do-X'' will do a
  # ``make X'' in all subdirectories (because, in general, there is a
-@@ -44252,7 +44258,6 @@ configure-target-libbacktrace: stage_cur
+@@ -44258,7 +44264,6 @@ configure-target-libbacktrace: stage_current
  @if target-libbacktrace
  maybe-configure-target-libbacktrace: configure-target-libbacktrace
  configure-target-libbacktrace: 
@@ -66,10 +67,22 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	echo "Checking multilib configuration for libbacktrace..."; \
-@@ -44290,6 +44295,412 @@ configure-target-libbacktrace:
+@@ -44296,245 +44301,1031 @@ configure-target-libbacktrace:
  
  
  
+-
+-
+-.PHONY: all-target-libbacktrace maybe-all-target-libbacktrace
+-maybe-all-target-libbacktrace:
+-@if gcc-bootstrap
+-all-target-libbacktrace: stage_current
+-@endif gcc-bootstrap
+-@if target-libbacktrace
+-TARGET-target-libbacktrace=all
+-maybe-all-target-libbacktrace: all-target-libbacktrace
+-all-target-libbacktrace: configure-target-libbacktrace
+-	@: $(MAKE); $(unstage)
 +.PHONY: configure-stage1-target-libbacktrace maybe-configure-stage1-target-libbacktrace
 +maybe-configure-stage1-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -77,8 +90,22 @@ This implements building of self hosted D compiler in GCC.
 +configure-stage1-target-libbacktrace:
 +	@[ $(current_stage) = stage1 ] || $(MAKE) stage1-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
-+	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+-	$(NORMAL_TARGET_EXPORTS)  \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) $(EXTRA_TARGET_FLAGS)   \
+-		$(TARGET-target-libbacktrace))
+-@endif target-libbacktrace
+-
+-
+-
+-
+-
+-.PHONY: check-target-libbacktrace maybe-check-target-libbacktrace
+-maybe-check-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-check-target-libbacktrace: check-target-libbacktrace
 +	TFLAGS="$(STAGE1_TFLAGS)"; \
 +	echo "Checking multilib configuration for libbacktrace..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
@@ -113,7 +140,9 @@ This implements building of self hosted D compiler in GCC.
 +	   \
 +	  $(STAGE1_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
+ 
+-check-target-libbacktrace:
+-	@: $(MAKE); $(unstage)
 +.PHONY: configure-stage2-target-libbacktrace maybe-configure-stage2-target-libbacktrace
 +maybe-configure-stage2-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -121,8 +150,8 @@ This implements building of self hosted D compiler in GCC.
 +configure-stage2-target-libbacktrace:
 +	@[ $(current_stage) = stage2 ] || $(MAKE) stage2-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
-+	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGE2_TFLAGS)"; \
 +	echo "Checking multilib configuration for libbacktrace..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
@@ -137,7 +166,16 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(TARGET_FLAGS_TO_PASS)   check)
+-
+-@endif target-libbacktrace
+-
+-.PHONY: install-target-libbacktrace maybe-install-target-libbacktrace
+-maybe-install-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-install-target-libbacktrace: install-target-libbacktrace
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -158,7 +196,9 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGE2_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
+ 
+-install-target-libbacktrace: installdirs
+-	@: $(MAKE); $(unstage)
 +.PHONY: configure-stage3-target-libbacktrace maybe-configure-stage3-target-libbacktrace
 +maybe-configure-stage3-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -166,8 +206,8 @@ This implements building of self hosted D compiler in GCC.
 +configure-stage3-target-libbacktrace:
 +	@[ $(current_stage) = stage3 ] || $(MAKE) stage3-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
-+	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGE3_TFLAGS)"; \
 +	echo "Checking multilib configuration for libbacktrace..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
@@ -182,7 +222,16 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(TARGET_FLAGS_TO_PASS)  install)
+-
+-@endif target-libbacktrace
+-
+-.PHONY: install-strip-target-libbacktrace maybe-install-strip-target-libbacktrace
+-maybe-install-strip-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-install-strip-target-libbacktrace: install-strip-target-libbacktrace
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -203,7 +252,9 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGE3_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
+ 
+-install-strip-target-libbacktrace: installdirs
+-	@: $(MAKE); $(unstage)
 +.PHONY: configure-stage4-target-libbacktrace maybe-configure-stage4-target-libbacktrace
 +maybe-configure-stage4-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -211,8 +262,8 @@ This implements building of self hosted D compiler in GCC.
 +configure-stage4-target-libbacktrace:
 +	@[ $(current_stage) = stage4 ] || $(MAKE) stage4-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
-+	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGE4_TFLAGS)"; \
 +	echo "Checking multilib configuration for libbacktrace..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
@@ -227,7 +278,18 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(TARGET_FLAGS_TO_PASS)  install-strip)
+-
+-@endif target-libbacktrace
+-
+-# Other targets (info, dvi, pdf, etc.)
+-
+-.PHONY: maybe-info-target-libbacktrace info-target-libbacktrace
+-maybe-info-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-info-target-libbacktrace: info-target-libbacktrace
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -248,7 +310,12 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGE4_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
+ 
+-info-target-libbacktrace: \
+-    configure-target-libbacktrace 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
 +.PHONY: configure-stageprofile-target-libbacktrace maybe-configure-stageprofile-target-libbacktrace
 +maybe-configure-stageprofile-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -257,7 +324,7 @@ This implements building of self hosted D compiler in GCC.
 +	@[ $(current_stage) = stageprofile ] || $(MAKE) stageprofile-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
 +	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEprofile_TFLAGS)"; \
 +	echo "Checking multilib configuration for libbacktrace..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
@@ -272,7 +339,25 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing info in $(TARGET_SUBDIR)/libbacktrace"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           info) \
+-	  || exit 1
+-
+-@endif target-libbacktrace
+-
+-.PHONY: maybe-dvi-target-libbacktrace dvi-target-libbacktrace
+-maybe-dvi-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-dvi-target-libbacktrace: dvi-target-libbacktrace
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -293,7 +378,12 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEprofile_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
+ 
+-dvi-target-libbacktrace: \
+-    configure-target-libbacktrace 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
 +.PHONY: configure-stagetrain-target-libbacktrace maybe-configure-stagetrain-target-libbacktrace
 +maybe-configure-stagetrain-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -302,7 +392,7 @@ This implements building of self hosted D compiler in GCC.
 +	@[ $(current_stage) = stagetrain ] || $(MAKE) stagetrain-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
 +	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEtrain_TFLAGS)"; \
 +	echo "Checking multilib configuration for libbacktrace..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
@@ -317,7 +407,25 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing dvi in $(TARGET_SUBDIR)/libbacktrace"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           dvi) \
+-	  || exit 1
+-
+-@endif target-libbacktrace
+-
+-.PHONY: maybe-pdf-target-libbacktrace pdf-target-libbacktrace
+-maybe-pdf-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-pdf-target-libbacktrace: pdf-target-libbacktrace
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -338,7 +446,12 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEtrain_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
+ 
+-pdf-target-libbacktrace: \
+-    configure-target-libbacktrace 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
 +.PHONY: configure-stagefeedback-target-libbacktrace maybe-configure-stagefeedback-target-libbacktrace
 +maybe-configure-stagefeedback-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -347,7 +460,7 @@ This implements building of self hosted D compiler in GCC.
 +	@[ $(current_stage) = stagefeedback ] || $(MAKE) stagefeedback-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
 +	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEfeedback_TFLAGS)"; \
 +	echo "Checking multilib configuration for libbacktrace..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
@@ -362,7 +475,20 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing pdf in $(TARGET_SUBDIR)/libbacktrace"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           pdf) \
+-	  || exit 1
+-
+-@endif target-libbacktrace
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -383,7 +509,11 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEfeedback_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
+ 
+-.PHONY: maybe-html-target-libbacktrace html-target-libbacktrace
+-maybe-html-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-html-target-libbacktrace: html-target-libbacktrace
 +.PHONY: configure-stageautoprofile-target-libbacktrace maybe-configure-stageautoprofile-target-libbacktrace
 +maybe-configure-stageautoprofile-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -428,7 +558,12 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEautoprofile_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
+ 
+-html-target-libbacktrace: \
+-    configure-target-libbacktrace 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
 +.PHONY: configure-stageautofeedback-target-libbacktrace maybe-configure-stageautofeedback-target-libbacktrace
 +maybe-configure-stageautofeedback-target-libbacktrace:
 +@if target-libbacktrace-bootstrap
@@ -437,7 +572,7 @@ This implements building of self hosted D compiler in GCC.
 +	@[ $(current_stage) = stageautofeedback ] || $(MAKE) stageautofeedback-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libbacktrace
 +	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEautofeedback_TFLAGS)"; \
 +	echo "Checking multilib configuration for libbacktrace..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libbacktrace/multilib.tmp 2> /dev/null; \
@@ -452,7 +587,18 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libbacktrace/multilib.tmp $(TARGET_SUBDIR)/libbacktrace/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libbacktrace/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing html in $(TARGET_SUBDIR)/libbacktrace"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           html) \
+-	  || exit 1
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -473,24 +619,86 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEautofeedback_CONFIGURE_FLAGS)
 +@endif target-libbacktrace-bootstrap
-+
-+
-+
  
+-@endif target-libbacktrace
  
- .PHONY: all-target-libbacktrace maybe-all-target-libbacktrace
-@@ -44301,7 +44712,6 @@ all-target-libbacktrace: stage_current
- TARGET-target-libbacktrace=all
- maybe-all-target-libbacktrace: all-target-libbacktrace
- all-target-libbacktrace: configure-target-libbacktrace
+-.PHONY: maybe-TAGS-target-libbacktrace TAGS-target-libbacktrace
+-maybe-TAGS-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-TAGS-target-libbacktrace: TAGS-target-libbacktrace
+ 
+-TAGS-target-libbacktrace: \
+-    configure-target-libbacktrace 
 -	@: $(MAKE); $(unstage)
- 	@r=`${PWD_COMMAND}`; export r; \
+-	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
+-	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+-	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing TAGS in $(TARGET_SUBDIR)/libbacktrace"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           TAGS) \
+-	  || exit 1
+ 
+-@endif target-libbacktrace
+ 
+-.PHONY: maybe-install-info-target-libbacktrace install-info-target-libbacktrace
+-maybe-install-info-target-libbacktrace:
++.PHONY: all-target-libbacktrace maybe-all-target-libbacktrace
++maybe-all-target-libbacktrace:
++@if gcc-bootstrap
++all-target-libbacktrace: stage_current
++@endif gcc-bootstrap
+ @if target-libbacktrace
+-maybe-install-info-target-libbacktrace: install-info-target-libbacktrace
+-
+-install-info-target-libbacktrace: \
+-    configure-target-libbacktrace \
+-    info-target-libbacktrace 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
++TARGET-target-libbacktrace=all
++maybe-all-target-libbacktrace: all-target-libbacktrace
++all-target-libbacktrace: configure-target-libbacktrace
++	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
- 	$(NORMAL_TARGET_EXPORTS)  \
-@@ -44312,6 +44722,387 @@ all-target-libbacktrace: configure-targe
+-	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing install-info in $(TARGET_SUBDIR)/libbacktrace"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
++	$(NORMAL_TARGET_EXPORTS)  \
+ 	(cd $(TARGET_SUBDIR)/libbacktrace && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           install-info) \
+-	  || exit 1
+-
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) $(EXTRA_TARGET_FLAGS)   \
++		$(TARGET-target-libbacktrace))
+ @endif target-libbacktrace
  
+-.PHONY: maybe-install-pdf-target-libbacktrace install-pdf-target-libbacktrace
+-maybe-install-pdf-target-libbacktrace:
+-@if target-libbacktrace
+-maybe-install-pdf-target-libbacktrace: install-pdf-target-libbacktrace
  
- 
+-install-pdf-target-libbacktrace: \
+-    configure-target-libbacktrace \
+-    pdf-target-libbacktrace 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
++
 +.PHONY: all-stage1-target-libbacktrace maybe-all-stage1-target-libbacktrace
 +.PHONY: clean-stage1-target-libbacktrace maybe-clean-stage1-target-libbacktrace
 +maybe-all-stage1-target-libbacktrace:
@@ -872,10 +1080,227 @@ This implements building of self hosted D compiler in GCC.
 +
 +
 +
- 
- 
- .PHONY: check-target-libbacktrace maybe-check-target-libbacktrace
-@@ -47000,7 +47791,6 @@ configure-target-libphobos: stage_curren
++
++
++.PHONY: check-target-libbacktrace maybe-check-target-libbacktrace
++maybe-check-target-libbacktrace:
++@if target-libbacktrace
++maybe-check-target-libbacktrace: check-target-libbacktrace
++
++check-target-libbacktrace:
++	@: $(MAKE); $(unstage)
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(TARGET_FLAGS_TO_PASS)   check)
++
++@endif target-libbacktrace
++
++.PHONY: install-target-libbacktrace maybe-install-target-libbacktrace
++maybe-install-target-libbacktrace:
++@if target-libbacktrace
++maybe-install-target-libbacktrace: install-target-libbacktrace
++
++install-target-libbacktrace: installdirs
++	@: $(MAKE); $(unstage)
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(TARGET_FLAGS_TO_PASS)  install)
++
++@endif target-libbacktrace
++
++.PHONY: install-strip-target-libbacktrace maybe-install-strip-target-libbacktrace
++maybe-install-strip-target-libbacktrace:
++@if target-libbacktrace
++maybe-install-strip-target-libbacktrace: install-strip-target-libbacktrace
++
++install-strip-target-libbacktrace: installdirs
++	@: $(MAKE); $(unstage)
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(TARGET_FLAGS_TO_PASS)  install-strip)
++
++@endif target-libbacktrace
++
++# Other targets (info, dvi, pdf, etc.)
++
++.PHONY: maybe-info-target-libbacktrace info-target-libbacktrace
++maybe-info-target-libbacktrace:
++@if target-libbacktrace
++maybe-info-target-libbacktrace: info-target-libbacktrace
++
++info-target-libbacktrace: \
++    configure-target-libbacktrace 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing info in $(TARGET_SUBDIR)/libbacktrace"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           info) \
++	  || exit 1
++
++@endif target-libbacktrace
++
++.PHONY: maybe-dvi-target-libbacktrace dvi-target-libbacktrace
++maybe-dvi-target-libbacktrace:
++@if target-libbacktrace
++maybe-dvi-target-libbacktrace: dvi-target-libbacktrace
++
++dvi-target-libbacktrace: \
++    configure-target-libbacktrace 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing dvi in $(TARGET_SUBDIR)/libbacktrace"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           dvi) \
++	  || exit 1
++
++@endif target-libbacktrace
++
++.PHONY: maybe-pdf-target-libbacktrace pdf-target-libbacktrace
++maybe-pdf-target-libbacktrace:
++@if target-libbacktrace
++maybe-pdf-target-libbacktrace: pdf-target-libbacktrace
++
++pdf-target-libbacktrace: \
++    configure-target-libbacktrace 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing pdf in $(TARGET_SUBDIR)/libbacktrace"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           pdf) \
++	  || exit 1
++
++@endif target-libbacktrace
++
++.PHONY: maybe-html-target-libbacktrace html-target-libbacktrace
++maybe-html-target-libbacktrace:
++@if target-libbacktrace
++maybe-html-target-libbacktrace: html-target-libbacktrace
++
++html-target-libbacktrace: \
++    configure-target-libbacktrace 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing html in $(TARGET_SUBDIR)/libbacktrace"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           html) \
++	  || exit 1
++
++@endif target-libbacktrace
++
++.PHONY: maybe-TAGS-target-libbacktrace TAGS-target-libbacktrace
++maybe-TAGS-target-libbacktrace:
++@if target-libbacktrace
++maybe-TAGS-target-libbacktrace: TAGS-target-libbacktrace
++
++TAGS-target-libbacktrace: \
++    configure-target-libbacktrace 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing TAGS in $(TARGET_SUBDIR)/libbacktrace"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           TAGS) \
++	  || exit 1
++
++@endif target-libbacktrace
++
++.PHONY: maybe-install-info-target-libbacktrace install-info-target-libbacktrace
++maybe-install-info-target-libbacktrace:
++@if target-libbacktrace
++maybe-install-info-target-libbacktrace: install-info-target-libbacktrace
++
++install-info-target-libbacktrace: \
++    configure-target-libbacktrace \
++    info-target-libbacktrace 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing install-info in $(TARGET_SUBDIR)/libbacktrace"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libbacktrace && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           install-info) \
++	  || exit 1
++
++@endif target-libbacktrace
++
++.PHONY: maybe-install-pdf-target-libbacktrace install-pdf-target-libbacktrace
++maybe-install-pdf-target-libbacktrace:
++@if target-libbacktrace
++maybe-install-pdf-target-libbacktrace: install-pdf-target-libbacktrace
++
++install-pdf-target-libbacktrace: \
++    configure-target-libbacktrace \
++    pdf-target-libbacktrace 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libbacktrace/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	$(NORMAL_TARGET_EXPORTS) \
+ 	echo "Doing install-pdf in $(TARGET_SUBDIR)/libbacktrace"; \
+@@ -47006,7 +47797,6 @@ configure-target-libphobos: stage_current
  @if target-libphobos
  maybe-configure-target-libphobos: configure-target-libphobos
  configure-target-libphobos: 
@@ -883,7 +1308,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	echo "Checking multilib configuration for libphobos..."; \
-@@ -47038,6 +47828,412 @@ configure-target-libphobos:
+@@ -47044,6 +47834,412 @@ configure-target-libphobos:
  
  
  
@@ -1296,7 +1721,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: all-target-libphobos maybe-all-target-libphobos
-@@ -47049,7 +48245,6 @@ all-target-libphobos: stage_current
+@@ -47055,7 +48251,6 @@ all-target-libphobos: stage_current
  TARGET-target-libphobos=all
  maybe-all-target-libphobos: all-target-libphobos
  all-target-libphobos: configure-target-libphobos
@@ -1304,7 +1729,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	$(NORMAL_TARGET_EXPORTS)  \
-@@ -47060,6 +48255,387 @@ all-target-libphobos: configure-target-l
+@@ -47066,6 +48261,387 @@ all-target-libphobos: configure-target-libphobos
  
  
  
@@ -1692,18 +2117,191 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: check-target-libphobos maybe-check-target-libphobos
-@@ -52285,7 +53861,6 @@ configure-target-libatomic: stage_curren
- @if target-libatomic
- maybe-configure-target-libatomic: configure-target-libatomic
- configure-target-libatomic: 
--	@: $(MAKE); $(unstage)
- 	@r=`${PWD_COMMAND}`; export r; \
+@@ -52165,137 +53741,539 @@ installcheck-target-libitm: \
+ 	r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
- 	echo "Checking multilib configuration for libatomic..."; \
-@@ -52323,6 +53898,412 @@ configure-target-libatomic:
- 
- 
- 
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing installcheck in $(TARGET_SUBDIR)/libitm"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libitm && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           installcheck) \
+-	  || exit 1
+-
+-@endif target-libitm
+-
+-.PHONY: maybe-mostlyclean-target-libitm mostlyclean-target-libitm
+-maybe-mostlyclean-target-libitm:
+-@if target-libitm
+-maybe-mostlyclean-target-libitm: mostlyclean-target-libitm
++	echo "Doing installcheck in $(TARGET_SUBDIR)/libitm"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libitm && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           installcheck) \
++	  || exit 1
++
++@endif target-libitm
++
++.PHONY: maybe-mostlyclean-target-libitm mostlyclean-target-libitm
++maybe-mostlyclean-target-libitm:
++@if target-libitm
++maybe-mostlyclean-target-libitm: mostlyclean-target-libitm
++
++mostlyclean-target-libitm: 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libitm/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing mostlyclean in $(TARGET_SUBDIR)/libitm"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libitm && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           mostlyclean) \
++	  || exit 1
++
++@endif target-libitm
++
++.PHONY: maybe-clean-target-libitm clean-target-libitm
++maybe-clean-target-libitm:
++@if target-libitm
++maybe-clean-target-libitm: clean-target-libitm
++
++clean-target-libitm: 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libitm/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing clean in $(TARGET_SUBDIR)/libitm"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libitm && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           clean) \
++	  || exit 1
++
++@endif target-libitm
++
++.PHONY: maybe-distclean-target-libitm distclean-target-libitm
++maybe-distclean-target-libitm:
++@if target-libitm
++maybe-distclean-target-libitm: distclean-target-libitm
++
++distclean-target-libitm: 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libitm/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing distclean in $(TARGET_SUBDIR)/libitm"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libitm && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           distclean) \
++	  || exit 1
++
++@endif target-libitm
++
++.PHONY: maybe-maintainer-clean-target-libitm maintainer-clean-target-libitm
++maybe-maintainer-clean-target-libitm:
++@if target-libitm
++maybe-maintainer-clean-target-libitm: maintainer-clean-target-libitm
++
++maintainer-clean-target-libitm: 
++	@: $(MAKE); $(unstage)
++	@[ -f $(TARGET_SUBDIR)/libitm/Makefile ] || exit 0; \
++	r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	$(NORMAL_TARGET_EXPORTS) \
++	echo "Doing maintainer-clean in $(TARGET_SUBDIR)/libitm"; \
++	for flag in $(EXTRA_TARGET_FLAGS); do \
++	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
++	done; \
++	(cd $(TARGET_SUBDIR)/libitm && \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
++	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
++	          "RANLIB=$${RANLIB}" \
++	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
++	           maintainer-clean) \
++	  || exit 1
++
++@endif target-libitm
++
++
++
++
++
++.PHONY: configure-target-libatomic maybe-configure-target-libatomic
++maybe-configure-target-libatomic:
++@if gcc-bootstrap
++configure-target-libatomic: stage_current
++@endif gcc-bootstrap
++@if target-libatomic
++maybe-configure-target-libatomic: configure-target-libatomic
++configure-target-libatomic: 
++	@r=`${PWD_COMMAND}`; export r; \
++	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
++	echo "Checking multilib configuration for libatomic..."; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
++	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
++	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
++	  else \
++	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
++	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	  fi; \
++	else \
++	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
++	fi; \
++	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
++	$(NORMAL_TARGET_EXPORTS)  \
++	echo Configuring in $(TARGET_SUBDIR)/libatomic; \
++	cd "$(TARGET_SUBDIR)/libatomic" || exit 1; \
++	case $(srcdir) in \
++	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
++	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
++		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
++	esac; \
++	module_srcdir=libatomic; \
++	rm -f no-such-file || : ; \
++	CONFIG_SITE=no-such-file $(SHELL) \
++	  $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
++	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
++	  --target=${target_alias}  \
++	  || exit 1
++@endif target-libatomic
++
++
++
 +.PHONY: configure-stage1-target-libatomic maybe-configure-stage1-target-libatomic
 +maybe-configure-stage1-target-libatomic:
 +@if target-libatomic-bootstrap
@@ -1882,7 +2480,11 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGE4_CONFIGURE_FLAGS)
 +@endif target-libatomic-bootstrap
-+
+ 
+-mostlyclean-target-libitm: 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libitm/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
 +.PHONY: configure-stageprofile-target-libatomic maybe-configure-stageprofile-target-libatomic
 +maybe-configure-stageprofile-target-libatomic:
 +@if target-libatomic-bootstrap
@@ -1891,7 +2493,7 @@ This implements building of self hosted D compiler in GCC.
 +	@[ $(current_stage) = stageprofile ] || $(MAKE) stageprofile-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
 +	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEprofile_TFLAGS)"; \
 +	echo "Checking multilib configuration for libatomic..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
@@ -1906,7 +2508,25 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing mostlyclean in $(TARGET_SUBDIR)/libitm"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libitm && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           mostlyclean) \
+-	  || exit 1
+-
+-@endif target-libitm
+-
+-.PHONY: maybe-clean-target-libitm clean-target-libitm
+-maybe-clean-target-libitm:
+-@if target-libitm
+-maybe-clean-target-libitm: clean-target-libitm
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -1927,7 +2547,11 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEprofile_CONFIGURE_FLAGS)
 +@endif target-libatomic-bootstrap
-+
+ 
+-clean-target-libitm: 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libitm/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
 +.PHONY: configure-stagetrain-target-libatomic maybe-configure-stagetrain-target-libatomic
 +maybe-configure-stagetrain-target-libatomic:
 +@if target-libatomic-bootstrap
@@ -1936,7 +2560,7 @@ This implements building of self hosted D compiler in GCC.
 +	@[ $(current_stage) = stagetrain ] || $(MAKE) stagetrain-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
 +	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEtrain_TFLAGS)"; \
 +	echo "Checking multilib configuration for libatomic..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
@@ -1951,7 +2575,25 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing clean in $(TARGET_SUBDIR)/libitm"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libitm && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           clean) \
+-	  || exit 1
+-
+-@endif target-libitm
+-
+-.PHONY: maybe-distclean-target-libitm distclean-target-libitm
+-maybe-distclean-target-libitm:
+-@if target-libitm
+-maybe-distclean-target-libitm: distclean-target-libitm
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -1972,7 +2614,11 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEtrain_CONFIGURE_FLAGS)
 +@endif target-libatomic-bootstrap
-+
+ 
+-distclean-target-libitm: 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libitm/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
 +.PHONY: configure-stagefeedback-target-libatomic maybe-configure-stagefeedback-target-libatomic
 +maybe-configure-stagefeedback-target-libatomic:
 +@if target-libatomic-bootstrap
@@ -1981,7 +2627,7 @@ This implements building of self hosted D compiler in GCC.
 +	@[ $(current_stage) = stagefeedback ] || $(MAKE) stagefeedback-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
 +	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEfeedback_TFLAGS)"; \
 +	echo "Checking multilib configuration for libatomic..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
@@ -1996,7 +2642,25 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing distclean in $(TARGET_SUBDIR)/libitm"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libitm && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           distclean) \
+-	  || exit 1
+-
+-@endif target-libitm
+-
+-.PHONY: maybe-maintainer-clean-target-libitm maintainer-clean-target-libitm
+-maybe-maintainer-clean-target-libitm:
+-@if target-libitm
+-maybe-maintainer-clean-target-libitm: maintainer-clean-target-libitm
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -2017,7 +2681,11 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEfeedback_CONFIGURE_FLAGS)
 +@endif target-libatomic-bootstrap
-+
+ 
+-maintainer-clean-target-libitm: 
+-	@: $(MAKE); $(unstage)
+-	@[ -f $(TARGET_SUBDIR)/libitm/Makefile ] || exit 0; \
+-	r=`${PWD_COMMAND}`; export r; \
 +.PHONY: configure-stageautoprofile-target-libatomic maybe-configure-stageautoprofile-target-libatomic
 +maybe-configure-stageautoprofile-target-libatomic:
 +@if target-libatomic-bootstrap
@@ -2026,7 +2694,7 @@ This implements building of self hosted D compiler in GCC.
 +	@[ $(current_stage) = stageautoprofile ] || $(MAKE) stageautoprofile-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
 +	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEautoprofile_TFLAGS)"; \
 +	echo "Checking multilib configuration for libatomic..."; \
 +	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
@@ -2041,7 +2709,24 @@ This implements building of self hosted D compiler in GCC.
 +	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
-+	$(NORMAL_TARGET_EXPORTS) \
+ 	$(NORMAL_TARGET_EXPORTS) \
+-	echo "Doing maintainer-clean in $(TARGET_SUBDIR)/libitm"; \
+-	for flag in $(EXTRA_TARGET_FLAGS); do \
+-	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+-	done; \
+-	(cd $(TARGET_SUBDIR)/libitm && \
+-	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+-	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+-	          "RANLIB=$${RANLIB}" \
+-	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+-	           maintainer-clean) \
+-	  || exit 1
+-
+-@endif target-libitm
+-
+-
+-
+-
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
@@ -2062,7 +2747,16 @@ This implements building of self hosted D compiler in GCC.
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEautoprofile_CONFIGURE_FLAGS)
 +@endif target-libatomic-bootstrap
-+
+ 
+-.PHONY: configure-target-libatomic maybe-configure-target-libatomic
+-maybe-configure-target-libatomic:
+-@if gcc-bootstrap
+-configure-target-libatomic: stage_current
+-@endif gcc-bootstrap
+-@if target-libatomic
+-maybe-configure-target-libatomic: configure-target-libatomic
+-configure-target-libatomic: 
+-	@: $(MAKE); $(unstage)
 +.PHONY: configure-stageautofeedback-target-libatomic maybe-configure-stageautofeedback-target-libatomic
 +maybe-configure-stageautofeedback-target-libatomic:
 +@if target-libatomic-bootstrap
@@ -2070,50 +2764,52 @@ This implements building of self hosted D compiler in GCC.
 +configure-stageautofeedback-target-libatomic:
 +	@[ $(current_stage) = stageautofeedback ] || $(MAKE) stageautofeedback-start
 +	@$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic
-+	@r=`${PWD_COMMAND}`; export r; \
-+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+ 	@r=`${PWD_COMMAND}`; export r; \
+ 	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	TFLAGS="$(STAGEautofeedback_TFLAGS)"; \
-+	echo "Checking multilib configuration for libatomic..."; \
-+	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
-+	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
-+	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
-+	    rm -f $(TARGET_SUBDIR)/libatomic/multilib.tmp; \
-+	  else \
-+	    rm -f $(TARGET_SUBDIR)/libatomic/Makefile; \
-+	    mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
-+	  fi; \
-+	else \
-+	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
-+	fi; \
-+	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
+ 	echo "Checking multilib configuration for libatomic..."; \
+-	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
+ 	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libatomic/multilib.tmp 2> /dev/null; \
+ 	if test -r $(TARGET_SUBDIR)/libatomic/multilib.out; then \
+ 	  if cmp -s $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; then \
+@@ -52308,24 +54286,27 @@ configure-target-libatomic:
+ 	  mv $(TARGET_SUBDIR)/libatomic/multilib.tmp $(TARGET_SUBDIR)/libatomic/multilib.out; \
+ 	fi; \
+ 	test ! -f $(TARGET_SUBDIR)/libatomic/Makefile || exit 0; \
 +	$(NORMAL_TARGET_EXPORTS) \
 +	 \
 +	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
 +	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
 +	LIBCFLAGS="$(LIBCFLAGS_FOR_TARGET)"; export LIBCFLAGS;  \
 +	echo Configuring stage autofeedback in $(TARGET_SUBDIR)/libatomic; \
-+	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
+ 	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libatomic; \
+-	$(NORMAL_TARGET_EXPORTS)  \
+-	echo Configuring in $(TARGET_SUBDIR)/libatomic; \
+-	cd "$(TARGET_SUBDIR)/libatomic" || exit 1; \
 +	cd $(TARGET_SUBDIR)/libatomic || exit 1; \
-+	case $(srcdir) in \
-+	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
-+	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
-+		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
-+	esac; \
-+	module_srcdir=libatomic; \
+ 	case $(srcdir) in \
+ 	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
+ 	  *) topdir=`echo $(TARGET_SUBDIR)/libatomic/ | \
+ 		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
+ 	esac; \
+ 	module_srcdir=libatomic; \
+-	rm -f no-such-file || : ; \
+-	CONFIG_SITE=no-such-file $(SHELL) \
+-	  $$s/$$module_srcdir/configure \
 +	$(SHELL) $$s/$$module_srcdir/configure \
-+	  --srcdir=$${topdir}/$$module_srcdir \
-+	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
+ 	  --srcdir=$${topdir}/$$module_srcdir \
+ 	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
+-	  --target=${target_alias}  \
+-	  || exit 1
+-@endif target-libatomic
 +	  --target=${target_alias} \
 +	  --with-build-libsubdir=$(HOST_SUBDIR) \
 +	  $(STAGEautofeedback_CONFIGURE_FLAGS)
 +@endif target-libatomic-bootstrap
-+
-+
-+
  
  
- .PHONY: all-target-libatomic maybe-all-target-libatomic
-@@ -52334,7 +54315,6 @@ all-target-libatomic: stage_current
+ 
+@@ -52340,7 +54321,6 @@ all-target-libatomic: stage_current
  TARGET-target-libatomic=all
  maybe-all-target-libatomic: all-target-libatomic
  all-target-libatomic: configure-target-libatomic
@@ -2121,7 +2817,7 @@ This implements building of self hosted D compiler in GCC.
  	@r=`${PWD_COMMAND}`; export r; \
  	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
  	$(NORMAL_TARGET_EXPORTS)  \
-@@ -52345,6 +54325,387 @@ all-target-libatomic: configure-target-l
+@@ -52351,6 +54331,387 @@ all-target-libatomic: configure-target-libatomic
  
  
  
@@ -2509,7 +3205,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  .PHONY: check-target-libatomic maybe-check-target-libatomic
-@@ -56029,13 +58390,29 @@ configure-stagetrain-target-libgcc: mayb
+@@ -56035,13 +58396,29 @@ configure-stagetrain-target-libgcc: maybe-all-stagetrain-gcc
  configure-stagefeedback-target-libgcc: maybe-all-stagefeedback-gcc
  configure-stageautoprofile-target-libgcc: maybe-all-stageautoprofile-gcc
  configure-stageautofeedback-target-libgcc: maybe-all-stageautofeedback-gcc
@@ -2541,7 +3237,7 @@ This implements building of self hosted D compiler in GCC.
  configure-target-libtermcap: stage_last
  configure-target-winsup: stage_last
  configure-target-libgloss: stage_last
-@@ -56053,7 +58430,15 @@ configure-stagefeedback-target-libgomp:
+@@ -56059,7 +58436,15 @@ configure-stagefeedback-target-libgomp: maybe-all-stagefeedback-gcc
  configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-gcc
  configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-gcc
  configure-target-libitm: stage_last
@@ -2558,7 +3254,7 @@ This implements building of self hosted D compiler in GCC.
  @endif gcc-bootstrap
  
  @if gcc-no-bootstrap
-@@ -57063,14 +59448,39 @@ all-m4: maybe-all-build-texinfo
+@@ -57069,14 +59454,39 @@ all-m4: maybe-all-build-texinfo
  configure-target-fastjar: maybe-configure-target-zlib
  all-target-fastjar: maybe-all-target-zlib
  configure-target-libgo: maybe-configure-target-libffi
@@ -2600,7 +3296,7 @@ This implements building of self hosted D compiler in GCC.
  configure-target-libstdc++-v3: maybe-configure-target-libgomp
  configure-stage1-target-libstdc++-v3: maybe-configure-stage1-target-libgomp
  configure-stage2-target-libstdc++-v3: maybe-configure-stage2-target-libgomp
-@@ -57127,7 +59537,6 @@ install-target-libstdc++-v3: maybe-insta
+@@ -57133,7 +59543,6 @@ install-target-libstdc++-v3: maybe-install-target-libgcc
  all-target-libgloss: maybe-all-target-newlib
  all-target-winsup: maybe-all-target-libtermcap
  configure-target-libgfortran: maybe-all-target-libquadmath
@@ -2608,7 +3304,7 @@ This implements building of self hosted D compiler in GCC.
  
  
  @if gcc-bootstrap
-@@ -57176,10 +59585,13 @@ all-bison: maybe-all-intl
+@@ -57182,10 +59591,13 @@ all-bison: maybe-all-intl
  all-flex: maybe-all-intl
  all-m4: maybe-all-intl
  configure-target-libgo: maybe-all-target-libstdc++-v3
@@ -2622,7 +3318,7 @@ This implements building of self hosted D compiler in GCC.
  @endunless gcc-bootstrap
  
  # Dependencies for target modules on other target modules are
-@@ -57215,6 +59627,24 @@ configure-stagetrain-target-libvtv: mayb
+@@ -57221,6 +59633,24 @@ configure-stagetrain-target-libvtv: maybe-all-stagetrain-target-libgcc
  configure-stagefeedback-target-libvtv: maybe-all-stagefeedback-target-libgcc
  configure-stageautoprofile-target-libvtv: maybe-all-stageautoprofile-target-libgcc
  configure-stageautofeedback-target-libvtv: maybe-all-stageautofeedback-target-libgcc
@@ -2647,7 +3343,7 @@ This implements building of self hosted D compiler in GCC.
  configure-stage1-target-libgomp: maybe-all-stage1-target-libgcc
  configure-stage2-target-libgomp: maybe-all-stage2-target-libgcc
  configure-stage3-target-libgomp: maybe-all-stage3-target-libgcc
-@@ -57224,6 +59654,15 @@ configure-stagetrain-target-libgomp: may
+@@ -57230,6 +59660,15 @@ configure-stagetrain-target-libgomp: maybe-all-stagetrain-target-libgcc
  configure-stagefeedback-target-libgomp: maybe-all-stagefeedback-target-libgcc
  configure-stageautoprofile-target-libgomp: maybe-all-stageautoprofile-target-libgcc
  configure-stageautofeedback-target-libgomp: maybe-all-stageautofeedback-target-libgcc
@@ -2663,6 +3359,8 @@ This implements building of self hosted D compiler in GCC.
  @endif gcc-bootstrap
  
  @if gcc-no-bootstrap
+diff --git a/config/acx.m4 b/config/acx.m4
+index 87c1b5e29..3c65d8206 100644
 --- a/config/acx.m4
 +++ b/config/acx.m4
 @@ -420,6 +420,18 @@ else
@@ -2684,9 +3382,11 @@ This implements building of self hosted D compiler in GCC.
  dnl 'make compare' can be significantly faster, if cmp itself can
  dnl skip bytes instead of using tail.  The test being performed is
  dnl "if cmp --ignore-initial=2 t1 t2 && ! cmp --ignore-initial=1 t1 t2"
+diff --git a/configure b/configure
+index 4b095de5b..f80ada81c 100755
 --- a/configure
 +++ b/configure
-@@ -662,6 +662,7 @@ extra_mpfr_configure_flags
+@@ -695,6 +695,7 @@ extra_mpfr_configure_flags
  gmpinc
  gmplibs
  do_compare
@@ -2694,7 +3394,7 @@ This implements building of self hosted D compiler in GCC.
  GNATMAKE
  GNATBIND
  ac_ct_CXX
-@@ -5252,6 +5253,106 @@ else
+@@ -5353,6 +5354,106 @@ else
    have_gnat=no
  fi
  
@@ -2705,7 +3405,7 @@ This implements building of self hosted D compiler in GCC.
 +set dummy ${ac_tool_prefix}gdc; ac_word=$2
 +{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 +$as_echo_n "checking for $ac_word... " >&6; }
-+if test "${ac_cv_prog_GDC+set}" = set; then :
++if ${ac_cv_prog_GDC+:} false; then :
 +  $as_echo_n "(cached) " >&6
 +else
 +  if test -n "$GDC"; then
@@ -2717,7 +3417,7 @@ This implements building of self hosted D compiler in GCC.
 +  IFS=$as_save_IFS
 +  test -z "$as_dir" && as_dir=.
 +    for ac_exec_ext in '' $ac_executable_extensions; do
-+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
 +    ac_cv_prog_GDC="${ac_tool_prefix}gdc"
 +    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
 +    break 2
@@ -2745,7 +3445,7 @@ This implements building of self hosted D compiler in GCC.
 +set dummy gdc; ac_word=$2
 +{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 +$as_echo_n "checking for $ac_word... " >&6; }
-+if test "${ac_cv_prog_ac_ct_GDC+set}" = set; then :
++if ${ac_cv_prog_ac_ct_GDC+:} false; then :
 +  $as_echo_n "(cached) " >&6
 +else
 +  if test -n "$ac_ct_GDC"; then
@@ -2757,7 +3457,7 @@ This implements building of self hosted D compiler in GCC.
 +  IFS=$as_save_IFS
 +  test -z "$as_dir" && as_dir=.
 +    for ac_exec_ext in '' $ac_executable_extensions; do
-+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
 +    ac_cv_prog_ac_ct_GDC="gdc"
 +    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
 +    break 2
@@ -2800,8 +3500,8 @@ This implements building of self hosted D compiler in GCC.
 +
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking how to compare bootstrapped objects" >&5
  $as_echo_n "checking how to compare bootstrapped objects... " >&6; }
- if test "${gcc_cv_prog_cmp_skip+set}" = set; then :
-@@ -6277,6 +6378,23 @@ $as_echo "$as_me: WARNING: GNAT is requi
+ if ${gcc_cv_prog_cmp_skip+:} false; then :
+@@ -6378,6 +6479,23 @@ $as_echo "$as_me: WARNING: GNAT is required to build $language" >&2;}
              ;;
          esac
  
@@ -2809,7 +3509,7 @@ This implements building of self hosted D compiler in GCC.
 +        case ${add_this_lang}:${language}:${have_gdc} in
 +          yes:d:no)
 +            # Specifically requested language; tell them.
-+            as_fn_error "GDC is required to build $language" "$LINENO" 5
++            as_fn_error $? "GDC is required to build $language" "$LINENO" 5
 +           ;;
 +          all:d:no)
 +            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: GDC is required to build $language" >&5
@@ -2825,7 +3525,16 @@ This implements building of self hosted D compiler in GCC.
          # Disable jit if -enable-host-shared not specified
          case ${add_this_lang}:${language}:${host_shared} in
            yes:jit:no)
-@@ -7098,6 +7216,16 @@ if echo " ${target_configdirs} " | grep
+@@ -6440,7 +6558,7 @@ $as_echo "$as_me: WARNING: ${language} not supported for this target" >&2;}
+ 		  *) stage1_languages="${stage1_languages}${language}," ;;
+ 		esac
+ 		# We need to bootstrap any supporting libraries.
+-		bootstrap_target_libs="${bootstrap_target_libs}${target_libs},"
++		bootstrap_target_libs=`echo "${bootstrap_target_libs}${target_libs}," | sed "s/ /,/g"`
+ 		;;
+ 	    esac
+ 	    ;;
+@@ -7199,6 +7317,16 @@ if echo " ${target_configdirs} " | grep " libvtv " > /dev/null 2>&1 &&
    bootstrap_target_libs=${bootstrap_target_libs}target-libvtv,
  fi
  
@@ -2842,9 +3551,11 @@ This implements building of self hosted D compiler in GCC.
  # Determine whether gdb needs tk/tcl or not.
  # Use 'maybe' since enable_gdbtk might be true even if tk isn't available
  # and in that case we want gdb to be built without tk.  Ugh!
+diff --git a/configure.ac b/configure.ac
+index 05475105f..93d552ec5 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -1302,6 +1302,7 @@ int main() {}],
+@@ -1332,6 +1332,7 @@ int main() {}])],
  fi
  
  ACX_PROG_GNAT
@@ -2852,7 +3563,7 @@ This implements building of self hosted D compiler in GCC.
  ACX_PROG_CMP_IGNORE_INITIAL
  
  AC_ARG_ENABLE([bootstrap],
-@@ -1949,6 +1950,22 @@ if test -d ${srcdir}/gcc; then
+@@ -1979,6 +1980,22 @@ if test -d ${srcdir}/gcc; then
              ;;
          esac
  
@@ -2875,7 +3586,16 @@ This implements building of self hosted D compiler in GCC.
          # Disable jit if -enable-host-shared not specified
          case ${add_this_lang}:${language}:${host_shared} in
            yes:jit:no)
-@@ -2682,6 +2699,16 @@ if echo " ${target_configdirs} " | grep
+@@ -2039,7 +2056,7 @@ directories, to avoid imposing the performance cost of
+ 		  *) stage1_languages="${stage1_languages}${language}," ;;
+ 		esac
+ 		# We need to bootstrap any supporting libraries.
+-		bootstrap_target_libs="${bootstrap_target_libs}${target_libs},"
++		bootstrap_target_libs=`echo "${bootstrap_target_libs}${target_libs}," | sed "s/ /,/g"`
+ 		;;
+ 	    esac
+ 	    ;;
+@@ -2712,6 +2729,16 @@ if echo " ${target_configdirs} " | grep " libvtv " > /dev/null 2>&1 &&
    bootstrap_target_libs=${bootstrap_target_libs}target-libvtv,
  fi
  
@@ -2892,3 +3612,232 @@ This implements building of self hosted D compiler in GCC.
  # Determine whether gdb needs tk/tcl or not.
  # Use 'maybe' since enable_gdbtk might be true even if tk isn't available
  # and in that case we want gdb to be built without tk.  Ugh!
+diff --git a/gcc/Makefile.in b/gcc/Makefile.in
+index 7960cace1..5192dd9b2 100644
+--- a/gcc/Makefile.in
++++ b/gcc/Makefile.in
+@@ -1073,6 +1073,10 @@ SYSLIBS = @GNAT_LIBEXC@
+ GNATBIND = @GNATBIND@
+ GNATMAKE = @GNATMAKE@
+ 
++# Used from d/Make-lang.in
++GDC = @GDC@
++GDCFLAGS = @GDCFLAGS@
++
+ # Libs needed (at present) just for jcf-dump.
+ LDEXP_LIB = @LDEXP_LIB@
+ 
+diff --git a/gcc/configure b/gcc/configure
+index efbf621d0..252520e8d 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -842,6 +842,8 @@ EGREP
+ GREP
+ CXXCPP
+ PICFLAG_FOR_TARGET
++GDCFLAGS
++GDC
+ GNATMAKE
+ GNATBIND
+ ac_ct_CXX
+@@ -5100,6 +5102,106 @@ else
+ fi
+ 
+ 
++
++if test -n "$ac_tool_prefix"; then
++  # Extract the first word of "${ac_tool_prefix}gdc", so it can be a program name with args.
++set dummy ${ac_tool_prefix}gdc; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if ${ac_cv_prog_GDC+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$GDC"; then
++  ac_cv_prog_GDC="$GDC" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
++    ac_cv_prog_GDC="${ac_tool_prefix}gdc"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++GDC=$ac_cv_prog_GDC
++if test -n "$GDC"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GDC" >&5
++$as_echo "$GDC" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++
++fi
++if test -z "$ac_cv_prog_GDC"; then
++  ac_ct_GDC=$GDC
++  # Extract the first word of "gdc", so it can be a program name with args.
++set dummy gdc; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if ${ac_cv_prog_ac_ct_GDC+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$ac_ct_GDC"; then
++  ac_cv_prog_ac_ct_GDC="$ac_ct_GDC" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
++    ac_cv_prog_ac_ct_GDC="gdc"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++ac_ct_GDC=$ac_cv_prog_ac_ct_GDC
++if test -n "$ac_ct_GDC"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_ct_GDC" >&5
++$as_echo "$ac_ct_GDC" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++  if test "x$ac_ct_GDC" = x; then
++    GDC="no"
++  else
++    case $cross_compiling:$ac_tool_warned in
++yes:)
++{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
++$as_echo "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
++ac_tool_warned=yes ;;
++esac
++    GDC=$ac_ct_GDC
++  fi
++else
++  GDC="$ac_cv_prog_GDC"
++fi
++
++if test "x$GDC" != xno; then
++  have_gdc=yes
++else
++  have_gdc=no
++fi
++
++
+ # Do configure tests with the C++ compiler, since that's what we build with.
+ ac_ext=cpp
+ ac_cpp='$CXXCPP $CPPFLAGS'
+@@ -5118,6 +5220,7 @@ esac
+ 
+ 
+ 
++
+ # Determine PICFLAG for target gnatlib.
+ 
+ 
+@@ -18573,7 +18676,7 @@ else
+   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
+   lt_status=$lt_dlunknown
+   cat > conftest.$ac_ext <<_LT_EOF
+-#line 18576 "configure"
++#line 18679 "configure"
+ #include "confdefs.h"
+ 
+ #if HAVE_DLFCN_H
+@@ -18679,7 +18782,7 @@ else
+   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
+   lt_status=$lt_dlunknown
+   cat > conftest.$ac_ext <<_LT_EOF
+-#line 18682 "configure"
++#line 18785 "configure"
+ #include "confdefs.h"
+ 
+ #if HAVE_DLFCN_H
+diff --git a/gcc/configure.ac b/gcc/configure.ac
+index 7fce52a31..1bd23e45f 100644
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -362,6 +362,7 @@ rm -f a.out a.exe b.out
+ AC_PROG_CC
+ AC_PROG_CXX
+ ACX_PROG_GNAT([-I"$srcdir"/ada/libgnat])
++ACX_PROG_GDC([-I"$srcdir"/d])
+ 
+ # Do configure tests with the C++ compiler, since that's what we build with.
+ AC_LANG(C++)
+@@ -375,6 +376,7 @@ case "$CC" in
+ esac
+ AC_SUBST(CFLAGS)
+ AC_SUBST(CXXFLAGS)
++AC_SUBST(GDCFLAGS)
+ 
+ # Determine PICFLAG for target gnatlib.
+ GCC_PICFLAG_FOR_TARGET
+diff --git a/gcc/po/EXCLUDES b/gcc/po/EXCLUDES
+index dbcfb341b..50274233c 100644
+--- a/gcc/po/EXCLUDES
++++ b/gcc/po/EXCLUDES
+@@ -53,43 +53,3 @@ genrecog.c
+ gensupport.c
+ gensupport.h
+ read-md.c
+-
+-#   These files are part of the front end to D, and have no i18n support.
+-d/dmd/arrayop.c
+-d/dmd/attrib.c
+-d/dmd/canthrow.c
+-d/dmd/cond.c
+-d/dmd/constfold.c
+-d/dmd/cppmangle.c
+-d/dmd/ctfeexpr.c
+-d/dmd/dcast.c
+-d/dmd/dclass.c
+-d/dmd/declaration.c
+-d/dmd/denum.c
+-d/dmd/dimport.c
+-d/dmd/dinterpret.c
+-d/dmd/dmangle.c
+-d/dmd/dmodule.c
+-d/dmd/doc.c
+-d/dmd/dscope.c
+-d/dmd/dstruct.c
+-d/dmd/dsymbol.c
+-d/dmd/dtemplate.c
+-d/dmd/dversion.c
+-d/dmd/expression.c
+-d/dmd/func.c
+-d/dmd/init.c
+-d/dmd/inline.c
+-d/dmd/lexer.c
+-d/dmd/mtype.c
+-d/dmd/nogc.c
+-d/dmd/nspace.c
+-d/dmd/objc.c
+-d/dmd/opover.c
+-d/dmd/optimize.c
+-d/dmd/parse.c
+-d/dmd/sideeffect.c
+-d/dmd/statement.c
+-d/dmd/statementsem.c
+-d/dmd/staticassert.c
+-d/dmd/traits.c

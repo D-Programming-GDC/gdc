@@ -1,0 +1,4 @@
+Create a patch file named gcc.patch to apply extra D language support patches
+to the GCC back end.
+
+The patch file ddmd.patch is for patches relating to self hosted D compiler.
