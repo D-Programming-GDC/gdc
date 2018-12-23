@@ -63,12 +63,13 @@ if test -e "$d_test/gdc.dg" -o -e "$d_test/gdc.test" -o -e "$d_test/lib/gdc.exp"
 fi
 
 # 2. Copy sources
-cp -av "$d_gdcsrc/gcc/d" "$d_gccsrc/gcc/d" || exit 1
-cp -av "$d_gdcsrc/libphobos" "$d_gccsrc/libphobos" || exit 1
-cp -av "$d_gdcsrc/gcc/testsuite/gdc.dg" "$d_gccsrc/gcc/testsuite/gdc.dg" || exit 1
-cp -av "$d_gdcsrc/gcc/testsuite/gdc.test" "$d_gccsrc/gcc/testsuite/gdc.test" || exit 1
-cp -av "$d_gdcsrc/gcc/testsuite/lib/gdc.exp" "$d_gccsrc/gcc/testsuite/lib/gdc.exp" || exit 1
-cp -av "$d_gdcsrc/gcc/testsuite/lib/gdc-dg.exp" "$d_gccsrc/gcc/testsuite/lib/gdc-dg.exp" || exit 1
+cp -avT "$d_gdcsrc/gcc/d" "$d_gccsrc/gcc/d" || exit 1
+cp -avT "$d_gdcsrc/gcc/config" "$d_gccsrc/gcc/config" || exit 1
+cp -avT "$d_gdcsrc/libphobos" "$d_gccsrc/libphobos" || exit 1
+cp -avT "$d_gdcsrc/gcc/testsuite/gdc.dg" "$d_gccsrc/gcc/testsuite/gdc.dg" || exit 1
+cp -avT "$d_gdcsrc/gcc/testsuite/gdc.test" "$d_gccsrc/gcc/testsuite/gdc.test" || exit 1
+cp -avT "$d_gdcsrc/gcc/testsuite/lib/gdc.exp" "$d_gccsrc/gcc/testsuite/lib/gdc.exp" || exit 1
+cp -avT "$d_gdcsrc/gcc/testsuite/lib/gdc-dg.exp" "$d_gccsrc/gcc/testsuite/lib/gdc-dg.exp" || exit 1
 
 
 if test $d_update_gcc -eq 1; then
