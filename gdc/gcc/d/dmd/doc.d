@@ -2642,7 +2642,7 @@ private void highlightCode3(Scope* sc, OutBuffer* buf, const(char)* p, const(cha
  */
 private void highlightCode2(Scope* sc, Dsymbols* a, OutBuffer* buf, size_t offset)
 {
-    uint errorsave = global.errors;
+    uint errorsave = global.startGagging();
     scope Lexer lex = new Lexer(null, cast(char*)buf.data, 0, buf.offset - 1, 0, 1);
     OutBuffer res;
     const(char)* lastp = cast(char*)buf.data;
@@ -2706,7 +2706,7 @@ private void highlightCode2(Scope* sc, Dsymbols* a, OutBuffer* buf, size_t offse
     }
     buf.setsize(offset);
     buf.write(&res);
-    global.errors = errorsave;
+    global.endGagging(errorsave);
 }
 
 /****************************************
